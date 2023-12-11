@@ -20,9 +20,9 @@
 #     "brew reinstall llvm", but I got a message that llvm was part of the OS and it suggested 
 #     that upgrading was a very bad idea.  You could also compile it from scratch, but this seems
 #     to me like it would complicate this build script too much for the benefit
-#   - on Linux, I was able to get clang-tidy to work by using "sudo apt-get -y install clang clang-tidy"
+#   - on Linux, I was able to get clang-tidy to work by using "sudo apt --yes install clang clang-tidy"
 #     but this requires installing clang and clang-tidy.  I have a better solution using Visual Studio
-#   - on Ubuntu, "sudo apt-get -y install cppcheck" seems to hang my build machines, so that sucks.
+#   - on Ubuntu, "sudo apt --yes install cppcheck" seems to hang my build machines, so that sucks.
 #   - Visual Studio now includes support for both it's own static analysis tool and clang-tidy.  This seems to
 #     be the easiest ways to access these tools for us since they require no additional installation.
 #   - by adding "/p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True" to MSBuild I can get the static
@@ -115,7 +115,7 @@ check_install() {
       printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
-         sudo apt-get -y update
+         sudo apt --yes update
          l1_ret_code=$?
          if [ $l1_ret_code -ne 0 ]; then 
             exit $l1_ret_code
@@ -124,7 +124,7 @@ check_install() {
          g_is_updated=1
       fi
 
-      sudo apt-get -y install "$l1_package"
+      sudo apt --yes install "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
          exit $l1_ret_code

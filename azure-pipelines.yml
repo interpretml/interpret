@@ -24,20 +24,18 @@ jobs:
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - task: PythonScript@0
-    condition: startsWith(variables['image.name'], 'windows')
     inputs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
+    condition: startsWith(variables['image.name'], 'windows')
     displayName: 'CUDA download installer'
+  # CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
+  # the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
   - script: |
-      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       IF ERRORLEVEL 1 (
         ECHO cuda_11.2.2_win10_network.exe FAILED
@@ -47,11 +45,14 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: 'win bld_native'
   - script: |
-      # sudo apt -y install nvidia-cuda-toolkit
-      # if [ $? -ne 0 ]; then 
-      #    exit 201
-      # fi
-      # nvcc --version
+      sudo apt --yes update
+      if [ $? -ne 0 ]; then 
+         exit 107
+      fi
+      sudo apt --yes install nvidia-cuda-toolkit
+      if [ $? -ne 0 ]; then 
+         exit 93
+      fi
       /bin/sh ./build.sh -release_64 -debug_64 -asm
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: 'linux bld_native'
@@ -59,149 +60,90 @@ jobs:
       /bin/sh ./build.sh -release_64 -debug_64 -release_arm -debug_arm -asm
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: 'mac bld_native'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: bld/lib
-      artifactName: libebm-$(image.name)
+  - publish: bld/lib
+    artifact: libebm-$(image.name)
     displayName: 'Publish native shared library'
-  - task: PublishBuildArtifacts@1
+  - publish: bld/tmp/staging_asm_release_64
+    artifact: asm-x64-$(image.name)
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
-    continueOnError: true
-    inputs:
-      pathtoPublish: bld/tmp/staging_asm_release_64
-      artifactName: asm-x64-$(image.name)
     displayName: 'Publish assembly x64'
-  - task: PublishBuildArtifacts@1
+  - publish: bld/tmp/staging_asm_release_arm
+    artifact: asm-arm-$(image.name)
     condition: startsWith(variables['image.name'], 'macOS')
-    continueOnError: true
-    inputs:
-      pathtoPublish: bld/tmp/staging_asm_release_arm
-      artifactName: asm-arm-$(image.name)
     displayName: 'Publish assembly arm'
 
 - job: 'bld_vis'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
-  - script: npm install && npm run build-prod
-    workingDirectory: 'shared/vis'
+  - script: cd shared/vis && npm install && npm run build-prod
     displayName: 'bld_vis'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: 'shared/vis/dist'
-      contents: 'interpret-inline.js'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/vis'
-    displayName: 'Copy interpret-inline.js library'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: 'shared/vis/dist'
-      contents: 'interpret-inline.js.LICENSE.txt'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/vis'
-    displayName: 'Copy interpret-inline.js.LICENSE.txt'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: $(Build.ArtifactStagingDirectory)/vis
-      artifactName: interpret-inline-bundle
+  - publish: shared/vis/dist
+    artifact: interpret-inline-bundle
     displayName: 'Publish interpret-inline.js library'
 
 - job: 'bld_npm_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
-  - script: npm install && npm run build-prod && npm pack
-    workingDirectory: 'shared/vis'
+  - script: cd shared/vis && npm install && npm run build-prod && npm pack && mkdir pkg && cp *.tgz pkg/
     displayName: 'bld_npm_package'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: 'shared/vis'
-      contents: '*.tgz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/npm'
-    displayName: 'Copy npm package'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/npm'
-      artifactName: 'npm'
+  - publish: shared/vis/pkg
+    artifact: 'npm'
     displayName: 'Publish npm package'
 
 - job: 'bld_R_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - script: | 
-      sudo apt-get update
+      cd R
+      sudo apt --yes update
       if [ $? -ne 0 ]; then
         exit 201
       fi
-      sudo apt install --yes texlive-latex-base texlive-fonts-extra
+      sudo apt --yes install texlive-latex-base texlive-fonts-extra
       if [ $? -ne 0 ]; then
         exit 201
       fi
       Rscript build.R
-    workingDirectory: 'R'
     displayName: 'Rscript build.R'
   - script: cat bld/tmp/R/interpret.Rcheck/00install.out
     condition: failed()
     displayName: 'Display errors'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: bld/R
-      contents: 'interpret_*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/R'
-    displayName: 'Copy R package'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/R'
-      artifactName: 'R'
+  - publish: bld/R
+    artifact: 'R'
     displayName: 'Publish R package'
 
 - job: 'bld_sdist_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.8'
-      architecture: 'x64'
-  - script: python -m pip install --upgrade pip setuptools wheel
-    displayName: 'Install tools'
-  - script: python setup.py sdist -d ../../bld/sdist
-    workingDirectory: 'python/interpret-core'
-    displayName: 'interpret-core bld_sdist_package'
-  - script: python setup.py sdist -d ../../bld/sdist
-    workingDirectory: 'python/interpret'
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      cd python/interpret-core
+      python setup.py sdist -d ../../bld/sdist
+      cd ../interpret
+      python setup.py sdist -d ../../bld/sdist
     displayName: 'interpret bld_sdist_package'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: bld/sdist
-      contents: '*.tar.gz'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/sdist'
-    displayName: 'Copy sdist python package'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/sdist'
-      artifactName: 'sdist'
+  - publish: bld/sdist
+    artifact: sdist
     displayName: 'Publish sdist python package'
 
 - job: 'docs'
   dependsOn: 'bld_sdist_package'
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifactName: 'sdist'
+      artifact: sdist
       itemPattern: 'sdist/interpret-core-*.tar.gz'
-      targetPath: '$(System.ArtifactsDirectory)/sdist'
+      path: $(System.ArtifactsDirectory)/sdist
+    displayName: 'Download sdist'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.8'
@@ -214,73 +156,48 @@ jobs:
       pip install -r requirements.txt
       /bin/sh ./build.sh
     displayName: 'Build docs'
-  - task: PublishPipelineArtifact@1
-    inputs:
-      targetPath: 'docs/interpret_docs/_build/html/'
-      artifactName: 'docs'
-    displayName: 'Publish docs'
+  - publish: docs/interpret_docs/_build/html/
+    artifact: docs
+    displayName: Publish docs
 
 - job: 'bld_bdist_package'
   dependsOn: ['bld_native', 'bld_vis']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
-  - task: DownloadBuildArtifacts@0
-    inputs:
-      buildType: 'current'
-      downloadType: 'specific'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.8'
-      architecture: 'x64'
-  - script: python -m pip install --upgrade pip setuptools wheel
-    displayName: 'Install tools'
-  - task: CopyFiles@2
+  - task: DownloadPipelineArtifact@2
     inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/libebm_*_x64*'
-      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
-      flattenFolders: true
-    displayName: 'Copy x64 native library to python lib directory'
-  - task: CopyFiles@2
+      artifact: 'libebm-windows-2022'
+      itemPattern: |
+        *.dll
+        *.pdb
+      path: 'python/interpret-core/interpret/root/bld/lib'
+    displayName: 'Copy win shared library to bld/lib directory'
+  - task: DownloadPipelineArtifact@2
     inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/libebm_*_arm*'
-      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
-      flattenFolders: true
-    displayName: 'Copy arm native library to python lib directory'
-  - task: CopyFiles@2
+      artifact: 'libebm-ubuntu-20.04'
+      path: 'python/interpret-core/interpret/root/bld/lib'
+    displayName: 'Copy linux shared library to bld/lib directory'
+  - task: DownloadPipelineArtifact@2
     inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/interpret-inline.js'
-      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
-      flattenFolders: true
+      artifact: 'libebm-macOS-13'
+      path: 'python/interpret-core/interpret/root/bld/lib'
+    displayName: 'Copy mac shared library to bld/lib directory'
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: 'interpret-inline-bundle'
+      path: 'python/interpret-core/interpret/root/bld/lib'
     displayName: 'Copy interpret-inline.js to python lib directory'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/interpret-inline.js.LICENSE.txt'
-      targetFolder: 'python/interpret-core/interpret/root/bld/lib'
-      flattenFolders: true
-    displayName: 'Copy interpret-inline.js.LICENSE.txt to python lib directory'
-  - script: python setup.py bdist_wheel -d ../../bld/bdist
-    workingDirectory: 'python/interpret-core'
-    displayName: 'interpret-core bld_bdist_package'
-  - script: python setup.py bdist_wheel -d ../../bld/bdist
-    workingDirectory: 'python/interpret'
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      cd python/interpret-core && python setup.py bdist_wheel -d ../../bld/bdist
+      cd ../interpret && python setup.py bdist_wheel -d ../../bld/bdist
     displayName: 'interpret bld_bdist_package'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: bld/bdist
-      contents: '*.whl'
-      targetFolder: '$(Build.ArtifactStagingDirectory)/bdist'
-    displayName: 'Copy bdist python package'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(Build.ArtifactStagingDirectory)/bdist'
-      artifactName: 'bdist'
+  - publish: bld/bdist
+    artifact: bdist
     displayName: 'Publish bdist python package'
 
 - job: 'test_native'
@@ -296,25 +213,17 @@ jobs:
     maxParallel: 3
   pool:
     vmImage: '$(image.name)'
-  variables:
-    runCodesignValidationInjection: false
   steps:
-  - task: DownloadBuildArtifacts@0
+  - task: DownloadPipelineArtifact@2
     inputs:
-      buildType: 'current'
-      downloadType: 'specific'
-  - task: CopyFiles@2
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      contents: '**/libebm_*'
-      targetFolder: 'bld/lib'
-      flattenFolders: true
+      artifact: 'libebm-$(image.name)'
+      path: 'bld/lib'
     displayName: 'Copy native library to bld/lib directory'
   - task: PythonScript@0
-    condition: startsWith(variables['image.name'], 'windows')
     inputs:
       scriptSource: 'inline'
       script: from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')
+    condition: startsWith(variables['image.name'], 'windows')
     displayName: 'Download CUDA installer'
   - script: |
       /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -existing_debug_64 -existing_release_64
@@ -329,10 +238,8 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'linux test_native (Schedule)'
   - script: |
-      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       IF ERRORLEVEL 1 (
         ECHO cuda_11.2.2_win10_network.exe FAILED
@@ -342,10 +249,8 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: 'win test_native (CI)'
   - script: |
-      REM CUDA installation https://docs.nvidia.com/cuda/pdf/CUDA_Installation_Guide_Windows.pdf
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       SET CudaToolkitDir=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2
-      REM the list of NVIDIA CUDA install options is at: https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
       cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
       IF ERRORLEVEL 1 (
         ECHO cuda_11.2.2_win10_network.exe FAILED
@@ -354,53 +259,6 @@ jobs:
       .\shared\libebm\tests\libebm_test.bat -pipeline -analysis
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: 'win test_native (Schedule)'
-  - task: ComponentGovernanceComponentDetection@0
-    displayName: 'Scan dependencies for incompatible licenses and security issues'
-  - task: CredScan@2
-    inputs:
-      toolMajorVersion: 'V2'
-    displayName: 'Scan codebase for leaked secrets'
-    condition: startsWith(variables['image.name'], 'windows')
-#  - task: BinSkim@3
-#    displayName: 'Scan DLLs for compiler/linker security improvements'
-#    condition: startsWith(variables['image.name'], 'windows')
-#    inputs:
-#      InputType: Basic
-#      AnalyzeTarget: 'bld\lib\*.dll'
-#      AnalyzeSymPath: 'bld\lib'
-#      AnalyzeVerbose: true
-#  - task: AntiMalware@3
-#    displayName: 'AntiMalware scan'
-  - task: SdtReport@1
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      TsvFile: false
-      AllTools: false
-      BinSkim: false
-      CredScan: true
-      MSRD: false
-      RoslynAnalyzers: false
-      TSLint: false
-      ToolLogsNotFoundAction: 'Standard'
-    displayName: 'Generate security report'
-  - task: PublishSecurityAnalysisLogs@2
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      ArtifactName: 'CodeAnalysisLogs'
-      ArtifactType: 'Container'
-      AllTools: true
-      ToolLogsNotFoundAction: 'Standard'
-    displayName: 'Publish security report'
-  - task: PostAnalysis@1
-    condition: startsWith(variables['image.name'], 'windows')
-    inputs:
-      AllTools: false
-      BinSkim: false
-      CredScan: true
-      RoslynAnalyzers: false
-      TSLint: false
-      ToolLogsNotFoundAction: 'Standard'
-    displayName: 'Stop on security errors'
 
 - job: 'test' # just call this test since we have limited room in the UI to show the OS and python version
   dependsOn: 'bld_bdist_package'
@@ -436,18 +294,15 @@ jobs:
     maxParallel: 9
   pool:
     vmImage: '$(image.name)'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifactName: 'bdist'
-      itemPattern: 'bdist/interpret_core-*.whl'
+      itemPattern: 'interpret_core-*.whl'
       targetPath: '$(System.ArtifactsDirectory)/bdist'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '$(python.version)'
-      architecture: 'x64'
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
@@ -474,10 +329,10 @@ jobs:
     condition: not(startsWith(variables['image.name'], 'windows'))
     displayName: 'pytest (non-win)'
   - task: PublishTestResults@2
-    condition: succeededOrFailed()
     inputs:
       testResultsFiles: '$(Agent.TempDirectory)/zqmr/t/junit/test-results.xml'
       testRunTitle: 'Publish test results for Python $(python.version) at $(image.name)'
+    condition: succeededOrFailed()
     displayName: 'Publish test results'
   - task: PublishCodeCoverageResults@1
     inputs:
@@ -491,27 +346,22 @@ jobs:
   dependsOn: ['test_native', 'test']
   pool:
     vmImage: '${{ variables.ubuntu_image }}'
-  variables:
-    runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.8'
-      architecture: 'x64'
   - script: |
+      cd python/interpret-core
       python -m pip install --upgrade black
       black --check .
-    workingDirectory: 'python/interpret-core'
     displayName: 'black formatting check'
-  - task: PublishPipelineArtifact@0
-    inputs:
-      sourceFolder: '$(System.ArtifactsDirectory)'
-      artifactName: 'source_code'
+  - publish: '$(System.ArtifactsDirectory)'
+    artifact: 'source_code'
 
 schedules:
 - cron: "0 12 * * *"
-  displayName: Daily midnight build
   branches:
     include:
     - develop
   always: true
+  displayName: Daily midnight build
