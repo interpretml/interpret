@@ -1287,8 +1287,8 @@ class EBMModel(BaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
-    def predict_scores(self, X, init_score=None):
-        """Predict scores from model before calling the link function.
+    def _predict_score(self, X, init_score=None):
+        """Predicts scores on provided samples.
 
         Args:
             X: Numpy array for samples.
@@ -1323,9 +1323,9 @@ class EBMModel(BaseEstimator):
 
     def eval_terms(self, X):
         """The term scores returned will be identical to the local explanation values
-           obtained by calling ebm.explain_local(X). Calling
-           interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\\_, ebm.link\\_)
-           is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
+        obtained by calling ebm.explain_local(X). Calling
+        interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\\_, ebm.link\\_)
+        is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
 
         Args:
             X: Numpy array for samples.
@@ -2469,7 +2469,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             Probability estimate of sample for each class.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
     def decision_function(self, X, init_score=None):
@@ -2484,7 +2484,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             The sum of the additive term contributions.
         """
 
-        return self.predict_scores(X, init_score)
+        return self._predict_score(X, init_score)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2498,7 +2498,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             Predicted class label per sample.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
@@ -2745,7 +2745,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             Predicted class label per sample.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
 
@@ -2961,7 +2961,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             Probability estimate of sample for each class.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
     def decision_function(self, X, init_score=None):
@@ -2976,7 +2976,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             The sum of the additive term contributions.
         """
 
-        return self.predict_scores(X, init_score)
+        return self._predict_score(X, init_score)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2990,7 +2990,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             Predicted class label per sample.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
@@ -3228,5 +3228,5 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             Predicted class label per sample.
         """
 
-        scores = self.predict_scores(X, init_score)
+        scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
