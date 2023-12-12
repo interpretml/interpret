@@ -1,4 +1,5 @@
 import pytest
+import warnings
 from sklearn.exceptions import NotFittedError
 
 from interpret.glassbox import (
@@ -243,5 +244,8 @@ def test_group_importance_multiclass():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    ebm = ExplainableBoostingClassifier()
-    _check_group_importance(X, y, ebm)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+
+        ebm = ExplainableBoostingClassifier()
+        _check_group_importance(X, y, ebm)

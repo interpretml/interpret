@@ -275,8 +275,12 @@ def test_unknown_multiclass_category():
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
 
-    clf = ExplainableBoostingClassifier()
-    clf.fit(X_train, y_train)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+
+        clf = ExplainableBoostingClassifier()
+        clf.fit(X_train, y_train)
 
     # Term contributions for categorical feature should always be 0 in test
     assert np.all(clf.explain_local(X_train).data(0)["scores"][-1] != 0)
@@ -373,10 +377,13 @@ def test_ebm_synthetic_multiclass_pairwise():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
-    clf.fit(X, y)
-    clf.predict_proba(X)
-    valid_ebm(clf)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*') 
+
+        clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
+        clf.fit(X, y)
+        clf.predict_proba(X)
+        valid_ebm(clf)
 
 
 @pytest.mark.slow
@@ -415,13 +422,16 @@ def test_ebm_tripple():
 
     X_test = data["test"]["X"]
 
-    # iris is multiclass, but for now pretend this is a regression problem
-    clf = ExplainableBoostingRegressor(
-        interactions=[(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 1)]
-    )
-    clf.fit(X_train, y_train)
-    clf.predict(X_test)
-    valid_ebm(clf)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Interactions with 3 or more terms are not graphed in global explanations.*') 
+
+        # iris is multiclass, but for now pretend this is a regression problem
+        clf = ExplainableBoostingRegressor(
+            interactions=[(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 1)]
+        )
+        clf.fit(X_train, y_train)
+        clf.predict(X_test)
+        valid_ebm(clf)
 
 
 @pytest.mark.slow
@@ -472,11 +482,14 @@ def test_ebm_missing():
 
     X[0, 0] = np.nan
 
-    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
-    clf.fit(X, y)
-    clf.predict(X)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Missing values detected.*')
 
-    valid_ebm(clf)
+        clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+        clf.fit(X, y)
+        clf.predict(X)
+
+        valid_ebm(clf)
 
 
 def test_ebm_only_missing():
@@ -484,11 +497,14 @@ def test_ebm_only_missing():
     y = np.full(10, 0)
     y[0] = 1
 
-    clf = ExplainableBoostingClassifier(n_jobs=1)
-    clf.fit(X, y)
-    clf.predict(X)
-    clf.explain_global()
-    clf.explain_local(X, y)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Missing values detected.*')
+
+        clf = ExplainableBoostingClassifier(n_jobs=1)
+        clf.fit(X, y)
+        clf.predict(X)
+        clf.explain_global()
+        clf.explain_local(X, y)
 
 
 def test_ebm_synthetic_singleclass_classification():
@@ -584,15 +600,19 @@ def test_ebm_uniform_multiclass():
     feature_types = [None] * X_train.shape[1]
     feature_types[0] = "uniform"
 
-    clf = ExplainableBoostingClassifier(feature_types=feature_types)
-    clf.fit(X_train, y_train)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Dropping term*')
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
 
-    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+        clf = ExplainableBoostingClassifier(feature_types=feature_types)
+        clf.fit(X_train, y_train)
 
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X_test, y_test)
+        assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
-    smoke_test_explanations(global_exp, local_exp, 6001)
+        global_exp = clf.explain_global()
+        local_exp = clf.explain_local(X_test, y_test)
+
+        smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
@@ -675,16 +695,19 @@ def test_eval_terms_multiclass():
     X = data["train"]["X"]
     y = data["train"]["y"]
 
-    clf = ExplainableBoostingClassifier()
-    clf.fit(X, y)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*') 
 
-    explanations = clf.eval_terms(X)
+        clf = ExplainableBoostingClassifier()
+        clf.fit(X, y)
 
-    scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf._predict_score(X), scores)
+        explanations = clf.eval_terms(X)
 
-    probabilities = inv_link(scores, clf.link_, clf.link_param_)
-    assert np.allclose(clf.predict_proba(X), probabilities)
+        scores = explanations.sum(axis=1) + clf.intercept_
+        assert np.allclose(clf._predict_score(X), scores)
+
+        probabilities = inv_link(scores, clf.link_, clf.link_param_)
+        assert np.allclose(clf.predict_proba(X), probabilities)
 
 
 def test_ebm_sample_weight():
@@ -739,15 +762,20 @@ def test_ebm_iris():
     X_test = data["test"]["X"]
     y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier()
-    clf.fit(X_train, y_train)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
 
-    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+        clf = ExplainableBoostingClassifier()
+        clf.fit(X_train, y_train)
 
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X_test, y_test)
+        assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
-    smoke_test_explanations(global_exp, local_exp, 6001)
+        warnings.filterwarnings('ignore', 'Dropping term*')
+
+        global_exp = clf.explain_global()
+        local_exp = clf.explain_local(X_test, y_test)
+
+        smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
@@ -778,8 +806,11 @@ def test_zero_validation():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, validation_size=0)
-    clf.fit(X, y)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'If validation_size is 0*')
+
+        clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, validation_size=0)
+        clf.fit(X, y)
 
 
 @pytest.mark.visual
@@ -798,31 +829,34 @@ def test_dp_ebm_adult():
     w_tr = np.ones_like(y_tr)
     w_tr[-1] = 2
 
-    clf = DPExplainableBoostingClassifier(epsilon=1)
-    n_splits = 3
-    ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    cross_validate(
-        clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Possible privacy violation.*')
 
-    clf = DPExplainableBoostingClassifier(epsilon=1)
-    clf.fit(X_tr, y_tr, w_tr)
+        clf = DPExplainableBoostingClassifier(epsilon=1)
+        n_splits = 3
+        ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
+        cross_validate(
+            clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
+        )
 
-    prob_scores = clf.predict_proba(X_te)
+        clf = DPExplainableBoostingClassifier(epsilon=1)
+        clf.fit(X_tr, y_tr, w_tr)
 
-    within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
-    assert within_bounds
+        prob_scores = clf.predict_proba(X_te)
 
-    # Performance
-    auc = roc_auc_score(y_te, prob_scores[:, 1])
-    assert auc > 0.5
+        within_bounds = (prob_scores >= 0.0).all() and (prob_scores <= 1.0).all()
+        assert within_bounds
 
-    valid_ebm(clf)
+        # Performance
+        auc = roc_auc_score(y_te, prob_scores[:, 1])
+        assert auc > 0.5
 
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
+        valid_ebm(clf)
 
-    smoke_test_explanations(global_exp, local_exp, 6000)
+        global_exp = clf.explain_global()
+        local_exp = clf.explain_local(X_te[:5, :], y_te[:5])
+
+        smoke_test_explanations(global_exp, local_exp, 6000)
 
 
 def test_dp_ebm_synthetic_regression():
@@ -834,11 +868,14 @@ def test_dp_ebm_synthetic_regression():
     w = np.ones_like(y)
     w[-1] = 2
 
-    clf = DPExplainableBoostingRegressor()
-    clf.fit(X, y, w)
-    clf.predict(X)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Possible privacy violation.*')
 
-    valid_ebm(clf)
+        clf = DPExplainableBoostingRegressor()
+        clf.fit(X, y, w)
+        clf.predict(X)
+
+        valid_ebm(clf)
 
 
 def test_dp_ebm_external_privacy_bounds():
@@ -851,13 +888,16 @@ def test_dp_ebm_external_privacy_bounds():
     # synthetic regression is all sampled from N(0, 1)
     privacy_bounds = {0: (-3, 3), 1: (-3, 3), 2: (-3, 3), 3: (-3, 3)}
 
-    clf = DPExplainableBoostingRegressor(
-        privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3
-    )
-    clf.fit(X, y)
-    clf.predict(X)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Possible privacy violation*')
 
-    valid_ebm(clf)
+        clf = DPExplainableBoostingRegressor(
+            privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3
+        )
+        clf.fit(X, y)
+        clf.predict(X)
+
+        valid_ebm(clf)
 
 
 @pytest.mark.slow
@@ -1087,7 +1127,10 @@ def test_json_classification():
 
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
-    clf.to_jsonable(detail="all")
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+
+        clf.to_jsonable(detail="all")
 
 
 def test_json_multiclass():
@@ -1100,7 +1143,11 @@ def test_json_multiclass():
         max_bins=10, feature_types=feature_types, interactions=0
     )
     clf.fit(X, y)
-    clf.to_jsonable(detail="all")
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+
+        clf.to_jsonable(detail="all")
 
 
 def test_json_regression():
@@ -1109,6 +1156,7 @@ def test_json_regression():
     y = data["full"]["y"]
     feature_types = ["continuous"] * X.shape[1]
     feature_types[0] = "nominal"
+
     clf = ExplainableBoostingRegressor(
         max_bins=5,
         max_interaction_bins=4,
@@ -1116,7 +1164,11 @@ def test_json_regression():
         interactions=[(1, 2), (2, 3)],
     )
     clf.fit(X, y)
-    clf.to_jsonable(detail="all")
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+
+        clf.to_jsonable(detail="all")
 
 
 def test_json_dp_classification():
@@ -1125,12 +1177,17 @@ def test_json_dp_classification():
     y = data["full"]["y"]
     feature_types = ["continuous"] * X.shape[1]
     feature_types[0] = "nominal"
-    clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
-    clf.fit(X, y)
-    clf.term_scores_[0][0] = np.nan
-    clf.term_scores_[0][1] = np.inf
-    clf.term_scores_[0][2] = -np.inf
-    clf.to_jsonable(detail="all")
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Possible privacy violation*')
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')
+
+        clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
+        clf.fit(X, y)
+        clf.term_scores_[0][0] = np.nan
+        clf.term_scores_[0][1] = np.inf
+        clf.term_scores_[0][2] = -np.inf
+        clf.to_jsonable(detail="all")
 
 
 def test_json_dp_regression():
@@ -1139,9 +1196,14 @@ def test_json_dp_regression():
     y = data["full"]["y"]
     feature_types = ["continuous"] * X.shape[1]
     feature_types[0] = "nominal"
-    clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
-    clf.fit(X, y)
-    clf.to_jsonable(detail="all")
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', 'Possible privacy violation*')
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')
+    
+        clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
+        clf.fit(X, y)
+        clf.to_jsonable(detail="all")
 
 
 def test_to_json():
@@ -1152,11 +1214,14 @@ def test_to_json():
     clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
-    file_like_string_writer = StringIO()
-    jsonable = clf.to_json(file_like_string_writer)
-    json_data = file_like_string_writer.getvalue()
-    jsonable = json.loads(json_data)
-    assert "ebm" in jsonable
+    with warnings.catch_warnings():  
+        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')  
+    
+        file_like_string_writer = StringIO()
+        jsonable = clf.to_json(file_like_string_writer)
+        json_data = file_like_string_writer.getvalue()
+        jsonable = json.loads(json_data)
+        assert "ebm" in jsonable
 
 
 def test_exclude_explicit():

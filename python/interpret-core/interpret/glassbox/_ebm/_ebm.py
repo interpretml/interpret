@@ -1051,10 +1051,6 @@ class EBMModel(BaseEstimator):
                         uniquifier.add(sorted_tuple)
                         boost_groups.append(feature_idxs)
 
-                # Warn the users that we have made change to the interactions list
-                if len(boost_groups) != len(interactions):
-                    warn("Removed interaction terms")
-
                 if 2 < max_dimensions:
                     warn(
                         "Interactions with 3 or more terms are not graphed in "
