@@ -66,6 +66,9 @@ jobs:
     maxParallel: 12
   pool:
     vmImage: $(image.name)
+  variables:
+    skipComponentGovernanceDetection: true
+    runCodesignValidationInjection: false
   steps:
   - task: PythonScript@0
     inputs:
@@ -113,6 +116,9 @@ jobs:
 - job: vis
   pool:
     vmImage: ${{ variables.ubuntu_image }}
+  variables:
+    skipComponentGovernanceDetection: true
+    runCodesignValidationInjection: false
   steps:
   - script: |
       cd shared/vis
@@ -165,6 +171,9 @@ jobs:
 - job: sdist
   pool:
     vmImage: ${{ variables.ubuntu_image }}
+  variables:
+    skipComponentGovernanceDetection: true
+    runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -211,6 +220,9 @@ jobs:
   dependsOn: [bld, vis]
   pool:
     vmImage: ${{ variables.ubuntu_image }}
+  variables:
+    skipComponentGovernanceDetection: true
+    runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
