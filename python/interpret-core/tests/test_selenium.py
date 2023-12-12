@@ -1,3 +1,4 @@
+import warnings
 import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -52,9 +53,13 @@ def all_explanations():
             raise Exception("Not supported explainer type.")
 
         if "local" in explainer.available_explanations:
-            explanation = explainer.explain_local(
-                data["test"]["X"].head(), data["test"]["y"].head()
-            )
+            with warnings.catch_warnings():
+                if type(explainer).__name__ == "TreeInterpreter":
+                    warnings.filterwarnings("ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*")
+
+                explanation = explainer.explain_local(
+                    data["test"]["X"].head(), data["test"]["y"].head()
+                )
             explanations.append(explanation)
         if "global" in explainer.available_explanations:
             explanation = explainer.explain_global()

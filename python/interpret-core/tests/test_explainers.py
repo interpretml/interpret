@@ -1,6 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import warnings
+
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .tutils import synthetic_classification, get_all_explainers
@@ -52,14 +54,19 @@ def test_spec_synthetic():
 
         if "local" in explainer.available_explanations:
             # With labels
-            explanation = explainer.explain_local(
-                data["test"]["X"].head(), data["test"]["y"].head()
-            )
-            assert_valid_explanation(explanation)
 
-            # Without labels
-            explanation = explainer.explain_local(data["test"]["X"])
-            assert_valid_explanation(explanation)
+            with warnings.catch_warnings():
+                if type(explainer).__name__ == "TreeInterpreter":
+                    warnings.filterwarnings("ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*")
+
+                explanation = explainer.explain_local(
+                    data["test"]["X"].head(), data["test"]["y"].head()
+                )
+                assert_valid_explanation(explanation)
+
+                # Without labels
+                explanation = explainer.explain_local(data["test"]["X"])
+                assert_valid_explanation(explanation)
 
         if "global" in explainer.available_explanations:
             explanation = explainer.explain_global()

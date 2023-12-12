@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
-import pkg_resources
+from importlib.metadata import entry_points
 import re
 from warnings import warn
 import traceback
@@ -39,7 +39,7 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         extension_class_validator: A function(class) -> bool, that checks the class for correctness
           before it is registered.
     """
-    for entrypoint in pkg_resources.iter_entry_points(extension_key):
+    for entrypoint in entry_points().select(group=extension_key):
         _log.debug("processing entrypoint {}".format(extension_key))
         try:
             extension_class_name = entrypoint.name

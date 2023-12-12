@@ -164,7 +164,7 @@ def _create_proportional_tensor(axis_weights):
 
 
 def process_bag_terms(n_scores, term_scores, bin_weights):
-    intercept = np.zeros(n_scores, np.float64)
+    intercept = 0 if n_scores == 1 else np.zeros(n_scores, np.float64)
     # monoclassification requires no changes
     if n_scores != 0:
         shape = -1 if n_scores == 1 else (-1, n_scores)

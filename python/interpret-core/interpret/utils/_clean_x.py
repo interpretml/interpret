@@ -718,18 +718,17 @@ def _process_continuous(X_col, nonmissings):
             bad = np.full(n_samples, None, dtype=np.object_)
             floats = np.zeros(n_samples, dtype=np.float64)
             for idx in range(n_samples):
-                one_item_array = X_col[
-                    idx : idx + 1
-                ]  # slice one item at a time keeping as an np.ndarray
+                # slice one item at a time keeping as an np.ndarray
+                one_item_array = X_col[idx : idx + 1]
                 try:
                     # use .astype(..) instead of float(..) to ensure identical conversion results
-                    floats[idx] = one_item_array.astype(dtype=np.float64)
+                    floats[idx] = one_item_array.astype(dtype=np.float64)[0]
                 except TypeError:
                     # use .astype instead of str(one_item_array) here to ensure identical string categories
                     one_str_array = one_item_array.astype(dtype=np.unicode_)
                     try:
                         # use .astype(..) instead of float(..) to ensure identical conversion results
-                        floats[idx] = one_str_array.astype(dtype=np.float64)
+                        floats[idx] = one_str_array.astype(dtype=np.float64)[0]
                     except ValueError:
                         bad.itemset(idx, one_str_array.item())
                 except ValueError:

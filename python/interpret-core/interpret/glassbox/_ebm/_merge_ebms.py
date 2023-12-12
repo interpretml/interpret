@@ -241,7 +241,7 @@ def _harmonize_tensor(
             for map_bins, bin_idx in zip(mapping, old_reversed_bin_idxs)
         ]
         n_cells2 = np.prod([len(x) for x in cell_map])
-        val = np.zeros(n_multiclasses, np.float64)
+        val = 0 if n_multiclasses == 1 else np.zeros(n_multiclasses, np.float64)
         total_weight = 0.0
         for cell2_idx in range(n_cells2):
             remainder2 = cell2_idx

@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 
+import warnings
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import load_diabetes
 from interpret.greybox import TreeInterpreter
@@ -23,12 +24,15 @@ def test_that_tree_works():
     y_new = dataset.target[[300, 309]]
     rf.fit(X, y)
 
-    # Build expected local explanation
-    prediction, bias, contributions = ti.predict(rf, X_new)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*")
 
-    # Build actual local explanation
-    explainer = TreeInterpreter(rf, X, feature_names=feature_names)
-    local_expl = explainer.explain_local(X_new, y_new)
+        # Build expected local explanation
+        prediction, bias, contributions = ti.predict(rf, X_new)
+
+        # Build actual local explanation
+        explainer = TreeInterpreter(rf, X, feature_names=feature_names)
+        local_expl = explainer.explain_local(X_new, y_new)
 
     a_local_data = local_expl.data(key=0)
     assert all(
