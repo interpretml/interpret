@@ -68,7 +68,7 @@ jobs:
     vmImage: $(image.name)
   variables:
     skipComponentGovernanceDetection: true
-    runCodesignValidationInjection: false
+    #runCodesignValidationInjection: false
   steps:
   - task: PythonScript@0
     inputs:
@@ -118,7 +118,7 @@ jobs:
     vmImage: ${{ variables.ubuntu_image }}
   variables:
     skipComponentGovernanceDetection: true
-    runCodesignValidationInjection: false
+    #runCodesignValidationInjection: false
   steps:
   - script: |
       cd shared/vis
@@ -173,7 +173,7 @@ jobs:
     vmImage: ${{ variables.ubuntu_image }}
   variables:
     skipComponentGovernanceDetection: true
-    runCodesignValidationInjection: false
+    #runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -222,7 +222,7 @@ jobs:
     vmImage: ${{ variables.ubuntu_image }}
   variables:
     skipComponentGovernanceDetection: true
-    runCodesignValidationInjection: false
+    #runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:

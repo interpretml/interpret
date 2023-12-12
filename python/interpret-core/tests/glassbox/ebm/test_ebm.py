@@ -214,6 +214,13 @@ def test_ebm_sweep():
     clf.term_scores_[0].fill(0)  # set 'A' to zero
     clf.term_scores_[len(clf.term_scores_) - 1].fill(0)  # set 'B & D' to zero
 
+    # the synthetic dataset is random and if no progress is made
+    # during boosting it can have zeros, so force to non-zero
+    clf.term_scores_[1][1] = 99.0
+    clf.term_scores_[2][1] = 99.0
+    clf.term_scores_[3][1] = 99.0
+    clf.term_scores_[4][1,1] = 99.0
+
     clf.sweep(terms=True, bins=True, features=True)
 
     # check that sweeping the features removed feature 'A' which was not used in a term
