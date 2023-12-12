@@ -41,7 +41,7 @@ jobs:
         bld: "-debug_64"
       Mac_release_arm:
         image.name: ${{ variables.mac_image }}
-        asm: ""
+        asm: "-asm"
         bld: "-release_arm"
       Mac_debug_arm:
         image.name: ${{ variables.mac_image }}
@@ -191,7 +191,7 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: sdist
-      itemPattern: sdist/interpret-core-*.tar.gz
+      itemPattern: interpret-core-*.tar.gz
       path: $(System.ArtifactsDirectory)/sdist
     displayName: Download sdist
   - script: |
@@ -466,7 +466,7 @@ jobs:
       python -m pip install --upgrade black
       black --check .
     displayName: black formatting check
-  - publish: $(System.ArtifactsDirectory)
+  - publish: $(Build.SourcesDirectory)
     artifact: source_code
 
 schedules:
