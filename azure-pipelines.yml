@@ -106,7 +106,7 @@ jobs:
     artifact: libebm-$(image.name)$(bld)
     displayName: Publish native shared library
   - publish: bld/asm/
-    artifact: asm-$(image.name)
+    artifact: asm-$(image.name)$(bld)
     condition: ne(length(variables['asm']), 0)
     displayName: Publish assembly x64
 
