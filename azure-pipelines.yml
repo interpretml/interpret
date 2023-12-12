@@ -63,14 +63,10 @@ jobs:
   - publish: bld/lib
     artifact: libebm-$(image.name)
     displayName: Publish native shared library
-  - publish: bld/tmp/staging_asm_release_64
-    artifact: asm-x64-$(image.name)
+  - publish: bld/asm/
+    artifact: asm-$(image.name)
     condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
     displayName: Publish assembly x64
-  - publish: bld/tmp/staging_asm_release_arm
-    artifact: asm-arm-$(image.name)
-    condition: startsWith(variables['image.name'], 'macOS')
-    displayName: Publish assembly arm
 
 - job: bld_vis
   pool:

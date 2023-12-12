@@ -159,13 +159,13 @@ copy_bin_files() {
 
 copy_asm_files() {
    l7_obj_path_unsanitized="$1"
-   l7_tmp_path_unsanitized="$2"
+   l7_bld_path_unsanitized="$2"
    l7_bin_file_unsanitized="$3" 
-   l7_staging_tag="$4"
+   l7_tag="$4"
    l7_asm="$5"
 
    if [ $l7_asm -ne 0 ]; then 
-      l7_tagged_path_unsanitized="$l7_tmp_path_unsanitized/staging_$l7_staging_tag"
+      l7_tagged_path_unsanitized="$l7_bld_path_unsanitized/asm/$l7_tag"
 
       [ -d "$l7_tagged_path_unsanitized" ] || mkdir -p "$l7_tagged_path_unsanitized"
       l7_ret_code=$?
@@ -470,7 +470,7 @@ if [ "$os_type" = "Linux" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_default" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "linux_default_release" "$is_asm"
    fi
 
    if [ $release_64 -eq 1 ]; then
@@ -498,7 +498,7 @@ if [ "$os_type" = "Linux" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "linux_64_release" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -625,7 +625,7 @@ elif [ "$os_type" = "Darwin" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_default" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "mac_64_release" "$is_asm"
    fi
 
    if [ $release_64 -eq 1 ]; then
@@ -652,7 +652,7 @@ elif [ "$os_type" = "Darwin" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_64" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "mac_64_release" "$is_asm"
    fi
 
    if [ $debug_64 -eq 1 ]; then
@@ -703,7 +703,7 @@ elif [ "$os_type" = "Darwin" ]; then
       printf "%s\n" "$g_compile_out_full"
       printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
       copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
-      copy_asm_files "$obj_path_unsanitized" "$tmp_path_unsanitized" "$staging_path_unsanitized/$bin_file" "asm_release_arm" "$is_asm"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "mac_arm_release" "$is_asm"
    fi
 
    if [ $debug_arm -eq 1 ]; then
