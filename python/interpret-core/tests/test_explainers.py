@@ -57,7 +57,10 @@ def test_spec_synthetic():
 
             with warnings.catch_warnings():
                 if type(explainer).__name__ == "TreeInterpreter":
-                    warnings.filterwarnings("ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*")
+                    warnings.filterwarnings(
+                        "ignore",
+                        "Conversion of an array with ndim > 0 to a scalar is deprecated*",
+                    )
 
                 explanation = explainer.explain_local(
                     data["test"]["X"].head(), data["test"]["y"].head()

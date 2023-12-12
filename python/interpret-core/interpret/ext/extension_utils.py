@@ -1,6 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import sys
 import logging
 from importlib.metadata import entry_points
 import re
@@ -39,7 +40,14 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         extension_class_validator: A function(class) -> bool, that checks the class for correctness
           before it is registered.
     """
-    for entrypoint in entry_points().select(group=extension_key):
+
+    entry_points_result = entry_points()
+    if sys.version_info < (3, 10):
+        entry_points_group = entry_points_result.get(extension_key, [])
+    else:
+        entry_points_group = entry_points_result.select(group=extension_key)
+
+    for entrypoint in entry_points_group:
         _log.debug("processing entrypoint {}".format(extension_key))
         try:
             extension_class_name = entrypoint.name

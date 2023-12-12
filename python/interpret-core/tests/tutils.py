@@ -97,9 +97,13 @@ def _synthetic(mode="regression"):
     n_rows = 400
     X_df = pd.DataFrame(np.random.randn(n_rows, 4), columns=list("ABCD"))
     if mode == "classification":
-        y_df = pd.DataFrame(np.random.randint(2, size=n_rows), columns=list("Y")).squeeze()
+        y_df = pd.DataFrame(
+            np.random.randint(2, size=n_rows), columns=list("Y")
+        ).squeeze()
     elif mode == "multiclass":
-        y_df = pd.DataFrame(np.random.randint(3, size=n_rows), columns=list("Y")).squeeze()
+        y_df = pd.DataFrame(
+            np.random.randint(3, size=n_rows), columns=list("Y")
+        ).squeeze()
     else:
         y_df = pd.DataFrame(np.random.randn(n_rows, 1), columns=list("Y")).squeeze()
     X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(

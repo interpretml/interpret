@@ -25,7 +25,9 @@ def test_that_tree_works():
     rf.fit(X, y)
 
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*")
+        warnings.filterwarnings(
+            "ignore", "Conversion of an array with ndim > 0 to a scalar is deprecated*"
+        )
 
         # Build expected local explanation
         prediction, bias, contributions = ti.predict(rf, X_new)
