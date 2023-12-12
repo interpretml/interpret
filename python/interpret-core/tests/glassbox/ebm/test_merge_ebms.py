@@ -13,6 +13,7 @@ from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
 import numpy as np
 import warnings
 
+
 def valid_ebm(ebm):
     assert ebm.term_features_[0] == (0,)
 
@@ -41,8 +42,11 @@ def test_merge_ebms():
     X_train[4, 4] = "you"
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Dropping term.*') 
-        warnings.filterwarnings('ignore', 'Interactions with 3 or more terms are not graphed in global explanations.*') 
+        warnings.filterwarnings("ignore", "Dropping term.*")
+        warnings.filterwarnings(
+            "ignore",
+            "Interactions with 3 or more terms are not graphed in global explanations.*",
+        )
 
         ebm1 = ExplainableBoostingClassifier(
             random_state=random_state,

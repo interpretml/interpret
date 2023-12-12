@@ -275,9 +275,10 @@ def test_unknown_multiclass_category():
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
 
-
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         clf = ExplainableBoostingClassifier()
         clf.fit(X_train, y_train)
@@ -378,7 +379,9 @@ def test_ebm_synthetic_multiclass_pairwise():
     y = data["full"]["y"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*') 
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
         clf.fit(X, y)
@@ -423,7 +426,10 @@ def test_ebm_tripple():
     X_test = data["test"]["X"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Interactions with 3 or more terms are not graphed in global explanations.*') 
+        warnings.filterwarnings(
+            "ignore",
+            "Interactions with 3 or more terms are not graphed in global explanations.*",
+        )
 
         # iris is multiclass, but for now pretend this is a regression problem
         clf = ExplainableBoostingRegressor(
@@ -483,7 +489,7 @@ def test_ebm_missing():
     X[0, 0] = np.nan
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Missing values detected.*')
+        warnings.filterwarnings("ignore", "Missing values detected.*")
 
         clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
         clf.fit(X, y)
@@ -498,7 +504,7 @@ def test_ebm_only_missing():
     y[0] = 1
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Missing values detected.*')
+        warnings.filterwarnings("ignore", "Missing values detected.*")
 
         clf = ExplainableBoostingClassifier(n_jobs=1)
         clf.fit(X, y)
@@ -601,8 +607,10 @@ def test_ebm_uniform_multiclass():
     feature_types[0] = "uniform"
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Dropping term*')
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+        warnings.filterwarnings("ignore", "Dropping term*")
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         clf = ExplainableBoostingClassifier(feature_types=feature_types)
         clf.fit(X_train, y_train)
@@ -696,7 +704,9 @@ def test_eval_terms_multiclass():
     y = data["train"]["y"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*') 
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         clf = ExplainableBoostingClassifier()
         clf.fit(X, y)
@@ -763,14 +773,16 @@ def test_ebm_iris():
     y_test = data["test"]["y"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         clf = ExplainableBoostingClassifier()
         clf.fit(X_train, y_train)
 
         assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
-        warnings.filterwarnings('ignore', 'Dropping term*')
+        warnings.filterwarnings("ignore", "Dropping term*")
 
         global_exp = clf.explain_global()
         local_exp = clf.explain_local(X_test, y_test)
@@ -807,7 +819,7 @@ def test_zero_validation():
     y = data["full"]["y"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'If validation_size is 0*')
+        warnings.filterwarnings("ignore", "If validation_size is 0*")
 
         clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, validation_size=0)
         clf.fit(X, y)
@@ -830,11 +842,13 @@ def test_dp_ebm_adult():
     w_tr[-1] = 2
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Possible privacy violation.*')
+        warnings.filterwarnings("ignore", "Possible privacy violation.*")
 
         clf = DPExplainableBoostingClassifier(epsilon=1)
         n_splits = 3
-        ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
+        ss = StratifiedShuffleSplit(
+            n_splits=n_splits, test_size=0.25, random_state=1337
+        )
         cross_validate(
             clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
         )
@@ -869,7 +883,7 @@ def test_dp_ebm_synthetic_regression():
     w[-1] = 2
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Possible privacy violation.*')
+        warnings.filterwarnings("ignore", "Possible privacy violation.*")
 
         clf = DPExplainableBoostingRegressor()
         clf.fit(X, y, w)
@@ -889,7 +903,7 @@ def test_dp_ebm_external_privacy_bounds():
     privacy_bounds = {0: (-3, 3), 1: (-3, 3), 2: (-3, 3), 3: (-3, 3)}
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Possible privacy violation*')
+        warnings.filterwarnings("ignore", "Possible privacy violation*")
 
         clf = DPExplainableBoostingRegressor(
             privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3
@@ -1128,7 +1142,7 @@ def test_json_classification():
     clf.bin_weights_[0] = np.delete(clf.bin_weights_[0], 1)
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
         clf.to_jsonable(detail="all")
 
@@ -1145,7 +1159,7 @@ def test_json_multiclass():
     clf.fit(X, y)
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
         clf.to_jsonable(detail="all")
 
@@ -1164,9 +1178,9 @@ def test_json_regression():
         interactions=[(1, 2), (2, 3)],
     )
     clf.fit(X, y)
-    
+
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*') 
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
         clf.to_jsonable(detail="all")
 
@@ -1179,8 +1193,8 @@ def test_json_dp_classification():
     feature_types[0] = "nominal"
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Possible privacy violation*')
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')
+        warnings.filterwarnings("ignore", "Possible privacy violation*")
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
         clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
         clf.fit(X, y)
@@ -1196,11 +1210,11 @@ def test_json_dp_regression():
     y = data["full"]["y"]
     feature_types = ["continuous"] * X.shape[1]
     feature_types[0] = "nominal"
-    
+
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Possible privacy violation*')
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')
-    
+        warnings.filterwarnings("ignore", "Possible privacy violation*")
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
+
         clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
         clf.fit(X, y)
         clf.to_jsonable(detail="all")
@@ -1214,9 +1228,9 @@ def test_to_json():
     clf = ExplainableBoostingClassifier()
     clf.fit(X, y)
 
-    with warnings.catch_warnings():  
-        warnings.filterwarnings('ignore', 'JSON formats are in beta.*')  
-    
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
+
         file_like_string_writer = StringIO()
         jsonable = clf.to_json(file_like_string_writer)
         json_data = file_like_string_writer.getvalue()

@@ -12,54 +12,54 @@ variables:
   value: windows-2022
 
 jobs:
-- job: bld_native
+- job: bld
   strategy:
     matrix:
-      Linux_release_64:
+      linux_release_64:
         image.name: ${{ variables.ubuntu_image }}
         asm: "-asm"
         bld: "-release_64"
-      Linux_debug_64:
+      linux_debug_64:
         image.name: ${{ variables.ubuntu_image }}
         asm: ""
         bld: "-debug_64"
-      Linux_release_32:
+      linux_release_32:
         image.name: ${{ variables.ubuntu_image }}
         asm: ""
         bld: "-release_32"
-      Linux_debug_32:
+      linux_debug_32:
         image.name: ${{ variables.ubuntu_image }}
         asm: ""
         bld: "-debug_32"
-      Mac_release_64:
+      mac_release_64:
         image.name: ${{ variables.mac_image }}
         asm: "-asm"
         bld: "-release_64"
-      Mac_debug_64:
+      mac_debug_64:
         image.name: ${{ variables.mac_image }}
         asm: ""
         bld: "-debug_64"
-      Mac_release_arm:
+      mac_release_arm:
         image.name: ${{ variables.mac_image }}
         asm: "-asm"
         bld: "-release_arm"
-      Mac_debug_arm:
+      mac_debug_arm:
         image.name: ${{ variables.mac_image }}
         asm: ""
         bld: "-debug_arm"
-      Windows_release_64:
+      win_release_64:
         image.name: ${{ variables.windows_image }}
         asm: ""
         bld: "-release_64"
-      Windows_debug_64:
+      win_debug_64:
         image.name: ${{ variables.windows_image }}
         asm: ""
         bld: "-debug_64"
-      Windows_release_32:
+      win_release_32:
         image.name: ${{ variables.windows_image }}
         asm: ""
         bld: "-release_32"
-      Windows_debug_32:
+      win_debug_32:
         image.name: ${{ variables.windows_image }}
         asm: ""
         bld: "-debug_32"
@@ -110,7 +110,7 @@ jobs:
     condition: ne(length(variables['asm']), 0)
     displayName: Publish assembly x64
 
-- job: bld_vis
+- job: vis
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -123,7 +123,7 @@ jobs:
     artifact: vis
     displayName: Publish interpret-inline.js library
 
-- job: bld_npm_package
+- job: npm
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -139,7 +139,7 @@ jobs:
     artifact: npm
     displayName: Publish npm package
 
-- job: bld_R_package
+- job: R
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -162,7 +162,7 @@ jobs:
     artifact: R
     displayName: Publish R package
 
-- job: bld_sdist_package
+- job: sdist
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -181,7 +181,7 @@ jobs:
     displayName: Publish sdist python package
 
 - job: docs
-  dependsOn: bld_sdist_package
+  dependsOn: sdist
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -207,8 +207,8 @@ jobs:
     artifact: docs
     displayName: Publish docs
 
-- job: bld_bdist_package
-  dependsOn: [bld_native, bld_vis]
+- job: bdist
+  dependsOn: [bld, vis]
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -277,47 +277,47 @@ jobs:
     artifact: bdist
     displayName: Publish bdist python package
 
-- job: test_native
-  dependsOn: bld_native
+- job: testC
+  dependsOn: bld
   strategy:
     matrix:
-      Linux_release_64:
+      linux_release_64:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-release_64"
         extra: ""
-      Linux_debug_64:
+      linux_debug_64:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-debug_64"
         extra: ""
-      Linux_release_32:
+      linux_release_32:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-release_32"
         extra: ""
-      Linux_debug_32:
+      linux_debug_32:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-debug_32"
         extra: ""
-      Mac_release_64:
+      mac_release_64:
         image.name: ${{ variables.mac_image }}
         bld: "-release_64"
         extra: ""
-      Mac_debug_64:
+      mac_debug_64:
         image.name: ${{ variables.mac_image }}
         bld: "-debug_64"
         extra: ""
-      Windows_release_64:
+      win_release_64:
         image.name: ${{ variables.windows_image }}
         bld: "-release_64"
         extra: "-analysis"
-      Windows_debug_64:
+      win_debug_64:
         image.name: ${{ variables.windows_image }}
         bld: "-debug_64"
         extra: ""
-      Windows_release_32:
+      win_release_32:
         image.name: ${{ variables.windows_image }}
         bld: "-release_32"
         extra: "-analysis"
-      Windows_debug_32:
+      win_debug_32:
         image.name: ${{ variables.windows_image }}
         bld: "-debug_32"
         extra: ""
@@ -372,34 +372,34 @@ jobs:
     displayName: win test_native (Schedule)
 
 - job: test
-  dependsOn: bld_bdist_package
+  dependsOn: bdist
   strategy:
     matrix:
-      Linux38Python:
+      linux_38_python:
         python.version: 3.8
         image.name: ${{ variables.ubuntu_image }}
-      Linux39Python:
+      linux_39_python:
         python.version: 3.9
         image.name: ${{ variables.ubuntu_image }}
-      Linux310Python:
+      linux_310_python:
         python.version: 3.10
         image.name: ${{ variables.ubuntu_image }}
-      Win38Python:
+      win_38_python:
         python.version: 3.8
         image.name: ${{ variables.windows_image }}
-      Win39Python:
+      win_39_python:
         python.version: 3.9
         image.name: ${{ variables.windows_image }}
-      Win310Python:
+      win_310_python:
         python.version: 3.10
         image.name: ${{ variables.windows_image }}
-      Mac38Python:
+      mac_38_python:
         python.version: 3.8
         image.name: ${{ variables.mac_image }}
-      Mac39Python:
+      mac_39_python:
         python.version: 3.9
         image.name: ${{ variables.mac_image }}
-      Mac310Python:
+      mac_310_python:
         python.version: 3.10
         image.name: ${{ variables.mac_image }}
     maxParallel: 9
@@ -453,8 +453,8 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: Publish test coverage results
 
-- job: publish_source_code
-  dependsOn: [test_native, test]
+- job: style
+  dependsOn: [testC, test]
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:

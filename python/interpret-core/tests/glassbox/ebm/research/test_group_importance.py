@@ -245,7 +245,9 @@ def test_group_importance_multiclass():
     y = data["full"]["y"]
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', 'Multiclass interactions only have local explanations.*')
+        warnings.filterwarnings(
+            "ignore", "Multiclass interactions only have local explanations.*"
+        )
 
         ebm = ExplainableBoostingClassifier()
         _check_group_importance(X, y, ebm)
