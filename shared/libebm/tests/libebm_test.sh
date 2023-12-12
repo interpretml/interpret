@@ -256,8 +256,8 @@ existing_release_32=0
 existing_debug_arm=0
 existing_release_arm=0
 
-use_valgrind=1
-use_asan=1
+use_valgrind=0
+use_asan=0
 
 for arg in "$@"; do
    if [ "$arg" = "-debug_64" ]; then
@@ -304,11 +304,11 @@ for arg in "$@"; do
       existing_release_arm=1
    fi
 
-   if [ "$arg" = "-no_valgrind" ]; then
-      use_valgrind=0
+   if [ "$arg" = "-valgrind" ]; then
+      use_valgrind=1
    fi
-   if [ "$arg" = "-no_asan" ]; then
-      use_asan=0
+   if [ "$arg" = "-asan" ]; then
+      use_asan=1
    fi
 done
 

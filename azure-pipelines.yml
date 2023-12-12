@@ -15,13 +15,55 @@ jobs:
 - job: bld_native
   strategy:
     matrix:
-      Linux:
+      Linux_release_64:
         image.name: ${{ variables.ubuntu_image }}
-      Mac:
+        asm: "-asm"
+        bld: "-release_64"
+      Linux_debug_64:
+        image.name: ${{ variables.ubuntu_image }}
+        asm: ""
+        bld: "-debug_64"
+      Linux_release_32:
+        image.name: ${{ variables.ubuntu_image }}
+        asm: ""
+        bld: "-release_32"
+      Linux_debug_32:
+        image.name: ${{ variables.ubuntu_image }}
+        asm: ""
+        bld: "-debug_32"
+      Mac_release_64:
         image.name: ${{ variables.mac_image }}
-      Windows:
+        asm: "-asm"
+        bld: "-release_64"
+      Mac_debug_64:
+        image.name: ${{ variables.mac_image }}
+        asm: ""
+        bld: "-debug_64"
+      Mac_release_arm:
+        image.name: ${{ variables.mac_image }}
+        asm: ""
+        bld: "-release_arm"
+      Mac_debug_arm:
+        image.name: ${{ variables.mac_image }}
+        asm: ""
+        bld: "-debug_arm"
+      Windows_release_64:
         image.name: ${{ variables.windows_image }}
-    maxParallel: 3
+        asm: ""
+        bld: "-release_64"
+      Windows_debug_64:
+        image.name: ${{ variables.windows_image }}
+        asm: ""
+        bld: "-debug_64"
+      Windows_release_32:
+        image.name: ${{ variables.windows_image }}
+        asm: ""
+        bld: "-release_32"
+      Windows_debug_32:
+        image.name: ${{ variables.windows_image }}
+        asm: ""
+        bld: "-debug_32"
+    maxParallel: 12
   pool:
     vmImage: $(image.name)
   steps:
@@ -41,7 +83,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\build.bat
+      .\build.bat $(bld) $(asm)
     condition: startsWith(variables['image.name'], 'windows')
     displayName: win bld_native
   - script: |
@@ -53,19 +95,19 @@ jobs:
       if [ $? -ne 0 ]; then 
          exit 93
       fi
-      /bin/sh ./build.sh -release_64 -debug_64 -asm
+      /bin/sh ./build.sh $(bld) $(asm)
     condition: startsWith(variables['image.name'], 'ubuntu')
     displayName: linux bld_native
   - script: |
-      /bin/sh ./build.sh -release_64 -debug_64 -release_arm -debug_arm -asm
+      /bin/sh ./build.sh $(bld) $(asm)
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: mac bld_native
   - publish: bld/lib
-    artifact: libebm-$(image.name)
+    artifact: libebm-$(image.name)$(bld)
     displayName: Publish native shared library
   - publish: bld/asm/
     artifact: asm-$(image.name)
-    condition: or(startsWith(variables['image.name'], 'ubuntu'), startsWith(variables['image.name'], 'macOS'))
+    condition: ne(length(variables['asm']), 0)
     displayName: Publish assembly x64
 
 - job: bld_vis
@@ -175,22 +217,50 @@ jobs:
       versionSpec: 3.8
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: libebm-$(windows_image)
+      artifact: libebm-$(windows_image)-release_64
       itemPattern: |
         *.dll
         *.pdb
       path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy win shared library to bld/lib directory
+    displayName: Copy win release_64 library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: libebm-$(ubuntu_image)
+      artifact: libebm-$(windows_image)-debug_64
+      itemPattern: |
+        *.dll
+        *.pdb
       path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy linux shared library to bld/lib directory
+    displayName: Copy win debug_64 library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: libebm-$(mac_image)
+      artifact: libebm-$(ubuntu_image)-release_64
       path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy mac shared library to bld/lib directory
+    displayName: Copy linux-release-64 shared library to bld/lib directory
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: libebm-$(ubuntu_image)-debug_64
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy linux-debug-64 shared library to bld/lib directory
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: libebm-$(mac_image)-release_64
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy mac-release-64 shared library to bld/lib directory
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: libebm-$(mac_image)-debug_64
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy mac-debug-64 shared library to bld/lib directory
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: libebm-$(mac_image)-release_arm
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy mac-release-arm shared library to bld/lib directory
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifact: libebm-$(mac_image)-debug_arm
+      path: python/interpret-core/interpret/root/bld/lib
+    displayName: Copy mac-debug-arm shared library to bld/lib directory
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: vis
@@ -211,19 +281,53 @@ jobs:
   dependsOn: bld_native
   strategy:
     matrix:
-      Linux:
+      Linux_release_64:
         image.name: ${{ variables.ubuntu_image }}
-      Mac:
+        bld: "-release_64"
+        extra: ""
+      Linux_debug_64:
+        image.name: ${{ variables.ubuntu_image }}
+        bld: "-debug_64"
+        extra: ""
+      Linux_release_32:
+        image.name: ${{ variables.ubuntu_image }}
+        bld: "-release_32"
+        extra: ""
+      Linux_debug_32:
+        image.name: ${{ variables.ubuntu_image }}
+        bld: "-debug_32"
+        extra: ""
+      Mac_release_64:
         image.name: ${{ variables.mac_image }}
-      Windows:
+        bld: "-release_64"
+        extra: ""
+      Mac_debug_64:
+        image.name: ${{ variables.mac_image }}
+        bld: "-debug_64"
+        extra: ""
+      Windows_release_64:
         image.name: ${{ variables.windows_image }}
-    maxParallel: 3
+        bld: "-release_64"
+        extra: "-analysis"
+      Windows_debug_64:
+        image.name: ${{ variables.windows_image }}
+        bld: "-debug_64"
+        extra: ""
+      Windows_release_32:
+        image.name: ${{ variables.windows_image }}
+        bld: "-release_32"
+        extra: "-analysis"
+      Windows_debug_32:
+        image.name: ${{ variables.windows_image }}
+        bld: "-debug_32"
+        extra: ""
+    maxParallel: 10
   pool:
     vmImage: $(image.name)
   steps:
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: libebm-$(image.name)
+      artifact: libebm-$(image.name)$(bld)
       path: bld/lib
     displayName: Copy native library to bld/lib directory
   - task: PythonScript@0
@@ -233,15 +337,15 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: Download CUDA installer
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_arm -existing_release_arm -asan
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: mac test_native
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64 -no_valgrind
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: linux test_native (CI)
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh -debug_64 -release_64 -debug_32 -release_32 -existing_debug_64 -existing_release_64
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32 -valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: linux test_native (Schedule)
   - script: |
@@ -252,7 +356,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\libebm\tests\libebm_test.bat -pipeline
+      .\shared\libebm\tests\libebm_test.bat $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: win test_native (CI)
   - script: |
@@ -263,7 +367,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\libebm\tests\libebm_test.bat -pipeline -analysis
+      .\shared\libebm\tests\libebm_test.bat $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32 $(extra)
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: win test_native (Schedule)
 
