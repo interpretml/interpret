@@ -230,9 +230,9 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       itemPattern: |
-        **/libebm*.dll
-        **/libebm*.pdb
-        **/libebm*.so
+        **/libebm_win_x64*.dll
+        **/libebm_win_x64*.pdb
+        **/libebm_linux_x64*.so
         **/libebm*.dylib
         **/interpret-inline.js
         **/interpret-inline.js.LICENSE.txt
