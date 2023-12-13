@@ -234,9 +234,17 @@ jobs:
         **/libebm*.pdb
         **/libebm*.so
         **/libebm*.dylib
-        **/interpret-inline.js*
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Download artifact files to lib directory
+        **/interpret-inline.js
+        **/interpret-inline.js.LICENSE.txt
+      path: $(System.ArtifactsDirectory)/lib/
+    displayName: Download artifact lib files
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: $(System.ArtifactsDirectory)/lib/
+      Contents: **
+      TargetFolder: python/interpret-core/interpret/root/bld/lib
+      flattenFolders: true
+    displayName: Flatten and copy lib files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd python/interpret-core
