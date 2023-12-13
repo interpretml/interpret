@@ -932,11 +932,15 @@ class EBMModel(BaseEstimator):
 
                 if 2 < n_classes:
                     warn(
+                        "Detected multiclass problem. Forcing interactions to 0. "
                         "Multiclass interactions only have local explanations. "
                         "They are not currently displayed in the global explanation "
-                        "visualizations. Set interactions=0 to disable this warning "
-                        "and multiclass interactions."
+                        "visualizations. Set interactions=0 to disable this warning. "
+                        "If you still want multiclass interactions, this API accepts "
+                        "a list, and the measure_interactions function can be used to "
+                        "detect them."
                     )
+                    break
 
                 # at this point interactions will be a positive, nonzero integer
             else:

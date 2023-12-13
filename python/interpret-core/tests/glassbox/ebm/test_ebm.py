@@ -219,7 +219,7 @@ def test_ebm_sweep():
     clf.term_scores_[1][1] = 99.0
     clf.term_scores_[2][1] = 99.0
     clf.term_scores_[3][1] = 99.0
-    clf.term_scores_[4][1,1] = 99.0
+    clf.term_scores_[4][1, 1] = 99.0
 
     clf.sweep(terms=True, bins=True, features=True)
 
@@ -282,13 +282,8 @@ def test_unknown_multiclass_category():
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", "Multiclass interactions only have local explanations.*"
-        )
-
-        clf = ExplainableBoostingClassifier()
-        clf.fit(X_train, y_train)
+    clf = ExplainableBoostingClassifier(interactions=0)
+    clf.fit(X_train, y_train)
 
     # Term contributions for categorical feature should always be 0 in test
     assert np.all(clf.explain_local(X_train).data(0)["scores"][-1] != 0)
@@ -385,15 +380,10 @@ def test_ebm_synthetic_multiclass_pairwise():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", "Multiclass interactions only have local explanations.*"
-        )
-
-        clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=1, outer_bags=2)
-        clf.fit(X, y)
-        clf.predict_proba(X)
-        valid_ebm(clf)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, outer_bags=2)
+    clf.fit(X, y)
+    clf.predict_proba(X)
+    valid_ebm(clf)
 
 
 @pytest.mark.slow
@@ -613,21 +603,15 @@ def test_ebm_uniform_multiclass():
     feature_types = [None] * X_train.shape[1]
     feature_types[0] = "uniform"
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", "Dropping term*")
-        warnings.filterwarnings(
-            "ignore", "Multiclass interactions only have local explanations.*"
-        )
+    clf = ExplainableBoostingClassifier(interactions=0, feature_types=feature_types)
+    clf.fit(X_train, y_train)
 
-        clf = ExplainableBoostingClassifier(feature_types=feature_types)
-        clf.fit(X_train, y_train)
+    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
-        assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X_test, y_test)
 
-        global_exp = clf.explain_global()
-        local_exp = clf.explain_local(X_test, y_test)
-
-        smoke_test_explanations(global_exp, local_exp, 6001)
+    smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
@@ -710,21 +694,16 @@ def test_eval_terms_multiclass():
     X = data["train"]["X"]
     y = data["train"]["y"]
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", "Multiclass interactions only have local explanations.*"
-        )
+    clf = ExplainableBoostingClassifier(interactions=0)
+    clf.fit(X, y)
 
-        clf = ExplainableBoostingClassifier()
-        clf.fit(X, y)
+    explanations = clf.eval_terms(X)
 
-        explanations = clf.eval_terms(X)
+    scores = explanations.sum(axis=1) + clf.intercept_
+    assert np.allclose(clf._predict_score(X), scores)
 
-        scores = explanations.sum(axis=1) + clf.intercept_
-        assert np.allclose(clf._predict_score(X), scores)
-
-        probabilities = inv_link(scores, clf.link_, clf.link_param_)
-        assert np.allclose(clf.predict_proba(X), probabilities)
+    probabilities = inv_link(scores, clf.link_, clf.link_param_)
+    assert np.allclose(clf.predict_proba(X), probabilities)
 
 
 def test_ebm_sample_weight():
@@ -779,22 +758,15 @@ def test_ebm_iris():
     X_test = data["test"]["X"]
     y_test = data["test"]["y"]
 
-    with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", "Multiclass interactions only have local explanations.*"
-        )
+    clf = ExplainableBoostingClassifier(interactions=0)
+    clf.fit(X_train, y_train)
 
-        clf = ExplainableBoostingClassifier()
-        clf.fit(X_train, y_train)
+    assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
 
-        assert accuracy_score(y_test, clf.predict(X_test)) > 0.9
+    global_exp = clf.explain_global()
+    local_exp = clf.explain_local(X_test, y_test)
 
-        warnings.filterwarnings("ignore", "Dropping term*")
-
-        global_exp = clf.explain_global()
-        local_exp = clf.explain_local(X_test, y_test)
-
-        smoke_test_explanations(global_exp, local_exp, 6001)
+    smoke_test_explanations(global_exp, local_exp, 6001)
 
 
 @pytest.mark.visual
