@@ -198,7 +198,87 @@ copy_asm_files() {
    fi
 }
 
-if [ -n "${CXX}" ]; then
+
+g_is_updated=0
+
+is_conda=0
+
+release_default=1
+
+release_64=0
+debug_64=0
+release_32=0
+debug_32=0
+release_arm=0
+debug_arm=0
+
+is_asm=0
+is_extra_debugging=0
+
+for arg in "$@"; do
+   if [ "$arg" = "-conda" ]; then
+      is_conda=1
+   fi
+
+   if [ "$arg" = "-release_64" ]; then
+      release_64=1
+      release_default=0
+   fi
+   if [ "$arg" = "-debug_64" ]; then
+      debug_64=1
+      release_default=0
+   fi
+   if [ "$arg" = "-release_32" ]; then
+      release_32=1
+      release_default=0
+   fi
+   if [ "$arg" = "-debug_32" ]; then
+      debug_32=1
+      release_default=0
+   fi
+   if [ "$arg" = "-release_arm" ]; then
+      release_arm=1
+      release_default=0
+   fi
+   if [ "$arg" = "-debug_arm" ]; then
+      debug_arm=1
+      release_default=0
+   fi
+
+   if [ "$arg" = "-asm" ]; then
+      is_asm=1
+   fi
+   if [ "$arg" = "-extra_debugging" ]; then
+      is_extra_debugging=1
+   fi
+done
+
+# TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
+# Look at BASH_SOURCE[0] as well and possibly select either it or $0
+# The output here needs to not be the empty string for glob substitution below:
+script_path_initial=`dirname -- "$0"`
+# the space after the '= ' character is required
+script_path_unsanitized=`CDPATH= cd -- "$script_path_initial" && pwd -P`
+if [ ! -f "$script_path_unsanitized/build.sh" ] ; then
+   # there are all kinds of reasons why we might not have gotten the script path in $0.  It's more of a convention
+   # than a requirement to have either the full path or even the script itself.  There are far more complicated
+   # scripts out there that attempt to use various shell specific workarounds, like BASH_SOURCE[0] to best solve
+   # the problem, but it's possible in theory to be running over an SSL connection without a script on the local
+   # system at all, so getting the directory is a fundamentally unsolved problem.  We can terminate though if
+   # we find ourselves in such a weird condition.  This also happens when the "source" command is used.
+   printf "Could not find script file root directory for building InterpretML.  Exiting."
+   exit 1
+fi
+
+root_path_unsanitized="$script_path_unsanitized"
+bld_path_unsanitized="$root_path_unsanitized/bld"
+tmp_path_unsanitized="$bld_path_unsanitized/tmp"
+staging_path_unsanitized="$bld_path_unsanitized/lib"
+src_path_unsanitized="$root_path_unsanitized/shared/libebm"
+src_path_sanitized=`sanitize "$src_path_unsanitized"`
+
+
+if [ $is_conda -eq 1 ]; then
    code_path="./shared/libebm"
    tmp_path="./bld/tmp/mk"
 
@@ -307,78 +387,6 @@ if [ -n "${CXX}" ]; then
    exit 0
 fi
 
-
-g_is_updated=0
-
-release_default=1
-
-release_64=0
-debug_64=0
-release_32=0
-debug_32=0
-release_arm=0
-debug_arm=0
-
-is_asm=0
-is_extra_debugging=0
-
-for arg in "$@"; do
-   if [ "$arg" = "-release_64" ]; then
-      release_64=1
-      release_default=0
-   fi
-   if [ "$arg" = "-debug_64" ]; then
-      debug_64=1
-      release_default=0
-   fi
-   if [ "$arg" = "-release_32" ]; then
-      release_32=1
-      release_default=0
-   fi
-   if [ "$arg" = "-debug_32" ]; then
-      debug_32=1
-      release_default=0
-   fi
-   if [ "$arg" = "-release_arm" ]; then
-      release_arm=1
-      release_default=0
-   fi
-   if [ "$arg" = "-debug_arm" ]; then
-      debug_arm=1
-      release_default=0
-   fi
-
-   if [ "$arg" = "-asm" ]; then
-      is_asm=1
-   fi
-   if [ "$arg" = "-extra_debugging" ]; then
-      is_extra_debugging=1
-   fi
-done
-
-# TODO: this could be improved upon.  There is no perfect solution AFAIK for getting the script directory, and I'm not too sure how the CDPATH thing works
-# Look at BASH_SOURCE[0] as well and possibly select either it or $0
-# The output here needs to not be the empty string for glob substitution below:
-script_path_initial=`dirname -- "$0"`
-# the space after the '= ' character is required
-script_path_unsanitized=`CDPATH= cd -- "$script_path_initial" && pwd -P`
-if [ ! -f "$script_path_unsanitized/build.sh" ] ; then
-   # there are all kinds of reasons why we might not have gotten the script path in $0.  It's more of a convention
-   # than a requirement to have either the full path or even the script itself.  There are far more complicated
-   # scripts out there that attempt to use various shell specific workarounds, like BASH_SOURCE[0] to best solve
-   # the problem, but it's possible in theory to be running over an SSL connection without a script on the local
-   # system at all, so getting the directory is a fundamentally unsolved problem.  We can terminate though if
-   # we find ourselves in such a weird condition.  This also happens when the "source" command is used.
-   printf "Could not find script file root directory for building InterpretML.  Exiting."
-   exit 1
-fi
-
-root_path_unsanitized="$script_path_unsanitized"
-bld_path_unsanitized="$root_path_unsanitized/bld"
-tmp_path_unsanitized="$bld_path_unsanitized/tmp"
-staging_path_unsanitized="$bld_path_unsanitized/lib"
-src_path_unsanitized="$root_path_unsanitized/shared/libebm"
-src_path_sanitized=`sanitize "$src_path_unsanitized"`
 
 # a good referenece on writing shared libraries is at: https://akkadia.org/drepper/dsohowto.pdf
 
