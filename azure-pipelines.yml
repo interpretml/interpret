@@ -229,55 +229,14 @@ jobs:
       versionSpec: 3.8
   - task: DownloadPipelineArtifact@2
     inputs:
-      artifact: libebm-$(windows_image)-release_64
       itemPattern: |
-        *.dll
-        *.pdb
+        **/libebm*.dll
+        **/libebm*.pdb
+        **/libebm*.so
+        **/libebm*.dylib
+        **/interpret-inline.js*
       path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy win release_64 library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(windows_image)-debug_64
-      itemPattern: |
-        *.dll
-        *.pdb
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy win debug_64 library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(ubuntu_image)-release_64
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy linux-release-64 shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(ubuntu_image)-debug_64
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy linux-debug-64 shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(mac_image)-release_64
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy mac-release-64 shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(mac_image)-debug_64
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy mac-debug-64 shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(mac_image)-release_arm
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy mac-release-arm shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: libebm-$(mac_image)-debug_arm
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy mac-debug-arm shared library to bld/lib directory
-  - task: DownloadPipelineArtifact@2
-    inputs:
-      artifact: vis
-      path: python/interpret-core/interpret/root/bld/lib
-    displayName: Copy interpret-inline.js to python lib directory
+    displayName: Download artifact files to lib directory
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd python/interpret-core
