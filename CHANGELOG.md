@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2023-12-13
+### Added
+- added support for AVX-512 in PyPI installations to improve fitting speed
+- introduced an option to disable SIMD optimizations through the debug_mode function in python
+- exposed public utils.link_func and utils.inv_link functions
+### Changed
+- the interpret-core package now installs the dependencies required to build and predict EBMs
+  by default without needing to specify the [required] pip install flag
+- experimental/private support for OVR multiclass EBMs
+- added bagged_intercept_ attribute to store the intercepts for the bagged models
+### Fixed
+- resolved an issue in merge_ebms where the merge would fail if all EBMs in the 
+  merge contained features with only one bin (issue #485)
+- resolved multiple future warnings from other packages
+### Breaking Changes
+- changed how monoclassification (degenerate classification with 1 class) is expressed
+- replaced predict_and_contrib function with simpler eval_terms function that returns 
+  only the per-term contribution values. If you need both the contributions and predictions use:
+  interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept_, ebm.link_)
+- separate to_json into to_jsonable (for python objects) and to_json (for files) functions
+- create a new link function string for multiclass that is separate from binary classification
+- for better scikit-learn compliance, removed the decision_function from the ExplainableBoostingRegressor
+
 ## [v0.4.4] - 2023-08-26
 ### Added
 - added the following model editing functions: copy, remove_terms, remove_features, sweep, scale
