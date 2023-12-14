@@ -40,6 +40,7 @@
   - pip install interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
   - cd <REPO_ROOT>
   - cd examples/python
+  - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -57,6 +58,7 @@ set_visualize_provider(InlineProvider())
   - pip install interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
   - cd <REPO_ROOT>
   - cd examples/python/
+  - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -205,12 +207,11 @@ set_visualize_provider(InlineProvider())
 
 - test PyPI release locally:
   - open anaconda console window
-  - conda env list  # see the list of existing environments
-  - conda create --yes --name interpret_N python=3.9
-  - conda activate interpret_N
-  - pip install interpret
+  - conda env remove --name interpret_pypi && conda create --yes --name interpret_pypi python=3.10 && conda activate interpret_pypi
+  - pip install interpret lime  # remove lime if we remove lime from example notebooks
   - cd <REPO_ROOT>
   - cd examples/python
+  - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
