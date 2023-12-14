@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import load_diabetes
 from interpret.greybox import TreeInterpreter
 
+import pytest
 
 @pytest.mark.skip(reason="treeinterpreter no longer maintained")
 def test_that_tree_works():
