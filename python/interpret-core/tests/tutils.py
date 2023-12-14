@@ -46,14 +46,14 @@ def get_all_explainers():
         (ExplainableBoostingRegressor, False),
     ]
     specific_explainer_classes = [
-        (TreeInterpreter, True),
-        (TreeInterpreter, False),
+        # (TreeInterpreter, True),  # andosa/treeinterpreter no longer maintained
+        # (TreeInterpreter, False),  # andosa/treeinterpreter no longer maintained
         (ShapTree, True),
         (ShapTree, False),
     ]
     blackbox_explainer_classes = [
-        (LimeTabular, True),
-        (LimeTabular, False),
+        # (LimeTabular, True),  # lime no longer maintained
+        # (LimeTabular, False),  # lime no longer maintained
         (ShapKernel, True),
         (ShapKernel, False),
         (MorrisSensitivity, True),
@@ -69,11 +69,11 @@ def get_all_explainers():
     all_explainers.extend(data_explainer_classes)
     all_explainers.extend(perf_explainer_classes)
 
-    if sys.version_info[0] <= 3 and sys.version_info[1] < 10:
-        # skope-rules doesn't work in python 3.10 as of March 2023,
-        # although there was a PR accepted to change this a few weeks ago
-        # so the version after 1.0.1 should work
-        all_explainers.append((DecisionListClassifier, True))
+    # if sys.version_info[0] <= 3 and sys.version_info[1] < 10:
+    #     # skope-rules doesn't work in python 3.10 as of March 2023,
+    #     # although there was a PR accepted to change this a few weeks ago
+    #     # so the version after 1.0.1 should work
+    #     all_explainers.append((DecisionListClassifier, True))
 
     return all_explainers
 
