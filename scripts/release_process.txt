@@ -88,6 +88,7 @@ set_visualize_provider(InlineProvider())
   - we can't re-use previously published versions, but the visualization code is likely to remain unchanged, and our 
     NPM package isn't really directly accessed by users, and it's used by all our different language packages, so publish this first
   - to publish:
+    - start ubuntu window
     - npm login
     - it will ask for our email, which for us is the @outlook.com email, then it will ask for the "one-time password from your authenticator app" 
       which is a confusing way to say that it has emailed us a code.
@@ -167,13 +168,11 @@ set_visualize_provider(InlineProvider())
 - test the conda-forge release locally since colab doesn't seem to allow libebm.so to be loadable from conda:
   - ? Is there any way to install and run the conda package in a cloud notebook so that we can test the NPM inline js package?
   - open anaconda console window
-  - conda env list  # see the list of existing environments
-  - conda create --yes --name interpret_N python=3.9
-  - conda activate interpret_N
-  - conda install --yes -c conda-forge interpret
+  - conda env remove --name interpret_conda && conda create --yes --name interpret_conda python=3.10 && conda activate interpret_conda
+  - conda install --yes -c conda-forge interpret-core psutil ipykernel ipython plotly lime SALib shap dill dash dash-core-components dash-html-components dash-table dash_cytoscape gevent requests
   - cd <REPO_ROOT>
   - cd examples/python
-  - pip install --yes jupyter
+  - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -190,7 +189,7 @@ set_visualize_provider(InlineProvider())
     - in an otherwise empty directory that only contains the 4 files (interpret bdist, interpret-core bdist, interpret sdist, interpret-core sdist), run
     - twine upload interpret*
     - fill in the username/password
-    - verify PyPI upload at: 
+    - verify PyPI upload at:
       https://pypi.org/project/interpret-core/#files
       https://pypi.org/project/interpret/#files
 
