@@ -8,6 +8,7 @@ from sklearn.datasets import load_diabetes
 from interpret.greybox import TreeInterpreter
 
 
+@pytest.mark.skip(reason="treeinterpreter no longer maintained")
 def test_that_tree_works():
     from treeinterpreter import treeinterpreter as ti
 
