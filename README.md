@@ -119,6 +119,9 @@ show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 
 For more information, see the [documentation](https://interpret.ml/docs).
 <br/>
+
+EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://github.com/interpretml/interpret/blob/develop/examples/python/triples.ipynb
+<br/>
 <br/>
 
 # Acknowledgements
