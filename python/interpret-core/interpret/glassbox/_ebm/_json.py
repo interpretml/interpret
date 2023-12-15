@@ -223,13 +223,14 @@ def _to_json_inner(ebm, detail="all"):
         feature = {}
 
         feature["name"] = ebm.feature_names_in_[i]
-        feature["type"] = ebm.feature_types_in_[i]
+        feature_type = ebm.feature_types_in_[i]
+        feature["type"] = feature_type
 
         if 1 <= level:
             if unique_val_counts is not None:
                 feature["num_unique_vals"] = int(unique_val_counts[i])
 
-        if isinstance(ebm.bins_[i][0], dict):
+        if feature_type == "nominal" or feature_type == "ordinal":
             categories = []
             for bins in ebm.bins_[i]:
                 leveled_categories = []
@@ -243,7 +244,7 @@ def _to_json_inner(ebm, detail="all"):
                         leveled_categories.append(category_group)
                 categories.append(leveled_categories)
             feature["categories"] = categories
-        else:
+        elif feature_type == "continuous":
             cuts = []
             for bins in ebm.bins_[i]:
                 cuts.append(bins.tolist())
@@ -262,6 +263,8 @@ def _to_json_inner(ebm, detail="all"):
                         feature[
                             "histogram_weights"
                         ] = feature_histogram_weights.tolist()
+        else:
+            raise ValueError(f"Unsupported feature type: {feature_type}")
 
         features.append(feature)
     j["features"] = features
