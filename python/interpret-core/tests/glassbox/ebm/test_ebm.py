@@ -1311,6 +1311,14 @@ def test_ebm_scale():
     clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
     clf.fit(X, y)
     assert clf.term_names_ == ["A", "B", "C", "D"]
+    
+    # the synthetic dataset is random and if no progress is made
+    # during boosting it can have zeros, so force to non-zero
+    clf.term_scores_[0][1] = 99.0
+    clf.term_scores_[1][1] = 99.0
+    clf.term_scores_[2][1] = 99.0
+    clf.term_scores_[3][1] = 99.0
+
     # The following is equivalent to calling `clf.remove_terms(["A", "C"])`
     clf.scale(0, factor=0)
     clf.scale("B", factor=0.5)
