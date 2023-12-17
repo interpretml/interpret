@@ -139,7 +139,7 @@ check_install() {
    fi
 }
 
-make_initial_paths_simple() {
+make_paths() {
    l2_obj_path_unsanitized="$1"
    l2_bin_path_unsanitized="$2"
 
@@ -385,9 +385,9 @@ if [ "$os_type" = "Linux" ]; then
       /bin/sh "$root_path_unsanitized/build.sh" -analysis
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
-      # build.sh should write out any messages
-      exit $ret_code
+         exit $ret_code
       fi
+      printf "Done building libebm.so\n"
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|default"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/default/libebm_test"
@@ -400,7 +400,7 @@ if [ "$os_type" = "Linux" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
@@ -432,9 +432,9 @@ if [ "$os_type" = "Linux" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -debug_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.so\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux debug|x64"
@@ -448,7 +448,7 @@ if [ "$os_type" = "Linux" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
@@ -480,9 +480,9 @@ if [ "$os_type" = "Linux" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -release_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.so\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|x64"
@@ -496,7 +496,7 @@ if [ "$os_type" = "Linux" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       if [ $use_valgrind -ne 0 ]; then 
          check_install "$tmp_path_unsanitized" "valgrind"
       fi
@@ -528,9 +528,9 @@ if [ "$os_type" = "Linux" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -debug_32 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.so\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux debug|x86"
@@ -544,7 +544,7 @@ if [ "$os_type" = "Linux" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
@@ -570,9 +570,9 @@ if [ "$os_type" = "Linux" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -release_32 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.so\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for Linux release|x86"
@@ -586,7 +586,7 @@ if [ "$os_type" = "Linux" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
@@ -631,9 +631,9 @@ elif [ "$os_type" = "Darwin" ]; then
       /bin/sh "$root_path_unsanitized/build.sh" -analysis
       ret_code=$?
       if [ $ret_code -ne 0 ]; then 
-         # build.sh should write out any messages
          exit $ret_code
       fi
+      printf "Done building libebm.dylib\n"
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|default"
       obj_path_unsanitized="$tmp_path_unsanitized/clang/obj/release/mac/default/libebm_test"
@@ -646,7 +646,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -671,9 +671,9 @@ elif [ "$os_type" = "Darwin" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -debug_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.dylib\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS debug|x64"
@@ -687,7 +687,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -712,9 +712,9 @@ elif [ "$os_type" = "Darwin" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -release_64 -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.dylib\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|x64"
@@ -728,7 +728,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -753,9 +753,9 @@ elif [ "$os_type" = "Darwin" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -debug_arm -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.dylib\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS debug|arm"
@@ -769,7 +769,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
@@ -794,9 +794,9 @@ elif [ "$os_type" = "Darwin" ]; then
          /bin/sh "$root_path_unsanitized/build.sh" -release_arm -analysis
          ret_code=$?
          if [ $ret_code -ne 0 ]; then 
-            # build.sh should write out any messages
             exit $ret_code
          fi
+         printf "Done building libebm.dylib\n"
       fi
 
       printf "%s\n" "Compiling libebm_test with $cpp_compiler for macOS release|arm"
@@ -810,7 +810,7 @@ elif [ "$os_type" = "Darwin" ]; then
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
-      make_initial_paths_simple "$obj_path_unsanitized" "$bin_path_unsanitized"
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       compile_directory "$cpp_compiler" "$specific_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
       link_file "$cpp_compiler" "-l$lib_file_body $link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"

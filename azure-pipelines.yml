@@ -23,14 +23,6 @@ jobs:
         image.name: ${{ variables.ubuntu_image }}
         asm: ""
         bld: "-debug_64"
-      linux_release_32:
-        image.name: ${{ variables.ubuntu_image }}
-        asm: ""
-        bld: "-release_32"
-      linux_debug_32:
-        image.name: ${{ variables.ubuntu_image }}
-        asm: ""
-        bld: "-debug_32"
       mac_release_64:
         image.name: ${{ variables.mac_image }}
         asm: "-asm"
@@ -55,14 +47,6 @@ jobs:
         image.name: ${{ variables.windows_image }}
         asm: ""
         bld: "-debug_64"
-      win_release_32:
-        image.name: ${{ variables.windows_image }}
-        asm: ""
-        bld: "-release_32"
-      win_debug_32:
-        image.name: ${{ variables.windows_image }}
-        asm: ""
-        bld: "-debug_32"
     maxParallel: 12
   pool:
     vmImage: $(image.name)
@@ -263,42 +247,52 @@ jobs:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-release_64"
         extra: ""
+        existing: "-existing_release_64"
       linux_debug_64:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-debug_64"
         extra: ""
+        existing: "-existing_debug_64"
       linux_release_32:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-release_32"
         extra: ""
+        existing: ""
       linux_debug_32:
         image.name: ${{ variables.ubuntu_image }}
         bld: "-debug_32"
         extra: ""
+        existing: ""
       mac_release_64:
         image.name: ${{ variables.mac_image }}
         bld: "-release_64"
         extra: ""
+        existing: "-existing_release_64"
       mac_debug_64:
         image.name: ${{ variables.mac_image }}
         bld: "-debug_64"
         extra: ""
+        existing: "-existing_debug_64"
       win_release_64:
         image.name: ${{ variables.windows_image }}
         bld: "-release_64"
         extra: "-analysis"
+        existing: "-existing_release_64"
       win_debug_64:
         image.name: ${{ variables.windows_image }}
         bld: "-debug_64"
         extra: ""
+        existing: "-existing_debug_64"
       win_release_32:
         image.name: ${{ variables.windows_image }}
         bld: "-release_32"
         extra: "-analysis"
+        existing: ""
       win_debug_32:
         image.name: ${{ variables.windows_image }}
         bld: "-debug_32"
         extra: ""
+        existing: ""
     maxParallel: 10
   pool:
     vmImage: $(image.name)
@@ -307,6 +301,7 @@ jobs:
     inputs:
       artifact: libebm-$(image.name)$(bld)
       path: bld/lib
+    condition: ne(variables['existing'], '')
     displayName: Copy native library to bld/lib directory
   - task: PythonScript@0
     inputs:
@@ -315,15 +310,15 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: Download CUDA installer
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_arm -existing_release_arm -asan
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) $(existing) -asan
     condition: startsWith(variables['image.name'], 'macOS')
     displayName: mac test_native
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) $(existing)
     condition: and(startsWith(variables['image.name'], 'ubuntu'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: linux test_native (CI)
   - script: |
-      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32 -valgrind
+      /bin/sh ./shared/libebm/tests/libebm_test.sh $(bld) $(existing) -valgrind
     condition: and(startsWith(variables['image.name'], 'ubuntu'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: linux test_native (Schedule)
   - script: |
@@ -334,7 +329,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\libebm\tests\libebm_test.bat $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32
+      .\shared\libebm\tests\libebm_test.bat $(bld) $(existing)
     condition: and(startsWith(variables['image.name'], 'windows'), ne(variables['Build.Reason'], 'Schedule'))
     displayName: win test_native (CI)
   - script: |
@@ -345,7 +340,7 @@ jobs:
         ECHO cuda_11.2.2_win10_network.exe FAILED
         EXIT /B 201
       )
-      .\shared\libebm\tests\libebm_test.bat $(bld) -existing_debug_64 -existing_release_64 -existing_debug_32 -existing_release_32 $(extra)
+      .\shared\libebm\tests\libebm_test.bat $(bld) $(existing) $(extra)
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: win test_native (Schedule)
 
@@ -431,7 +426,7 @@ jobs:
     condition: startsWith(variables['image.name'], 'windows')
     displayName: Publish test coverage results
 
-- job: style
+- job: format_black
   dependsOn: [testC, test]
   pool:
     vmImage: ${{ variables.ubuntu_image }}
