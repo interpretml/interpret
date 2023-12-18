@@ -185,14 +185,14 @@ jobs:
     inputs:
       artifact: sdist
       itemPattern: interpret-core-*.tar.gz
-      path: $(System.ArtifactsDirectory)/sdist
+      path: "$(System.ArtifactsDirectory)/sdist"
     displayName: Download sdist
   - script: |
-      cd $(System.ArtifactsDirectory)/sdist
+      cd "$(System.ArtifactsDirectory)/sdist"
       tarball_path=$(echo interpret-core-*.tar.gz)
       python -m pip install --upgrade pip setuptools wheel
       python -m pip install "$tarball_path"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
-      cd $(Build.SourcesDirectory)/docs/
+      cd "$(Build.SourcesDirectory)/docs/"
       pip install -r requirements.txt
       /bin/sh ./build.sh
     displayName: Build docs
@@ -220,11 +220,11 @@ jobs:
         **/libebm*.dylib
         **/interpret-inline.js
         **/interpret-inline.js.LICENSE.txt
-      path: $(System.ArtifactsDirectory)/lib/
+      path: "$(System.ArtifactsDirectory)/lib/"
     displayName: Download artifact lib files
   - task: CopyFiles@2
     inputs:
-      SourceFolder: $(System.ArtifactsDirectory)/lib/
+      SourceFolder: "$(System.ArtifactsDirectory)/lib/"
       TargetFolder: python/interpret-core/interpret/root/bld/lib/
       flattenFolders: true
     displayName: Flatten and copy lib files
@@ -344,7 +344,91 @@ jobs:
     condition: and(startsWith(variables['image.name'], 'windows'), eq(variables['Build.Reason'], 'Schedule'))
     displayName: win test_native (Schedule)
 
-- job: test
+- job: testS
+  dependsOn: sdist
+  strategy:
+    matrix:
+      linux_38_python:
+        python.version: 3.8
+        image.name: ${{ variables.ubuntu_image }}
+      linux_39_python:
+        python.version: 3.9
+        image.name: ${{ variables.ubuntu_image }}
+      linux_310_python:
+        python.version: 3.10
+        image.name: ${{ variables.ubuntu_image }}
+      win_38_python:
+        python.version: 3.8
+        image.name: ${{ variables.windows_image }}
+      win_39_python:
+        python.version: 3.9
+        image.name: ${{ variables.windows_image }}
+      win_310_python:
+        python.version: 3.10
+        image.name: ${{ variables.windows_image }}
+      mac_38_python:
+        python.version: 3.8
+        image.name: ${{ variables.mac_image }}
+      mac_39_python:
+        python.version: 3.9
+        image.name: ${{ variables.mac_image }}
+      mac_310_python:
+        python.version: 3.10
+        image.name: ${{ variables.mac_image }}
+    maxParallel: 9
+  pool:
+    vmImage: $(image.name)
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: $(python.version)
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifactName: sdist
+      itemPattern: interpret-core-*.tar.gz
+      targetPath: "$(System.ArtifactsDirectory)/sdist"
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      FOR %%A IN ("$(System.ArtifactsDirectory)\sdist\interpret-core-*.tar.gz") DO SET "install_file=%%~nA"
+      REM the above line got "interpret-core-x.x.x.tar" and we now need to strip the ".tar"
+      FOR %%A IN ("%install_file%") DO SET "install_file=%%~nA"
+      SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      python -m pip install "$(System.ArtifactsDirectory)\sdist\%install_file%.tar.gz"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+      mkdir "$(Agent.TempDirectory)\zqmr"
+      mkdir "$(Agent.TempDirectory)\zqmr\t"
+      tar -xzvf "$(System.ArtifactsDirectory)\sdist\%install_file%.tar.gz" -C "$(Agent.TempDirectory)\zqmr\t" "%install_file%/tests"
+      cd /D "$(Agent.TempDirectory)\zqmr\t"
+      set PATH=%PATH%;%GeckoWebDriver%
+      python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: pytest (win)
+  - script: |
+      python -m pip install --upgrade pip setuptools wheel
+      cd "$(System.ArtifactsDirectory)/sdist"
+      install_file=$(echo interpret-core-*.tar.gz)
+      install_file=${install_file%.tar.gz}
+      python -m pip install "$(System.ArtifactsDirectory)/sdist/$install_file.tar.gz"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+      mkdir -p "$(Agent.TempDirectory)/zqmr/t"
+      tar -xzvf "$(System.ArtifactsDirectory)/sdist/$install_file.tar.gz" -C "$(Agent.TempDirectory)/zqmr/t" "$install_file/tests"
+      cd "$(Agent.TempDirectory)/zqmr/t"
+      python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
+    condition: not(startsWith(variables['image.name'], 'windows'))
+    displayName: pytest (non-win)
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFiles: "$(Agent.TempDirectory)/zqmr/t/junit/test-results.xml"
+      testRunTitle: Publish test results for Python sdist $(python.version) at $(image.name)
+    condition: succeededOrFailed()
+    displayName: Publish test results
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: "$(Agent.TempDirectory)/zqmr/t/coverage.xml"
+      # reportDirectory: $(Agent.TempDirectory)/zqmr/t/**/htmlcov
+    condition: startsWith(variables['image.name'], 'windows')
+    displayName: Publish test coverage results
+
+- job: testB
   dependsOn: bdist
   strategy:
     matrix:
@@ -386,11 +470,11 @@ jobs:
     inputs:
       artifactName: bdist
       itemPattern: interpret_core-*.whl
-      targetPath: $(System.ArtifactsDirectory)/bdist
+      targetPath: "$(System.ArtifactsDirectory)/bdist"
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
-      FOR %%A IN ($(System.ArtifactsDirectory)\bdist\interpret_core-*.whl) DO SET "install_file=%%A"
+      FOR %%A IN ("$(System.ArtifactsDirectory)\bdist\interpret_core-*.whl") DO SET "install_file=%%A"
       python -m pip install "%install_file%"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       set PATH=%PATH%;%GeckoWebDriver%
       mkdir "$(Agent.TempDirectory)\zqmr"
@@ -403,7 +487,7 @@ jobs:
   # we copy the tests to a new location to test the installed package rather than the source files
   - script: |
       python -m pip install --upgrade pip setuptools wheel
-      cd $(System.ArtifactsDirectory)/bdist
+      cd "$(System.ArtifactsDirectory)/bdist"
       install_file=$(echo interpret_core-*.whl)
       python -m pip install "$install_file"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       mkdir -p "$(Agent.TempDirectory)/zqmr/t"
@@ -414,20 +498,20 @@ jobs:
     displayName: pytest (non-win)
   - task: PublishTestResults@2
     inputs:
-      testResultsFiles: $(Agent.TempDirectory)/zqmr/t/junit/test-results.xml
-      testRunTitle: Publish test results for Python $(python.version) at $(image.name)
+      testResultsFiles: "$(Agent.TempDirectory)/zqmr/t/junit/test-results.xml"
+      testRunTitle: Publish test results for Python bdist $(python.version) at $(image.name)
     condition: succeededOrFailed()
     displayName: Publish test results
   - task: PublishCodeCoverageResults@1
     inputs:
       codeCoverageTool: Cobertura
-      summaryFileLocation: $(Agent.TempDirectory)/zqmr/t/coverage.xml
+      summaryFileLocation: "$(Agent.TempDirectory)/zqmr/t/coverage.xml"
       # reportDirectory: $(Agent.TempDirectory)/zqmr/t/**/htmlcov
     condition: startsWith(variables['image.name'], 'windows')
     displayName: Publish test coverage results
 
 - job: format_black
-  dependsOn: [testC, test]
+  dependsOn: [testC, testS, testB]
   pool:
     vmImage: ${{ variables.ubuntu_image }}
   steps:
@@ -439,7 +523,7 @@ jobs:
       python -m pip install --upgrade black
       black --check .
     displayName: black formatting check
-  - publish: $(Build.SourcesDirectory)
+  - publish: "$(Build.SourcesDirectory)"
     artifact: source_code
 
 schedules:
