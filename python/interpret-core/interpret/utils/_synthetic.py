@@ -2,44 +2,40 @@
 # Distributed under the MIT software license
 
 import numpy as np
-import math
 
-def _make_categorical_float(n_samples, n_categories, cat_digits):
-    n_modulo = 10 ** cat_digits
+
+def _make_categorical_float(rng, n_samples, n_categories, cat_digits):
+    n_modulo = 10**cat_digits
     n_categories = min(n_categories, n_modulo - 1)
-    vals = np.random.choice(n_categories, n_samples)
-    mapping = np.random.permutation(n_categories) + 1
+    vals = rng.choice(n_categories, n_samples)
+    mapping = rng.permutation(n_categories) + 1
     mapping = mapping[vals] + n_modulo
     mapping = mapping.astype(str)
-    mapping = np.char.add(mapping, '.')
-    vals = vals.astype(str)
+    mapping = np.char.add(mapping, ".")
+    # reserve 0 for an alternative missing representation
+    vals = (vals + 1).astype(str)
     vals = np.char.zfill(vals, cat_digits)
     vals = np.char.add(mapping, vals)
+    vals = vals.astype(float)
     return vals
-    
-def _make_categorical_str(col, prefix):
-    n_samples = len(col)
-    col = col.astype(float)
-    cat_digits = len(str(int(math.floor(np.nanmax(col))))) - 1
-    cat_mod = 10 ** cat_digits
 
-    missings = col != col
 
-    col[missings] = cat_mod - 1
-    order = col.astype(float).astype(int) % cat_mod
-    col = (col.astype(float) * cat_mod).astype(int) % cat_mod
-    col = np.array([prefix + str(o) + "_" + str(n) for o, n in zip(order, col)], dtype=object)
-    col[missings] = np.nan
+def _make_categorical_str(col, prefix, cat_mod):
+    order = np.floor(col).astype(int) % cat_mod
+    col = np.round(col * cat_mod).astype(int) % cat_mod
+    col = np.array(
+        [prefix + str(o) + "_" + str(n) for o, n in zip(order, col)], dtype=object
+    )
     return col
 
-def make_synthetic(class_probs=[0.375, 0.25, 0.375], n_samples=400, missing=False, objects=False, seed=1, cat_digits=4):
+
+def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     # each feature is roughly set such that the average of the negative values is -2.5
     # and the average of the positive values is 2.5. This allows us to have a common scale
     # with integers where we have 9 categories from -4 to +4
 
-    cat_mod = 10 ** cat_digits
+    cat_mod = 10**cat_digits
 
-    np.random.seed(seed)
     names = []
     types = []
     features = []
@@ -47,37 +43,42 @@ def make_synthetic(class_probs=[0.375, 0.25, 0.375], n_samples=400, missing=Fals
     # Feature 0 - Continuous drawn from uniform distribution
     names.append("f0_uniform")
     types.append("continuous")
-    features.append(np.random.uniform(-5.0, 5.0, n_samples))
+    features.append(rng.uniform(-5.0, 5.0, n_samples))
 
     # Feature 1 - Continuous drawn from normal distribution
     names.append("f1_normal")
     types.append("continuous")
-    features.append(np.random.normal(0.125, 3.0, n_samples))
+    features.append(rng.normal(0.125, 3.0, n_samples))
 
-    # Feature 2 - Continuous time between events with rate 1/10 per unit time
-    names.append("f2_exp")
+    # Feature 2 - Continuous time between events with avg time between events of 2.5
+    names.append("f2_exponential")
     types.append("continuous")
-    features.append(np.random.exponential(scale=2.5, size=n_samples) - 4.0)
+    features.append(rng.exponential(scale=2.5, size=n_samples) - 4.0)  # shifted
 
     # Feature 3 - Integers with lumpy distribution
-    names.append("f3_int")
+    names.append("f3_ints")
     types.append("continuous")
-    features.append(np.random.choice(9, n_samples) - 4)
+    features.append(rng.choice(9, n_samples) - 4)
 
-    # Feature 4 - Integer number of events in a fixed interval, with average rate 9
+    # Feature 4 - Integer number of events in an interval, with average rate 9
     names.append("f4_poisson")
     types.append("continuous")
-    features.append(np.random.poisson(lam=9, size=n_samples) - 9)
+    features.append(rng.poisson(lam=9, size=n_samples) - 9)
 
     # Feature 5 - Positive correlation with feature 0 and negative with 1
     names.append("f5_multicol")
     types.append("continuous")
-    features.append(0.75 * features[0] - 0.625 * features[1] + np.random.uniform(-3.5, 3.5, n_samples))
+    features.append(
+        0.75 * features[0] - 0.625 * features[1] + rng.uniform(-3.5, 3.5, n_samples)
+    )
 
     # Feature 6 - Correlation with feature 2 when feature 2 negative
     names.append("f6_partial")
     types.append("continuous")
-    features.append(np.where(features[2] < 0, 0.75, 0) * features[2] + np.random.uniform(-3.0, 6.0, n_samples))
+    features.append(
+        np.where(features[2] < 0.0, 0.75, 0.0) * features[2]
+        + rng.uniform(-3.0, 6.0, n_samples)
+    )
 
     # Feature 7 - Interaction between feature 3 and feature 4
     names.append("f7_interact")
@@ -88,74 +89,136 @@ def make_synthetic(class_probs=[0.375, 0.25, 0.375], n_samples=400, missing=Fals
     names.append("f8_high")
     types.append("nominal")
     n_categories = int(n_samples / 4)
-    col = _make_categorical_float(n_samples, n_categories, cat_digits)
+    col = _make_categorical_float(rng, n_samples, n_categories, cat_digits)
     if objects:
-        col = _make_categorical_str(col, "h")
+        col = _make_categorical_str(col, "h", cat_mod)
     features.append(col)
 
     # Feature 9 - Categorical feature with low cardinality
     names.append("f9_low")
     types.append("nominal")
     n_categories = 9
-    col = _make_categorical_float(n_samples, n_categories, cat_digits)
+    col = _make_categorical_float(rng, n_samples, n_categories, cat_digits)
     if objects:
-        col = _make_categorical_str(col, "l")
+        col = _make_categorical_str(col, "l", cat_mod)
     features.append(col)
-
 
     # Convert list of features to a 2D numpy array of dtype=object and transpose
     X = np.array(features, dtype=object if objects else float).T
 
     if missing:
         # make 10% of feature data missing
-        mask = np.random.choice([False, True], size=X.shape, p=[0.9, 0.1])
+        mask = rng.choice([False, True], X.shape, p=[0.9, 0.1])
         X[mask] = np.nan
 
+    return (X, names, types)
 
-    y = np.random.normal(-0.125, 1.0, n_samples)
-    y += np.exp(features[0] / 10.0)
-    y += (features[1] / 10.0) ** 2
-    y += (features[2] / 10.0) ** 3
-    y += features[3] / 10.0 + np.sin(features[3])
-    y += features[4] / 10.0 + np.sin(features[4])
-    y += features[5] / 10.0 + np.sin(features[5])
-    y += features[6] / 10.0 + np.sin(features[6])
-    y += features[7] / 10.0 + np.sin(features[7])
 
-    # low cardinality is 0-9, so center around zero
-    col = features[8]
-    if objects:
-        vals = np.array([float(x.split('_')[1]) for x in col])
+ideal_cat_min = -5.0
+ideal_cat_max = 5.0
+
+
+def _normalize_string_categorical(col):
+    missings = np.logical_or(col == np.array(None), col != col)
+    if not missings.all():
+        col[missings] = "m_0"
+        col = np.array([float(x.split("_")[1]) for x in col], float)
+
+        col -= col[~missings].min()
+        col_max = col[~missings].max()
+        col *= (ideal_cat_max - ideal_cat_min) / col_max
+        col += ideal_cat_min
+
+    col[missings] = np.nan
+    return col
+
+
+def _normalize_float_categorical(col):
+    missings = np.isnan(col)
+    if not missings.all():
+        cat_digits = len(str(int(np.floor(np.nanmax(col))))) - 1
+        cat_mod = 10**cat_digits
+
+        col[missings] = 0.0
+        col = (np.round(col * cat_mod).astype(int) % cat_mod).astype(float)
+
+        col -= col[~missings].min()
+        col_max = col[~missings].max()
+        col *= (ideal_cat_max - ideal_cat_min) / col_max
+        col += ideal_cat_min
+
+        col[missings] = np.nan
+    return col
+
+
+def _normalize_categoricals(X, types):
+    X = X.copy()
+    if X.dtype == object:
+        # if we have str categoricals, convert to float and normalize their range
+        for i in range(X.shape[1]):
+            col = X[:, i]
+            if str in set(map(type, col)):
+                X[:, i] = _normalize_string_categorical(col)
+        missings = np.logical_or(X == np.array(None), X != X)
+        X[missings] = np.nan  # change any None(s) to np.nan
+        X = X.astype(float)
     else:
-        vals = (col.astype(float) * cat_mod).astype(int) % cat_mod
-    vals = vals.astype(float)
-    vals = vals / vals.max() - 0.5
-    y += vals
+        # if we have float categoricals, normalize their range
+        for i in range(X.shape[1]):
+            if types is not None and types[i] == "nominal":
+                X[:, i] = _normalize_float_categorical(X[:, i])
+    return X
 
-    # high cardinality has range larger than 10, so normalize
-    col = features[8]
-    if objects:
-        vals = np.array([float(x.split('_')[1]) for x in col])
-    else:
-        vals = (col.astype(float) * cat_mod).astype(int) % cat_mod
-    vals = vals.astype(float)
-    vals = vals / vals.max() - 0.5
-    y += vals
+
+def make_synthetic(
+    class_probs=[0.375, 0.25, 0.375],
+    n_samples=1000,
+    missing=False,
+    objects=True,
+    seed=1,
+    noise_scale=1.0,
+    cat_digits=4,
+):
+    rng = np.random.default_rng(seed)
+
+    X, names, types = _synthetic_features(rng, n_samples, missing, objects, cat_digits)
+
+    X_imp = _normalize_categoricals(X, types)
+
+    # impute missing values with 0
+    missings = np.isnan(X_imp)
+    X_imp[missings] = 0.0
+
+    # create some additive terms for our model to find
+    y = rng.normal(-0.125, noise_scale, n_samples)
+    y += np.exp(X_imp[:, 0] / 10.0)
+    y += (X_imp[:, 1] / 10.0) ** 2
+    y += (X_imp[:, 2] / 10.0) ** 3
+    y += X_imp[:, 3] / 10.0 + np.sin(X_imp[:, 3])
+    y += X_imp[:, 4] / 10.0 + np.sin(X_imp[:, 4])
+    y += X_imp[:, 5] / 10.0 + np.sin(X_imp[:, 5])
+    y += X_imp[:, 6] / 10.0 + np.sin(X_imp[:, 6])
+    y += X_imp[:, 7] / 10.0 + np.sin(X_imp[:, 7])
 
     # 3-way interaction
-    y += features[0] * features[1] * features[2] * 0.125
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] / 500.0
 
     # pairs
-    y += features[0] * features[3] * 0.25
-    y += features[3] * features[4] * 0.25
+    y += X_imp[:, 0] * X_imp[:, 3] / 50.0
+    y += X_imp[:, 3] * X_imp[:, 4] / 50.0
 
+    # linear addition of high cardinality categorical
+    y += X_imp[:, -2] / 10.0
+
+    # linear addition of low cardinality categorical
+    y += X_imp[:, -1] / 10.0
 
     if class_probs is not None:
         # if class_probs is non-None then it is classification
 
         # it would be better to treat y as logits and generate classes
         # but this is not meant for benchmarking, just testing and illustration
-        # and it is easier to get multiclass this way with perscribed 
+        # and it is easier to get multiclass this way with perscribed
         # numbers of classes
 
         class_probs = np.array(class_probs, float)
@@ -169,39 +232,44 @@ def make_synthetic(class_probs=[0.375, 0.25, 0.375], n_samples=400, missing=Fals
 
     return (X, y, names, types)
 
-def _check_dataset(X, y, names=None, types=None):
+
+def _check_synthetic_dataset(X, y, names=None, types=None):
+    X_imp = _normalize_categoricals(X, types)
+
+    # impute missing values with 0
+    missings = np.isnan(X_imp)
+    X_imp[missings] = 0.0
+
     for i in range(X.shape[1]):
         print("--------------------")
         if names is not None:
             print(names[i])
 
-        is_str = False
-        col = X[:, i].copy()
-        if types is not None and types[i] == "nominal":
-            missings = col != col
-            if col.dtype == object:
-                is_str = True
-                col[missings] = "x_-1"
-                col = np.array([float(x.split('_')[1]) for x in col])
-            else:
-                cat_digits = len(str(int(math.floor(np.nanmax(col))))) - 1
-                cat_mod = 10 ** cat_digits
+        col = X_imp[:, i]
 
-                col[missings] = cat_mod - 1
-                col = (col.astype(float) * cat_mod).astype(int) % cat_mod
-                col[missings] = -1
+        negatives = col < 0.0
+        negatives = str(np.average(col[negatives])) if negatives.any() else "NONE"
+        print("neg_avg: " + negatives)
+
+        positives = col > 0.0
+        positives = str(np.average(col[positives])) if positives.any() else "NONE"
+        print("pos_avg: " + positives)
+
+        if X.dtype == object and str in set(map(type, X[:, i])):
+            print("\n".join([str(x) for x in X[:20, i]]))
         else:
-            col[col != col] = 0
-        print("neg_avg: " + str(np.average(col[col < 0])))
-        print("pos_avg: " + str(np.average(col[col > 0])))
-        if is_str:
-            print('\n'.join([str(x) for x in X[:20, i]]))
-        else:
-            print('\n'.join([f'{x:.4f}' for x in X[:20, i]]))
+            print("\n".join([f"{x:.4f}" for x in X[:20, i]]))
 
     print("--------------------")
     print("y")
     if y.dtype == np.float64:
-        print("neg_avg: " + str(np.average(y[y < 0])))
-        print("pos_avg: " + str(np.average(y[y > 0])))
-    print('\n'.join([f'{x:.4f}' for x in y[:20]]))
+        negatives = y < 0.0
+        negatives = str(np.average(y[negatives])) if negatives.any() else "NONE"
+        print("neg_avg: " + negatives)
+
+        positives = y > 0.0
+        positives = str(np.average(y[positives])) if positives.any() else "NONE"
+        print("pos_avg: " + positives)
+        print("\n".join([f"{x:.4f}" for x in y[:20]]))
+    else:
+        print("\n".join([str(x) for x in y[:20]]))
