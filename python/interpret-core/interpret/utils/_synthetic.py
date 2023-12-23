@@ -20,21 +20,27 @@ def _make_categorical_float(rng, n_samples, n_categories, cat_digits):
     return vals
 
 
-def _make_categorical_str(col, prefix, cat_mod):
+def _make_categorical_str(col, prefix, cat_digits):
+    cat_mod = 10**cat_digits
+
     order = np.floor(col).astype(int) % cat_mod
+    order = order.astype(str)
+    order = np.char.zfill(order, cat_digits)
+    order = np.char.translate(order, str.maketrans("0123456789", "abcdefghij"))
+    order = np.char.add(prefix, order)
+    order = np.char.add(order, "_")
+
     col = np.round(col * cat_mod).astype(int) % cat_mod
-    col = np.array(
-        [prefix + str(o) + "_" + str(n) for o, n in zip(order, col)], dtype=object
-    )
-    return col
+    col = col.astype(str)
+    col = np.char.zfill(col, cat_digits)
+
+    return np.char.add(order, col)
 
 
 def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     # each feature is roughly set such that the average of the negative values is -2.5
     # and the average of the positive values is 2.5. This allows us to have a common scale
     # with integers where we have 9 categories from -4 to +4
-
-    cat_mod = 10**cat_digits
 
     names = []
     types = []
@@ -91,7 +97,7 @@ def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     n_categories = int(n_samples / 4)
     col = _make_categorical_float(rng, n_samples, n_categories, cat_digits)
     if objects:
-        col = _make_categorical_str(col, "h", cat_mod)
+        col = _make_categorical_str(col, "h", cat_digits)
     features.append(col)
 
     # Feature 9 - Categorical feature with low cardinality
@@ -100,7 +106,7 @@ def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     n_categories = 9
     col = _make_categorical_float(rng, n_samples, n_categories, cat_digits)
     if objects:
-        col = _make_categorical_str(col, "l", cat_mod)
+        col = _make_categorical_str(col, "l", cat_digits)
     features.append(col)
 
     # Convert list of features to a 2D numpy array of dtype=object and transpose
@@ -234,6 +240,8 @@ def make_synthetic(
 
 
 def _check_synthetic_dataset(X, y, names=None, types=None):
+    n_display = 20
+
     X_imp = _normalize_categoricals(X, types)
 
     # impute missing values with 0
@@ -255,10 +263,16 @@ def _check_synthetic_dataset(X, y, names=None, types=None):
         positives = str(np.average(col[positives])) if positives.any() else "NONE"
         print("pos_avg: " + positives)
 
-        if X.dtype == object and str in set(map(type, X[:, i])):
-            print("\n".join([str(x) for x in X[:20, i]]))
+        col = X[:, i]
+        if X.dtype == object and str in set(map(type, col)):
+            print("\n".join([str(x) for x in col[:n_display]]))
+        elif types is not None and types[i] == "nominal":
+            cat_digits = len(str(int(np.floor(np.nanmax(col))))) - 1
+            print("\n".join([f"{x:.{cat_digits}f}" for x in col[:n_display]]))
         else:
-            print("\n".join([f"{x:.4f}" for x in X[:20, i]]))
+            print(
+                "\n".join([f"{x:.5f}".rstrip("0").rstrip(".") for x in col[:n_display]])
+            )
 
     print("--------------------")
     print("y")
@@ -270,6 +284,6 @@ def _check_synthetic_dataset(X, y, names=None, types=None):
         positives = y > 0.0
         positives = str(np.average(y[positives])) if positives.any() else "NONE"
         print("pos_avg: " + positives)
-        print("\n".join([f"{x:.4f}" for x in y[:20]]))
+        print("\n".join([f"{x:.5f}".rstrip("0").rstrip(".") for x in y[:n_display]]))
     else:
-        print("\n".join([str(x) for x in y[:20]]))
+        print("\n".join([str(x) for x in y[:n_display]]))
