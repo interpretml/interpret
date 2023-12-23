@@ -177,7 +177,7 @@ def _normalize_categoricals(X, types):
 
 
 def make_synthetic(
-    class_probs=[0.375, 0.25, 0.375],
+    classes=["class_0", "class_1"],
     n_samples=1000,
     missing=False,
     objects=True,
@@ -196,7 +196,7 @@ def make_synthetic(
     X_imp[missings] = 0.0
 
     # create some additive terms for our model to find
-    y = rng.normal(-0.125, noise_scale, n_samples)
+    y = np.zeros(n_samples, float)
     y += np.exp(X_imp[:, 0] / 10.0)
     y += (X_imp[:, 1] / 10.0) ** 2
     y += (X_imp[:, 2] / 10.0) ** 3
@@ -219,22 +219,29 @@ def make_synthetic(
     # linear addition of low cardinality categorical
     y += X_imp[:, -1] / 10.0
 
-    if class_probs is not None:
-        # if class_probs is non-None then it is classification
+    if classes is None or classes == 0:
+        y += rng.normal(-0.125, noise_scale, n_samples)
+    else:
+        if type(classes) == int:
+            classes = np.arange(classes, dtype=int)
+        else:
+            classes = np.array(classes)
 
-        # it would be better to treat y as logits and generate classes
-        # but this is not meant for benchmarking, just testing and illustration
-        # and it is easier to get multiclass this way with perscribed
-        # numbers of classes
+        n_classes = len(classes)
+        if n_classes == 1:
+            y = np.full(n_samples, 0, dtype=int)
+        else:
+            prob = np.exp(y)
+            prob = prob / (1.0 + prob)
 
-        class_probs = np.array(class_probs, float)
-        class_probs /= class_probs.sum()  # normalize to prob of 1.0 just in case
-        cumulative_probs = np.cumsum(class_probs)
+            randoms = rng.uniform(0, 1.0, n_samples)
+            y = (prob < randoms).astype(int)
 
-        y_sorted = np.sort(y, kind="stable")
-        split_indices = (cumulative_probs * n_samples).astype(int)[:-1]
-        split_points = y_sorted[split_indices]
-        y = np.digitize(y, split_points)
+            if 2 < n_classes:
+                # multiclass. To keep things simple randomly select classes above 0th
+                randoms = rng.integers(0, n_classes - 1, n_samples) + 1
+                y = np.where(y == 0, y, randoms)
+        y = classes[y]
 
     return (X, y, names, types)
 
