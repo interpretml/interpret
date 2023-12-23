@@ -37,10 +37,20 @@ def _make_categorical_str(col, prefix, cat_digits):
     return np.char.add(order, col)
 
 
-def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
-    # each feature is roughly set such that the average of the negative values is -2.5
-    # and the average of the positive values is 2.5. This allows us to have a common scale
-    # with integers where we have 9 categories from -4 to +4
+def _synthetic_features(
+    rng, n_samples, missing, objects, cat_digits, min_clip, max_clip
+):
+    # EBMs are blind to the scale of the feature values since features are binned using
+    # quantiles, so we can use whatever scale we want for convenience. We choose the
+    # scale of the feature values to make generating the synthetic y easier by roughly
+    # keeping the same scale for all features.
+    # Each feature is roughly set such that the average of the negative values is -1.0
+    # and the average of the positive values is 1.0. This allows us to have a common
+    # scale with integers where we have 5 categories from -2 to +2, and we clip at
+    # -2.0 and +2.0 to make transformations like exp(x) and x**2 not too extreme.
+
+    min_clip_int = int(np.ceil(min_clip))
+    max_clip_int = int(np.floor(max_clip))
 
     names = []
     types = []
@@ -49,47 +59,71 @@ def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     # Feature 0 - Continuous drawn from uniform distribution
     names.append("f0_uniform")
     types.append("continuous")
-    features.append(rng.uniform(-5.0, 5.0, n_samples))
+    features.append(rng.uniform(min_clip, max_clip, n_samples))
 
     # Feature 1 - Continuous drawn from normal distribution
     names.append("f1_normal")
     types.append("continuous")
-    features.append(rng.normal(0.125, 3.0, n_samples))
+    features.append(np.clip(rng.normal(0.0, 1.375, n_samples), min_clip, max_clip))
 
-    # Feature 2 - Continuous time between events with avg time between events of 2.5
+    # Feature 2 - Continuous time between events with avg time between events of 1.4375
     names.append("f2_exponential")
     types.append("continuous")
-    features.append(rng.exponential(scale=2.5, size=n_samples) - 4.0)  # shifted
+    features.append(
+        np.clip(
+            rng.exponential(scale=1.4375, size=n_samples) - 1.75, min_clip, max_clip
+        )
+    )
 
     # Feature 3 - Integers with lumpy distribution
     names.append("f3_ints")
     types.append("continuous")
-    features.append(rng.choice(9, n_samples) - 4)
+    features.append(
+        rng.choice(max_clip_int - min_clip_int + 1, n_samples)
+        - (max_clip_int - min_clip_int) // 2
+    )
 
-    # Feature 4 - Integer number of events in an interval, with average rate 9
+    # Feature 4 - Integer number of events in an interval, with average rate 1.75
     names.append("f4_poisson")
     types.append("continuous")
-    features.append(rng.poisson(lam=9, size=n_samples) - 9)
+    features.append(
+        np.clip(rng.poisson(lam=1.75, size=n_samples) - 2, min_clip_int, max_clip_int)
+    )
 
     # Feature 5 - Positive correlation with feature 0 and negative with 1
     names.append("f5_multicol")
     types.append("continuous")
     features.append(
-        0.75 * features[0] - 0.625 * features[1] + rng.uniform(-3.5, 3.5, n_samples)
+        np.clip(
+            0.75 * features[0] - 0.625 * features[1] + rng.normal(0.0, 1.0, n_samples),
+            min_clip,
+            max_clip,
+        )
     )
 
-    # Feature 6 - Correlation with feature 2 when feature 2 negative
+    # Feature 6 - Correlation with feature 2 in center region
     names.append("f6_partial")
     types.append("continuous")
+    clip_quarter = (max_clip - min_clip) * 0.25
     features.append(
-        np.where(features[2] < 0.0, 0.75, 0.0) * features[2]
-        + rng.uniform(-3.0, 6.0, n_samples)
+        np.clip(
+            np.where(
+                (min_clip + clip_quarter < features[2])
+                & (features[2] < max_clip - clip_quarter),
+                1.5,
+                0.0,
+            )
+            * features[2]
+            + rng.normal(0.0, 1.0, n_samples),
+            min_clip,
+            max_clip,
+        )
     )
 
     # Feature 7 - Interaction between feature 3 and feature 4
     names.append("f7_interact")
     types.append("continuous")
-    features.append(features[3] * features[4] * 0.375)
+    features.append(np.clip(features[3] * features[4], min_clip_int, max_clip_int))
 
     # Feature 8 - Categorical feature with high cardinality
     names.append("f8_high")
@@ -120,11 +154,7 @@ def _synthetic_features(rng, n_samples, missing, objects, cat_digits):
     return (X, names, types)
 
 
-ideal_cat_min = -5.0
-ideal_cat_max = 5.0
-
-
-def _normalize_string_categorical(col):
+def _normalize_string_categorical(col, min_clip, max_clip):
     missings = np.logical_or(col == np.array(None), col != col)
     if not missings.all():
         col[missings] = "m_0"
@@ -132,14 +162,14 @@ def _normalize_string_categorical(col):
 
         col -= col[~missings].min()
         col_max = col[~missings].max()
-        col *= (ideal_cat_max - ideal_cat_min) / col_max
-        col += ideal_cat_min
+        col *= (max_clip - min_clip) / col_max
+        col += min_clip
 
     col[missings] = np.nan
     return col
 
 
-def _normalize_float_categorical(col):
+def _normalize_float_categorical(col, min_clip, max_clip):
     missings = np.isnan(col)
     if not missings.all():
         cat_digits = len(str(int(np.floor(np.nanmax(col))))) - 1
@@ -150,21 +180,21 @@ def _normalize_float_categorical(col):
 
         col -= col[~missings].min()
         col_max = col[~missings].max()
-        col *= (ideal_cat_max - ideal_cat_min) / col_max
-        col += ideal_cat_min
+        col *= (max_clip - min_clip) / col_max
+        col += min_clip
 
         col[missings] = np.nan
     return col
 
 
-def _normalize_categoricals(X, types):
+def _normalize_categoricals(X, types, min_clip, max_clip):
     X = X.copy()
     if X.dtype == object:
         # if we have str categoricals, convert to float and normalize their range
         for i in range(X.shape[1]):
             col = X[:, i]
             if str in set(map(type, col)):
-                X[:, i] = _normalize_string_categorical(col)
+                X[:, i] = _normalize_string_categorical(col, min_clip, max_clip)
         missings = np.logical_or(X == np.array(None), X != X)
         X[missings] = np.nan  # change any None(s) to np.nan
         X = X.astype(float)
@@ -172,7 +202,7 @@ def _normalize_categoricals(X, types):
         # if we have float categoricals, normalize their range
         for i in range(X.shape[1]):
             if types is not None and types[i] == "nominal":
-                X[:, i] = _normalize_float_categorical(X[:, i])
+                X[:, i] = _normalize_float_categorical(X[:, i], min_clip, max_clip)
     return X
 
 
@@ -184,12 +214,16 @@ def make_synthetic(
     seed=1,
     noise_scale=1.0,
     cat_digits=4,
+    min_clip=-2.0,
+    max_clip=2.0,
 ):
     rng = np.random.default_rng(seed)
 
-    X, names, types = _synthetic_features(rng, n_samples, missing, objects, cat_digits)
+    X, names, types = _synthetic_features(
+        rng, n_samples, missing, objects, cat_digits, min_clip, max_clip
+    )
 
-    X_imp = _normalize_categoricals(X, types)
+    X_imp = _normalize_categoricals(X, types, min_clip, max_clip)
 
     # impute missing values with 0
     missings = np.isnan(X_imp)
@@ -234,22 +268,22 @@ def make_synthetic(
             prob = np.exp(y)
             prob = prob / (1.0 + prob)
 
-            randoms = rng.uniform(0, 1.0, n_samples)
-            y = (prob < randoms).astype(int)
+            randoms = rng.uniform(0.0, 1.0, n_samples)
+            y = (randoms < prob).astype(int)
 
             if 2 < n_classes:
                 # multiclass. To keep things simple randomly select classes above 0th
-                randoms = rng.integers(0, n_classes - 1, n_samples) + 1
-                y = np.where(y == 0, y, randoms)
+                randoms = rng.integers(1, n_classes, n_samples)
+                y = np.where(y == 0, 0, randoms)
         y = classes[y]
 
     return (X, y, names, types)
 
 
-def _check_synthetic_dataset(X, y, names=None, types=None):
+def _check_synthetic_dataset(X, y, names=None, types=None, min_clip=-2.0, max_clip=2.0):
     n_display = 20
 
-    X_imp = _normalize_categoricals(X, types)
+    X_imp = _normalize_categoricals(X, types, min_clip, max_clip)
 
     # impute missing values with 0
     missings = np.isnan(X_imp)
@@ -261,6 +295,10 @@ def _check_synthetic_dataset(X, y, names=None, types=None):
             print(names[i])
 
         col = X_imp[:, i]
+        n_zeros = len(col) - np.count_nonzero(col)
+        col[col == 0.0] = np.tile(
+            [2.2250738585072014e-308, -2.2250738585072014e-308], n_zeros // 2 + 1
+        )[:n_zeros]
 
         negatives = col < 0.0
         negatives = str(np.average(col[negatives])) if negatives.any() else "NONE"
