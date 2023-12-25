@@ -212,6 +212,7 @@ def make_synthetic(
     missing=False,
     objects=True,
     seed=1,
+    noise_intercept=0.0625,
     noise_scale=1.0,
     cat_digits=4,
     min_clip=-2.0,
@@ -230,32 +231,30 @@ def make_synthetic(
     X_imp[missings] = 0.0
 
     # create some additive terms for our model to find
-    y = np.zeros(n_samples, float)
-    y += np.exp(X_imp[:, 0] / 10.0)
-    y += (X_imp[:, 1] / 10.0) ** 2
-    y += (X_imp[:, 2] / 10.0) ** 3
-    y += X_imp[:, 3] / 10.0 + np.sin(X_imp[:, 3])
-    y += X_imp[:, 4] / 10.0 + np.sin(X_imp[:, 4])
-    y += X_imp[:, 5] / 10.0 + np.sin(X_imp[:, 5])
-    y += X_imp[:, 6] / 10.0 + np.sin(X_imp[:, 6])
-    y += X_imp[:, 7] / 10.0 + np.sin(X_imp[:, 7])
+    y = rng.normal(noise_intercept, noise_scale, n_samples)
+    y += np.exp(X_imp[:, 0])
+    y += X_imp[:, 1] ** 2
+    y += X_imp[:, 2] ** 3
+    y += X_imp[:, 3]  # integers (use linear response)
+    y += X_imp[:, 4]  # integers (use linear response)
+    y += np.sin(3.14159 * 2.0 / (max_clip - min_clip) * X_imp[:, 5]) * 5.0
+    y += np.cos(3.14159 * 2.0 / (max_clip - min_clip) * X_imp[:, 6]) * 5.0
+    y += X_imp[:, 7]  # integer interaction feature
 
     # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] / 500.0
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2]
 
     # pairs
-    y += X_imp[:, 0] * X_imp[:, 3] / 50.0
-    y += X_imp[:, 3] * X_imp[:, 4] / 50.0
+    y += X_imp[:, 0] * X_imp[:, 1]
+    y += X_imp[:, 1] * X_imp[:, 2]
 
     # linear addition of high cardinality categorical
-    y += X_imp[:, -2] / 10.0
+    y += X_imp[:, -2]
 
     # linear addition of low cardinality categorical
-    y += X_imp[:, -1] / 10.0
+    y += X_imp[:, -1]
 
-    if classes is None or classes == 0:
-        y += rng.normal(-0.125, noise_scale, n_samples)
-    else:
+    if classes is not None and classes != 0:
         if type(classes) == int:
             classes = np.arange(classes, dtype=int)
         else:
