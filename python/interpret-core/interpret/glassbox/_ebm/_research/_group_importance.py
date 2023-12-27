@@ -159,7 +159,7 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
     Returns:
        a dict where each entry is in the form 'term_name: term_importance'
     """
-    if type(term_groups_list) is not list:
+    if not isinstance(term_groups_list, list):
         raise ValueError("term_groups_list should be a list.")
     elif len(term_groups_list) == 0:
         raise ValueError("term_groups_list should be a non-empty list.")
@@ -173,7 +173,7 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
         dict[term] = compute_group_importance([term], ebm, X, contributions)
 
     # If it's not a list of lists, we assume it's only one term group (e.g. list of strings or ints)
-    if type(term_groups_list[0]) is not list:
+    if not isinstance(term_groups_list[0], list):
         group_name = _get_group_name(term_groups_list, ebm.term_names_)
         dict[group_name] = compute_group_importance(
             term_groups_list, ebm, X, contributions

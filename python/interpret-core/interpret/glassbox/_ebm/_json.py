@@ -15,7 +15,7 @@ from ...utils._clean_simple import typify_classification
 
 def jsonify_lists(vals):
     if len(vals) != 0:
-        if type(vals[0]) is float:
+        if isinstance(vals[0], float):
             for idx, val in enumerate(vals):
                 # JSON doesn't have NaN, or infinities, but javaScript
                 # uses dynamic typing so we can use strings instead.
@@ -92,7 +92,7 @@ def _to_json_inner(ebm, detail="all"):
     outputs.append(output)
     j["outputs"] = outputs
 
-    if type(ebm.intercept_) is float:
+    if isinstance(ebm.intercept_, float):
         # scikit-learn requires that we have a single float value as our intercept for compatibility with
         # RegressorMixin, but in other scenarios where we want to support things like multi-output it would be
         # easier if the regression intercept were handled identically to classification, so put it in an array

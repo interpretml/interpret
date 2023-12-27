@@ -9,17 +9,19 @@ import operator
 def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
     n_modulo = 10**categorical_digits
     n_categories = min(n_categories, n_modulo - 1)
-    vals = rng.choice(n_categories, n_samples)
-    mapping = n_modulo + 1 + rng.permutation(n_categories)
-    mapping = mapping[vals]
+    mapping = rng.permutation(n_categories)
+    mapping += n_modulo + 1
     mapping = mapping.astype(str)
     mapping = np.char.add(mapping, ".")
+    vals = rng.choice(n_categories, n_samples)
+    mapping = mapping[vals]
+
     # reserve 0 for an alternative missing representation
-    vals = (vals + 1).astype(str)
+    vals += 1
+    vals = vals.astype(str)
     vals = np.char.zfill(vals, categorical_digits)
-    vals = np.char.add(mapping, vals)
-    vals = vals.astype(float)
-    return vals
+
+    return np.char.add(mapping, vals).astype(float)
 
 
 def _make_categorical_str(col, prefix, categorical_digits):
@@ -29,19 +31,22 @@ def _make_categorical_str(col, prefix, categorical_digits):
 
     col -= order
     col *= cat_mod
-    col = np.char.zfill(np.round(col).astype(int).astype(str), categorical_digits)
+    np.round(col, out=col)
+    col = col.astype(int).astype(str)
+    col = np.char.zfill(col, categorical_digits)
 
     order = order.astype(int)
     order -= cat_mod
-    order = np.char.zfill(order.astype(str), categorical_digits)
+    order = order.astype(str)
+    order = np.char.zfill(order, categorical_digits)
     order = np.char.translate(order, str.maketrans("0123456789", "abcdefghij"))
     order = np.char.add(prefix, np.char.add(order, "_"))
 
     return np.char.add(order, col)
 
 
-def _synthetic_features(
-    rng, n_samples, missing, objects, categorical_digits, clip_low, clip_high
+def _synthetic_features_default(
+    n_samples, missing, objects, seed, categorical_digits, clip_low, clip_high
 ):
     # EBMs are blind to the scale of the feature values since features are binned using
     # quantiles, so we can use whatever scale we want for convenience. We choose the
@@ -52,6 +57,11 @@ def _synthetic_features(
     # scale with integers where we have 5 categories from -2 to +2, and we clip at
     # -2.0 and +2.0 to make transformations like exp(x) and x**3 not too extreme.
 
+    if isinstance(seed, np.random.Generator):
+        rng = seed
+    else:
+        rng = np.random.default_rng(seed)
+
     clip_low_int = int(np.ceil(clip_low))
     clip_high_int = int(np.floor(clip_high))
 
@@ -60,17 +70,17 @@ def _synthetic_features(
     features = []
 
     # Feature 0 - Continuous drawn from uniform distribution
-    names.append("f0_uniform")
+    names.append("f00_uniform")
     types.append("continuous")
     features.append(rng.uniform(clip_low, clip_high, n_samples))
 
     # Feature 1 - Continuous drawn from normal distribution
-    names.append("f1_normal")
+    names.append("f01_normal")
     types.append("continuous")
     features.append(np.clip(rng.normal(0.0, 1.375, n_samples), clip_low, clip_high))
 
     # Feature 2 - Continuous time between events with avg time between events of 1.4375
-    names.append("f2_exponential")
+    names.append("f02_exponential")
     types.append("continuous")
     features.append(
         np.clip(
@@ -79,7 +89,7 @@ def _synthetic_features(
     )
 
     # Feature 3 - Integers with lumpy distribution
-    names.append("f3_ints")
+    names.append("f03_integers")
     types.append("continuous")
     features.append(
         rng.choice(clip_high_int - clip_low_int + 1, n_samples)
@@ -87,14 +97,14 @@ def _synthetic_features(
     )
 
     # Feature 4 - Integer number of events in an interval, with average rate 1.75
-    names.append("f4_poisson")
+    names.append("f04_poisson")
     types.append("continuous")
     features.append(
         np.clip(rng.poisson(lam=1.75, size=n_samples) - 2, clip_low_int, clip_high_int)
     )
 
     # Feature 5 - Positive correlation with feature 0 and negative with 1
-    names.append("f5_multicol")
+    names.append("f05_multicollinearity")
     types.append("continuous")
     features.append(
         np.clip(
@@ -105,7 +115,7 @@ def _synthetic_features(
     )
 
     # Feature 6 - Correlation with feature 2 in center region
-    names.append("f6_partial")
+    names.append("f06_partial_correlation")
     types.append("continuous")
     clip_quarter = (clip_high - clip_low) * 0.25
     features.append(
@@ -124,12 +134,12 @@ def _synthetic_features(
     )
 
     # Feature 7 - Interaction between feature 3 and feature 4
-    names.append("f7_interact")
+    names.append("f07_interaction")
     types.append("continuous")
     features.append(np.clip(features[3] * features[4], clip_low_int, clip_high_int))
 
     # Feature 8 - Categorical feature with low cardinality
-    names.append("f8_low")
+    names.append("f08_low_cardinality")
     types.append("nominal")
     n_categories = 9
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -138,7 +148,7 @@ def _synthetic_features(
     features.append(col)
 
     # Feature 9 - Categorical feature with high cardinality
-    names.append("f9_high")
+    names.append("f09_high_cardinality")
     types.append("nominal")
     n_categories = 50
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -163,12 +173,9 @@ def _normalize_string_categorical(col, clip_low, clip_high):
         col[missings] = "_0"
         col = col.astype(str)
         col = np.char.rpartition(col, "_")[:, 2]
-        col = col.astype(int)
-
-        col = col - 1
-        multiple = (clip_high - clip_low) / float(col.max())
-        col = col.astype(float)
-        col *= multiple
+        col = col.astype(int).astype(float)
+        col += -1.0
+        col *= (clip_high - clip_low) / col.max()
         col += clip_low
 
         col[missings] = np.nan
@@ -186,12 +193,9 @@ def _normalize_float_categorical(col, clip_low, clip_high):
         col[missings] = 0.0
         col -= np.floor(col)
         col *= cat_mod
-        col = np.round(col).astype(int)
-
-        col = col - 1
-        multiple = (clip_high - clip_low) / float(col.max())
-        col = col.astype(float)
-        col *= multiple
+        np.round(col, out=col)
+        col += -1.0
+        col *= (clip_high - clip_low) / col.max()
         col += clip_low
 
         col[missings] = np.nan
@@ -217,7 +221,7 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
     return X
 
 
-def make_synthetic(
+def synthetic_default(
     classes=["class_0", "class_1"],
     n_samples=10000,
     missing=False,
@@ -225,17 +229,20 @@ def make_synthetic(
     seed=None,
     base_shift=0.0,
     noise_scale=1.0,
-    categorical_digits=4,
+    categorical_digits=3,
     clip_low=-2.0,
     clip_high=2.0,
 ):
-    rng = np.random.default_rng(seed)
+    if isinstance(seed, np.random.Generator):
+        rng = seed
+    else:
+        rng = np.random.default_rng(seed)
 
-    X, names, types = _synthetic_features(
-        rng, n_samples, missing, objects, categorical_digits, clip_low, clip_high
+    X_orig, names, types = _synthetic_features_default(
+        n_samples, missing, objects, rng, categorical_digits, clip_low, clip_high
     )
 
-    X_imp = _normalize_categoricals(X, types, clip_low, clip_high)
+    X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
 
     # impute missing values with 0
     missings = np.isnan(X_imp)
@@ -289,7 +296,7 @@ def make_synthetic(
 
         y = classes[y]
 
-    return (X, y, names, types)
+    return (X_orig, y, names, types)
 
 
 def _check_synthetic_dataset(

@@ -1338,7 +1338,7 @@ class EBMModel(BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        n_scores = 1 if type(self.intercept_) is float else len(self.intercept_)
+        n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
         explanations = ebm_eval_terms(
             X,
@@ -1687,7 +1687,7 @@ class EBMModel(BaseEstimator):
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
-            n_scores = 1 if type(self.intercept_) is float else len(self.intercept_)
+            n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
             explanations = ebm_eval_terms(
                 X,

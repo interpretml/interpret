@@ -140,7 +140,7 @@ def ebm_predict_scores(
     init_score=None,
 ):
     shape = n_samples
-    if type(intercept) is not float and len(intercept) != 1:
+    if not isinstance(intercept, float) and len(intercept) != 1:
         shape = (n_samples, len(intercept))
     sample_scores = np.full(shape, intercept, dtype=np.float64)
 
