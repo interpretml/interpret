@@ -6,43 +6,81 @@ from itertools import takewhile
 import operator
 
 
-def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
-    n_modulo = 10**categorical_digits
-    n_categories = min(n_categories, n_modulo - 1)
-    mapping = rng.permutation(n_categories)
-    mapping += n_modulo + 1
-    mapping = mapping.astype(str)
-    mapping = np.char.add(mapping, ".")
-    vals = rng.choice(n_categories, n_samples)
-    mapping = mapping[vals]
+def synthetic_default(
+    classes=["class_0", "class_1"],
+    n_samples=10000,
+    missing=False,
+    objects=True,
+    seed=None,
+    base_shift=0.0,
+    noise_scale=0.25,
+    categorical_digits=3,
+    clip_low=-2.0,
+    clip_high=2.0,
+):
+    if isinstance(seed, np.random.Generator):
+        rng = seed
+    else:
+        rng = np.random.default_rng(seed)
 
-    # reserve 0 for an alternative missing representation
-    vals += 1
-    vals = vals.astype(str)
-    vals = np.char.zfill(vals, categorical_digits)
+    X_orig, names, types = _synthetic_features_default(
+        n_samples, missing, objects, rng, categorical_digits, clip_low, clip_high
+    )
 
-    return np.char.add(mapping, vals).astype(float)
+    X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
 
+    # impute missing values with 0
+    missings = np.isnan(X_imp)
+    X_imp[missings] = 0.0
 
-def _make_categorical_str(col, prefix, categorical_digits):
-    cat_mod = 10**categorical_digits
+    # create some additive terms for our model to find
+    # our additions for y below have a bias of about +3.8, so shift the default by
+    # -4.0 to get us close to zero and the base shift is for anything away from zero
+    base_shift -= 1.0
+    y = rng.normal(base_shift, noise_scale, n_samples)
+    y += np.sin(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
+    y += np.cos(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
+    y += np.exp(X_imp[:, 2]) * 0.125
+    y += X_imp[:, 3] * 0.375
+    y += -X_imp[:, 4] * 0.375
+    y += X_imp[:, 5] ** 2 * 0.375
+    y += X_imp[:, 6] ** 3 * 0.09375
 
-    order = np.floor(col)
+    # linear addition of low cardinality categorical
+    y += X_imp[:, -2] * 0.375
 
-    col -= order
-    col *= cat_mod
-    np.round(col, out=col)
-    col = col.astype(int).astype(str)
-    col = np.char.zfill(col, categorical_digits)
+    # linear addition of high cardinality categorical
+    y += X_imp[:, -1] * 0.375
 
-    order = order.astype(int)
-    order -= cat_mod
-    order = order.astype(str)
-    order = np.char.zfill(order, categorical_digits)
-    order = np.char.translate(order, str.maketrans("0123456789", "abcdefghij"))
-    order = np.char.add(prefix, np.char.add(order, "_"))
+    # pairs
+    y += X_imp[:, 0] * X_imp[:, 1] * 0.1875
+    y += X_imp[:, 0] * X_imp[:, 2] * 0.125
 
-    return np.char.add(order, col)
+    # 3-way interaction
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.125
+
+    if classes is not None and classes != 0:
+        if type(classes) == int:
+            classes = np.arange(classes)
+        else:
+            classes = np.array(classes)
+
+        n_classes = len(classes)
+        if n_classes == 1:
+            y = np.full(n_samples, 0, dtype=int)
+        else:
+            prob = np.exp(y)
+            prob = prob / (1.0 + prob)
+
+            y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(int)
+
+            if 2 < n_classes:
+                # multiclass. To keep things simple randomly select classes above 0th
+                y = np.where(y == 0, 0, rng.integers(1, n_classes, n_samples))
+
+        y = classes[y]
+
+    return (X_orig, y, names, types)
 
 
 def _synthetic_features_default(
@@ -164,20 +202,43 @@ def _synthetic_features_default(
     return (X, names, types)
 
 
-def _normalize_string_categorical(col, clip_low, clip_high):
-    missings = col != col
-    if not missings.all():
-        col[missings] = "_0"
-        col = col.astype(str)
-        col = np.char.rpartition(col, "_")[:, 2]
-        col = col.astype(int).astype(float)
-        col += -1.0
-        col *= (clip_high - clip_low) / col.max()
-        col += clip_low
+def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
+    n_modulo = 10**categorical_digits
+    n_categories = min(n_categories, n_modulo - 1)
+    mapping = rng.permutation(n_categories)
+    mapping += n_modulo + 1
+    mapping = mapping.astype(str)
+    mapping = np.char.add(mapping, ".")
+    vals = rng.choice(n_categories, n_samples)
+    mapping = mapping[vals]
 
-        col[missings] = np.nan
+    # reserve 0 for an alternative missing representation
+    vals += 1
+    vals = vals.astype(str)
+    vals = np.char.zfill(vals, categorical_digits)
 
-    return col
+    return np.char.add(mapping, vals).astype(float)
+
+
+def _make_categorical_str(col, prefix, categorical_digits):
+    cat_mod = 10**categorical_digits
+
+    order = np.floor(col)
+
+    col -= order
+    col *= cat_mod
+    np.round(col, out=col)
+    col = col.astype(int).astype(str)
+    col = np.char.zfill(col, categorical_digits)
+
+    order = order.astype(int)
+    order -= cat_mod
+    order = order.astype(str)
+    order = np.char.zfill(order, categorical_digits)
+    order = np.char.translate(order, str.maketrans("0123456789", "abcdefghij"))
+    order = np.char.add(prefix, np.char.add(order, "_"))
+
+    return np.char.add(order, col)
 
 
 def _normalize_float_categorical(col, clip_low, clip_high):
@@ -199,6 +260,22 @@ def _normalize_float_categorical(col, clip_low, clip_high):
     return col
 
 
+def _normalize_string_categorical(col, clip_low, clip_high):
+    missings = col != col
+    if not missings.all():
+        col[missings] = "_0"
+        col = col.astype(str)
+        col = np.char.rpartition(col, "_")[:, 2]
+        col = col.astype(int).astype(float)
+        col += -1.0
+        col *= (clip_high - clip_low) / col.max()
+        col += clip_low
+
+        col[missings] = np.nan
+
+    return col
+
+
 def _normalize_categoricals(X, types, clip_low, clip_high):
     if X.dtype == object:
         features = []
@@ -216,83 +293,6 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
                 if types[i] == "nominal":
                     X[:, i] = _normalize_float_categorical(X[:, i], clip_low, clip_high)
     return X
-
-
-def synthetic_default(
-    classes=["class_0", "class_1"],
-    n_samples=10000,
-    missing=False,
-    objects=True,
-    seed=None,
-    base_shift=0.0,
-    noise_scale=0.25,
-    categorical_digits=3,
-    clip_low=-2.0,
-    clip_high=2.0,
-):
-    if isinstance(seed, np.random.Generator):
-        rng = seed
-    else:
-        rng = np.random.default_rng(seed)
-
-    X_orig, names, types = _synthetic_features_default(
-        n_samples, missing, objects, rng, categorical_digits, clip_low, clip_high
-    )
-
-    X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
-
-    # impute missing values with 0
-    missings = np.isnan(X_imp)
-    X_imp[missings] = 0.0
-
-    # create some additive terms for our model to find
-    # our additions for y below have a bias of about +3.8, so shift the default by
-    # -4.0 to get us close to zero and the base shift is for anything away from zero
-    base_shift -= 1.0
-    y = rng.normal(base_shift, noise_scale, n_samples)
-    y += np.sin(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
-    y += np.cos(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
-    y += np.exp(X_imp[:, 2]) * 0.125
-    y += X_imp[:, 3] * 0.375
-    y += -X_imp[:, 4] * 0.375
-    y += X_imp[:, 5] ** 2 * 0.375
-    y += X_imp[:, 6] ** 3 * 0.09375
-
-    # linear addition of low cardinality categorical
-    y += X_imp[:, -2] * 0.375
-
-    # linear addition of high cardinality categorical
-    y += X_imp[:, -1] * 0.375
-
-    # pairs
-    y += X_imp[:, 0] * X_imp[:, 1] * 0.1875
-    y += X_imp[:, 0] * X_imp[:, 2] * 0.125
-
-    # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.125
-
-    if classes is not None and classes != 0:
-        if type(classes) == int:
-            classes = np.arange(classes)
-        else:
-            classes = np.array(classes)
-
-        n_classes = len(classes)
-        if n_classes == 1:
-            y = np.full(n_samples, 0, dtype=int)
-        else:
-            prob = np.exp(y)
-            prob = prob / (1.0 + prob)
-
-            y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(int)
-
-            if 2 < n_classes:
-                # multiclass. To keep things simple randomly select classes above 0th
-                y = np.where(y == 0, 0, rng.integers(1, n_classes, n_samples))
-
-        y = classes[y]
-
-    return (X_orig, y, names, types)
 
 
 def _check_synthetic_dataset(
