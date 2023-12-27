@@ -70,17 +70,17 @@ def _synthetic_features_default(
     features = []
 
     # Feature 0 - Continuous drawn from uniform distribution
-    names.append("f00_uniform")
+    names.append("f0_uniform")
     types.append("continuous")
     features.append(rng.uniform(clip_low, clip_high, n_samples))
 
     # Feature 1 - Continuous drawn from normal distribution
-    names.append("f01_normal")
+    names.append("f1_normal")
     types.append("continuous")
     features.append(np.clip(rng.normal(0.0, 1.375, n_samples), clip_low, clip_high))
 
     # Feature 2 - Continuous time between events with avg time between events of 1.4375
-    names.append("f02_exponential")
+    names.append("f2_exponential")
     types.append("continuous")
     features.append(
         np.clip(
@@ -88,23 +88,20 @@ def _synthetic_features_default(
         )
     )
 
-    # Feature 3 - Integers with lumpy distribution
-    names.append("f03_integers")
-    types.append("continuous")
-    features.append(
-        rng.choice(clip_high_int - clip_low_int + 1, n_samples)
-        - (clip_high_int - clip_low_int) // 2
-    )
-
-    # Feature 4 - Integer number of events in an interval, with average rate 1.75
-    names.append("f04_poisson")
+    # Feature 3 - Integer number of events in an interval, with average rate 1.75
+    names.append("f3_poisson")
     types.append("continuous")
     features.append(
         np.clip(rng.poisson(lam=1.75, size=n_samples) - 2, clip_low_int, clip_high_int)
     )
 
+    # Feature 4 - Interaction between feature 3 and feature 4
+    names.append("f4_interaction")
+    types.append("continuous")
+    features.append(np.clip(features[2] * features[3], clip_low, clip_high))
+
     # Feature 5 - Positive correlation with feature 0 and negative with 1
-    names.append("f05_multicollinearity")
+    names.append("f5_multicollinearity")
     types.append("continuous")
     features.append(
         np.clip(
@@ -115,7 +112,7 @@ def _synthetic_features_default(
     )
 
     # Feature 6 - Correlation with feature 2 in center region
-    names.append("f06_partial_correlation")
+    names.append("f6_partial_correlation")
     types.append("continuous")
     clip_quarter = (clip_high - clip_low) * 0.25
     features.append(
@@ -133,13 +130,13 @@ def _synthetic_features_default(
         )
     )
 
-    # Feature 7 - Interaction between feature 3 and feature 4
-    names.append("f07_interaction")
+    # Feature 7 - Useless feature
+    names.append("f7_useless")
     types.append("continuous")
-    features.append(np.clip(features[3] * features[4], clip_low_int, clip_high_int))
+    features.append(rng.normal(1000.0, 1000.0, n_samples))
 
     # Feature 8 - Categorical feature with low cardinality
-    names.append("f08_low_cardinality")
+    names.append("f8_low_cardinality")
     types.append("nominal")
     n_categories = 9
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -148,7 +145,7 @@ def _synthetic_features_default(
     features.append(col)
 
     # Feature 9 - Categorical feature with high cardinality
-    names.append("f09_high_cardinality")
+    names.append("f9_high_cardinality")
     types.append("nominal")
     n_categories = 50
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -228,7 +225,7 @@ def synthetic_default(
     objects=True,
     seed=None,
     base_shift=0.0,
-    noise_scale=1.0,
+    noise_scale=0.25,
     categorical_digits=3,
     clip_low=-2.0,
     clip_high=2.0,
@@ -251,29 +248,28 @@ def synthetic_default(
     # create some additive terms for our model to find
     # our additions for y below have a bias of about +3.8, so shift the default by
     # -4.0 to get us close to zero and the base shift is for anything away from zero
-    base_shift -= 4.0
+    base_shift -= 1.0
     y = rng.normal(base_shift, noise_scale, n_samples)
-    y += X_imp[:, 0] ** 2
-    y += X_imp[:, 1] ** 3
-    y += np.exp(X_imp[:, 2])
-    y += X_imp[:, 3]  # integers (use linear response)
-    y += -X_imp[:, 4]  # integers (use linear response)
-    y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 5]) * 5.0
-    y += np.cos(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 6]) * 5.0
-    y += X_imp[:, 7]  # integer interaction feature
+    y += np.sin(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
+    y += np.cos(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
+    y += np.exp(X_imp[:, 2]) * 0.125
+    y += X_imp[:, 3] * 0.375
+    y += -X_imp[:, 4] * 0.375
+    y += X_imp[:, 5] ** 2 * 0.375
+    y += X_imp[:, 6] ** 3 * 0.09375
 
     # linear addition of low cardinality categorical
-    y += X_imp[:, -2]
+    y += X_imp[:, -2] * 0.375
 
     # linear addition of high cardinality categorical
-    y += X_imp[:, -1]
+    y += X_imp[:, -1] * 0.375
 
     # pairs
-    y += X_imp[:, 0] * X_imp[:, 1]
-    y += X_imp[:, 1] * X_imp[:, 2]
+    y += X_imp[:, 0] * X_imp[:, 1] * 0.1875
+    y += X_imp[:, 0] * X_imp[:, 2] * 0.125
 
     # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2]
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.125
 
     if classes is not None and classes != 0:
         if type(classes) == int:
