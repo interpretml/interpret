@@ -36,10 +36,10 @@ def synthetic_default(
     # create some additive terms for our model to find
     # our additions for y below have a bias of about +3.8, so shift the default by
     # -4.0 to get us close to zero and the base shift is for anything away from zero
-    base_shift -= 1.0
+    base_shift -= 0.75
     y = rng.normal(base_shift, noise_scale, n_samples)
-    y += np.sin(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
-    y += np.cos(3.14 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
+    y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
+    y += np.cos(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
     y += np.exp(X_imp[:, 2]) * 0.125
     y += X_imp[:, 3] * 0.375
     y += -X_imp[:, 4] * 0.375
@@ -57,7 +57,7 @@ def synthetic_default(
     y += X_imp[:, 0] * X_imp[:, 2] * 0.125
 
     # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.125
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.03125
 
     if classes is not None and classes != 0:
         if type(classes) == int:
@@ -107,33 +107,35 @@ def _synthetic_features_default(
     types = []
     features = []
 
-    # Feature 0 - Continuous drawn from uniform distribution
+    # Feature 0 - Continuous drawn from a uniform distribution
     names.append("f0_uniform")
     types.append("continuous")
     features.append(rng.uniform(clip_low, clip_high, n_samples))
 
-    # Feature 1 - Continuous drawn from normal distribution
+    # Feature 1 - Continuous drawn from a normal distribution
     names.append("f1_normal")
     types.append("continuous")
     features.append(np.clip(rng.normal(0.0, 1.375, n_samples), clip_low, clip_high))
 
-    # Feature 2 - Continuous time between events with avg time between events of 1.4375
+    # Feature 2 - Continuous time between events with avg time between events of 1.84375
     names.append("f2_exponential")
     types.append("continuous")
     features.append(
         np.clip(
-            rng.exponential(scale=1.4375, size=n_samples) - 1.75, clip_low, clip_high
+            rng.exponential(scale=1.84375, size=n_samples) - 2.0625, clip_low, clip_high
         )
     )
 
-    # Feature 3 - Integer number of events in an interval, with average rate 1.75
+    # Feature 3 - Integer number of events in an interval, with average rate 1.9375
     names.append("f3_poisson")
     types.append("continuous")
     features.append(
-        np.clip(rng.poisson(lam=1.75, size=n_samples) - 2, clip_low_int, clip_high_int)
+        np.clip(
+            rng.poisson(lam=1.9375, size=n_samples) - 2, clip_low_int, clip_high_int
+        )
     )
 
-    # Feature 4 - Interaction between feature 3 and feature 4
+    # Feature 4 - Interaction between feature 2 and feature 3
     names.append("f4_interaction")
     types.append("continuous")
     features.append(np.clip(features[2] * features[3], clip_low, clip_high))
@@ -143,7 +145,9 @@ def _synthetic_features_default(
     types.append("continuous")
     features.append(
         np.clip(
-            0.75 * features[0] - 0.625 * features[1] + rng.normal(0.0, 1.0, n_samples),
+            0.75 * features[0]
+            - 0.625 * features[1]
+            + rng.normal(0.0, 0.6875, n_samples),
             clip_low,
             clip_high,
         )
@@ -162,18 +166,18 @@ def _synthetic_features_default(
                 0.0,
             )
             * features[2]
-            + rng.normal(0.0, 1.0, n_samples),
+            + rng.normal(0.0625, 1.25, n_samples),
             clip_low,
             clip_high,
         )
     )
 
-    # Feature 7 - Useless feature
-    names.append("f7_useless")
+    # Feature 7 - Unused feature
+    names.append("f7_unused")
     types.append("continuous")
     features.append(rng.normal(1000.0, 1000.0, n_samples))
 
-    # Feature 8 - Categorical feature with low cardinality
+    # Feature 8 - Categorical with low cardinality
     names.append("f8_low_cardinality")
     types.append("nominal")
     n_categories = 9
@@ -182,7 +186,7 @@ def _synthetic_features_default(
         col = _make_categorical_str(col, "l", categorical_digits)
     features.append(col)
 
-    # Feature 9 - Categorical feature with high cardinality
+    # Feature 9 - Categorical with high cardinality
     names.append("f9_high_cardinality")
     types.append("nominal")
     n_categories = 50
