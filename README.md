@@ -1,7 +1,7 @@
 # InterpretML
 
-<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2FInterpretable_Classification_Methods.ipynb)
+<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2Finterpretable-classification.ipynb)
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
@@ -46,7 +46,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 | Telecom Churn | Business| .849±.005           | .824±.004     | .828±.010       | **_.852±.006_**              |
 | Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_** | **_.981±.003_**              |
 
-[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/main/benchmarks/EBM_Classification_Comparison.ipynb)
+[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/develop/examples/benchmarks/ebm-classification-comparison.ipynb)
 
 # Supported Techniques
 
