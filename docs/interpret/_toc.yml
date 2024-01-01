@@ -82,3 +82,15 @@ chapters:
   - file: installation-guide
   - file: debugging-guide
 - file: faq
+- file: examples
+  sections:
+  - file: examples/interpretable-classification
+  - file: examples/interpretable-regression
+  - file: examples/interpretable-regression-synthetic
+  - file: examples/explain-blackbox-classifiers
+  - file: examples/explain-blackbox-regressors
+  - file: examples/merge-ebms
+  - file: examples/custom-interactions
+  - file: examples/differential-privacy
+  - file: examples/group-importances
+  - file: examples/prototype-selection

@@ -1,7 +1,7 @@
 # InterpretML
 
-<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=examples%2Fpython%2Finterpretable-classification.ipynb)
+<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/examples/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=docs%2Finterpret%2Fexamples%2Finterpretable-classification.ipynb)
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
@@ -46,7 +46,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 | Telecom Churn | Business| .849±.005           | .824±.004     | .828±.010       | **_.852±.006_**              |
 | Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_** | **_.981±.003_**              |
 
-[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/develop/examples/benchmarks/ebm-classification-comparison.ipynb)
+[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/develop/docs/benchmarks/ebm-classification-comparison.ipynb)
 
 # Supported Techniques
 
@@ -82,7 +82,7 @@ from interpret import show
 ebm_global = ebm.explain_global()
 show(ebm_global)
 ```
-![Global Explanation Image](./examples/python/assets/readme_ebm_global_specific.PNG?raw=true)
+![Global Explanation Image](./docs/readme/ebm_global_specific.png?raw=true)
 
 <br/>
 
@@ -91,7 +91,7 @@ Understand individual predictions
 ebm_local = ebm.explain_local(X_test, y_test)
 show(ebm_local)
 ```
-![Local Explanation Image](./examples/python/assets/readme_ebm_local_specific.PNG?raw=true)
+![Local Explanation Image](./docs/readme/ebm_local_specific.png?raw=true)
 
 <br/>
 
@@ -99,7 +99,7 @@ And if you have multiple model explanations, compare them
 ```python
 show([logistic_regression_global, decision_tree_global])
 ```
-![Dashboard Image](./examples/python/assets/readme_dashboard.PNG?raw=true)
+![Dashboard Image](./docs/readme/dashboard.png?raw=true)
 
 <br/>
 
@@ -120,7 +120,7 @@ show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 For more information, see the [documentation](https://interpret.ml/docs).
 <br/>
 
-EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://github.com/interpretml/interpret/blob/develop/examples/python/triples.ipynb
+EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://interpret.ml/docs/examples/custom-interactions.html
 <br/>
 <br/>
 
