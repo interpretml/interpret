@@ -212,7 +212,7 @@ jobs:
       pip install -r requirements.txt
       /bin/sh ./build.sh
     displayName: Build docs
-  - publish: docs/interpret_docs/_build/html/
+  - publish: docs/interpret/_build/html/
     artifact: docs
     displayName: Publish docs
 
