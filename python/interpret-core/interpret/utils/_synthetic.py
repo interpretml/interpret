@@ -8,7 +8,7 @@ import operator
 
 def synthetic_default(
     classes=["class_0", "class_1"],
-    n_samples=10000,
+    n_samples=1000,
     missing=False,
     objects=True,
     seed=None,
@@ -29,35 +29,31 @@ def synthetic_default(
 
     X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
 
-    # impute missing values with 0
+    # Impute missing values with 0
     missings = np.isnan(X_imp)
     X_imp[missings] = 0.0
 
-    # create some additive terms for our model to find
-    # our additions for y below have a bias of about +3.8, so shift the default by
-    # -4.0 to get us close to zero and the base shift is for anything away from zero
-    base_shift -= 0.75
+    # Create some additive term mains for our model to find
     y = rng.normal(base_shift, noise_scale, n_samples)
-    y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9375
-    y += np.cos(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9375
-    y += np.exp(X_imp[:, 2]) * 0.125
-    y += X_imp[:, 3] * 0.375
-    y += -X_imp[:, 4] * 0.375
-    y += X_imp[:, 5] ** 2 * 0.375
-    y += X_imp[:, 6] ** 3 * 0.09375
+    y += np.cos(3.14159 * 4.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9
+    y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
+    y += X_imp[:, 2] ** 2 * 0.4
+    y += X_imp[:, 3] * 0.4
+    y += -X_imp[:, 4] * 0.4
+    y += X_imp[:, 5] ** 3 * 0.1
+    y += np.exp(X_imp[:, 6]) * 0.15
+    # Feature 7 is unused
+    y += X_imp[:, -2] * 0.4  # low cardinality categorical
+    y += X_imp[:, -1] * 0.4  # high cardinality categorical
 
-    # linear addition of low cardinality categorical
-    y += X_imp[:, -2] * 0.375
-
-    # linear addition of high cardinality categorical
-    y += X_imp[:, -1] * 0.375
-
-    # pairs
-    y += X_imp[:, 0] * X_imp[:, 1] * 0.1875
-    y += X_imp[:, 0] * X_imp[:, 2] * 0.125
+    # pair interactions
+    clip_low_int = int(np.ceil(clip_low))
+    xor_val = (X_imp[:, 3].astype(int) + clip_low_int) % 2
+    y += X_imp[:, 0] * np.where(xor_val, +1, -1) * 0.2
+    y += X_imp[:, 1] * X_imp[:, 2] * 0.1
 
     # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.03125
+    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.02
 
     if classes is not None and classes != 0:
         if type(classes) == int:
@@ -67,7 +63,7 @@ def synthetic_default(
 
         n_classes = len(classes)
         if n_classes == 1:
-            y = np.full(n_samples, 0, dtype=int)
+            y = np.full(n_samples, classes[0])
         else:
             prob = np.exp(y)
             prob = prob / (1.0 + prob)
@@ -76,9 +72,9 @@ def synthetic_default(
 
             if 2 < n_classes:
                 # multiclass. To keep things simple randomly select classes above 0th
-                y = np.where(y == 0, 0, rng.integers(1, n_classes, n_samples))
+                y = np.where(y, rng.integers(1, n_classes, n_samples), 0)
 
-        y = classes[y]
+            y = classes[y]
 
     return (X_orig, y, names, types)
 
@@ -86,14 +82,15 @@ def synthetic_default(
 def _synthetic_features_default(
     n_samples, missing, objects, seed, categorical_digits, clip_low, clip_high
 ):
-    # EBMs are blind to the scale of the feature values since features are binned using
-    # quantiles, so we can use whatever scale we want for convenience. We choose the
-    # scale of the feature values to make generating the synthetic y easier by roughly
-    # keeping the same scale for all features.
-    # Each feature is roughly set such that the average of the negative values is -1.0
-    # and the average of the positive values is 1.0. This allows us to have a common
-    # scale with integers where we have 5 categories from -2 to +2, and we clip at
-    # -2.0 and +2.0 to make transformations like exp(x) and x**3 not too extreme.
+    # EBMs are insensitive to the scale of the feature values since features are binned
+    # using quantiles, so we have the flexibility to use any scale that suits our
+    # needs. We have selected a scale for the feature values that makes generating
+    # synthetic y values easier by keeping the same scale for all features in the
+    # range between -2.0 and 2.0. This also helps keep transformations such as exp(x)
+    # and x^3 from becoming excessively large.
+    # We've also adjusted each feature so the average negative value is about -1.0
+    # and the average positive value is about +1.0. This establishes a uniform scale
+    # with integers, accommodating five values ranging from -2 to +2.
 
     if isinstance(seed, np.random.Generator):
         rng = seed
@@ -115,48 +112,37 @@ def _synthetic_features_default(
     # Feature 1 - Continuous drawn from a normal distribution
     names.append("f1_normal")
     types.append("continuous")
-    features.append(np.clip(rng.normal(0.0, 1.375, n_samples), clip_low, clip_high))
+    features.append(np.clip(rng.normal(0.0, 1.5, n_samples), clip_low, clip_high))
 
-    # Feature 2 - Continuous time between events with avg time between events of 1.84375
+    # Feature 2 - Continuous time between events with avg time between events of 2.0
     names.append("f2_exponential")
     types.append("continuous")
     features.append(
-        np.clip(
-            rng.exponential(scale=1.84375, size=n_samples) - 2.0625, clip_low, clip_high
-        )
+        np.clip(rng.exponential(scale=2.0, size=n_samples) - 2.0, clip_low, clip_high)
     )
 
-    # Feature 3 - Integer number of events in an interval, with average rate 1.9375
+    # Feature 3 - Integer number of events in an interval, with average rate 2.0
     names.append("f3_poisson")
     types.append("continuous")
     features.append(
-        np.clip(
-            rng.poisson(lam=1.9375, size=n_samples) - 2, clip_low_int, clip_high_int
-        )
+        np.clip(rng.poisson(lam=2.0, size=n_samples) - 2, clip_low_int, clip_high_int)
     )
 
-    # Feature 4 - Interaction between feature 2 and feature 3
-    names.append("f4_interaction")
-    types.append("continuous")
-    features.append(np.clip(features[2] * features[3], clip_low, clip_high))
-
-    # Feature 5 - Positive correlation with feature 0 and negative with 1
-    names.append("f5_multicollinearity")
+    # Feature 4 - Positive correlation with feature 0 and negative with 1
+    names.append("f4_multicollinearity")
     types.append("continuous")
     features.append(
         np.clip(
-            0.75 * features[0]
-            - 0.625 * features[1]
-            + rng.normal(0.0, 0.6875, n_samples),
+            0.7 * features[0] - 0.6 * features[1] + rng.normal(0.0, 0.7, n_samples),
             clip_low,
             clip_high,
         )
     )
 
-    # Feature 6 - Correlation with feature 2 in center region
-    names.append("f6_partial_correlation")
+    # Feature 5 - Correlation with feature 2 in center region
+    names.append("f5_conditional_correlation")
     types.append("continuous")
-    clip_quarter = (clip_high - clip_low) * 0.25
+    clip_quarter = (clip_high - clip_low) / 4
     features.append(
         np.clip(
             np.where(
@@ -166,7 +152,18 @@ def _synthetic_features_default(
                 0.0,
             )
             * features[2]
-            + rng.normal(0.0625, 1.25, n_samples),
+            + rng.normal(0.0, 1.25, n_samples),
+            clip_low,
+            clip_high,
+        )
+    )
+
+    # Feature 6 - Interaction between feature 2 and feature 3
+    names.append("f6_interaction")
+    types.append("continuous")
+    features.append(
+        np.clip(
+            features[2] * features[3] + rng.normal(0.0, 0.5, n_samples),
             clip_low,
             clip_high,
         )
@@ -175,7 +172,7 @@ def _synthetic_features_default(
     # Feature 7 - Unused feature
     names.append("f7_unused")
     types.append("continuous")
-    features.append(rng.normal(1000.0, 1000.0, n_samples))
+    features.append(rng.uniform(10.0, 100.0, n_samples))
 
     # Feature 8 - Categorical with low cardinality
     names.append("f8_low_cardinality")
@@ -201,7 +198,7 @@ def _synthetic_features_default(
     if missing:
         # make 10% of feature data missing
         mask = rng.choice([False, True], X.shape, p=[0.9, 0.1])
-        X[mask] = np.nan
+        X[mask] = None if objects else np.nan
 
     return (X, names, types)
 
@@ -213,15 +210,16 @@ def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
     mapping += n_modulo + 1
     mapping = mapping.astype(str)
     mapping = np.char.add(mapping, ".")
-    vals = rng.choice(n_categories, n_samples)
-    mapping = mapping[vals]
 
     # reserve 0 for an alternative missing representation
-    vals += 1
-    vals = vals.astype(str)
-    vals = np.char.zfill(vals, categorical_digits)
+    categories = np.arange(1, n_categories + 1).astype(str)
+    categories = np.char.zfill(categories, categorical_digits)
 
-    return np.char.add(mapping, vals).astype(float)
+    mapping = np.char.add(mapping, categories)
+    mapping = mapping.astype(float)
+
+    vals = rng.choice(n_categories, n_samples)
+    return mapping[vals]
 
 
 def _make_categorical_str(col, prefix, categorical_digits):
