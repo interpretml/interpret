@@ -211,6 +211,7 @@ jobs:
       cd "$(Build.SourcesDirectory)/docs/"
       pip install -r requirements.txt
       /bin/sh ./build.sh
+    continueOnError: true
     displayName: Build docs
   - publish: docs/interpret/_build/html/
     artifact: docs

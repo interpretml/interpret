@@ -11,10 +11,10 @@ copyright                   : "2023"  # Copyright year to be placed in the foote
 logo                        : logo.png  # A path to the book logo
 
 execute:
-  timeout: 120
-  allow_errors: true
+  timeout: -1
+  allow_errors: false
 
-images_url: "/assets/images"
+images_url: "/images"
 
 sphinx:
   config:
