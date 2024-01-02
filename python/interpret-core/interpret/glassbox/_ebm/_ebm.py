@@ -1287,6 +1287,16 @@ class EBMModel(BaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
+    def to_excel(self, file):
+        """Exports the model to an Excel workbook.
+
+        Args:
+            file: a path-like object (str or os.PathLike),
+                or a file-like object implementing .write().
+        """
+
+        raise NotImplementedError()
+
     def _predict_score(self, X, init_score=None):
         """Predicts scores on provided samples.
 
