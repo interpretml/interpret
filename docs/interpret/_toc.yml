@@ -3,56 +3,56 @@ root: index
 chapters:
 - file: interpret
   sections:
-  - file: interpret-glassbox
+  - file: python/api/interpret-glassbox
     sections:
-    - file: ExplainableBoostingClassifier
-    - file: ExplainableBoostingRegressor
-    - file: LogisticRegression
-    - file: LinearRegression
-    - file: ClassificationTree
-    - file: RegressionTree
-    - file: DecisionListClassifier
-    - file: merge_ebms
-  - file: interpret-blackbox
+    - file: python/api/ExplainableBoostingClassifier
+    - file: python/api/ExplainableBoostingRegressor
+    - file: python/api/LogisticRegression
+    - file: python/api/LinearRegression
+    - file: python/api/ClassificationTree
+    - file: python/api/RegressionTree
+    - file: python/api/DecisionListClassifier
+    - file: python/api/merge_ebms
+  - file: python/api/interpret-blackbox
     sections:
-    - file: ShapKernel
-    - file: LimeTabular
-    - file: PartialDependence
-    - file: MorrisSensitivity
-  - file: interpret-greybox
+    - file: python/api/ShapKernel
+    - file: python/api/LimeTabular
+    - file: python/api/PartialDependence
+    - file: python/api/MorrisSensitivity
+  - file: python/api/interpret-greybox
     sections:
-    - file: ShapTree
-  - file: interpret-perf
+    - file: python/api/ShapTree
+  - file: python/api/interpret-perf
     sections:
-    - file: RegressionPerf
-    - file: ROC
-    - file: PR
-  - file: interpret-data
+    - file: python/api/RegressionPerf
+    - file: python/api/ROC
+    - file: python/api/PR
+  - file: python/api/interpret-data
     sections:
-    - file: ClassHistogram
-    - file: Marginal
-  - file: interpret-privacy
+    - file: python/api/ClassHistogram
+    - file: python/api/Marginal
+  - file: python/api/interpret-privacy
     sections:
-    - file: DPExplainableBoostingClassifier
-    - file: DPExplainableBoostingRegressor
-  - file: interpret-utils
+    - file: python/api/DPExplainableBoostingClassifier
+    - file: python/api/DPExplainableBoostingRegressor
+  - file: python/api/interpret-utils
     sections:
-    - file: link_func
-    - file: inv_link
-    - file: measure_interactions
-  - file: interpret-develop
+    - file: python/api/link_func
+    - file: python/api/inv_link
+    - file: python/api/measure_interactions
+  - file: python/api/interpret-develop
     sections:
-    - file: debug_mode
-  - file: show
-  - file: show_link
-  - file: set_show_addr
-  - file: get_show_addr
-  - file: preserve
-  - file: shutdown_show_server
-  - file: init_show_server
-  - file: status_show_server
-  - file: set_visualize_provider
-  - file: get_visualize_provider
+    - file: python/api/debug_mode
+  - file: python/api/show
+  - file: python/api/show_link
+  - file: python/api/set_show_addr
+  - file: python/api/get_show_addr
+  - file: python/api/preserve
+  - file: python/api/shutdown_show_server
+  - file: python/api/init_show_server
+  - file: python/api/status_show_server
+  - file: python/api/set_visualize_provider
+  - file: python/api/get_visualize_provider
 - file: algorithms
   sections:
   - file: glassbox
@@ -84,13 +84,13 @@ chapters:
 - file: faq
 - file: examples
   sections:
-  - file: examples/interpretable-classification
-  - file: examples/interpretable-regression
-  - file: examples/interpretable-regression-synthetic
-  - file: examples/explain-blackbox-classifiers
-  - file: examples/explain-blackbox-regressors
-  - file: examples/merge-ebms
-  - file: examples/custom-interactions
-  - file: examples/differential-privacy
-  - file: examples/group-importances
-  - file: examples/prototype-selection
+  - file: python/examples/interpretable-classification
+  - file: python/examples/interpretable-regression
+  - file: python/examples/interpretable-regression-synthetic
+  - file: python/examples/explain-blackbox-classifiers
+  - file: python/examples/explain-blackbox-regressors
+  - file: python/examples/merge-ebms
+  - file: python/examples/custom-interactions
+  - file: python/examples/differential-privacy
+  - file: python/examples/group-importances
+  - file: python/examples/prototype-selection

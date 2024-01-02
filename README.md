@@ -1,7 +1,7 @@
 # InterpretML
 
-<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/examples/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=docs%2Finterpret%2Fexamples%2Finterpretable-classification.ipynb)
+<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=docs%2Finterpret%2Fpython%2Fexamples%2Finterpretable-classification.ipynb)
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
@@ -120,7 +120,7 @@ show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 For more information, see the [documentation](https://interpret.ml/docs).
 <br/>
 
-EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://interpret.ml/docs/examples/custom-interactions.html
+EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://interpret.ml/docs/python/examples/custom-interactions.html
 <br/>
 <br/>
 
