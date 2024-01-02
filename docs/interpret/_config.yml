@@ -14,8 +14,6 @@ execute:
   timeout: -1
   allow_errors: false
 
-images_url: "/images"
-
 sphinx:
   config:
     napoleon_use_ivar: True

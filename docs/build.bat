@@ -1,4 +1,4 @@
-jupyter-book build .\interpret\
+jupyter-book build --warningiserror .\interpret\
 SET RETURNCODE=%ERRORLEVEL%
 
 mkdir .\interpret\_build\html\images\

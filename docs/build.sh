@@ -1,4 +1,4 @@
-jupyter-book build ./interpret/
+jupyter-book build --warningiserror ./interpret/
 ret_code=$?
 
 mkdir -p ./interpret/_build/html/images/
