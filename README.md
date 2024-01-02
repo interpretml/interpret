@@ -82,7 +82,7 @@ from interpret import show
 ebm_global = ebm.explain_global()
 show(ebm_global)
 ```
-![Global Explanation Image](./docs/readme/ebm_global_specific.png?raw=true)
+![Global Explanation Image](./docs/readme/ebm-global.png?raw=true)
 
 <br/>
 
@@ -91,7 +91,7 @@ Understand individual predictions
 ebm_local = ebm.explain_local(X_test, y_test)
 show(ebm_local)
 ```
-![Local Explanation Image](./docs/readme/ebm_local_specific.png?raw=true)
+![Local Explanation Image](./docs/readme/ebm-local.png?raw=true)
 
 <br/>
 
