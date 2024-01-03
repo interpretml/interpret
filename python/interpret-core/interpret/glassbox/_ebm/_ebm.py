@@ -1045,9 +1045,41 @@ class EBMModel(BaseEstimator):
                 boost_groups = []
                 max_dimensions = 0
 
-                for feature_idxs in interactions:
-                    # clean these up since we expose them publically inside self.term_features_
-                    feature_idxs = tuple(map(int, feature_idxs))
+                for features in interactions:
+                    feature_idxs = []
+                    for feature in features:
+                        if isinstance(feature, float):
+                            if not feature.is_integer():
+                                msg = f"interaction feature index {feature} is not an integer."
+                                _log.error(msg)
+                                raise ValueError(msg)
+                            feature = int(feature)
+
+                        if isinstance(feature, int):
+                            if feature < 0:
+                                feature_idx = len(feature_map) + feature
+                                if feature_idx < 0:
+                                    msg = f"interaction feature index {feature} out of range of the features."
+                                    _log.error(msg)
+                                    raise ValueError(msg)
+                            elif feature < len(feature_map):
+                                feature_idx = feature
+                            else:
+                                msg = f"interaction feature index {feature} out of range of the features."
+                                _log.error(msg)
+                                raise ValueError(msg)
+                        elif isinstance(feature, str):
+                            feature_idx = feature_map.get(feature, None)
+                            if feature_idx is None:
+                                msg = f'interaction feature "{feature}" not in the list of feature names.'
+                                _log.error(msg)
+                                raise ValueError(msg)
+                        else:
+                            msg = f'interaction feature "{feature}" has unsupported type {type(feature)}.'
+                            _log.error(msg)
+                            raise ValueError(msg)
+                        feature_idxs.append(feature_idx)
+                    feature_idxs = tuple(feature_idxs)
 
                     max_dimensions = max(max_dimensions, len(feature_idxs))
                     sorted_tuple = tuple(sorted(feature_idxs))
