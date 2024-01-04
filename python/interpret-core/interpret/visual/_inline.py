@@ -69,11 +69,14 @@ def _build_viz_figure(visualization, detected_envs=None):
         if hasattr(visualization, "_interpret_help_text"):
             if "azuresynapse" in detected_envs:
                 link = synapse_help_link
+                help = {"text": visualization._interpret_help_text, "link": link}
             elif hasattr(visualization, "_interpret_help_link"):
                 link = visualization._interpret_help_link
             else:
                 link = interpret_help_link
-            help = {"text": visualization._interpret_help_text, "link": link}
+            # for now disable this help text everywhere except for Synapse because it 
+            # creates annoying scroll bars due to the additional height.
+            # help = {"text": visualization._interpret_help_text, "link": link}
     elif isinstance(visualization, str):
         _type = "html"
         figure = _build_base64_frame_src(visualization)
