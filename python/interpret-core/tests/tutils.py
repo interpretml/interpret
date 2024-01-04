@@ -140,46 +140,6 @@ def iris_classification():
     return dataset
 
 
-def adult_classification(sample=0.01):
-    df = pd.read_csv(
-        "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
-        header=None,
-    ).sample(frac=sample, random_state=42)
-    df.columns = [
-        "Age",
-        "WorkClass",
-        "fnlwgt",
-        "Education",
-        "EducationNum",
-        "MaritalStatus",
-        "Occupation",
-        "Relationship",
-        "Race",
-        "Gender",
-        "CapitalGain",
-        "CapitalLoss",
-        "HoursPerWeek",
-        "NativeCountry",
-        "Income",
-    ]
-    train_cols = df.columns[0:-1]
-    label = df.columns[-1]
-    X_df = df[train_cols].values
-    y_df = df[label].apply(lambda x: 0 if x == " <=50K" else 1)
-
-    X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
-        X_df, y_df, test_size=0.20, random_state=1
-    )
-
-    dataset = {
-        "full": {"X": X_df, "y": y_df},
-        "train": {"X": X_df_train, "y": y_df_train},
-        "test": {"X": X_df_test, "y": y_df_test},
-    }
-
-    return dataset
-
-
 def valid_predict(explainer, X):
     all_valid = True
 

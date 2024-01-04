@@ -30,7 +30,7 @@ def synthetic_default(
     X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
 
     # Impute missing values with 0
-    missings = np.isnan(X_imp)
+    missings = np.isnan(X_imp, order="F")
     X_imp[missings] = 0.0
 
     # Create some additive term mains for our model to find
@@ -197,7 +197,7 @@ def _synthetic_features_default(
 
     if missing:
         # make 10% of feature data missing
-        mask = rng.choice([False, True], X.shape, p=[0.9, 0.1])
+        mask = rng.choice([False, True], tuple(reversed(X.shape)), p=[0.9, 0.1]).T
         X[mask] = None if objects else np.nan
 
     return (X, names, types)

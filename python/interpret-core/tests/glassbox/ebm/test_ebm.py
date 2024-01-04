@@ -7,10 +7,11 @@
 
 import math
 from sklearn.metrics import log_loss
+
+from interpret.utils import synthetic_default
 from ...tutils import (
     synthetic_multiclass,
     synthetic_classification,
-    adult_classification,
     iris_classification,
     smoke_test_explanations,
 )
@@ -29,7 +30,7 @@ from io import StringIO
 import json
 import numpy as np
 import pandas as pd  # type: ignore
-from sklearn.model_selection import cross_validate, StratifiedShuffleSplit, train_test_split  # type: ignore
+from sklearn.model_selection import train_test_split  # type: ignore
 from sklearn.metrics import accuracy_score  # type: ignore
 from sklearn.utils.estimator_checks import check_estimator  # type: ignore
 import pytest
@@ -292,55 +293,26 @@ def test_unknown_multiclass_category():
 
 @pytest.mark.slow
 def test_unknown_binary_category():
-    data = adult_classification()
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
+    X, y, names, types = synthetic_default(classes=2, objects=False)
 
-    ebm = ExplainableBoostingClassifier(
-        n_jobs=2, outer_bags=2, interactions=[[0, 13], [1, 2], [13, 3]]
-    )
-    ebm.fit(X_tr, y_tr)
+    ebm = ExplainableBoostingClassifier(names, types, interactions=[[0, -1], [1, 2], [-1, 3]])
+    ebm.fit(X, y)
 
-    test_point = X_te[[0]].copy()
-    perturbed_point = test_point.copy()
-    perturbed_point[0, -1] = "Unseen Categorical"  # Change country to unseen value
+    orig = ebm.eval_terms(X[0])
+    X[0, -1] = -1.9  # unseen categorical
+    unseen = ebm.eval_terms(X[0])
 
-    # Perturbed feature contribution
-    country_contrib = ebm.explain_local(test_point).data(0)["scores"][-4]
-    perturbed_contrib = ebm.explain_local(perturbed_point).data(0)["scores"][-4]
+    assert unseen[0, ebm.n_features_in_ - 1] == 0
+    assert unseen[0, -3] == 0
+    assert unseen[0, -1] == 0
 
-    assert country_contrib != 0
-    assert perturbed_contrib == 0
+    # overwrite the 3 values that should be zero with the orig scores
+    unseen[0, ebm.n_features_in_ - 1] = orig[0, ebm.n_features_in_ - 1]
+    unseen[0, -3] = orig[0, -3]
+    unseen[0, -1] = orig[0, -1]
 
-    # Perturbed interaction contribution (dim 1)
-    country_inter_contrib = ebm.explain_local(test_point).data(0)["scores"][-3]
-    perturbed_inter_contrib = ebm.explain_local(perturbed_point).data(0)["scores"][-3]
-
-    assert country_inter_contrib != 0
-    assert perturbed_inter_contrib == 0
-
-    # Perturbed interaction contribution (dim 2)
-    country_inter_contrib_2 = ebm.explain_local(test_point).data(0)["scores"][-1]
-    perturbed_inter_contrib_2 = ebm.explain_local(perturbed_point).data(0)["scores"][-1]
-
-    assert country_inter_contrib_2 != 0
-    assert perturbed_inter_contrib_2 == 0
-
-    # Sum(logit) differences from decision_function should only come from perturbed columns
-    test_logit = ebm.decision_function(test_point)
-    perturbed_logit = ebm.decision_function(perturbed_point)
-
-    assert test_logit != perturbed_logit
-    assert np.allclose(
-        test_logit,
-        (
-            perturbed_logit
-            + country_contrib
-            + country_inter_contrib
-            + country_inter_contrib_2
-        ),
-    )
+    # everything else should be unchanged other than the zeroed values we overwrote
+    assert np.array_equal(orig, unseen)
 
 
 @pytest.mark.visual
@@ -546,31 +518,16 @@ def test_ebm_synthetic_singleclass_classification():
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_uniform():
+    # TODO: expand this test to use the other feature types available 
+    #       and evaluate using an feature value outside of the training range
     from sklearn.metrics import roc_auc_score  # type: ignore
 
-    data = adult_classification()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-    y_te = data["test"]["y"]
+    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
-    feature_types = [None] * X.shape[1]
-    feature_types[0] = "uniform"
+    types[0] = "uniform"
 
-    clf = ExplainableBoostingClassifier(
-        feature_types=feature_types, n_jobs=-2, interactions=3
-    )
-    n_splits = 3
-    ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    cross_validate(
-        clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-    )
-
-    clf = ExplainableBoostingClassifier(
-        feature_types=feature_types, n_jobs=-2, interactions=3
-    )
+    clf = ExplainableBoostingClassifier(names, types)
     clf.fit(X_tr, y_tr)
 
     prob_scores = clf.predict_proba(X_te)
@@ -616,25 +573,13 @@ def test_ebm_uniform_multiclass():
 
 @pytest.mark.visual
 @pytest.mark.slow
-def test_ebm_adult():
+def test_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
 
-    data = adult_classification()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-    y_te = data["test"]["y"]
+    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
-    n_splits = 3
-    ss = StratifiedShuffleSplit(n_splits=n_splits, test_size=0.25, random_state=1337)
-    cross_validate(
-        clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-    )
-
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=3)
+    clf = ExplainableBoostingClassifier(names, types)
     clf.fit(X_tr, y_tr)
 
     prob_scores = clf.predict_proba(X_te)
@@ -707,45 +652,24 @@ def test_eval_terms_multiclass():
 
 
 def test_ebm_sample_weight():
-    data = adult_classification()
-    X_train = data["train"]["X"][:, [0, 1]]
-    y_train = data["train"]["y"]
+    X, y, names, types = synthetic_default(classes=2, objects=False)
 
-    X_test = data["test"]["X"][:, [0, 1]]
-    data["test"]["y"]
+    ebm = ExplainableBoostingClassifier(names, types)
+    ebm.fit(X, y)
 
-    w_train = np.ones_like(y_train)
-    w_train[0] = 10
+    weights = np.full(len(y), 128.0)
+    weighted = ExplainableBoostingClassifier(names, types)
+    weighted.fit(X, y, sample_weight=weights)
 
-    # Smoke test defaults (bagging, parallelization, interactions)
-    clf_default = ExplainableBoostingClassifier()
-    clf_default.fit(X_train, y_train, sample_weight=w_train)
+    # if all the weights are identical the models should be identical
+    assert np.array_equal(ebm.predict_proba(X), weighted.predict_proba(X))
 
-    # Minimal EBM to verify exact sample weight behavior
-    clf = ExplainableBoostingClassifier(
-        outer_bags=1,
-        validation_size=0,
-        early_stopping_rounds=0,
-        max_rounds=100,
-        n_jobs=1,
-    )
-    clf.fit(X_train, y_train, sample_weight=w_train)
+    # change a single weight
+    weights[0] = 1.1
+    changed = ExplainableBoostingClassifier(names, types)
+    changed.fit(X, y, sample_weight=weights)
 
-    # Create 10 manual copies of X_train[0]
-    repeat_indexes = [0] * 9 + list(range(len(X_train)))
-    X_train_u = X_train[repeat_indexes]
-    y_train_u = y_train.iloc[repeat_indexes]
-
-    clf_u = ExplainableBoostingClassifier(
-        outer_bags=1,
-        validation_size=0,
-        early_stopping_rounds=0,
-        max_rounds=100,
-        n_jobs=1,
-    )
-    clf_u.fit(X_train_u, y_train_u)
-
-    assert np.allclose(clf.predict_proba(X_test), clf_u.predict_proba(X_test))
+    assert not np.array_equal(ebm.predict_proba(X), changed.predict_proba(X))
 
 
 @pytest.mark.visual
@@ -806,33 +730,20 @@ def test_zero_validation():
 
 @pytest.mark.visual
 @pytest.mark.slow
-def test_dp_ebm_adult():
+def test_dp_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
     from interpret.privacy import DPExplainableBoostingClassifier
 
-    data = adult_classification(sample=1)
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-    X_tr = data["train"]["X"]
-    y_tr = data["train"]["y"]
-    X_te = data["test"]["X"]
-    y_te = data["test"]["y"]
+    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
+
     w_tr = np.ones_like(y_tr)
     w_tr[-1] = 2
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Possible privacy violation.*")
 
-        clf = DPExplainableBoostingClassifier(epsilon=1)
-        n_splits = 3
-        ss = StratifiedShuffleSplit(
-            n_splits=n_splits, test_size=0.25, random_state=1337
-        )
-        cross_validate(
-            clf, X, y, scoring="roc_auc", cv=ss, n_jobs=None, return_estimator=True
-        )
-
-        clf = DPExplainableBoostingClassifier(epsilon=1)
+        clf = DPExplainableBoostingClassifier(names, types, epsilon=1)
         clf.fit(X_tr, y_tr, w_tr)
 
         prob_scores = clf.predict_proba(X_te)
