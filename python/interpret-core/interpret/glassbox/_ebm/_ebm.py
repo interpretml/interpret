@@ -20,6 +20,7 @@ from ._utils import (
     generate_term_types,
 )
 from ._json import to_jsonable, UNTESTED_from_jsonable
+from ._excel import UNTESTED_to_excel_exportable
 
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._histogram import make_all_histogram_edges
@@ -1287,6 +1288,23 @@ class EBMModel(BaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
+    def to_excel_exportable(self, file):
+        """Converts the model to an Excel exportable representation.
+
+        Args:
+
+        Returns:
+            An xlsxwriter.Workbook object with an Excel representation of the model.
+            This Workbook can be modified and then exported as any xlsxwriter object
+            for advanced usages when custom export is required.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        workbook = UNTESTED_to_excel_exportable(self, file)
+
+        return workbook
+
     def to_excel(self, file):
         """Exports the model to an Excel workbook.
 
@@ -1295,7 +1313,10 @@ class EBMModel(BaseEstimator):
                 or a file-like object implementing .write().
         """
 
-        raise NotImplementedError()
+        check_is_fitted(self, "has_fitted_")
+
+        workbook = to_excel_exportable(self, file)
+        worbook.close()
 
     def _predict_score(self, X, init_score=None):
         """Predicts scores on provided samples.
