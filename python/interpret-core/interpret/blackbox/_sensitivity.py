@@ -87,7 +87,8 @@ class MorrisSensitivity(ExplainerMixin):
 
         # SALib does not support string categoricals, and np.object_ is slower,
         # so convert to np.float64 until we implement some automatic categorical handling
-        data = data.astype(np.float64, order="C", copy=False)
+        # Fortran ordered is faster since we go by columns, so use that
+        data = data.astype(np.float64, order="F", copy=False)
 
         if sampler is None:
             sampler = MorrisSampler()

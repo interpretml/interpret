@@ -116,6 +116,9 @@ class PartialDependence(ExplainerMixin):
             data, n_samples, feature_names, feature_types, False, 0
         )
 
+        # Fortran ordered float data is faster since we go by columns, so use that
+        data = data.astype(np.float64, order="F", copy=False)
+
         pdps = []
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx, feature in enumerate(self.feature_names_in_):
