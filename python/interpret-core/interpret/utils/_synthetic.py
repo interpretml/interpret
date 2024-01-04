@@ -186,7 +186,7 @@ def _synthetic_features_default(
     # Feature 9 - Categorical with high cardinality
     names.append("f9_high_cardinality")
     types.append("nominal")
-    n_categories = 50
+    n_categories = 46  # 46 is the max categories before the docs UI hides them
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
     if objects:
         col = _make_categorical_str(col, "h", categorical_digits)
