@@ -74,7 +74,7 @@ def _build_viz_figure(visualization, detected_envs=None):
                 link = visualization._interpret_help_link
             else:
                 link = interpret_help_link
-            # for now disable this help text everywhere except for Synapse because it 
+            # for now disable this help text everywhere except for Synapse because it
             # creates annoying scroll bars due to the additional height.
             # help = {"text": visualization._interpret_help_text, "link": link}
     elif isinstance(visualization, str):

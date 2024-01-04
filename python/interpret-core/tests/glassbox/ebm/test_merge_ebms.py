@@ -24,12 +24,12 @@ def valid_ebm(ebm):
 
 
 def test_merge_ebms():
-    # TODO: improve this test by checking the merged ebms for validity. 
+    # TODO: improve this test by checking the merged ebms for validity.
     #       Right now the merged ebms fail the check for valid_ebm.
     #       The failure might be related to the warning we're getting
     #       about the scalar divide in the merge_ebms line:
     #       "percentage.append((new_high - new_low) / (old_high - old_low))"
-    
+
     X, y, names, _ = synthetic_default(classes=2, missing=True, objects=True)
 
     with warnings.catch_warnings():
@@ -52,7 +52,8 @@ def test_merge_ebms():
         X_train[3, 3] = "me"
         X_train[4, 3] = "you"
 
-        ebm1 = ExplainableBoostingClassifier(names, 
+        ebm1 = ExplainableBoostingClassifier(
+            names,
             random_state=random_state,
             max_interaction_bins=5,
             interactions=[(8, 3, 0)],
@@ -63,7 +64,8 @@ def test_merge_ebms():
         X_train, _, y_train, _ = train_test_split(
             X, y, test_size=0.40, random_state=random_state
         )
-        ebm2 = ExplainableBoostingClassifier(names, 
+        ebm2 = ExplainableBoostingClassifier(
+            names,
             random_state=random_state,
             max_interaction_bins=4,
             interactions=[(8, 2), (7, 3), (1, 2)],
@@ -74,7 +76,8 @@ def test_merge_ebms():
         X_train, _, y_train, _ = train_test_split(
             X, y, test_size=0.60, random_state=random_state
         )
-        ebm3 = ExplainableBoostingClassifier(names, 
+        ebm3 = ExplainableBoostingClassifier(
+            names,
             random_state=random_state,
             max_interaction_bins=3,
             interactions=[(1, 2), (2, 8)],
@@ -82,7 +85,7 @@ def test_merge_ebms():
         ebm3.fit(X_train, y_train)
 
         merged_ebm1 = merge_ebms([ebm1, ebm2, ebm3])
-        #valid_ebm(merged_ebm1)
+        # valid_ebm(merged_ebm1)
         global_exp = merged_ebm1.explain_global()
         local_exp = merged_ebm1.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -91,13 +94,13 @@ def test_merge_ebms():
         X_train, _, y_train, _ = train_test_split(
             X, y, test_size=0.10, random_state=random_state
         )
-        ebm4 = ExplainableBoostingClassifier(names, 
-            random_state=random_state, max_interaction_bins=8, interactions=2
+        ebm4 = ExplainableBoostingClassifier(
+            names, random_state=random_state, max_interaction_bins=8, interactions=2
         )
         ebm4.fit(X_train, y_train)
 
         merged_ebm2 = merge_ebms([merged_ebm1, ebm4])
-        #valid_ebm(merged_ebm2)
+        # valid_ebm(merged_ebm2)
         global_exp = merged_ebm2.explain_global()
         local_exp = merged_ebm2.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -106,13 +109,13 @@ def test_merge_ebms():
         X_train, _, y_train, _ = train_test_split(
             X, y, test_size=0.50, random_state=random_state
         )
-        ebm5 = ExplainableBoostingClassifier(names, 
-            random_state=random_state, max_interaction_bins=8, interactions=2
+        ebm5 = ExplainableBoostingClassifier(
+            names, random_state=random_state, max_interaction_bins=8, interactions=2
         )
         ebm5.fit(X_train, y_train)
 
         merged_ebm3 = merge_ebms([ebm5, merged_ebm2])
-        #valid_ebm(merged_ebm3)
+        # valid_ebm(merged_ebm3)
         global_exp = merged_ebm3.explain_global()
         local_exp = merged_ebm3.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)

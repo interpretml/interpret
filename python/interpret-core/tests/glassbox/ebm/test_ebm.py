@@ -295,7 +295,9 @@ def test_unknown_multiclass_category():
 def test_unknown_binary_category():
     X, y, names, types = synthetic_default(classes=2, objects=False)
 
-    ebm = ExplainableBoostingClassifier(names, types, interactions=[[0, -1], [1, 2], [-1, 3]])
+    ebm = ExplainableBoostingClassifier(
+        names, types, interactions=[[0, -1], [1, 2], [-1, 3]]
+    )
     ebm.fit(X, y)
 
     orig = ebm.eval_terms(X[0])
@@ -518,7 +520,7 @@ def test_ebm_synthetic_singleclass_classification():
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_uniform():
-    # TODO: expand this test to use the other feature types available 
+    # TODO: expand this test to use the other feature types available
     #       and evaluate using an feature value outside of the training range
     from sklearn.metrics import roc_auc_score  # type: ignore
 
