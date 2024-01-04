@@ -732,9 +732,8 @@ def test_zero_validation():
 @pytest.mark.slow
 def test_dp_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
-    from interpret.privacy import DPExplainableBoostingClassifier
 
-    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X, y, names, types = synthetic_default(classes=2, n_samples=10000, objects=False)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
     w_tr = np.ones_like(y_tr)
@@ -764,8 +763,6 @@ def test_dp_ebm_binary():
 
 
 def test_dp_ebm_synthetic_regression():
-    from interpret.privacy import DPExplainableBoostingRegressor
-
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
@@ -783,8 +780,6 @@ def test_dp_ebm_synthetic_regression():
 
 
 def test_dp_ebm_external_privacy_bounds():
-    from interpret.privacy import DPExplainableBoostingRegressor
-
     data = synthetic_regression()
     X = data["full"]["X"]
     y = data["full"]["y"]
