@@ -1315,7 +1315,7 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        workbook = to_excel_exportable(self, file)
+        workbook = UNTESTED_to_excel_exportable(self, file)
         worbook.close()
 
     def _predict_score(self, X, init_score=None):
