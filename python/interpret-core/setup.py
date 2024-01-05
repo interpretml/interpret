@@ -249,6 +249,8 @@ https://github.com/interpretml/interpret
         "notebook": ["ipykernel>=4.10.0", "ipython>=5.5.0"],
         # Plotly (required if .visualize is ever called)
         "plotly": ["plotly>=3.8.1"],
+        # Export
++       "excel": ["Xlsxwriter>=3.0.1"],
         # Explainers
         "lime": ["lime>=0.1.1.33"],
         "sensitivity": ["SALib>=1.3.3"],
