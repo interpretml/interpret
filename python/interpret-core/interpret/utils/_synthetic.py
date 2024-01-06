@@ -210,7 +210,9 @@ def _synthetic_features_default(
     elif 1.0 < missing:
         raise ValueError(f"missing cannot be more than 1.0")
     elif missing != 0.0:
-        mask = rng.choice([False, True], tuple(reversed(X.shape)), p=[1.0 - missing, missing]).T
+        mask = rng.choice(
+            [False, True], tuple(reversed(X.shape)), p=[1.0 - missing, missing]
+        ).T
         X[mask] = None if objects else np.nan
 
     return (X, names, types)
