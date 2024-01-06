@@ -42,7 +42,7 @@ def synthetic_default(
     y += -X_imp[:, 4] * 0.4
     y += X_imp[:, 5] ** 3 * 0.1
     y += np.exp(X_imp[:, 6]) * 0.15
-    # Feature 7 is unused
+    # Feature 7 is unused in the generation function
     y += X_imp[:, -2] * 0.4  # low cardinality categorical
     y += X_imp[:, -1] * 0.4  # high cardinality categorical
 
@@ -56,7 +56,7 @@ def synthetic_default(
     y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.02
 
     if classes is not None and classes != 0:
-        if type(classes) == int:
+        if isinstance(classes, int):
             classes = np.arange(classes)
         else:
             classes = np.array(classes)
@@ -71,7 +71,8 @@ def synthetic_default(
             y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(int)
 
             if 2 < n_classes:
-                # multiclass. To keep things simple randomly select classes above 0th
+                # multiclass. To keep things simple, randomly select classes above
+                # the 0th class with equal probability between the classes above 0.
                 y = np.where(y, rng.integers(1, n_classes, n_samples), 0)
 
             y = classes[y]
@@ -142,7 +143,7 @@ def _synthetic_features_default(
     # Feature 5 - Correlation with feature 2 in center region
     names.append("f5_conditional_correlation")
     types.append("continuous")
-    clip_quarter = (clip_high - clip_low) / 4
+    clip_quarter = (clip_high - clip_low) / 4.0
     features.append(
         np.clip(
             np.where(
@@ -195,9 +196,21 @@ def _synthetic_features_default(
     # Convert list of features to a 2D numpy array and transpose
     X = np.array(features, dtype=object if objects else float).T
 
-    if missing:
-        # make 10% of feature data missing
-        mask = rng.choice([False, True], tuple(reversed(X.shape)), p=[0.9, 0.1]).T
+    if missing is True:
+        missing = 0.1  # by default make 10% of feature data missing
+    elif missing is False or missing is None:
+        missing = 0.0
+    elif isinstance(missing, int):
+        missing = float(missing)
+    elif not isinstance(missing, float):
+        raise ValueError(f"missing must be bool or float, but is {type(missing)}")
+
+    if missing < 0.0:
+        raise ValueError(f"missing cannot be negative")
+    elif 1.0 < missing:
+        raise ValueError(f"missing cannot be more than 1.0")
+    elif missing != 0.0:
+        mask = rng.choice([False, True], tuple(reversed(X.shape)), p=[1.0 - missing, missing]).T
         X[mask] = None if objects else np.nan
 
     return (X, names, types)
@@ -263,7 +276,7 @@ def _normalize_float_categorical(col, clip_low, clip_high):
 
 
 def _normalize_string_categorical(col, clip_low, clip_high):
-    missings = col != col
+    missings = col != col  # this is a check for nan that works with non-floats
     if not missings.all():
         col[missings] = "_0"
         col = col.astype(str)
