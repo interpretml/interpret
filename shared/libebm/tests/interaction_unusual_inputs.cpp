@@ -159,6 +159,34 @@ TEST_CASE("Term with one feature with one state, interaction, multiclass") {
    CHECK(0 == metricReturn);
 }
 
+TEST_CASE("Term with one feature with two states, interaction, regression") {
+   TestInteraction test = TestInteraction(
+      Task_Regression,
+      { FeatureTest(2, true, true) },
+      { 
+         TestSample({ 0 }, 10),
+         TestSample({ 1 }, 11),
+      }
+   );
+
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
+   CHECK(std::numeric_limits<double>::lowest() == metricReturn);
+}
+
+TEST_CASE("Term with one feature with two states and weights, interaction, regression") {
+   TestInteraction test = TestInteraction(
+      Task_Regression,
+      { FeatureTest(2, true, true) },
+      { 
+         TestSample({ 0 }, 10, 0.5),
+         TestSample({ 1 }, 11, 0.25),
+      }
+   );
+
+   double metricReturn = test.TestCalcInteractionStrength({ 0 });
+   CHECK(std::numeric_limits<double>::lowest() == metricReturn);
+}
+
 TEST_CASE("weights are proportional, interaction, regression") {
    TestInteraction test1 = TestInteraction(
       Task_Regression, 

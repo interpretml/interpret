@@ -334,38 +334,46 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsInteraction(BinSumsInteractionBr
       static constexpr bool bHessian = true;
       if(nullptr != pParams->m_aWeights) {
          static constexpr bool bWeights = true;
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         } else {
             // muticlass
             error = CountClassesInteraction<TFloat, bHessian, bWeights, k_cCompilerScoresStart>::Func(pParams);
-         } else {
-            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
          }
       } else {
          static constexpr bool bWeights = false;
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         } else {
             // muticlass
             error = CountClassesInteraction<TFloat, bHessian, bWeights, k_cCompilerScoresStart>::Func(pParams);
-         } else {
-            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
          }
       }
    } else {
       static constexpr bool bHessian = false;
       if(nullptr != pParams->m_aWeights) {
          static constexpr bool bWeights = true;
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         } else if(size_t { 1 } == pParams->m_cRuntimeRealDimensions) {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            // we need to special case 1 dimension
+            error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, 1>(pParams);
+         } else {
             // Odd: gradient multiclass. Allow it, but do not optimize for it
             error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, k_dynamicDimensions>(pParams);
-         } else {
-            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
          }
       } else {
          static constexpr bool bWeights = false;
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
+         } else if(size_t { 1 } == pParams->m_cRuntimeRealDimensions) {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            // we need to special case 1 dimension
+            error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, 1>(pParams);
+         } else {
             // Odd: gradient multiclass. Allow it, but do not optimize for it
             error = OperatorBinSumsInteraction<TFloat, bHessian, bWeights, k_dynamicScores, k_dynamicDimensions>(pParams);
-         } else {
-            error = CountDimensionsInteraction<TFloat, bHessian, bWeights, k_oneScore, 1>::Func(pParams);
          }
       }
    }

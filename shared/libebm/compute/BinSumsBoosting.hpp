@@ -618,11 +618,11 @@ INLINE_RELEASE_TEMPLATED ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge 
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bReplication, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BitPackBoosting(BinSumsBoostingBridge * const pParams) {
-   if(k_cItemsPerBitPackNone != pParams->m_cPack) {
-      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bReplication, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
-   } else {
+   if(k_cItemsPerBitPackNone == pParams->m_cPack) {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
       return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bReplication, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
+   } else {
+      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bReplication, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
    }
 }
 
@@ -665,19 +665,19 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
          static constexpr bool bWeight = true;
          if(nullptr != pParams->m_pCountOccurrences) {
             static constexpr bool bReplication = true;
-            if(size_t { 1 } != pParams->m_cScores) {
+            if(size_t { 1 } == pParams->m_cScores) {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            } else {
                // muticlass
                error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
-            } else {
-               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
             }
          } else {
             static constexpr bool bReplication = false;
-            if(size_t { 1 } != pParams->m_cScores) {
+            if(size_t { 1 } == pParams->m_cScores) {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            } else {
                // muticlass
                error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
-            } else {
-               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
             }
          }
       } else {
@@ -687,11 +687,11 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
          EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
          static constexpr bool bReplication = false;
 
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+         } else {
             // muticlass
             error = CountClassesBoosting<TFloat, bHessian, bWeight, bReplication, k_cCompilerScoresStart>::Func(pParams);
-         } else {
-            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
          }
       }
    } else {
@@ -700,19 +700,19 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
          static constexpr bool bWeight = true;
          if(nullptr != pParams->m_pCountOccurrences) {
             static constexpr bool bReplication = true;
-            if(size_t { 1 } != pParams->m_cScores) {
+            if(size_t { 1 } == pParams->m_cScores) {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            } else {
                // Odd: gradient multiclass. Allow it, but do not optimize for it
                error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
-            } else {
-               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
             }
          } else {
             static constexpr bool bReplication = false;
-            if(size_t { 1 } != pParams->m_cScores) {
+            if(size_t { 1 } == pParams->m_cScores) {
+               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+            } else {
                // Odd: gradient multiclass. Allow it, but do not optimize for it
                error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
-            } else {
-               error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
             }
          }
       } else {
@@ -722,11 +722,11 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge *
          EBM_ASSERT(nullptr == pParams->m_pCountOccurrences);
          static constexpr bool bReplication = false;
 
-         if(size_t { 1 } != pParams->m_cScores) {
+         if(size_t { 1 } == pParams->m_cScores) {
+            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
+         } else {
             // Odd: gradient multiclass. Allow it, but do not optimize for it
             error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_dynamicScores>(pParams);
-         } else {
-            error = BitPackBoosting<TFloat, bHessian, bWeight, bReplication, k_oneScore>(pParams);
          }
       }
    }
