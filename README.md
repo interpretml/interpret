@@ -607,6 +607,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
 - [Cost of Explainability in AI: An Example with Credit Scoring Models](https://link.springer.com/chapter/10.1007/978-3-031-44064-9_26)
 - [Signature Informed Sampling for Transcriptomic Data](https://www.biorxiv.org/content/biorxiv/early/2023/10/31/2023.10.26.564263.full.pdf)
@@ -625,13 +626,13 @@ We also build on top of many great packages. Please check them out!
 - [Differentially Private Gradient Boosting on Linear Learners for Tabular Data Analysis](https://assets.amazon.science/fa/3a/a62ba73f4bbda1d880b678c39193/differentially-private-gradient-boosting-on-linear-learners-for-tabular-data-analysis.pdf)
 - [Concrete compressive strength prediction using an explainable boosting machine model](https://www.sciencedirect.com/science/article/pii/S2214509523000244/pdfft?md5=171c275b6bcae8897cef03d931e908e2&pid=1-s2.0-S2214509523000244-main.pdf)
 - [Estimate Deformation Capacity of Non-Ductile RC Shear Walls Using Explainable Boosting Machine](https://arxiv.org/pdf/2301.04652.pdf)
-- [Introducing the Rank-Biased Overlap as Similarity Measure for Feature Importance in Explainable Machine Learning: A Case Study on Parkinson’s Disease](https://link.springer.com/chapter/10.1007/978-3-031-15037-1_11)
+- [Introducing the Rank-Biased Overlap as Similarity Measure for Feature Importance in Explainable Machine Learning: A Case Study on Parkinson’s Disease](https://www.researchgate.net/publication/362808061_Introducing_the_Rank-Biased_Overlap_as_Similarity_Measure_for_Feature_Importance_in_Explainable_Machine_Learning_A_Case_Study_on_Parkinson's_Disease)
 - [Targeting resources efficiently and justifiably by combining causal machine learning and theory](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9768181/pdf/frai-05-1015604.pdf)
 - [Extractive Text Summarization Using Generalized Additive Models with Interactions for Sentence Selection](https://arxiv.org/pdf/2212.10707.pdf)
 - [Death by Round Numbers: Glass-Box Machine Learning Uncovers Biases in Medical Practice](https://www.medrxiv.org/content/medrxiv/early/2022/11/28/2022.04.30.22274520.full.pdf)
 - [Post-Hoc Interpretation of Transformer Hyperparameters with Explainable Boosting Machines](https://www.cs.jhu.edu/~xzhan138/papers/BLACK2022.pdf)
 - [Interpretable machine learning for predicting pathologic complete response in patients treated with chemoradiation therapy for rectal adenocarcinoma](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9771385/pdf/frai-05-1059033.pdf)
-- [Exploring the Balance between Interpretability and Performance with carefully designed Constrainable Neural Additive Models](https://deliverypdf.ssrn.com/delivery.php?ID=998105006000069122073098120102102121021040051018055094125029122011041003059093125102072122106122077081069015087124028097016003127095087091028087010007035098086102086081014043013113004081117108011028041097095064071100112069081100069120077067116088100069070097093080074087115080072064086111126&EXT=pdf&INDEX=TRUE)
+- [Exploring the Balance between Interpretability and Performance with carefully designed Constrainable Neural Additive Models](https://www.sciencedirect.com/science/article/pii/S1566253523001987)
 - [Estimating Discontinuous Time-Varying Risk Factors and Treatment Benefits for COVID-19 with Interpretable ML](https://arxiv.org/pdf/2211.08991.pdf)
 - [StratoMod: Predicting sequencing and variant calling errors with interpretable machine learning](https://www.biorxiv.org/content/10.1101/2023.01.20.524401v1.full.pdf)
 - [Interpretable machine learning algorithms to predict leaf senescence date of deciduous trees](https://pdf.sciencedirectassets.com/271723/1-s2.0-S0168192323X00112/1-s2.0-S0168192323003143/main.pdf?X-Amz-Security-Token=IQoJb3JpZ2luX2VjEOP%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIArPrCug2%2BpvA%2F87dfMYdbINsntWDDgNHeCOn72Yfad3AiBHzR9BvMkRvZrjQZ1DoY1YMkD6VsQw45zqo5ykkClnHSq8BQiL%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAUaDDA1OTAwMzU0Njg2NSIMdV4IhgM83azwHKyjKpAFFMABPkhGjjH1i3y26weF5LN6ZuxfgcDlklmnpEZDoEntreay08vlEU7%2F3CLeNSqYgaq5txCiVztJDv2TBcxDUt0PP4faNrHUWIQdfDksvDs3EE7VEupaqhVjMNi0%2F%2ByLRw2OzjMPpz7H5sd3i4%2F%2FK2%2FJlpAWHlr4RFJ9BXMMPbLDEqhjIJIl5ZzaeLeeijXKrTtvJ6iYwTic%2FHJ23m7Fdnkh94HKkFTOWeglJzGT7FSc5Wnc7DgExrL7EBLvu9YVusMUf9rFYIU%2BKaVyxIa7WDUN48cWjwdGLjYV9XPy%2FP2lRKjeiiNMYbdknQzJfSzh0HWxx0Aq6zlXdkJUbvSgqFoDC2npaUGXjNupSLNIzcMFWr8lUvUFIBm1ZigETFDZrB4zEJFQVxXV%2Bsztpcs1tMO%2F8LAG3MNI%2BI%2Fp7lT3bj%2F%2BZg6S7d6ROGS96XMS3Am3WffiwNIxueTGrWmRWxS75EQexcJmrQ4ELU%2By3vOXxIvqftT68w6%2BnBryUB5kGE%2B6GljxUFD5y7hZFLM0tfFW9XEZF5PjDbz%2Fx%2Bi0dxEiwvN2mzNpSAWiiy6ZBT31GSRRMtTe9Sm4U%2B8DwSR0fymXmme5fKLGzkySq0xPuFhzN6LyLCoxtbob%2BRyLALNdP8E31enPu%2B1xl5Isg%2FXHINRM29SYzK0u1PlPK78ng%2Bqt4mUlLD7jlzIeBKa1vz%2BU8%2F1ZYvEofc8i6q691PqjYl%2FZK5lFQO1EEremVOv4i2nEYwmGtjtCAk1WFChnamFlEdWyJIerN5pKI4YvsGF%2FwXG8aHuYBg41CfGftl%2FwlJ77dPOQ8QHgp5BZFheyeYwEMijnbz4terE7kVpdvBKOk5lBxtiJILI0ftU%2F4F0k825M%2Ft4w%2FqzIpgY6sgFspzJ6vfwqmIKbmprTCY6NBr4uAZU%2FPUWraWxu3hCydMZTVOjlrab%2Bv5NSdCqWKHvK7Yn89JtE9um3P8Gyev9BFPXT6LykCtjNOulKUQnywvl8ngKdbujNjLAyZb4D0p4dFRFsE2sUTUWNvs%2BVwA%2BYdn4%2BwPkMN5PU0KR78myJ7LyYJGodNLOXcBSV%2FXa396TmeXagW3ihm2U7H%2FvXm1IZmOz%2FflT5y6CEy%2FegChXEVpb6&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20230808T111525Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAQ3PHCVTY64PTFOFS%2F20230808%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=e35040e1985923b74081dbdac33f7250949695d95e631d68a8fe20684b3746bc&hash=59ce65176ba4b931ecc905ef2a0bb80561947d73205e8ad2561d63a95552a4fb&host=68042c943591013ac2b2430a89b270f6af2c76d8dfd086a07176afe7c76c2c61&pii=S0168192323003143&tid=spdf-41137a89-2992-4585-8512-4303f8dedb0c&sid=b0b6f2a791aeb640d1897e968c8092375869gxrqa&type=client&tsoh=d3d3LnNjaWVuY2VkaXJlY3QuY29t&ua=10145807525053555255&rr=7f375764f8ea2338&cc=us)
@@ -660,7 +661,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)
 - [Identifying main and interaction effects of risk factors to predict intensive care admission in patients hospitalized with COVID-19](https://www.medrxiv.org/content/10.1101/2020.06.30.20143651v1.full.pdf)
-- [Comparing the interpretability of machine learning classifiers for brain tumour survival prediction](https://deliverypdf.ssrn.com/delivery.php?ID=760122118067103094108090123091079011028032009009023085005014014002123105085114025022024005047078031019089073120012025117073002064031071072113006066035001068125027021087087083085026100009018045107092063001023068071002124070107120120007014102094103069089119026110104107005031095001092090&EXT=pdf&INDEX=TRUE)
+- [Development of prediction models for one-year brain tumour survival using machine learning: a comparison of accuracy and interpretability](https://www.pure.ed.ac.uk/ws/portalfiles/portal/343114800/1_s2.0_S0169260723001487_main.pdf)
 - [Using Interpretable Machine Learning to Predict Maternal and Fetal Outcomes](https://arxiv.org/pdf/2207.05322.pdf)
 - [Calibrate: Interactive Analysis of Probabilistic Model Output](https://arxiv.org/pdf/2207.13770.pdf)
 - [Neural Additive Models: Interpretable Machine Learning with Neural Nets](https://arxiv.org/pdf/2004.13912.pdf)
@@ -689,18 +690,22 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machine for Predicting Alzheimer’s Disease from MRI Hippocampal Subfields](https://link.springer.com/chapter/10.1007/978-3-030-86993-9_31)
 - [Impact of Accuracy on Model Interpretations](https://arxiv.org/pdf/2011.09903.pdf)
 - [Machine Learning Algorithms for Identifying Dependencies in OT Protocols](https://www.mdpi.com/1996-1073/16/10/4056)
+- [Causal Understanding of Why Users Share Hate Speech on Social Media](https://arxiv.org/pdf/2310.15772.pdf)
+- [Explainable Boosting Machine: A Contemporary Glass-Box Model to Analyze Work Zone-Related Road Traffic Crashes](https://www.mdpi.com/2313-576X/9/4/83)
+- [Explainable Artificial Intelligence Paves the Way in Precision Diagnostics and Biomarker Discovery for the Subclass of Diabetic Retinopathy in Type 2 Diabetics](https://www.mdpi.com/2218-1989/13/12/1204)
+- [A proposed tree-based explainable artificial intelligence approach for the prediction of angina pectoris](https://www.nature.com/articles/s41598-023-49673-2)
+- [Explainable Boosting Machine: A Contemporary Glass-Box Strategy for the Assessment of Wind Shear Severity in the Runway Vicinity Based on the Doppler Light Detection and Ranging Data](https://www.mdpi.com/2073-4433/15/1/20)
 
 # Books that cover EBMs
 
 - [Machine Learning for High-Risk Applications](https://www.oreilly.com/library/view/machine-learning-for/9781098102425/)
-- [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands/dp/180020390X)
+- [Interpretable Machine Learning with Python](https://www.amazon.com/Interpretable-Machine-Learning-Python-hands-dp-180323542X/dp/180323542X/)
 - [Explainable Artificial Intelligence: An Introduction to Interpretable Machine Learning](https://www.amazon.com/Explainable-Artificial-Intelligence_-An-Introduction-to-Interpretable-XAI/dp/3030833550)
 - [Applied Machine Learning Explainability Techniques](https://www.amazon.com/Applied-Machine-Learning-Explainability-Techniques/dp/1803246154)
 - [The eXplainable A.I.: With Python examples](https://www.amazon.com/eXplainable-I-Python-examples-ebook/dp/B0B4F98MN6)
 - [Platform and Model Design for Responsible AI: Design and build resilient, private, fair, and transparent machine learning models](https://www.amazon.com/Platform-Model-Design-Responsible-transparent/dp/1803237074)
 - [Explainable AI Recipes](https://www.amazon.com/Explainable-Recipes-Implement-Explainability-Interpretability-ebook/dp/B0BSF5NBY7)
 - [Ensemble Methods for Machine Learning](https://www.amazon.com/Ensemble-Methods-Machine-Learning-Kunapuli/dp/1617297135)
-- [Platform and Model Design for Responsible AI: Design and build resilient, private, fair, and transparent machine learning models](https://www.amazon.com/Platform-Model-Design-Responsible-transparent/dp/1803237074)
 
 # External tools
 
