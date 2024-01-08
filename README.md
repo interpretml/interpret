@@ -590,6 +590,7 @@ We also build on top of many great packages. Please check them out!
 
 # External links
 
+- [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
 - [Exploring explainable boosting machines](https://leinadj.github.io/2023/04/09/Exploring-Explainable-Boosting-Machines.html)

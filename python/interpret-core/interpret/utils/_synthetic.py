@@ -40,7 +40,9 @@ def synthetic_default(
     y += X_imp[:, 2] ** 2 * 0.4
     y += X_imp[:, 3] * 0.4
     y += -X_imp[:, 4] * 0.4
-    y += X_imp[:, 5] ** 3 * 0.1
+    y += np.where(
+        np.floor((X_imp[:, 5] - clip_low) * 1.9999).astype(int) % 2, 0.8, -0.8
+    )
     y += np.exp(X_imp[:, 6]) * 0.15
     # Feature 7 is unused in the generation function
     y += X_imp[:, -2] * 0.4  # low cardinality categorical
@@ -48,7 +50,7 @@ def synthetic_default(
 
     # pair interactions
     clip_low_int = int(np.ceil(clip_low))
-    xor_val = (X_imp[:, 3].astype(int) + clip_low_int) % 2
+    xor_val = (X_imp[:, 3].astype(int) - clip_low_int) % 2
     y += X_imp[:, 0] * np.where(xor_val, +1, -1) * 0.2
     y += X_imp[:, 1] * X_imp[:, 2] * 0.1
 
