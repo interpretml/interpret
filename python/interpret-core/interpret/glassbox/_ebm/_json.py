@@ -1,6 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-
+import logging
 from warnings import warn
 from ...utils._link import identify_task
 from math import isnan
@@ -11,6 +11,8 @@ from ._utils import generate_term_names
 from ...utils._histogram import make_all_histogram_edges
 
 from ...utils._clean_simple import typify_classification
+
+_log = logging.getLogger(__name__)
 
 
 def jsonify_lists(vals):

@@ -1,8 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-
+import logging
 from itertools import count
 import numpy as np
+
+_log = logging.getLogger(__name__)
 
 
 def clean_index(index, n_items, names, param_name, attribute_name):
