@@ -1,5 +1,6 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
+# Author: Paul Koch <code@koch.ninja>
 
 import numpy as np
 from itertools import takewhile
@@ -18,10 +19,7 @@ def synthetic_default(
     clip_low=-2.0,
     clip_high=2.0,
 ):
-    if isinstance(seed, np.random.Generator):
-        rng = seed
-    else:
-        rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
 
     X_orig, names, types = _synthetic_features_default(
         n_samples, missing, objects, rng, categorical_digits, clip_low, clip_high
@@ -38,20 +36,17 @@ def synthetic_default(
     y += np.cos(3.14159 * 4.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9
     y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
     y += X_imp[:, 2] ** 2 * 0.4
-    y += X_imp[:, 3] * 0.4
-    y += -X_imp[:, 4] * 0.4
-    y += np.where(
-        np.floor((X_imp[:, 5] - clip_low) * 1.9999).astype(int) % 2, 0.8, -0.8
-    )
+    y += X_imp[:, 3] * 0.4  # feature 3 contains poisson distributed integers
+    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(int) % 2, +0.7, -0.7)
+    y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.5  # sawtooth wave
     y += np.exp(X_imp[:, 6]) * 0.15
     # Feature 7 is unused in the generation function
     y += X_imp[:, -2] * 0.4  # low cardinality categorical
     y += X_imp[:, -1] * 0.4  # high cardinality categorical
 
     # pair interactions
-    clip_low_int = int(np.ceil(clip_low))
-    xor_val = (X_imp[:, 3].astype(int) - clip_low_int) % 2
-    y += X_imp[:, 0] * np.where(xor_val, +1, -1) * 0.2
+    xor_val = (X_imp[:, 3].astype(int) - int(np.floor(clip_low))) % 2
+    y += X_imp[:, 0] * np.where(xor_val, +0.2, -0.2)
     y += X_imp[:, 1] * X_imp[:, 2] * 0.1
 
     # 3-way interaction
@@ -90,10 +85,10 @@ def _synthetic_features_default(
     # needs. We have selected a scale for the feature values that makes generating
     # synthetic y values easier by keeping the same scale for all features in the
     # range between -2.0 and 2.0. This also helps keep transformations such as exp(x)
-    # and x^3 from becoming excessively large.
+    # and x * x from becoming excessively large.
     # We've also adjusted each feature so the average negative value is about -1.0
     # and the average positive value is about +1.0. This establishes a uniform scale
-    # with integers, accommodating five values ranging from -2 to +2.
+    # with integers, accommodating five integers ranging from -2 to +2.
 
     if isinstance(seed, np.random.Generator):
         rng = seed
@@ -108,31 +103,31 @@ def _synthetic_features_default(
     features = []
 
     # Feature 0 - Continuous drawn from a uniform distribution
-    names.append("f0_uniform")
+    names.append("feature_0")
     types.append("continuous")
     features.append(rng.uniform(clip_low, clip_high, n_samples))
 
     # Feature 1 - Continuous drawn from a normal distribution
-    names.append("f1_normal")
+    names.append("feature_1")
     types.append("continuous")
     features.append(np.clip(rng.normal(0.0, 1.5, n_samples), clip_low, clip_high))
 
     # Feature 2 - Continuous time between events with avg time between events of 2.0
-    names.append("f2_exponential")
+    names.append("feature_2")
     types.append("continuous")
     features.append(
         np.clip(rng.exponential(scale=2.0, size=n_samples) - 2.0, clip_low, clip_high)
     )
 
     # Feature 3 - Integer number of events in an interval, with average rate 2.0
-    names.append("f3_poisson")
+    names.append("feature_3_integers")
     types.append("continuous")
     features.append(
         np.clip(rng.poisson(lam=2.0, size=n_samples) - 2, clip_low_int, clip_high_int)
     )
 
     # Feature 4 - Positive correlation with feature 0 and negative with 1
-    names.append("f4_multicollinearity")
+    names.append("feature_4")
     types.append("continuous")
     features.append(
         np.clip(
@@ -142,8 +137,8 @@ def _synthetic_features_default(
         )
     )
 
-    # Feature 5 - Correlation with feature 2 in center region
-    names.append("f5_conditional_correlation")
+    # Feature 5 - Correlation with feature 2 when feature 2 is in the center region
+    names.append("feature_5")
     types.append("continuous")
     clip_quarter = (clip_high - clip_low) / 4.0
     features.append(
@@ -162,7 +157,7 @@ def _synthetic_features_default(
     )
 
     # Feature 6 - Interaction between feature 2 and feature 3
-    names.append("f6_interaction")
+    names.append("feature_6")
     types.append("continuous")
     features.append(
         np.clip(
@@ -173,12 +168,12 @@ def _synthetic_features_default(
     )
 
     # Feature 7 - Unused feature
-    names.append("f7_unused")
+    names.append("feature_7_unused")
     types.append("continuous")
     features.append(rng.uniform(10.0, 100.0, n_samples))
 
     # Feature 8 - Categorical with low cardinality
-    names.append("f8_low_cardinality")
+    names.append("feature_8_low_cardinality")
     types.append("nominal")
     n_categories = 9
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -187,7 +182,7 @@ def _synthetic_features_default(
     features.append(col)
 
     # Feature 9 - Categorical with high cardinality
-    names.append("f9_high_cardinality")
+    names.append("feature_9_high_cardinality")
     types.append("nominal")
     n_categories = 46  # 46 is the max categories before the docs UI hides them
     col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
@@ -235,7 +230,11 @@ def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
     mapping = np.char.add(mapping, categories)
     mapping = mapping.astype(float)
 
-    vals = rng.choice(n_categories, n_samples)
+    probs = rng.permutation(n_categories).astype(float)
+    probs += float(n_categories) / 4.0
+    probs /= probs.sum()
+
+    vals = rng.choice(n_categories, n_samples, p=probs)
     return mapping[vals]
 
 
