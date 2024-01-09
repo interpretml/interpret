@@ -7,7 +7,7 @@ from itertools import takewhile
 import operator
 
 
-def synthetic_default(
+def make_synthetic(
     classes=["class_0", "class_1"],
     n_samples=1000,
     missing=False,
@@ -15,14 +15,24 @@ def synthetic_default(
     seed=None,
     base_shift=0.0,
     noise_scale=0.25,
+    categories=[9, 46],  # 46 is the max categories before the UI hides them
+    categorical_floor=[0.2, 0.01],
     categorical_digits=3,
     clip_low=-2.0,
     clip_high=2.0,
 ):
     rng = np.random.default_rng(seed)
 
-    X_orig, names, types = _synthetic_features_default(
-        n_samples, missing, objects, rng, categorical_digits, clip_low, clip_high
+    X_orig, names, types = _make_synthetic_features(
+        n_samples,
+        missing,
+        objects,
+        rng,
+        categories,
+        categorical_floor,
+        categorical_digits,
+        clip_low,
+        clip_high,
     )
 
     X_imp = _normalize_categoricals(X_orig, types, clip_low, clip_high)
@@ -63,7 +73,7 @@ def synthetic_default(
             y = np.full(n_samples, classes[0])
         else:
             prob = np.exp(y)
-            prob = prob / (1.0 + prob)
+            prob /= 1.0 + prob
 
             y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(int)
 
@@ -77,8 +87,16 @@ def synthetic_default(
     return (X_orig, y, names, types)
 
 
-def _synthetic_features_default(
-    n_samples, missing, objects, seed, categorical_digits, clip_low, clip_high
+def _make_synthetic_features(
+    n_samples,
+    missing,
+    objects,
+    seed,
+    categories,
+    categorical_floor,
+    categorical_digits,
+    clip_low,
+    clip_high,
 ):
     # EBMs are insensitive to the scale of the feature values since features are binned
     # using quantiles, so we have the flexibility to use any scale that suits our
@@ -175,8 +193,9 @@ def _synthetic_features_default(
     # Feature 8 - Categorical with low cardinality
     names.append("feature_8_low_cardinality")
     types.append("nominal")
-    n_categories = 9
-    col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
+    col = _make_categorical_float(
+        rng, n_samples, categories[0], categorical_floor[0], categorical_digits
+    )
     if objects:
         col = _make_categorical_str(col, "l", categorical_digits)
     features.append(col)
@@ -184,8 +203,9 @@ def _synthetic_features_default(
     # Feature 9 - Categorical with high cardinality
     names.append("feature_9_high_cardinality")
     types.append("nominal")
-    n_categories = 46  # 46 is the max categories before the docs UI hides them
-    col = _make_categorical_float(rng, n_samples, n_categories, categorical_digits)
+    col = _make_categorical_float(
+        rng, n_samples, categories[-1], categorical_floor[-1], categorical_digits
+    )
     if objects:
         col = _make_categorical_str(col, "h", categorical_digits)
     features.append(col)
@@ -215,7 +235,9 @@ def _synthetic_features_default(
     return (X, names, types)
 
 
-def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
+def _make_categorical_float(
+    rng, n_samples, n_categories, categorical_floor, categorical_digits
+):
     n_modulo = 10**categorical_digits
     n_categories = min(n_categories, n_modulo - 1)
     mapping = rng.permutation(n_categories)
@@ -231,8 +253,9 @@ def _make_categorical_float(rng, n_samples, n_categories, categorical_digits):
     mapping = mapping.astype(float)
 
     probs = rng.permutation(n_categories).astype(float)
-    probs += float(n_categories) / 4.0
-    probs /= probs.sum()
+    probs *= 1.0 / float(n_categories)
+    probs += categorical_floor
+    probs *= 1.0 / probs.sum()
 
     vals = rng.choice(n_categories, n_samples, p=probs)
     return mapping[vals]

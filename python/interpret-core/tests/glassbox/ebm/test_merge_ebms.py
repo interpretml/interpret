@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.utils import synthetic_default
+from interpret.utils import make_synthetic
 
 from ...tutils import (
     iris_classification,
@@ -30,7 +30,7 @@ def test_merge_ebms():
     #       about the scalar divide in the merge_ebms line:
     #       "percentage.append((new_high - new_low) / (old_high - old_low))"
 
-    X, y, names, _ = synthetic_default(classes=2, missing=True, objects=True)
+    X, y, names, _ = make_synthetic(classes=2, missing=True, objects=True)
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Missing values detected.*")

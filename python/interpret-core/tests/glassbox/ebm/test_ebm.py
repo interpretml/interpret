@@ -8,7 +8,7 @@
 import math
 from sklearn.metrics import log_loss
 
-from interpret.utils import synthetic_default
+from interpret.utils import make_synthetic
 from ...tutils import (
     synthetic_multiclass,
     synthetic_classification,
@@ -293,7 +293,7 @@ def test_unknown_multiclass_category():
 
 @pytest.mark.slow
 def test_unknown_binary_category():
-    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X, y, names, types = make_synthetic(classes=2, objects=False)
 
     ebm = ExplainableBoostingClassifier(
         names, types, interactions=[[0, -1], [1, 2], [-1, 3]]
@@ -524,7 +524,7 @@ def test_ebm_uniform():
     #       and evaluate using an feature value outside of the training range
     from sklearn.metrics import roc_auc_score  # type: ignore
 
-    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X, y, names, types = make_synthetic(classes=2, objects=False)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
     types[0] = "uniform"
@@ -578,7 +578,7 @@ def test_ebm_uniform_multiclass():
 def test_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
 
-    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X, y, names, types = make_synthetic(classes=2, objects=False)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
     clf = ExplainableBoostingClassifier(names, types)
@@ -654,7 +654,7 @@ def test_eval_terms_multiclass():
 
 
 def test_ebm_sample_weight():
-    X, y, names, types = synthetic_default(classes=2, objects=False)
+    X, y, names, types = make_synthetic(classes=2, objects=False)
 
     ebm = ExplainableBoostingClassifier(names, types)
     ebm.fit(X, y)
@@ -735,7 +735,7 @@ def test_zero_validation():
 def test_dp_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
 
-    X, y, names, types = synthetic_default(classes=2, n_samples=10000, objects=False)
+    X, y, names, types = make_synthetic(classes=2, n_samples=10000, objects=False)
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20)
 
     w_tr = np.ones_like(y_tr)
