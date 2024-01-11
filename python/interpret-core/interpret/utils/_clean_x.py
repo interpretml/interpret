@@ -1154,7 +1154,7 @@ def unify_columns(
             # we can tollerate duplicate labels here, provided none of them are being used by our model
             for name, n_count in Counter(map(str, names_original)).items():
                 if n_count != 1:
-                    names_dict.remove(name)
+                    del names_dict[name]
 
         if feature_types is None:
             for feature_name_in in feature_names_in:
