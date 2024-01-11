@@ -375,6 +375,9 @@ jobs:
       linux_311_python:
         python.version: 3.11
         image.name: ${{ variables.ubuntu_test }}
+      # linux_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.ubuntu_test }}
       win_39_python:
         python.version: 3.9
         image.name: ${{ variables.windows_test }}
@@ -384,6 +387,9 @@ jobs:
       win_311_python:
         python.version: 3.11
         image.name: ${{ variables.windows_test }}
+      # win_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.windows_test }}
       mac_39_python:
         python.version: 3.9
         image.name: ${{ variables.mac_test }}
@@ -393,6 +399,9 @@ jobs:
       mac_311_python:
         python.version: 3.11
         image.name: ${{ variables.mac_test }}
+      # mac_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.mac_test }}
     maxParallel: 9
   pool:
     vmImage: $(image.name)
@@ -459,6 +468,9 @@ jobs:
       linux_311_python:
         python.version: 3.11
         image.name: ${{ variables.ubuntu_test }}
+      # linux_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.ubuntu_test }}
       win_39_python:
         python.version: 3.9
         image.name: ${{ variables.windows_test }}
@@ -468,6 +480,9 @@ jobs:
       win_311_python:
         python.version: 3.11
         image.name: ${{ variables.windows_test }}
+      # win_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.windows_test }}
       mac_39_python:
         python.version: 3.9
         image.name: ${{ variables.mac_test }}
@@ -477,6 +492,9 @@ jobs:
       mac_311_python:
         python.version: 3.11
         image.name: ${{ variables.mac_test }}
+      # mac_312_python:
+      #   python.version: 3.12
+      #   image.name: ${{ variables.mac_test }}
     maxParallel: 9
   pool:
     vmImage: $(image.name)

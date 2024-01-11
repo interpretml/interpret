@@ -5,9 +5,8 @@ import subprocess
 import os
 import glob
 import shutil
-from distutils.command.build import build
-from distutils.command.install import install
-
+from setuptools.command.build import build
+from setuptools.command.install import install
 from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 
