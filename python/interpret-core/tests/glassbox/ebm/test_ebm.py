@@ -301,7 +301,8 @@ def test_unknown_binary_category():
     ebm.fit(X, y)
 
     orig = ebm.eval_terms(X[0])
-    X[0, -1] = -1.9  # unseen categorical
+
+    X[0, -1] = -9.9  # unseen categorical
     unseen = ebm.eval_terms(X[0])
 
     assert unseen[0, ebm.n_features_in_ - 1] == 0
@@ -485,14 +486,17 @@ def test_ebm_only_missing():
 
 
 def test_ebm_synthetic_singleclass_classification():
-    data = synthetic_classification()
-    X = data["full"]["X"]
-    y = np.zeros(X.shape[0], np.bool_)
+    X, y, names, types = make_synthetic(classes=2, objects=False)
+    y[:] = 0
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(names, types)
     clf.fit(X, y)
 
     assert clf.link_ == "monoclassification"
+    assert clf.term_scores_[0][1] == -np.inf
+    assert clf.intercept_[0] == -np.inf
+    assert clf.bagged_scores_[0][0, 1] == -np.inf
+    assert clf.bagged_intercept_[0] == -np.inf
 
     prob_scores = clf.predict_proba(X)
     assert prob_scores.ndim == 2
@@ -506,15 +510,13 @@ def test_ebm_synthetic_singleclass_classification():
     assert not np.any(predicts)
 
     scores = clf._predict_score(X)
-    assert scores.ndim == 2
-    assert scores.shape[0] == len(y)
-    assert scores.shape[1] == 0
+    assert scores.ndim == 1
+    assert len(scores) == len(y)
 
     explanations = clf.eval_terms(X)
-    assert explanations.ndim == 3
+    assert explanations.ndim == 2
     assert explanations.shape[0] == len(y)
     assert explanations.shape[1] == len(clf.term_features_)
-    assert explanations.shape[2] == 0
 
 
 @pytest.mark.visual

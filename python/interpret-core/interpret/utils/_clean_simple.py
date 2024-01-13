@@ -341,8 +341,8 @@ def clean_init_score_and_X(
             init_score = init_score.reshape([1] + init_score.shape)
     else:
         if init_score.shape[0] == 0:
-            # must be a 1 class problem
-            return np.empty((n_samples, 0), np.float64), X, n_samples
+            # must be a 1 class problem. We use 1 score, but others might use 0.
+            return np.full(n_samples, -np.inf, np.float64), X, n_samples
         if init_score.shape[0] != n_samples:
             msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)

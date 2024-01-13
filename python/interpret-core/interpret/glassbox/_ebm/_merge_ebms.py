@@ -588,7 +588,9 @@ def merge_ebms(models):
 
         model_bag_intercept = getattr(model, "bagged_intercept_", None)
         if model_bag_intercept is None:
-            if n_scores == 1:
+            if n_classes == 1:
+                model_bag_intercept = np.full(n_outer_bags, -np.inf, np.float64)
+            elif n_scores == 1:
                 model_bag_intercept = np.zeros(n_outer_bags, np.float64)
             else:
                 model_bag_intercept = np.zeros((n_outer_bags, n_scores), np.float64)
@@ -675,7 +677,7 @@ def merge_ebms(models):
         bin_weight_percentages = bin_weight_percentages / bin_weight_percentages.sum()
 
         additive_shape = bin_weight_percentages.shape
-        if 0 <= n_classes and n_classes != 2:
+        if 2 < n_classes:
             additive_shape = tuple(list(additive_shape) + [n_classes])
 
         new_bin_weights = []
@@ -730,11 +732,12 @@ def merge_ebms(models):
         ebm.term_scores_,
         ebm.standard_deviations_,
     ) = process_terms(
-        ebm.bagged_intercept_, ebm.bagged_scores_, ebm.bin_weights_, ebm.bag_weights_
+        n_classes,
+        ebm.bagged_intercept_,
+        ebm.bagged_scores_,
+        ebm.bin_weights_,
+        ebm.bag_weights_,
     )
-    if n_classes < 0:
-        # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
-        ebm.intercept_ = float(ebm.intercept_[0])
 
     # TODO: we might be able to do these operations earlier
     remove_unused_higher_bins(ebm.term_features_, ebm.bins_)

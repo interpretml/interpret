@@ -163,65 +163,101 @@ def _create_proportional_tensor(axis_weights):
     return tensor.reshape(shape)
 
 
-def process_bag_terms(n_scores, term_scores, bin_weights):
-    intercept = 0 if n_scores == 1 else np.zeros(n_scores, np.float64)
-    # monoclassification requires no changes
-    if n_scores != 0:
-        shape = -1 if n_scores == 1 else (-1, n_scores)
-        for scores, weights in zip(term_scores, bin_weights):
-            mean = np.average(scores.reshape(shape), 0, weights.flatten())
-            intercept += mean
-            scores -= mean
+def process_bag_terms(n_classes, term_scores, bin_weights):
+    if n_classes == 1:
+        intercept = -np.inf
+    elif n_classes <= 2:
+        intercept = 0
+    else:
+        intercept = np.zeros(n_classes, np.float64)
 
-            # TODO: call purify() here from the glassbox\ebm\_research\_purify.py file
+    for scores, weights in zip(term_scores, bin_weights):
+        if n_classes <= 2:
+            temp_scores = scores.flatten().copy()
+            temp_weights = weights.flatten().copy()
 
-            # TODO: for multiclass, call a fixed version of multiclass_postprocess_RESTORE_THIS
-            #       That implementation has a bug where it always uses the simpler
-            #       method of taking the mean of the class scores.
+            ignored = np.isinf(temp_scores)
+            ignored |= np.isnan(temp_scores)
+            temp_scores[ignored] = 0.0
+            temp_weights[ignored] = 0.0
 
-            # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
-            # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
+            if temp_weights.sum() != 0:
+                mean = np.average(temp_scores, 0, temp_weights)
+                intercept += mean
+                scores -= mean
+        else:
+            for i in range(n_classes):
+                temp_scores = scores[..., i].flatten().copy()
+                temp_weights = weights.flatten().copy()
+
+                ignored = np.isinf(temp_scores)
+                ignored |= np.isnan(temp_scores)
+                temp_scores[ignored] = 0.0
+                temp_weights[ignored] = 0.0
+
+                if temp_weights.sum() != 0:
+                    mean = np.average(temp_scores, 0, temp_weights)
+                    intercept[i] += mean
+                    scores[..., i] -= mean
+
+        # TODO: call purify() here from the glassbox\ebm\_research\_purify.py file
+
+        # TODO: for multiclass, call a fixed version of multiclass_postprocess_RESTORE_THIS
+        #       That implementation has a bug where it always uses the simpler
+        #       method of taking the mean of the class scores.
+
+        # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
+        # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
+
+        if n_classes != 1:
             restore_missing_value_zeros(scores, weights)
     return intercept
 
 
-def process_terms(bagged_intercept, bagged_scores, bin_weights, bag_weights):
+def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_weights):
     n_bags = len(bag_weights)
     n_terms = len(bin_weights)
-    n_scores = 1 if bagged_intercept.ndim == 1 else bagged_intercept.shape[-1]
     for bag_idx in range(n_bags):
         term_scores = [bagged_tensor[bag_idx] for bagged_tensor in bagged_scores]
         bagged_intercept[bag_idx] += process_bag_terms(
-            n_scores, term_scores, bin_weights
+            n_classes, term_scores, bin_weights
         )
         for term_idx in range(n_terms):
             bagged_scores[term_idx][bag_idx] = term_scores[term_idx]
 
     term_scores = []
     standard_deviations = []
-    if n_scores == 0:
-        # monoclassification
-        for scores in bagged_scores:
-            term_scores.append(np.empty(scores.shape[1:], np.float64))
-            standard_deviations.append(np.empty(scores.shape[1:], np.float64))
-        intercept = np.empty(0, np.float64)
-    elif (bag_weights == bag_weights[0]).all():
+    if (bag_weights == bag_weights[0]).all():
         # if all the bags have the same total weight we can avoid some numeracy issues
         # by using a non-weighted standard deviation
         for scores in bagged_scores:
-            term_scores.append(np.average(scores, axis=0))
-            standard_deviations.append(np.std(scores, axis=0))
+            averaged = np.average(scores, axis=0)
+            term_scores.append(averaged)
+
+            nans = np.isnan(averaged)
+            stddevs = np.std(scores, axis=0)
+            stddevs[np.isnan(stddevs)] = np.inf
+            stddevs[nans] = np.nan
+            standard_deviations.append(stddevs)
         intercept = np.average(bagged_intercept, axis=0)
     else:
         for scores in bagged_scores:
-            term_scores.append(np.average(scores, axis=0, weights=bag_weights))
-            standard_deviations.append(
-                _weighted_std(scores, axis=0, weights=bag_weights)
-            )
+            averaged = np.average(scores, axis=0, weights=bag_weights)
+            term_scores.append(averaged)
+
+            nans = np.isnan(averaged)
+            stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
+            stddevs[np.isnan(stddevs)] = np.inf
+            stddevs[nans] = np.nan
+            standard_deviations.append(stddevs)
         intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
 
-    if n_scores == 1:
-        # np.average collapses to a float if input 1 dimensional, so restore to an array
+    if n_classes < 0:
+        # scikit-learn requires float for regression. We have np.float64 from average.
+        intercept = float(intercept)
+    elif n_classes <= 2:
+        # scikit-learn requires array for classification, but np.average collapses
+        # to an np.float64 if input 1 dimensional, so restore to an array
         intercept = np.full(1, intercept, np.float64)
 
     return intercept, term_scores, standard_deviations

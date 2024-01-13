@@ -637,7 +637,7 @@ class EBMModel(BaseEstimator):
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
-            elif 2 != n_classes:  # pragma: no cover
+            elif 2 < n_classes:  # pragma: no cover
                 raise ValueError(
                     "Multiclass not supported for Differentially Private EBMs."
                 )
@@ -1179,17 +1179,16 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
-        if n_scores == 1:
+        if n_classes == 1:
+            bagged_intercept = np.full(self.outer_bags, -np.inf, np.float64)
+        elif n_scores == 1:
             bagged_intercept = np.zeros(self.outer_bags, np.float64)
         else:
             bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
 
         intercept, term_scores, standard_deviations = process_terms(
-            bagged_intercept, bagged_scores, bin_weights, bag_weights
+            n_classes, bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
-        if n_classes < 0:
-            # scikit-learn uses a float for regression, and a numpy array with 1 element for binary classification
-            intercept = float(intercept[0])
 
         term_names = generate_term_names(feature_names_in, term_features)
 
@@ -1539,7 +1538,7 @@ class EBMModel(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                if hasattr(self, "classes_") and 2 != len(self.classes_):
+                if hasattr(self, "classes_") and 2 < len(self.classes_):
                     warn(
                         f"Dropping term {term_names[term_idx]} from explanation "
                         "since we can't graph multinomial interactions."
@@ -1715,7 +1714,7 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if classes is None or len(classes) == 2:
+            if classes is None or len(classes) <= 2:
                 if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
                     intercept = intercept[0]
 
@@ -1874,10 +1873,14 @@ class EBMModel(BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        if hasattr(self, "classes_") and len(self.classes_) != 2:
-            msg = "monotonize not supported for multiclass"
-            _log.error(msg)
-            raise ValueError(msg)
+        if hasattr(self, "classes_"):
+            if len(self.classes_) == 1:
+                # monoclassification is always monotonized
+                return
+            elif 2 < len(self.classes_):
+                msg = "monotonize not supported for multiclass"
+                _log.error(msg)
+                raise ValueError(msg)
 
         term = clean_index(
             term,
@@ -2535,9 +2538,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
             return self.classes_[(0 < scores).astype(np.int8)]
-        elif scores.shape[1] == 0:
-            # mono classification
-            return np.full(len(scores), self.classes_[0], self.classes_.dtype)
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]
@@ -3027,9 +3027,6 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
             return self.classes_[(0 < scores).astype(np.int8)]
-        elif scores.shape[1] == 0:
-            # mono classification
-            return np.full(len(scores), self.classes_[0], self.classes_.dtype)
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]

@@ -36,35 +36,60 @@ def link_func(predictions, link, link_param=np.nan):
         Scores converted by the link function.
     """
 
+    # For handling classification in the the link_func, the rule is that the last
+    # dimension needs to be an array that contains the probabilities for 1 sample.
+    # For "logit", if we treated an array of three values [0.75, 0.75, 0.75] as 3
+    # samples, then it would be ambiguous when we recieve values like [0.75, 0.25]
+    # whether this was meant to be 2 samples or the False/True probabilities for 1
+    # sample. We handle monoclassification and multiclass in the same way.
+
+    predictions = np.array(predictions, np.float64, copy=False)
     if link == "monoclassification":
-        if 2 <= predictions.shape[-1]:
+        if predictions.ndim == 0:
+            if predictions == 1.0:
+                return -np.inf
+            elif np.isnan(predictions):
+                return np.nan
+            else:
+                msg = "monoclassification with 1 element must be 1.0 or NaN"
+                _log.error(msg)
+                raise ValueError(msg)
+        scores = np.full(predictions.shape[:-1], -np.inf, np.float64)
+        if 1 == predictions.shape[-1]:
+            predictions = predictions.squeeze(-1)
+            bools = np.isnan(predictions)
+            scores[bools] = np.nan
+            bools |= predictions == 1.0
+            if not bools.all():
+                msg = "monoclassification with 1 element must have all 1.0s or NaN"
+                _log.error(msg)
+                raise ValueError(msg)
+        elif 0 != predictions.shape[-1]:
             msg = f"predictions must have 1 element in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
-
-        return np.empty(predictions.shape[:-1] + (0,), np.float64)
+        return scores
     elif link == "logit":
-        if predictions.shape[-1] == 1:
+        if predictions.ndim == 0:
+            val = predictions
+        elif predictions.shape[-1] == 1:
             val = predictions.squeeze(-1)
-            with np.errstate(divide="ignore"):
-                # val == 1.0 and log(0.0) gives warning otherwise
-                val /= 1.0 - val
-                np.log(val, out=val)
-            return val
         elif predictions.shape[-1] == 2:
             val = predictions[..., 1]
-            tmp = predictions.sum(axis=-1)
-            val /= tmp
-            np.subtract(1.0, val, out=tmp)
-            with np.errstate(divide="ignore"):
-                # tmp == 0.0 and log(0.0) gives warning otherwise
-                val /= tmp
-                np.log(val, out=val)
-            return val
+            val /= predictions.sum(axis=-1)
         else:
-            msg = f"predictions must have 2 elements in the last dimensions, but has {predictions.shape[-1]}."
+            msg = f"predictions must have 1 or 2 elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
+
+        with np.errstate(divide="ignore"):
+            # val == 1.0 and val == 0.0 gives warning otherwise
+            val /= 1.0 - val
+            np.log(val, out=val)
+        if val.ndim == 0:
+            val = val.item()
+
+        return val
     elif link == "vlogit":
         if predictions.shape[-1] <= 1:
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
@@ -113,13 +138,19 @@ def inv_link(scores, link, link_param=np.nan):
         Predictions converted by the link function.
     """
 
+    scores = np.array(scores, np.float64, copy=False)
     if link == "monoclassification":
-        if scores.shape[-1] != 0:
-            msg = f"scores must have 0 elements in the last dimensions, but has {scores.shape[-1]}."
+        bools = np.isnan(scores)
+        preds = np.ones(scores.shape + (1,), np.float64)
+        preds[np.expand_dims(bools, axis=-1)] = np.nan
+
+        bools |= scores == -np.inf
+        if not bools.all():
+            msg = "monoclassification must have all -infs or NaN"
             _log.error(msg)
             raise ValueError(msg)
 
-        return np.full(scores.shape[:-1] + (1,), 1.0, np.float64)
+        return preds
     elif link == "logit":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise from overflow

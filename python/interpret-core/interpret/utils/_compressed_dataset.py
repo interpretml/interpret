@@ -86,10 +86,14 @@ def bin_native(
     if sample_weight is not None:
         n_bytes += native.measure_weight(sample_weight)
 
-    if 0 <= n_classes:
+    if y.dtype == np.float64:
+        n_bytes += native.measure_regression_target(y)
+    elif y.dtype == np.int64:
         n_bytes += native.measure_classification_target(n_classes, y)
     else:
-        n_bytes += native.measure_regression_target(y)
+        msg = "y must be either float64 or int64"
+        _log.error(msg)
+        raise ValueError(msg)
 
     dataset = np.empty(n_bytes, np.ubyte)  # joblib loky doesn't support RawArray
 
@@ -131,10 +135,14 @@ def bin_native(
     if sample_weight is not None:
         native.fill_weight(sample_weight, dataset)
 
-    if 0 <= n_classes:
+    if y.dtype == np.float64:
+        native.fill_regression_target(y, dataset)
+    elif y.dtype == np.int64:
         native.fill_classification_target(n_classes, y, dataset)
     else:
-        native.fill_regression_target(y, dataset)
+        msg = "y must be either float64 or int64"
+        _log.error(msg)
+        raise ValueError(msg)
 
     return dataset
 

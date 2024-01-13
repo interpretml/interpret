@@ -123,9 +123,13 @@ def measure_interactions(
     elif is_regressor(init_score):
         if task is None:
             task = "regression"
-            link, link_param = native.determine_link(flags, "rmse", -1)
+            link, link_param = native.determine_link(
+                flags, "rmse", Native.Task_Regression
+            )
         elif task == "regression":
-            link, link_param = native.determine_link(flags, objective, -1)
+            link, link_param = native.determine_link(
+                flags, objective, Native.Task_Regression
+            )
         else:
             raise ValueError(
                 f"init_score is a regressor, but the objective is: {objective}"

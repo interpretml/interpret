@@ -156,12 +156,7 @@ class Native:
 
     @staticmethod
     def get_count_scores_c(n_classes):
-        if n_classes < 0 or n_classes == 2:
-            return 1
-        elif 2 < n_classes:
-            return n_classes
-        else:
-            return 0
+        return n_classes if 2 < n_classes else 1
 
     def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -1378,7 +1373,7 @@ class Booster(AbstractContextManager):
         for feature_idxs in self.term_features:
             dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
 
-            # multiclass and mono-classification need a second dimension
+            # multiclass needs a second dimension
             if n_class_scores != 1:
                 dimensions.append(n_class_scores)
 
@@ -1579,7 +1574,7 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        term_scores = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetBestTermScores(
             self._booster_handle,
@@ -1605,7 +1600,7 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        term_scores = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetCurrentTermScores(
             self._booster_handle,
@@ -1645,7 +1640,7 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[self._term_idx]
-        update_scores = np.empty(shape, dtype=np.float64, order="C")
+        update_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetTermUpdate(
             self._booster_handle,
