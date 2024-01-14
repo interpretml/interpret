@@ -590,6 +590,7 @@ We also build on top of many great packages. Please check them out!
 
 # External links
 
+- [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
 - [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
@@ -696,6 +697,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Artificial Intelligence Paves the Way in Precision Diagnostics and Biomarker Discovery for the Subclass of Diabetic Retinopathy in Type 2 Diabetics](https://www.mdpi.com/2218-1989/13/12/1204)
 - [A proposed tree-based explainable artificial intelligence approach for the prediction of angina pectoris](https://www.nature.com/articles/s41598-023-49673-2)
 - [Explainable Boosting Machine: A Contemporary Glass-Box Strategy for the Assessment of Wind Shear Severity in the Runway Vicinity Based on the Doppler Light Detection and Ranging Data](https://www.mdpi.com/2073-4433/15/1/20)
+- [On the Physical Nature of Lya Transmission Spikes in High Redshift Quasar Spectra](https://arxiv.org/pdf/2401.04762.pdf)
 
 # Books that cover EBMs
 
