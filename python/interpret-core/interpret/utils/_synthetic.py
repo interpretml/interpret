@@ -13,8 +13,9 @@ def make_synthetic(
     missing=False,
     objects=True,
     seed=None,
-    base_shift=0.0,
     noise_scale=0.25,
+    base_shift=0.0,
+    higher_class_probs=None,
     categories=[9, 46],  # 46 is the max categories before the UI hides them
     categorical_floor=[0.2, 0.01],
     categorical_digits=3,
@@ -80,7 +81,7 @@ def make_synthetic(
             if 2 < n_classes:
                 # multiclass. To keep things simple, randomly select classes above
                 # the 0th class with equal probability between the classes above 0.
-                y = np.where(y, rng.integers(1, n_classes, n_samples), 0)
+                y = np.where(y, rng.choice(n_classes - 1, n_samples, p=higher_class_probs) + 1, 0)
 
             y = classes[y]
 
