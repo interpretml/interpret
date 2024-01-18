@@ -3,16 +3,28 @@
 # Author: Paul Koch <code@koch.ninja>
 
 import numpy as np
-from itertools import takewhile
-import operator
+
+try:
+    import pandas as pd
+
+    _pandas_installed = True
+except ImportError:
+    _pandas_installed = False
+
+try:
+    import scipy as sp
+
+    _scipy_installed = True
+except ImportError:
+    _scipy_installed = False
 
 
 def make_synthetic(
     classes=["class_0", "class_1"],
     n_samples=1000,
     missing=False,
-    objects=True,
     seed=None,
+    output_type="object",
     noise_scale=0.25,
     base_shift=0.0,
     higher_class_probs=None,
@@ -27,8 +39,8 @@ def make_synthetic(
     X_orig, names, types = _make_synthetic_features(
         n_samples,
         missing,
-        objects,
         rng,
+        output_type,
         categories,
         categorical_floor,
         categorical_digits,
@@ -48,7 +60,7 @@ def make_synthetic(
     y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
     y += X_imp[:, 2] ** 2 * 0.4
     y += X_imp[:, 3] * 0.4  # feature 3 contains poisson distributed integers
-    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(int) % 2, +0.7, -0.7)
+    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(np.int64) % 2, +0.7, -0.7)
     y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.5  # sawtooth wave
     y += np.exp(X_imp[:, 6]) * 0.15
     # Feature 7 is unused in the generation function
@@ -56,7 +68,7 @@ def make_synthetic(
     y += X_imp[:, -1] * 0.4  # high cardinality categorical
 
     # pair interactions
-    xor_val = (X_imp[:, 3].astype(int) - int(np.floor(clip_low))) % 2
+    xor_val = (X_imp[:, 3].astype(np.int64) - int(np.floor(clip_low))) % 2
     y += X_imp[:, 0] * np.where(xor_val, +0.2, -0.2)
     y += X_imp[:, 1] * X_imp[:, 2] * 0.1
 
@@ -76,12 +88,14 @@ def make_synthetic(
             prob = np.exp(y)
             prob /= 1.0 + prob
 
-            y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(int)
+            y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(np.int64)
 
             if 2 < n_classes:
                 # multiclass. To keep things simple, randomly select classes above
                 # the 0th class with equal probability between the classes above 0.
-                y = np.where(y, rng.choice(n_classes - 1, n_samples, p=higher_class_probs) + 1, 0)
+                y = np.where(
+                    y, rng.choice(n_classes - 1, n_samples, p=higher_class_probs) + 1, 0
+                )
 
             y = classes[y]
 
@@ -91,8 +105,8 @@ def make_synthetic(
 def _make_synthetic_features(
     n_samples,
     missing,
-    objects,
     seed,
+    output_type,
     categories,
     categorical_floor,
     categorical_digits,
@@ -197,7 +211,7 @@ def _make_synthetic_features(
     col = _make_categorical_float(
         rng, n_samples, categories[0], categorical_floor[0], categorical_digits
     )
-    if objects:
+    if output_type in ["object", "pandas", "str"]:
         col = _make_categorical_str(col, "l", categorical_digits)
     features.append(col)
 
@@ -207,12 +221,9 @@ def _make_synthetic_features(
     col = _make_categorical_float(
         rng, n_samples, categories[-1], categorical_floor[-1], categorical_digits
     )
-    if objects:
+    if output_type in ["object", "pandas", "str"]:
         col = _make_categorical_str(col, "h", categorical_digits)
     features.append(col)
-
-    # Convert list of features to a 2D numpy array and transpose
-    X = np.array(features, dtype=object if objects else float).T
 
     if missing is True:
         missing = 0.1  # by default make 10% of feature data missing
@@ -227,11 +238,57 @@ def _make_synthetic_features(
         raise ValueError(f"missing cannot be negative")
     elif 1.0 < missing:
         raise ValueError(f"missing cannot be more than 1.0")
-    elif missing != 0.0:
+    elif missing == 0.0:
+        mask = None
+    else:
         mask = rng.choice(
-            [False, True], tuple(reversed(X.shape)), p=[1.0 - missing, missing]
-        ).T
-        X[mask] = None if objects else np.nan
+            [False, True], (len(features), n_samples), p=[1.0 - missing, missing]
+        )
+
+    # Convert list of features to a 2D numpy array and transpose
+    if output_type == "object":
+        X = np.array(features, np.object_)
+        if mask is not None:
+            X[mask] = None
+        X = X.T
+    elif output_type == "float":
+        X = np.array(features, np.float64)
+        if mask is not None:
+            X[mask] = np.nan
+        X = X.T
+    elif output_type == "str":
+        if mask is not None:
+            X = np.ma.array(features, np.str_, mask=mask)
+        else:
+            X = np.array(features, np.str_)
+        X = X.T
+    elif output_type == "pandas":
+        if not _pandas_installed:
+            raise ValueError("pandas was requested, but is not installed.")
+
+        for i in range(len(features)):
+            col = features[i]
+            if types[i] == "nominal":
+                dtype = "category"
+            elif np.issubdtype(col.dtype, np.integer) and mask is not None:
+                dtype = "Int64"
+            else:
+                dtype = col.dtype
+            col = pd.Series(col, dtype=dtype, name=names[i])
+            if mask is not None:
+                col[mask[i]] = np.nan
+            features[i] = col
+
+        X = pd.concat(features, axis=1)
+    elif output_type == "scipy":
+        if not _scipy_installed:
+            raise ValueError("scipy was requested, but is not installed.")
+        X = np.array(features, np.float64)
+        if mask is not None:
+            X[mask] = np.nan
+        X = sp.sparse.csc_matrix(X.T)
+    else:
+        raise ValueError(f"unknown output_type={output_type}")
 
     return (X, names, types)
 
@@ -243,17 +300,17 @@ def _make_categorical_float(
     n_categories = min(n_categories, n_modulo - 1)
     mapping = rng.permutation(n_categories)
     mapping += n_modulo + 1
-    mapping = mapping.astype(str)
+    mapping = mapping.astype(np.str_)
     mapping = np.char.add(mapping, ".")
 
     # reserve 0 for an alternative missing representation
-    categories = np.arange(1, n_categories + 1).astype(str)
+    categories = np.arange(1, n_categories + 1).astype(np.str_)
     categories = np.char.zfill(categories, categorical_digits)
 
     mapping = np.char.add(mapping, categories)
-    mapping = mapping.astype(float)
+    mapping = mapping.astype(np.float64)
 
-    probs = rng.permutation(n_categories).astype(float)
+    probs = rng.permutation(n_categories).astype(np.float64)
     probs *= 1.0 / float(n_categories)
     probs += categorical_floor
     probs *= 1.0 / probs.sum()
@@ -270,12 +327,12 @@ def _make_categorical_str(col, prefix, categorical_digits):
     col -= order
     col *= cat_mod
     np.round(col, out=col)
-    col = col.astype(int).astype(str)
+    col = col.astype(np.int64).astype(np.str_)
     col = np.char.zfill(col, categorical_digits)
 
-    order = order.astype(int)
+    order = order.astype(np.int64)
     order -= cat_mod
-    order = order.astype(str)
+    order = order.astype(np.str_)
     order = np.char.zfill(order, categorical_digits)
     order = np.char.translate(order, str.maketrans("0123456789", "abcdefghij"))
     order = np.char.add(prefix, np.char.add(order, "_"))
@@ -284,56 +341,73 @@ def _make_categorical_str(col, prefix, categorical_digits):
 
 
 def _normalize_float_categorical(col, clip_low, clip_high):
-    missings = np.isnan(col)
-    i_nonnan = sum(takewhile(operator.truth, missings))
-    if i_nonnan != len(col):
-        categorical_digits = len(str(int(np.floor(col[i_nonnan])))) - 1
-        cat_mod = 10**categorical_digits
+    categorical_digits = len(str(int(np.floor(col[0])))) - 1
+    cat_mod = 10**categorical_digits
 
-        col[missings] = 0.0
-        col -= np.floor(col)
-        col *= cat_mod
-        np.round(col, out=col)
-        col += -1.0
-        col *= (clip_high - clip_low) / col.max()
-        col += clip_low
+    col -= np.floor(col)
+    col *= cat_mod
+    np.round(col, out=col)
+    col += -1.0
+    col *= (clip_high - clip_low) / col.max()
+    col += clip_low
 
-        col[missings] = np.nan
     return col
 
 
 def _normalize_string_categorical(col, clip_low, clip_high):
-    missings = col != col  # this is a check for nan that works with non-floats
-    if not missings.all():
-        col[missings] = "_0"
-        col = col.astype(str)
-        col = np.char.rpartition(col, "_")[:, 2]
-        col = col.astype(int).astype(float)
-        col += -1.0
-        col *= (clip_high - clip_low) / col.max()
-        col += clip_low
-
-        col[missings] = np.nan
+    col = np.array(col, np.str_, copy=False)
+    col = np.char.rpartition(col, "_")[:, 2]
+    col = col.astype(np.int64).astype(np.float64)
+    col += -1.0
+    col *= (clip_high - clip_low) / col.max()
+    col += clip_low
 
     return col
 
 
 def _normalize_categoricals(X, types, clip_low, clip_high):
-    if X.dtype == object:
-        features = []
-        for i in range(X.shape[1]):
+    features = []
+    for i in range(X.shape[1]):
+        if _pandas_installed and isinstance(X, pd.DataFrame):
+            col = X.iloc[:, i]
+        elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
+            col = X[:, i].toarray().flatten()
+        else:
             col = X[:, i]
-            col[col == np.array(None)] = np.nan
-            if str in set(map(type, col)):
-                col = _normalize_string_categorical(col, clip_low, clip_high)
-            features.append(col)
-        X = np.array(features, float).T
-    else:
-        X = X.copy()
-        if types is not None:
-            for i in range(X.shape[1]):
-                if types[i] == "nominal":
-                    X[:, i] = _normalize_float_categorical(X[:, i], clip_low, clip_high)
+
+        if _pandas_installed:
+            nonmissings = pd.notna(col)
+        else:
+            # this is a check for nan that works with non-floats
+            nonmissings = col == col
+            if isinstance(col.dtype, np.dtype) and np.issubdtype(col.dtype, np.object_):
+                nonmissings &= col != np.array(None)
+
+        if isinstance(col, np.ma.masked_array):
+            if col.mask is not np.ma.nomask:
+                nonmissings &= ~col.mask
+
+        col = col[nonmissings]
+        floats = np.full(len(nonmissings), np.nan, np.float64)
+        if len(col) != 0:
+            if types is not None and types[i] == "nominal":
+                if isinstance(col.dtype, np.dtype) and np.issubdtype(
+                    col.dtype, np.floating
+                ):
+                    col = _normalize_float_categorical(col, clip_low, clip_high)
+                else:
+                    col = _normalize_string_categorical(col, clip_low, clip_high)
+            else:
+                try:
+                    col = col.astype(np.float64, copy=False)
+                except ValueError:
+                    col = _normalize_string_categorical(col, clip_low, clip_high)
+
+            np.place(floats, nonmissings, col)
+
+        features.append(floats)
+    X = np.array(features, np.float64).T
+
     return X
 
 
@@ -368,7 +442,7 @@ def _check_synthetic_dataset(
         print("pos_avg: " + positives)
 
         col = X[:, i]
-        if X.dtype == object and str in set(map(type, col)):
+        if X.dtype == np.object_ and str in set(map(type, col)):
             print("\n".join([str(x) for x in col[:n_display]]))
         elif types is not None and types[i] == "nominal":
             categorical_digits = len(str(int(np.floor(np.nanmax(col))))) - 1
@@ -380,7 +454,7 @@ def _check_synthetic_dataset(
 
     print("--------------------")
     print("y")
-    if y.dtype == np.float64:
+    if np.issubdtype(y.dtype, np.floating):
         negatives = y < 0.0
         negatives = str(np.average(y[negatives])) if negatives.any() else "NONE"
         print("neg_avg: " + negatives)

@@ -30,7 +30,7 @@ def test_merge_ebms():
     #       about the scalar divide in the merge_ebms line:
     #       "percentage.append((new_high - new_low) / (old_high - old_low))"
 
-    X, y, names, _ = make_synthetic(classes=2, missing=True, objects=True)
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Missing values detected.*")
