@@ -60,8 +60,8 @@ def make_synthetic(
     y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
     y += X_imp[:, 2] ** 2 * 0.4
     y += X_imp[:, 3] * 0.4  # feature 3 contains poisson distributed integers
-    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(np.int64) % 2, +0.7, -0.7)
-    y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.5  # sawtooth wave
+    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(np.int64) % 2, +0.6, -0.6)
+    y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.4  # sawtooth wave
     y += np.exp(X_imp[:, 6]) * 0.15
     # Feature 7 is unused in the generation function
     y += X_imp[:, -2] * 0.4  # low cardinality categorical
@@ -69,11 +69,12 @@ def make_synthetic(
 
     # pair interactions
     xor_val = (X_imp[:, 3].astype(np.int64) - int(np.floor(clip_low))) % 2
-    y += X_imp[:, 0] * np.where(xor_val, +0.2, -0.2)
+    y += X_imp[:, 0] * np.where(xor_val, +0.3, -0.3)
     y += X_imp[:, 1] * X_imp[:, 2] * 0.1
+    y += X_imp[:, 3] * X_imp[:, -2] * 0.2
 
-    # 3-way interaction
-    y += X_imp[:, 0] * X_imp[:, 1] * X_imp[:, 2] * 0.02
+    # 3-way interaction between float, int, and categorical
+    y += X_imp[:, 2] * X_imp[:, 3] * X_imp[:, -2] * 0.02
 
     if classes is not None and classes != 0:
         if isinstance(classes, int):
