@@ -1114,7 +1114,7 @@ class EBMModel(BaseEstimator):
                         min_samples_leaf,
                         self.max_leaves,
                         greediness,
-                        0,  # no smoothing rounds for interactions
+                        smoothing_rounds,
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
