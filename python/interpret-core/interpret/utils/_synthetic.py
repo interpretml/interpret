@@ -28,6 +28,8 @@ def make_synthetic(
     noise_scale=0.25,
     base_shift=0.0,
     higher_class_probs=None,
+    impute_missing=0.0,
+    disable=[],
     categories=[9, 46],  # 46 is the max categories before the UI hides them
     categorical_floor=[0.2, 0.01],
     categorical_digits=3,
@@ -52,29 +54,42 @@ def make_synthetic(
 
     # Impute missing values with 0
     missings = np.isnan(X_imp, order="F")
-    X_imp[missings] = 0.0
+    X_imp[missings] = impute_missing
 
     # Create some additive term mains for our model to find
     y = rng.normal(base_shift, noise_scale, n_samples)
-    y += np.cos(3.14159 * 4.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9
-    y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
-    y += X_imp[:, 2] ** 2 * 0.4
-    y += X_imp[:, 3] * 0.4  # feature 3 contains poisson distributed integers
-    y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(np.int64) % 2, +0.6, -0.6)
-    y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.4  # sawtooth wave
-    y += np.exp(X_imp[:, 6]) * 0.15
+    if all(d not in disable for d in ["cos", "mains"]):
+        y += np.cos(3.14159 * 4.0 / (clip_high - clip_low) * X_imp[:, 0]) * 0.9
+    if all(d not in disable for d in ["sin", "mains"]):
+        y += np.sin(3.14159 * 2.0 / (clip_high - clip_low) * X_imp[:, 1]) * 0.9
+    if all(d not in disable for d in ["parabola", "mains"]):
+        y += X_imp[:, 2] ** 2 * 0.4
+    if all(d not in disable for d in ["linear_int", "mains"]):
+        y += X_imp[:, 3] * 0.4  # feature 3 contains poisson distributed integers
+    if all(d not in disable for d in ["square_wave", "mains"]):
+        y += np.where(((X_imp[:, 4] - clip_low) * 1.9999).astype(int) % 2, +0.6, -0.6)
+    if all(d not in disable for d in ["sawtooth_wave", "mains"]):
+        y += (np.modf(X_imp[:, 5] - clip_low)[0] - 0.5) * 1.4
+    if all(d not in disable for d in ["exp", "mains"]):
+        y += np.exp(X_imp[:, 6]) * 0.15
     # Feature 7 is unused in the generation function
-    y += X_imp[:, -2] * 0.4  # low cardinality categorical
-    y += X_imp[:, -1] * 0.4  # high cardinality categorical
+    if all(d not in disable for d in ["low_cardinality", "nominals", "mains"]):
+        y += X_imp[:, -2] * 0.4
+    if all(d not in disable for d in ["high_cardinality", "nominals", "mains"]):
+        y += X_imp[:, -1] * 0.4
 
     # pair interactions
-    xor_val = (X_imp[:, 3].astype(np.int64) - int(np.floor(clip_low))) % 2
-    y += X_imp[:, 0] * np.where(xor_val, +0.3, -0.3)
-    y += X_imp[:, 1] * X_imp[:, 2] * 0.1
-    y += X_imp[:, 3] * X_imp[:, -2] * 0.2
+    if all(d not in disable for d in ["xor", "pairs"]):
+        xor_val = (X_imp[:, 3].astype(np.int64) - int(np.floor(clip_low))) % 2
+        y += X_imp[:, 0] * np.where(xor_val, +0.3, -0.3)
+    if all(d not in disable for d in ["multiply_continuous", "pairs"]):
+        y += X_imp[:, 1] * X_imp[:, 2] * 0.1
+    if all(d not in disable for d in ["multiply_nominal", "pairs"]):
+        y += X_imp[:, 3] * X_imp[:, -2] * 0.2
 
-    # 3-way interaction between float, int, and categorical
-    y += X_imp[:, 2] * X_imp[:, 3] * X_imp[:, -2] * 0.02
+    # 3-way interaction between float, int, and nominal
+    if all(d not in disable for d in ["triples"]):
+        y += X_imp[:, 2] * X_imp[:, 3] * X_imp[:, -2] * 0.02
 
     if classes is not None and classes != 0:
         if isinstance(classes, int):
