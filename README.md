@@ -118,9 +118,15 @@ show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
 <br/>
 
 For more information, see the [documentation](https://interpret.ml/docs).
+
 <br/>
 
 EBMs include pairwise interactions by default. For 3-way interactions and higher see this notebook: https://interpret.ml/docs/python/examples/custom-interactions.html
+
+<br/>
+
+Interpret EBMs can be fit on datasets with 100 million samples in several hours. For larger workloads consider using distributed EBMs on Azure SynapseML: [classification EBMs](https://learn.microsoft.com/en-us/fabric/data-science/explainable-boosting-machines-classification) [regression EBMs](https://learn.microsoft.com/en-us/fabric/data-science/explainable-boosting-machines-regression)
+
 <br/>
 <br/>
 
