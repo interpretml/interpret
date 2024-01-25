@@ -618,6 +618,8 @@ We also build on top of many great packages. Please check them out!
 - [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
 - [Cost of Explainability in AI: An Example with Credit Scoring Models](https://link.springer.com/chapter/10.1007/978-3-031-44064-9_26)
+- [Interpretable Machine Learning Leverages Proteomics to Improve Cardiovascular Disease Risk Prediction and Biomarker Identification](https://www.medrxiv.org/content/10.1101/2024.01.12.24301213v1.full.pdf)
+- [Interpretable Additive Tabular Transformer Networks](https://openreview.net/pdf/d2f0db2646418b24bb322fc1f4082fd9e65409c2.pdf)
 - [Signature Informed Sampling for Transcriptomic Data](https://www.biorxiv.org/content/biorxiv/early/2023/10/31/2023.10.26.564263.full.pdf)
 - [Interpretable Survival Analysis for Heart Failure Risk Prediction](https://arxiv.org/pdf/2310.15472.pdf)
 - [LLMs Understand Glass-Box Models, Discover Surprises, and Suggest Repairs](https://arxiv.org/pdf/2308.01157.pdf)
