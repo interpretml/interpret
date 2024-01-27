@@ -884,9 +884,11 @@ class EBMModel(BaseEstimator):
                     noise_scale_boosting,
                     bin_data_weights,
                     rngs[idx],
-                    Native.CreateBoosterFlags_DifferentialPrivacy
-                    if is_differential_privacy
-                    else Native.CreateBoosterFlags_Default,
+                    (
+                        Native.CreateBoosterFlags_DifferentialPrivacy
+                        if is_differential_privacy
+                        else Native.CreateBoosterFlags_Default
+                    ),
                     objective,
                     None,
                 )
@@ -996,9 +998,11 @@ class EBMModel(BaseEstimator):
                             Native.CalcInteractionFlags_Default,
                             max_cardinality,
                             min_samples_leaf,
-                            Native.CreateInteractionFlags_DifferentialPrivacy
-                            if is_differential_privacy
-                            else Native.CreateInteractionFlags_Default,
+                            (
+                                Native.CreateInteractionFlags_DifferentialPrivacy
+                                if is_differential_privacy
+                                else Native.CreateInteractionFlags_Default
+                            ),
                             objective,
                             None,
                         )
@@ -1121,9 +1125,11 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
-                        Native.CreateBoosterFlags_DifferentialPrivacy
-                        if is_differential_privacy
-                        else Native.CreateBoosterFlags_Default,
+                        (
+                            Native.CreateBoosterFlags_DifferentialPrivacy
+                            if is_differential_privacy
+                            else Native.CreateBoosterFlags_Default
+                        ),
                         objective,
                         None,
                     )

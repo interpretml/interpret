@@ -24,7 +24,9 @@ class Explanation(S):
     # TODO: Needs further discussion at design-level.
     def append(self, component):
         if not isinstance(component, Component):
-            raise Exception(f"Can't append object of type {type(component)} to this object.")
+            raise Exception(
+                f"Can't append object of type {type(component)} to this object."
+            )
 
         self.components[type(component)] = component
         for field_name, field_value in component.fields.items():
@@ -50,12 +52,18 @@ class Explanation(S):
                     field_value_str = f"Dim\t{field_name} = {field_value}"
                 else:
                     if field_name in self._objects:
-                        field_type = 'O'
-                        field_dim = ','.join(str(x) for x in self._objects[field_name].dim)
+                        field_type = "O"
+                        field_dim = ",".join(
+                            str(x) for x in self._objects[field_name].dim
+                        )
                     else:
-                        field_type = 'A'
-                        field_dim = ','.join(str(x) for x in self._aliases[field_name].dim)
-                    field_value_str = f"{field_type}{{{field_dim}}}\t{field_name} = {field_value}"
+                        field_type = "A"
+                        field_dim = ",".join(
+                            str(x) for x in self._aliases[field_name].dim
+                        )
+                    field_value_str = (
+                        f"{field_type}{{{field_dim}}}\t{field_name} = {field_value}"
+                    )
 
                 if len(field_value_str) > 60:
                     field_value_str = field_value_str[:57] + "..."
@@ -81,6 +89,7 @@ class Explanation(S):
 
     def to_json(self, **kwargs):
         from interpret.newapi.serialization import ExplanationJSONEncoder
+
         version = "0.0.1"
         di = {
             "version": version,
@@ -100,4 +109,3 @@ class AttribExplanation(Explanation):
             meta=meta,
             **kwargs,
         )
-

@@ -21,10 +21,7 @@ def validate_eps_delta(eps, delta):
 
 def calc_classic_noise_multi(total_queries, target_epsilon, delta, sensitivity):
     variance = (
-        8
-        * total_queries
-        * sensitivity**2
-        * np.log(np.exp(1) + target_epsilon / delta)
+        8 * total_queries * sensitivity**2 * np.log(np.exp(1) + target_epsilon / delta)
     ) / target_epsilon**2
     return np.sqrt(variance)
 

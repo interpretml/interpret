@@ -1,4 +1,5 @@
 """ Base service classes and methods for services. """
+
 from numbers import Number
 import time
 from types import FunctionType

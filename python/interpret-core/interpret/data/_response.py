@@ -278,9 +278,9 @@ class MarginalExplanation(ExplanationMixin):
             hovermode="closest",
             xaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
             yaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
-            title="Pearson Correlation: {0:.3f}".format(corr)
-            if corr is not None
-            else "",
+            title=(
+                "Pearson Correlation: {0:.3f}".format(corr) if corr is not None else ""
+            ),
         )
         fig = go.Figure(data=data, layout=layout)
         return fig

@@ -1,6 +1,5 @@
 """ Task related measures. """
 
-
 from math import log, e
 from numbers import Number
 from typing import Iterable, List, Tuple

@@ -1,5 +1,6 @@
 """ Entity models for benchmarking.
 """
+
 import enum
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship

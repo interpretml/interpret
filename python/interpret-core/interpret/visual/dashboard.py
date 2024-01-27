@@ -420,9 +420,11 @@ body {
             items = "\n".join(
                 [
                     r'<li><a href="{0}">{1}</a></li>'.format(
-                        "/{0}/".format(key)
-                        if self.base_url is None
-                        else "/{0}/{1}/".format(self.base_url, key),
+                        (
+                            "/{0}/".format(key)
+                            if self.base_url is None
+                            else "/{0}/{1}/".format(self.base_url, key)
+                        ),
                         key,
                     )
                     for key in self.pool.keys()

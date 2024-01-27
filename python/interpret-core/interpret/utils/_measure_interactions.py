@@ -270,9 +270,11 @@ def measure_interactions(
         calc_interaction_flags=Native.CalcInteractionFlags_Pure,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
-        create_interaction_flags=Native.CreateInteractionFlags_DifferentialPrivacy
-        if is_differential_privacy
-        else Native.CreateInteractionFlags_Default,
+        create_interaction_flags=(
+            Native.CreateInteractionFlags_DifferentialPrivacy
+            if is_differential_privacy
+            else Native.CreateInteractionFlags_Default
+        ),
         objective=objective,
         experimental_params=None,
         n_output_interactions=n_output_interactions,

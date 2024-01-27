@@ -262,9 +262,9 @@ def _to_json_inner(ebm, detail="all"):
                 if histogram_weights is not None:
                     feature_histogram_weights = histogram_weights[i]
                     if feature_histogram_weights is not None:
-                        feature[
-                            "histogram_weights"
-                        ] = feature_histogram_weights.tolist()
+                        feature["histogram_weights"] = (
+                            feature_histogram_weights.tolist()
+                        )
         else:
             raise ValueError(f"Unsupported feature type: {feature_type}")
 
