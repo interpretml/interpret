@@ -2,6 +2,7 @@
 
 ## Formatting
 
+- use clang-format with the .clang-format file to ensure consistent formatting
 - No tabs. 3 spaces for indentation
 - max 120 characters per line
 - K&R style braces '{' placed on the same line as the command that opens the block, unless a line
