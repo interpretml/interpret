@@ -40,11 +40,11 @@ namespace DEFINED_ZONE_NAME {
 
 inline static void cpuid(int cpuInfo[4], int function_id, int subfunction_id = 0) {
    // from: https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset.h#L217
-#if defined (_MSC_VER)
+#if defined(_MSC_VER)
    __cpuidex(cpuInfo, function_id, subfunction_id);
 #elif defined(__GNUC__) || defined(__clang__)
    int a, b, c, d;
-   __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(function_id), "c"(subfunction_id) : );
+   __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(function_id), "c"(subfunction_id) :);
    cpuInfo[0] = a;
    cpuInfo[1] = b;
    cpuInfo[2] = c;
@@ -65,12 +65,13 @@ inline static void cpuid(int cpuInfo[4], int function_id, int subfunction_id = 0
 }
 
 inline static uint64_t xgetbv(int xcr) {
-   // from: https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L22C1-L48C1
-#if (defined (_MSC_FULL_VER) && _MSC_FULL_VER >= 160040000) || (defined (__INTEL_COMPILER) && __INTEL_COMPILER >= 1200)
+   // from:
+   // https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L22C1-L48C1
+#if(defined(_MSC_FULL_VER) && _MSC_FULL_VER >= 160040000) || (defined(__INTEL_COMPILER) && __INTEL_COMPILER >= 1200)
    return uint64_t(_xgetbv(xcr));
-#elif defined(__GNUC__) ||  defined (__clang__)
+#elif defined(__GNUC__) || defined(__clang__)
    uint32_t a, d;
-   __asm("xgetbv" : "=a"(a), "=d"(d) : "c"(xcr) : );
+   __asm("xgetbv" : "=a"(a), "=d"(d) : "c"(xcr) :);
    return a | (uint64_t(d) << 32);
 #else
    // Some other platform. Try masm/intel syntax assembly
@@ -88,50 +89,71 @@ inline static uint64_t xgetbv(int xcr) {
 }
 
 static int DetectInstructionset() {
-   // from: https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L63
+   // from:
+   // https://github.com/vectorclass/version2/blob/9d324e13457cf67b44be04f49a4a0036bb188a89/instrset_detect.cpp#L63
    int instructionSet = 0;
-   int abcd[4] = { 0, 0, 0, 0 };
+   int abcd[4] = {0, 0, 0, 0};
    cpuid(abcd, 0);
-   if(abcd[0] == 0) return instructionSet;
+   if(abcd[0] == 0)
+      return instructionSet;
    cpuid(abcd, 1);
-   if((abcd[3] & (1 << 0)) == 0) return instructionSet;
-   if((abcd[3] & (1 << 23)) == 0) return instructionSet;
-   if((abcd[3] & (1 << 15)) == 0) return instructionSet;
-   if((abcd[3] & (1 << 24)) == 0) return instructionSet;
-   if((abcd[3] & (1 << 25)) == 0) return instructionSet;
+   if((abcd[3] & (1 << 0)) == 0)
+      return instructionSet;
+   if((abcd[3] & (1 << 23)) == 0)
+      return instructionSet;
+   if((abcd[3] & (1 << 15)) == 0)
+      return instructionSet;
+   if((abcd[3] & (1 << 24)) == 0)
+      return instructionSet;
+   if((abcd[3] & (1 << 25)) == 0)
+      return instructionSet;
    instructionSet = 1;
-   if((abcd[3] & (1 << 26)) == 0) return instructionSet;
+   if((abcd[3] & (1 << 26)) == 0)
+      return instructionSet;
    instructionSet = 2;
-   if((abcd[2] & (1 << 0)) == 0) return instructionSet;
+   if((abcd[2] & (1 << 0)) == 0)
+      return instructionSet;
    instructionSet = 3;
-   if((abcd[2] & (1 << 9)) == 0) return instructionSet;
+   if((abcd[2] & (1 << 9)) == 0)
+      return instructionSet;
    instructionSet = 4;
-   if((abcd[2] & (1 << 19)) == 0) return instructionSet;
+   if((abcd[2] & (1 << 19)) == 0)
+      return instructionSet;
    instructionSet = 5;
-   if((abcd[2] & (1 << 23)) == 0) return instructionSet;
-   if((abcd[2] & (1 << 20)) == 0) return instructionSet;
+   if((abcd[2] & (1 << 23)) == 0)
+      return instructionSet;
+   if((abcd[2] & (1 << 20)) == 0)
+      return instructionSet;
    instructionSet = 6;
-   if((abcd[2] & (1 << 27)) == 0) return instructionSet;
-   if((xgetbv(0) & 6) != 6)       return instructionSet;
-   if((abcd[2] & (1 << 28)) == 0) return instructionSet;
+   if((abcd[2] & (1 << 27)) == 0)
+      return instructionSet;
+   if((xgetbv(0) & 6) != 6)
+      return instructionSet;
+   if((abcd[2] & (1 << 28)) == 0)
+      return instructionSet;
    instructionSet = 7;
    cpuid(abcd, 7);
-   if((abcd[1] & (1 << 5)) == 0) return instructionSet;
+   if((abcd[1] & (1 << 5)) == 0)
+      return instructionSet;
    instructionSet = 8;
-   if((abcd[1] & (1 << 16)) == 0) return instructionSet;
+   if((abcd[1] & (1 << 16)) == 0)
+      return instructionSet;
    cpuid(abcd, 0xD);
-   if((abcd[0] & 0x60) != 0x60)   return instructionSet;
+   if((abcd[0] & 0x60) != 0x60)
+      return instructionSet;
    instructionSet = 9;
    cpuid(abcd, 7);
-   if((abcd[1] & (1 << 31)) == 0) return instructionSet;
-   if((abcd[1] & 0x40020000) != 0x40020000) return instructionSet;
+   if((abcd[1] & (1 << 31)) == 0)
+      return instructionSet;
+   if((abcd[1] & 0x40020000) != 0x40020000)
+      return instructionSet;
    instructionSet = 10;
    return instructionSet;
 }
 
 static bool IsFMA3() {
    // only call this if 7 <= DetectInstructionset(), which stands for AVX
-   // Since we limit ourselves to AVX2 and above, this might be consdidered superfluous since all processors released 
+   // Since we limit ourselves to AVX2 and above, this might be consdidered superfluous since all processors released
    // with AVX2 also support FMA3, but call it anyways for extra insurance since it's the correct thing to do.
    int abcd[4];
    cpuid(abcd, 1);
@@ -140,13 +162,11 @@ static bool IsFMA3() {
 
 #endif // INTEL_SIMD
 
-extern ErrorEbm GetObjective(
-   const Config * const pConfig,
-   const char * sObjective,
-   const AccelerationFlags acceleration,
-   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
-   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
-) noexcept {
+extern ErrorEbm GetObjective(const Config* const pConfig,
+      const char* sObjective,
+      const AccelerationFlags acceleration,
+      ObjectiveWrapper* const pCpuObjectiveWrapperOut,
+      ObjectiveWrapper* const pSIMDObjectiveWrapperOut) noexcept {
    EBM_ASSERT(nullptr != pConfig);
    EBM_ASSERT(nullptr != pCpuObjectiveWrapperOut);
    EBM_ASSERT(nullptr == pCpuObjectiveWrapperOut->m_pObjective);
@@ -164,7 +184,7 @@ extern ErrorEbm GetObjective(
       return Error_ObjectiveUnknown;
    }
 
-   const char * const sObjectiveEnd = sObjective + strlen(sObjective);
+   const char* const sObjectiveEnd = sObjective + strlen(sObjective);
 
    ErrorEbm error;
 
@@ -218,15 +238,13 @@ extern ErrorEbm GetObjective(
 
 #ifdef NEVER
 // TODO: eventually enable metrics
-INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
-   const Config * const pConfig,
-   const char * sMetric
-//   MetricWrapper * const aMetricWrapperOut
-) noexcept {
+INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(const Config* const pConfig, const char* sMetric
+      //   MetricWrapper * const aMetricWrapperOut
+      ) noexcept {
    EBM_ASSERT(nullptr != pConfig);
-   //EBM_ASSERT(nullptr != pMetricWrapperOut);
-   //aMetricWrapperOut->m_pMetric = nullptr;
-   //aMetricWrapperOut->m_pFunctionPointersCpp = nullptr;
+   // EBM_ASSERT(nullptr != pMetricWrapperOut);
+   // aMetricWrapperOut->m_pMetric = nullptr;
+   // aMetricWrapperOut->m_pFunctionPointersCpp = nullptr;
 
    if(nullptr == sMetric) {
       // it's legal to have no metrics
@@ -234,7 +252,7 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
    }
    while(true) {
       sMetric = SkipWhitespace(sMetric);
-      const char * sMetricEnd = strchr(sMetric, k_registrationSeparator);
+      const char* sMetricEnd = strchr(sMetric, k_registrationSeparator);
       if(nullptr == sMetricEnd) {
          // find the null terminator then
          sMetricEnd = sMetric + strlen(sMetric);
@@ -262,4 +280,4 @@ INLINE_RELEASE_UNTEMPLATED static ErrorEbm GetMetrics(
 }
 #endif // NEVER
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

@@ -7,15 +7,15 @@
 #endif // DEFINED_ZONE_NAME
 
 #if defined(ZONE_main)
-#define DEFINED_ZONE_NAME      NAMESPACE_MAIN
+#define DEFINED_ZONE_NAME NAMESPACE_MAIN
 #elif defined(ZONE_cpu)
-#define DEFINED_ZONE_NAME      NAMESPACE_CPU
+#define DEFINED_ZONE_NAME NAMESPACE_CPU
 #elif defined(ZONE_avx2)
-#define DEFINED_ZONE_NAME      NAMESPACE_AVX2
+#define DEFINED_ZONE_NAME NAMESPACE_AVX2
 #elif defined(ZONE_avx512f)
-#define DEFINED_ZONE_NAME      NAMESPACE_AVX512F
+#define DEFINED_ZONE_NAME NAMESPACE_AVX512F
 #elif defined(ZONE_cuda)
-#define DEFINED_ZONE_NAME      NAMESPACE_CUDA
+#define DEFINED_ZONE_NAME NAMESPACE_CUDA
 #else
 #error ZONE not recognized
 #endif

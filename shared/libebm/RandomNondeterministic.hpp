@@ -16,8 +16,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename T>
-class RandomNondeterministic final {
+template<typename T> class RandomNondeterministic final {
    static_assert(std::is_unsigned<T>::value, "T must be an unsigned type");
    static_assert(0 == std::numeric_limits<T>::min(), "T must have a min value of 0");
 
@@ -37,7 +36,7 @@ class RandomNondeterministic final {
    // MinGW used to have a bad implementation, but that was fixed in 2019.  We do not use MinGW currently.
    //   https://sourceforge.net/p/mingw-w64/bugs/338/
    //   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85494
-   // 
+   //
    // There is no reason to check random_device.entropy since it is unreliable across implementations
    //
    std::random_device m_generator;
@@ -47,12 +46,8 @@ class RandomNondeterministic final {
       return val << shift;
    }
 
-public:
-
-   INLINE_ALWAYS RandomNondeterministic() :
-      m_randomRemainingMax(0),
-      m_randomRemaining(0) {
-   }
+ public:
+   INLINE_ALWAYS RandomNondeterministic() : m_randomRemainingMax(0), m_randomRemaining(0) {}
 
    INLINE_ALWAYS T Next() {
       static constexpr int k_bitsT = COUNT_BITS(T);
@@ -60,11 +55,11 @@ public:
 
       static_assert(MakeLowMask<T>(k_bitsT) == std::numeric_limits<T>::max(), "T max must be all 1s");
       static_assert(MakeLowMask<unsigned int>(k_bitsRandom) == std::numeric_limits<unsigned int>::max(),
-         "unsigned int max must be all 1s");
+            "unsigned int max must be all 1s");
 
       static_assert(0 == std::random_device::min(), "std::random_device::min() must be zero");
       static_assert(MakeLowMask<unsigned int>(k_bitsRandom) == std::random_device::max(),
-         "std::random_device::max() must be the max for unsigned int");
+            "std::random_device::max() must be the max for unsigned int");
 
       T ret = static_cast<T>(m_generator());
       int count = (k_bitsT + k_bitsRandom - 1) / k_bitsRandom - 1;
@@ -80,7 +75,7 @@ public:
       if(std::numeric_limits<T>::max() == max) {
          return Next();
       }
-      const T maxPlusOne = max + T { 1 };
+      const T maxPlusOne = max + T{1};
 
       T randomRemainingMax = m_randomRemainingMax;
       T randomRemaining = m_randomRemaining;
@@ -106,15 +101,13 @@ public:
    }
 
    INLINE_ALWAYS T NextFast(const T maxPlusOne) {
-      EBM_ASSERT(T { 1 } <= maxPlusOne);
-      return Next(maxPlusOne - T { 1 });
+      EBM_ASSERT(T{1} <= maxPlusOne);
+      return Next(maxPlusOne - T{1});
    }
 
-   INLINE_ALWAYS typename std::make_signed<T>::type NextNegative() {
-      return TwosComplementConvert(Next());
-   }
+   INLINE_ALWAYS typename std::make_signed<T>::type NextNegative() { return TwosComplementConvert(Next()); }
 };
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // RANDOM_NONDETERMINISTIC_HPP

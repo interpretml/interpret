@@ -34,28 +34,24 @@ namespace DEFINED_ZONE_NAME {
 
 class RandomDeterministic;
 
-extern ErrorEbm Unbag(
-   const size_t cSamples,
-   const BagEbm * const aBag,
-   size_t * const pcTrainingSamplesOut,
-   size_t * const pcValidationSamplesOut
-);
+extern ErrorEbm Unbag(const size_t cSamples,
+      const BagEbm* const aBag,
+      size_t* const pcTrainingSamplesOut,
+      size_t* const pcValidationSamplesOut);
 
-extern ErrorEbm GetObjective(
-   const Config * const pConfig,
-   const char * sObjective,
-   const AccelerationFlags acceleration,
-   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
-   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
-) noexcept;
+extern ErrorEbm GetObjective(const Config* const pConfig,
+      const char* sObjective,
+      const AccelerationFlags acceleration,
+      ObjectiveWrapper* const pCpuObjectiveWrapperOut,
+      ObjectiveWrapper* const pSIMDObjectiveWrapperOut) noexcept;
 
-void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) {
+void BoosterCore::DeleteTensors(const size_t cTerms, Tensor** const apTensors) {
    LOG_0(Trace_Info, "Entered DeleteTensors");
 
    if(UNLIKELY(nullptr != apTensors)) {
       EBM_ASSERT(0 < cTerms);
-      Tensor ** ppTensor = apTensors;
-      const Tensor * const * const ppTensorsEnd = &apTensors[cTerms];
+      Tensor** ppTensor = apTensors;
+      const Tensor* const* const ppTensorsEnd = &apTensors[cTerms];
       do {
          Tensor::Free(*ppTensor);
          ++ppTensor;
@@ -66,11 +62,7 @@ void BoosterCore::DeleteTensors(const size_t cTerms, Tensor ** const apTensors) 
 }
 
 ErrorEbm BoosterCore::InitializeTensors(
-   const size_t cTerms, 
-   const Term * const * const apTerms, 
-   const size_t cScores,
-   Tensor *** papTensorsOut)
-{
+      const size_t cTerms, const Term* const* const apTerms, const size_t cScores, Tensor*** papTensorsOut) {
    LOG_0(Trace_Info, "Entered InitializeTensors");
 
    EBM_ASSERT(1 <= cTerms);
@@ -81,33 +73,33 @@ ErrorEbm BoosterCore::InitializeTensors(
 
    ErrorEbm error;
 
-   if(IsMultiplyError(sizeof(Tensor *), cTerms)) {
+   if(IsMultiplyError(sizeof(Tensor*), cTerms)) {
       LOG_0(Trace_Warning, "WARNING InitializeTensors IsMultiplyError(sizeof(Tensor *), cTerms)");
       return Error_OutOfMemory;
    }
-   Tensor ** const apTensors = static_cast<Tensor **>(malloc(sizeof(Tensor *) * cTerms));
+   Tensor** const apTensors = static_cast<Tensor**>(malloc(sizeof(Tensor*) * cTerms));
    if(UNLIKELY(nullptr == apTensors)) {
       LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == apTensors");
       return Error_OutOfMemory;
    }
 
-   Tensor ** ppTensorInit = apTensors;
-   const Tensor * const * const ppTensorsEnd = &apTensors[cTerms];
+   Tensor** ppTensorInit = apTensors;
+   const Tensor* const* const ppTensorsEnd = &apTensors[cTerms];
    do {
       *ppTensorInit = nullptr;
       ++ppTensorInit;
    } while(ppTensorsEnd != ppTensorInit);
    *papTensorsOut = apTensors; // transfer ownership for future deletion
 
-   Tensor ** ppTensor = apTensors;
-   const Term * const * ppTerm = apTerms;
+   Tensor** ppTensor = apTensors;
+   const Term* const* ppTerm = apTerms;
    do {
-      const Term * const pTerm = *ppTerm;
-      if(size_t { 0 } != pTerm->GetCountTensorBins()) {
+      const Term* const pTerm = *ppTerm;
+      if(size_t{0} != pTerm->GetCountTensorBins()) {
          // if there are any dimensions with features having 0 bins then do not allocate the tensor
          // since it will have 0 scores
 
-         Tensor * const pTensors = Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
+         Tensor* const pTensors = Tensor::Allocate(pTerm->GetCountDimensions(), cScores);
          if(UNLIKELY(nullptr == pTensors)) {
             LOG_0(Trace_Warning, "WARNING InitializeTensors nullptr == pTensors");
             return Error_OutOfMemory;
@@ -145,16 +137,16 @@ BoosterCore::~BoosterCore() {
    FreeObjectiveWrapperInternals(&m_objectiveSIMD);
 };
 
-void BoosterCore::Free(BoosterCore * const pBoosterCore) {
+void BoosterCore::Free(BoosterCore* const pBoosterCore) {
    LOG_0(Trace_Info, "Entered BoosterCore::Free");
    if(nullptr != pBoosterCore) {
       // for reference counting in general, a release is needed during the decrement and aquire is needed if freeing
       // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
-      // We need to ensure that writes on this thread are not allowed to be re-ordered to a point below the 
+      // We need to ensure that writes on this thread are not allowed to be re-ordered to a point below the
       // decrement because if we happened to decrement to 2, and then get interrupted, and annother thread
       // decremented to 1 after us, we don't want our unclean writes to memory to be visible in the other thread
       // so we use memory_order_release on the decrement.
-      if(size_t { 1 } == pBoosterCore->m_REFERENCE_COUNT.fetch_sub(1, std::memory_order_release)) {
+      if(size_t{1} == pBoosterCore->m_REFERENCE_COUNT.fetch_sub(1, std::memory_order_release)) {
          // we need to ensure that reads on this thread do not get reordered to a point before the decrement, otherwise
          // another thread might write some information, write the decrement to 2, then our thread decrements to 1
          // and then if we're allowed to read from data that occured before our decrement to 1 then we could have
@@ -170,11 +162,9 @@ void BoosterCore::Free(BoosterCore * const pBoosterCore) {
 }
 
 template<typename TUInt>
-static bool CheckBoosterRestrictionsInternal(
-   const BoosterCore * const pBoosterCore,
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t cTensorBinsMax
-) {
+static bool CheckBoosterRestrictionsInternal(const BoosterCore* const pBoosterCore,
+      const ObjectiveWrapper* const pObjectiveWrapper,
+      const size_t cTensorBinsMax) {
    EBM_ASSERT(nullptr != pBoosterCore);
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    EBM_ASSERT(1 <= pBoosterCore->GetCountTerms());
@@ -211,14 +201,14 @@ static bool CheckBoosterRestrictionsInternal(
    if(IsMultiplyError(cTensorBinsMax, EbmMax(cBytes, cScores))) {
       return true;
    }
-   if(IsConvertError<typename std::make_signed<TUInt>::type>(cTensorBinsMax * cScores - size_t { 1 })) {
+   if(IsConvertError<typename std::make_signed<TUInt>::type>(cTensorBinsMax * cScores - size_t{1})) {
       // In all objectives we take the binned feature index and use it to lookup the score update in the update
       // tensor. The lookup indexes are packed together in an array of SIMDable integers, so obviously the SIMDable
       // integer needs to be large enough to hold the maximum feature index.
-      // 
-      // Additionally, we use a SIMD gather operations in the objectives to load from the score update tensor, which 
+      //
+      // Additionally, we use a SIMD gather operations in the objectives to load from the score update tensor, which
       // use signed indexes, which means we need to restrict ourselves to the range of positive values.
-      
+
       return true;
    }
    cBytes *= cTensorBinsMax;
@@ -229,13 +219,13 @@ static bool CheckBoosterRestrictionsInternal(
       return true;
    }
 
-   if(size_t { 1 } != cScores) {
+   if(size_t{1} != cScores) {
       // TODO: we currently index into the gradient array using the target, but the gradient array is also
       // layed out per-SIMD pack.  Once we sort the dataset by the target we'll be able to use non-random
       // indexing to fetch all the sample targets simultaneously, and we'll no longer need this indexing
       size_t cIndexes = cScores;
       if(bHessian) {
-         if(IsMultiplyError(size_t { 2 }, cIndexes)) {
+         if(IsMultiplyError(size_t{2}, cIndexes)) {
             return true;
          }
          cIndexes <<= 1;
@@ -245,7 +235,8 @@ static bool CheckBoosterRestrictionsInternal(
       }
       // restriction from LogLossMulticlassObjective.hpp
       // we use the target value to index into the temp exp array and adjust the target gradient
-      if(IsConvertError<typename std::make_signed<TUInt>::type>(cIndexes * pObjectiveWrapper->m_cSIMDPack - size_t { 1 })) {
+      if(IsConvertError<typename std::make_signed<TUInt>::type>(
+               cIndexes * pObjectiveWrapper->m_cSIMDPack - size_t{1})) {
          return true;
       }
    }
@@ -253,11 +244,9 @@ static bool CheckBoosterRestrictionsInternal(
    return false;
 }
 
-static bool CheckBoosterRestrictions(
-   const BoosterCore * const pBoosterCore,
-   const ObjectiveWrapper * const pObjectiveWrapper,
-   const size_t cTensorBinsMax
-) {
+static bool CheckBoosterRestrictions(const BoosterCore* const pBoosterCore,
+      const ObjectiveWrapper* const pObjectiveWrapper,
+      const size_t cTensorBinsMax) {
    EBM_ASSERT(nullptr != pObjectiveWrapper);
    if(sizeof(UIntBig) == pObjectiveWrapper->m_cUIntBytes) {
       return CheckBoosterRestrictionsInternal<UIntBig>(pBoosterCore, pObjectiveWrapper, cTensorBinsMax);
@@ -267,26 +256,24 @@ static bool CheckBoosterRestrictions(
    }
 }
 
-//static int g_TODO_removeThisThreadTest = 0;
-//void TODO_removeThisThreadTest() {
-//   g_TODO_removeThisThreadTest = 1;
-//}
+// static int g_TODO_removeThisThreadTest = 0;
+// void TODO_removeThisThreadTest() {
+//    g_TODO_removeThisThreadTest = 1;
+// }
 
-ErrorEbm BoosterCore::Create(
-   void * const rng,
-   const size_t cTerms,
-   const size_t cInnerBags,
-   const double * const experimentalParams,
-   const IntEbm * const acTermDimensions,
-   const IntEbm * const aiTermFeatures, 
-   const unsigned char * const pDataSetShared,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
-   const CreateBoosterFlags flags,
-   const AccelerationFlags acceleration,
-   const char * const sObjective,
-   BoosterCore ** const ppBoosterCoreOut
-) {
+ErrorEbm BoosterCore::Create(void* const rng,
+      const size_t cTerms,
+      const size_t cInnerBags,
+      const double* const experimentalParams,
+      const IntEbm* const acTermDimensions,
+      const IntEbm* const aiTermFeatures,
+      const unsigned char* const pDataSetShared,
+      const BagEbm* const aBag,
+      const double* const aInitScores,
+      const CreateBoosterFlags flags,
+      const AccelerationFlags acceleration,
+      const char* const sObjective,
+      BoosterCore** const ppBoosterCoreOut) {
    // experimentalParams isn't used by default.  It's meant to provide an easy way for python or other higher
    // level languages to pass EXPERIMENTAL temporary parameters easily to the C++ code.
    UNUSED(experimentalParams);
@@ -299,29 +286,29 @@ ErrorEbm BoosterCore::Create(
 
    ErrorEbm error;
 
-   //try {
-   //   // TODO: eliminate this code I added to test that threads are available on the majority of our systems
-   //   std::thread testThread(TODO_removeThisThreadTest);
-   //   testThread.join();
-   //   if(0 == g_TODO_removeThisThreadTest) {
-   //      LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread not started");
-   //      return Error_UnexpectedInternal;
-   //   }
-   //} catch(const std::bad_alloc &) {
-   //   LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start out of memory");
-   //   return Error_OutOfMemory;
-   //} catch(...) {
-   //   // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
-   //   // about the best we can do is catch(...) since the exact exceptions seem to be implementation specific
-   //   LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start failed");
-   //   return Error_ThreadStartFailed;
-   //}
-   //LOG_0(Trace_Info, "INFO BoosterCore::Create thread started");
+   // try {
+   //    // TODO: eliminate this code I added to test that threads are available on the majority of our systems
+   //    std::thread testThread(TODO_removeThisThreadTest);
+   //    testThread.join();
+   //    if(0 == g_TODO_removeThisThreadTest) {
+   //       LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread not started");
+   //       return Error_UnexpectedInternal;
+   //    }
+   // } catch(const std::bad_alloc &) {
+   //    LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start out of memory");
+   //    return Error_OutOfMemory;
+   // } catch(...) {
+   //    // the C++ standard doesn't really seem to say what kind of exceptions we'd get for various errors, so
+   //    // about the best we can do is catch(...) since the exact exceptions seem to be implementation specific
+   //    LOG_0(Trace_Warning, "WARNING BoosterCore::Create thread start failed");
+   //    return Error_ThreadStartFailed;
+   // }
+   // LOG_0(Trace_Info, "INFO BoosterCore::Create thread started");
 
-   BoosterCore * pBoosterCore;
+   BoosterCore* pBoosterCore;
    try {
       pBoosterCore = new BoosterCore();
-   } catch(const std::bad_alloc &) {
+   } catch(const std::bad_alloc&) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create Out of memory allocating BoosterCore");
       return Error_OutOfMemory;
    } catch(...) {
@@ -358,11 +345,11 @@ ErrorEbm BoosterCore::Create(
    }
    size_t cSamples = static_cast<size_t>(countSamples);
 
-   if(size_t { 1 } < cWeights) {
+   if(size_t{1} < cWeights) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create size_t { 1 } < cWeights");
       return Error_IllegalParamVal;
    }
-   if(size_t { 1 } != cTargets) {
+   if(size_t{1} != cTargets) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create 1 != cTargets");
       return Error_IllegalParamVal;
    }
@@ -375,14 +362,14 @@ ErrorEbm BoosterCore::Create(
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(sizeof(Feature), cFeatures)");
          return Error_OutOfMemory;
       }
-      FeatureBoosting * const aFeatures = static_cast<FeatureBoosting *>(malloc(sizeof(FeatureBoosting) * cFeatures));
+      FeatureBoosting* const aFeatures = static_cast<FeatureBoosting*>(malloc(sizeof(FeatureBoosting) * cFeatures));
       if(nullptr == aFeatures) {
          LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == aFeatures");
          return Error_OutOfMemory;
       }
       pBoosterCore->m_aFeatures = aFeatures;
 
-      size_t iFeatureInitialize = size_t { 0 };
+      size_t iFeatureInitialize = size_t{0};
       do {
          bool bMissing;
          bool bUnknown;
@@ -391,17 +378,15 @@ ErrorEbm BoosterCore::Create(
          UIntShared countBins;
          UIntShared defaultValSparse;
          size_t cNonDefaultsSparse;
-         GetDataSetSharedFeature(
-            pDataSetShared,
-            iFeatureInitialize,
-            &bMissing,
-            &bUnknown,
-            &bNominal,
-            &bSparse,
-            &countBins,
-            &defaultValSparse,
-            &cNonDefaultsSparse
-         );
+         GetDataSetSharedFeature(pDataSetShared,
+               iFeatureInitialize,
+               &bMissing,
+               &bUnknown,
+               &bNominal,
+               &bSparse,
+               &countBins,
+               &defaultValSparse,
+               &cNonDefaultsSparse);
          EBM_ASSERT(!bSparse); // we do not handle yet
          if(IsConvertError<size_t>(countBins)) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create IsConvertError<size_t>(countBins)");
@@ -419,11 +404,11 @@ ErrorEbm BoosterCore::Create(
             }
 
             // we can handle 0 == cBins even though that's a degenerate case that shouldn't be boosted on.  0 bins
-            // can only occur if there were zero training and zero validation cases since the 
+            // can only occur if there were zero training and zero validation cases since the
             // features would require a value, even if it was 0.
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 0 values");
          } else if(1 == cBins) {
-            // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but 
+            // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
@@ -447,25 +432,27 @@ ErrorEbm BoosterCore::Create(
          return Error_OutOfMemory;
       }
 
-      const IntEbm * piTermFeature = aiTermFeatures;
+      const IntEbm* piTermFeature = aiTermFeatures;
       size_t iTerm = 0;
       do {
          const IntEbm countDimensions = acTermDimensions[iTerm];
-         if(countDimensions < IntEbm { 0 }) {
+         if(countDimensions < IntEbm{0}) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create countDimensions cannot be negative");
             return Error_IllegalParamVal;
          }
-         if(IntEbm { k_cDimensionsMax } < countDimensions) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
+         if(IntEbm{k_cDimensionsMax} < countDimensions) {
+            LOG_0(Trace_Warning,
+                  "WARNING BoosterCore::Create countDimensions too large and would cause out of memory condition");
             return Error_OutOfMemory;
          }
          const size_t cDimensions = static_cast<size_t>(countDimensions);
-         Term * const pTerm = Term::Allocate(cDimensions);
+         Term* const pTerm = Term::Allocate(cDimensions);
          if(nullptr == pTerm) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create nullptr == pTerm");
             return Error_OutOfMemory;
          }
-         // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit due to an error below
+         // assign our pointer directly to our array right now so that we can't loose the memory if we decide to exit
+         // due to an error below
          pBoosterCore->m_apTerms[iTerm] = pTerm;
 
          pTerm->SetCountAuxillaryBins(0); // we only use these for pairs, so otherwise it gets left as zero
@@ -477,23 +464,26 @@ ErrorEbm BoosterCore::Create(
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
 
-            cTensorBinsMax = EbmMax(cTensorBinsMax, size_t { 1 });
-            cMainBinsMax = EbmMax(cMainBinsMax, size_t { 1 });
+            cTensorBinsMax = EbmMax(cTensorBinsMax, size_t{1});
+            cMainBinsMax = EbmMax(cMainBinsMax, size_t{1});
          } else {
             if(nullptr == piTermFeature) {
-               LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures cannot be NULL when there are Terms with non-zero numbers of features");
+               LOG_0(Trace_Error,
+                     "ERROR BoosterCore::Create aiTermFeatures cannot be NULL when there are Terms with non-zero "
+                     "numbers of features");
                return Error_IllegalParamVal;
             }
             size_t cSingleDimensionBins = 0;
-            TermFeature * pTermFeature = pTerm->GetTermFeatures();
-            const TermFeature * const pTermFeaturesEnd = &pTermFeature[cDimensions];
+            TermFeature* pTermFeature = pTerm->GetTermFeatures();
+            const TermFeature* const pTermFeaturesEnd = &pTermFeature[cDimensions];
             // TODO: Ideally we would flip our input dimensions so that we're aligned with the output ordering
             //       and thus not need a transpose when transfering data to the caller. We're doing it this way
-            //       for now to test the transpose ability and also to maintain the same results as before for comparison
+            //       for now to test the transpose ability and also to maintain the same results as before for
+            //       comparison
             size_t iTranspose = cDimensions - 1;
             do {
                const IntEbm indexFeature = *piTermFeature;
-               if(indexFeature < IntEbm { 0 }) {
+               if(indexFeature < IntEbm{0}) {
                   LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value cannot be negative");
                   return Error_IllegalParamVal;
                }
@@ -504,30 +494,31 @@ ErrorEbm BoosterCore::Create(
                const size_t iFeature = static_cast<size_t>(indexFeature);
 
                if(cFeatures <= iFeature) {
-                  LOG_0(Trace_Error, "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
+                  LOG_0(Trace_Error,
+                        "ERROR BoosterCore::Create aiTermFeatures value must be less than the number of features");
                   return Error_IllegalParamVal;
                }
 
                EBM_ASSERT(1 <= cFeatures); // since our iFeature is valid and index 0 would mean cFeatures == 1
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
-               // Clang does not seems to understand that iFeature is bound to the legal 
+               // Clang does not seems to understand that iFeature is bound to the legal
                // range of m_aFeatures through the check "cFeatures <= iFeature" above
                StopClangAnalysis();
 
-               const FeatureBoosting * const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
+               const FeatureBoosting* const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                pTermFeature->m_pFeature = pInputFeature;
                pTermFeature->m_cStride = cTensorBins;
                pTermFeature->m_iTranspose = iTranspose; // TODO: no tranposition yet, but move it from python to C
 
                const size_t cBins = pInputFeature->GetCountBins();
-               if(LIKELY(size_t { 1 } < cBins)) {
-                  // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting tensor loses one dimension but is 
-                  // otherwise indistinquishable from the original data
+               if(LIKELY(size_t{1} < cBins)) {
+                  // if we have only 1 bin, then we can eliminate the feature from consideration since the resulting
+                  // tensor loses one dimension but is otherwise indistinquishable from the original data
                   ++cRealDimensions;
 
                   cSingleDimensionBins = cBins;
-                  
+
                   if(IsMultiplyError(cTensorBins, cBins)) {
                      // if this overflows, we definetly won't be able to allocate it
                      LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cTensorStates, cBins)");
@@ -537,7 +528,7 @@ ErrorEbm BoosterCore::Create(
                   // mathematically, cTensorBins grows faster than cAuxillaryBinsForBuildFastTotals
                   EBM_ASSERT(0 == cTensorBins || cAuxillaryBinsForBuildFastTotals < cTensorBins);
 
-                  // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than 
+                  // since cBins must be 2 or more, cAuxillaryBinsForBuildFastTotals must grow slower than
                   // cTensorBins, and we checked above that cTensorBins would not overflow
                   EBM_ASSERT(!IsAddError(cAuxillaryBinsForBuildFastTotals, cTensorBins));
 
@@ -556,20 +547,21 @@ ErrorEbm BoosterCore::Create(
 
             cTensorBinsMax = EbmMax(cTensorBinsMax, cTensorBins);
             size_t cTotalMainBins = cTensorBins;
-            if(LIKELY(size_t { 1 } < cTensorBins)) {
+            if(LIKELY(size_t{1} < cTensorBins)) {
                EBM_ASSERT(1 <= cRealDimensions);
 
-               cBitsRequiredMin = CountBitsRequired(cTensorBins - size_t { 1 });
+               cBitsRequiredMin = CountBitsRequired(cTensorBins - size_t{1});
                EBM_ASSERT(1 <= cBitsRequiredMin); // 1 < cTensorBins otherwise we'd have filtered it out above
                EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(size_t));
 
-               if(size_t { 1 } == cRealDimensions) {
+               if(size_t{1} == cRealDimensions) {
                   cSingleDimensionBinsMax = EbmMax(cSingleDimensionBinsMax, cSingleDimensionBins);
                } else {
                   // we only use AuxillaryBins for pairs.  We wouldn't use them for random pairs, but we
                   // don't know yet if the caller will set the random boosting flag on all pairs, so allocate it
 
-                  // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20 at max, so we need 24
+                  // we need to reserve 4 PAST the pointer we pass into SweepMultiDimensional!!!!.  We pass in index 20
+                  // at max, so we need 24
                   static constexpr size_t cAuxillaryBinsForSplitting = 24;
                   const size_t cAuxillaryBins = EbmMax(cAuxillaryBinsForBuildFastTotals, cAuxillaryBinsForSplitting);
                   pTerm->SetCountAuxillaryBins(cAuxillaryBins);
@@ -595,21 +587,21 @@ ErrorEbm BoosterCore::Create(
    LOG_0(Trace_Info, "BoosterCore::Create finished term processing");
 
    ptrdiff_t cClasses;
-   const void * const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
+   const void* const aTargets = GetDataSetSharedTarget(pDataSetShared, 0, &cClasses);
    if(nullptr == aTargets) {
       LOG_0(Trace_Warning, "WARNING BoosterCore::Create cClasses cannot fit into ptrdiff_t");
       return Error_IllegalParamVal;
    }
 
-   // having 1 class means that all predictions are perfect. In the C interface we reduce this into having 0 scores, 
+   // having 1 class means that all predictions are perfect. In the C interface we reduce this into having 0 scores,
    // which means that we do not write anything to our upper level callers, and we don't need a bunch of things
    // since they have zero memory allocated to them. Having 0 classes means there are also 0 samples.
-   if(ptrdiff_t { 0 } != cClasses && ptrdiff_t { 1 } != cClasses) {
+   if(ptrdiff_t{0} != cClasses && ptrdiff_t{1} != cClasses) {
       size_t cScores;
       if(0 != (CreateBoosterFlags_BinaryAsMulticlass & flags)) {
-         cScores = cClasses < ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+         cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
       } else {
-         cScores = cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+         cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
       }
       pBoosterCore->m_cScores = cScores;
 
@@ -618,12 +610,7 @@ ErrorEbm BoosterCore::Create(
       config.cOutputs = cScores;
       config.isDifferentialPrivacy = 0 != (CreateBoosterFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(
-         &config,
-         sObjective, 
-         acceleration,
-         &pBoosterCore->m_objectiveCpu,
-         &pBoosterCore->m_objectiveSIMD
-      );
+            &config, sObjective, acceleration, &pBoosterCore->m_objectiveCpu, &pBoosterCore->m_objectiveSIMD);
       if(Error_None != error) {
          // already logged
          return error;
@@ -631,7 +618,7 @@ ErrorEbm BoosterCore::Create(
       LOG_0(Trace_Info, "INFO BoosterCore::Create Objective determined");
 
       const TaskEbm task = IdentifyTask(pBoosterCore->m_objectiveCpu.m_linkFunction);
-      if(ptrdiff_t { Task_GeneralClassification } <= cClasses) {
+      if(ptrdiff_t{Task_GeneralClassification} <= cClasses) {
          if(task < Task_GeneralClassification) {
             LOG_0(Trace_Error, "ERROR BoosterCore::Create mismatch in objective class model type");
             return Error_IllegalParamVal;
@@ -670,64 +657,60 @@ ErrorEbm BoosterCore::Create(
             }
 
             // if we have 32 bit floats or ints, then we need to break large datasets into smaller data subsets
-            // because float32 values stop incrementing at 2^24 where the value 1 is below the threshold incrementing a float
-            const bool bForceMultipleSubsets =
-               sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes ||
-               sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes ||
-               sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
-               sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
+            // because float32 values stop incrementing at 2^24 where the value 1 is below the threshold incrementing a
+            // float
+            const bool bForceMultipleSubsets = sizeof(UIntSmall) == pBoosterCore->m_objectiveCpu.m_cUIntBytes ||
+                  sizeof(FloatSmall) == pBoosterCore->m_objectiveCpu.m_cFloatBytes ||
+                  sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
+                  sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
 
             const bool bHessian = pBoosterCore->IsHessian();
 
             pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
-            error = pBoosterCore->m_trainingSet.InitDataSetBoosting(
-               true,
-               bHessian,
-               !pBoosterCore->IsRmse(),
-               !pBoosterCore->IsRmse(),
-               rng,
-               cScores,
-               bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
-               &pBoosterCore->m_objectiveCpu,
-               &pBoosterCore->m_objectiveSIMD,
-               pDataSetShared,
-               BagEbm { 1 },
-               cSamples,
-               aBag,
-               aInitScores,
-               cTrainingSamples,
-               cInnerBags,
-               cWeights,
-               cTerms,
-               pBoosterCore->m_apTerms,
-               aiTermFeatures
-            );
+            error = pBoosterCore->m_trainingSet.InitDataSetBoosting(true,
+                  bHessian,
+                  !pBoosterCore->IsRmse(),
+                  !pBoosterCore->IsRmse(),
+                  rng,
+                  cScores,
+                  bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
+                  &pBoosterCore->m_objectiveCpu,
+                  &pBoosterCore->m_objectiveSIMD,
+                  pDataSetShared,
+                  BagEbm{1},
+                  cSamples,
+                  aBag,
+                  aInitScores,
+                  cTrainingSamples,
+                  cInnerBags,
+                  cWeights,
+                  cTerms,
+                  pBoosterCore->m_apTerms,
+                  aiTermFeatures);
             if(Error_None != error) {
                return error;
             }
 
-            error = pBoosterCore->m_validationSet.InitDataSetBoosting(
-               pBoosterCore->IsRmse(),
-               false,
-               !pBoosterCore->IsRmse(),
-               !pBoosterCore->IsRmse(),
-               rng,
-               cScores,
-               bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
-               &pBoosterCore->m_objectiveCpu,
-               &pBoosterCore->m_objectiveSIMD,
-               pDataSetShared,
-               BagEbm { -1 },
-               cSamples,
-               aBag,
-               aInitScores,
-               cValidationSamples,
-               0,
-               cWeights,
-               cTerms,
-               pBoosterCore->m_apTerms,
-               aiTermFeatures
-            );
+            error = pBoosterCore->m_validationSet.InitDataSetBoosting(pBoosterCore->IsRmse(),
+                  false,
+                  !pBoosterCore->IsRmse(),
+                  !pBoosterCore->IsRmse(),
+                  rng,
+                  cScores,
+                  bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
+                  &pBoosterCore->m_objectiveCpu,
+                  &pBoosterCore->m_objectiveSIMD,
+                  pDataSetShared,
+                  BagEbm{-1},
+                  cSamples,
+                  aBag,
+                  aInitScores,
+                  cValidationSamples,
+                  0,
+                  cWeights,
+                  cTerms,
+                  pBoosterCore->m_apTerms,
+                  aiTermFeatures);
             if(Error_None != error) {
                return error;
             }
@@ -735,8 +718,9 @@ ErrorEbm BoosterCore::Create(
             size_t cBytesPerFastBinMax = 0;
 
             if(0 != cTrainingSamples) {
-               DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
-               const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
+               DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+               const DataSubsetBoosting* const pSubsetsEnd =
+                     pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
                do {
                   size_t cBytesPerFastBin;
                   if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
@@ -761,8 +745,9 @@ ErrorEbm BoosterCore::Create(
             }
 
             if(0 != cValidationSamples) {
-               DataSubsetBoosting * pSubset = pBoosterCore->GetValidationSet()->GetSubsets();
-               const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
+               DataSubsetBoosting* pSubset = pBoosterCore->GetValidationSet()->GetSubsets();
+               const DataSubsetBoosting* const pSubsetsEnd =
+                     pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
                do {
                   size_t cBytesPerFastBin;
                   if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
@@ -813,13 +798,15 @@ ErrorEbm BoosterCore::Create(
                const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
                const size_t cBytesPerSplitPosition = GetSplitPositionSize(bHessian, cScores);
                if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
-                  LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)");
+                  LOG_0(Trace_Warning,
+                        "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, "
+                        "cSingleDimensionSplitsMax)");
                   return Error_OutOfMemory;
                }
-               // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should generate
+               // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should
+               // generate
                //        random numbers as we find equal gains, so we won't need this memory if we do that
                pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
-
 
                // If we have N bins, then we can have at most N - 1 splits.
                // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
@@ -830,7 +817,8 @@ ErrorEbm BoosterCore::Create(
                // So, in total we consume N + N - 1 TreeNodes
 
                if(IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)) {
-                  LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
+                  LOG_0(Trace_Warning,
+                        "WARNING BoosterCore::Create IsAddError(cSingleDimensionSplitsMax, cSingleDimensionBinsMax)");
                   return Error_OutOfMemory;
                }
                const size_t cTreeNodes = cSingleDimensionSplitsMax + cSingleDimensionBinsMax;
@@ -862,11 +850,9 @@ ErrorEbm BoosterCore::Create(
 }
 
 ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
-   void * const aMulticlassMidwayTemp,
-   FloatScore * const aUpdateScores
-) {
-   DataSetBoosting * const pDataSet = GetTrainingSet();
-   if(size_t { 0 } != pDataSet->GetCountSamples()) {
+      void* const aMulticlassMidwayTemp, FloatScore* const aUpdateScores) {
+   DataSetBoosting* const pDataSet = GetTrainingSet();
+   if(size_t{0} != pDataSet->GetCountSamples()) {
       const size_t cScores = GetCountScores();
 
 #ifndef NDEBUG
@@ -878,10 +864,10 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 
       EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
 
-      DataSubsetBoosting * pSubset = pDataSet->GetSubsets();
+      DataSubsetBoosting* pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);
       EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
-      const DataSubsetBoosting * const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
+      const DataSubsetBoosting* const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
       do {
          EBM_ASSERT(1 <= pSubset->GetCountSamples());
 
@@ -892,8 +878,8 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_bDisableApprox = IsDisableApprox();
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
-         // if FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read 
-         // past the end of the aUpdateScores memory, which should always contain zeros.If we want to handle this 
+         // if FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read
+         // past the end of the aUpdateScores memory, which should always contain zeros.If we want to handle this
          // scenario then we need to allocate a larger buffer of memory to zero out instead of using aUpdateScores
          EBM_ASSERT(pSubset->GetObjectiveWrapper()->m_cFloatBytes <= sizeof(FloatScore));
          data.m_aUpdateTensorScores = aUpdateScores;
@@ -914,4 +900,4 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
    return Error_None;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

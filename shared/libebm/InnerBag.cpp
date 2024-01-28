@@ -22,23 +22,24 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-InnerBag * InnerBag::AllocateInnerBags(const size_t cInnerBags) {
+InnerBag* InnerBag::AllocateInnerBags(const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered InnerBag::AllocateInnerBags");
 
-   const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
+   const size_t cInnerBagsAfterZero = size_t{0} == cInnerBags ? size_t{1} : cInnerBags;
 
    if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
+      LOG_0(Trace_Warning,
+            "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
       return nullptr;
    }
-   InnerBag * aInnerBag = static_cast<InnerBag *>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
+   InnerBag* aInnerBag = static_cast<InnerBag*>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
    if(UNLIKELY(nullptr == aInnerBag)) {
       LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == aInnerBag");
       return nullptr;
    }
 
-   InnerBag * pInnerBag = aInnerBag;
-   const InnerBag * const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
+   InnerBag* pInnerBag = aInnerBag;
+   const InnerBag* const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
    do {
       pInnerBag->m_aWeights = nullptr;
       pInnerBag->m_aCountOccurrences = nullptr;
@@ -52,13 +53,13 @@ InnerBag * InnerBag::AllocateInnerBags(const size_t cInnerBags) {
 // Visual Studio compiler seems to not like the index addition by 1 to make cInnerBagsAfterZero
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBags) {
+void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag* const aInnerBags) {
    LOG_0(Trace_Info, "Entered InnerBag::FreeInnerBags");
 
    if(LIKELY(nullptr != aInnerBags)) {
-      const size_t cInnerBagsAfterZero = size_t { 0 } == cInnerBags ? size_t { 1 } : cInnerBags;
-      InnerBag * pInnerBag = aInnerBags;
-      const InnerBag * const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
+      const size_t cInnerBagsAfterZero = size_t{0} == cInnerBags ? size_t{1} : cInnerBags;
+      InnerBag* pInnerBag = aInnerBags;
+      const InnerBag* const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
       do {
          AlignedFree(pInnerBag->m_aCountOccurrences);
          AlignedFree(pInnerBag->m_aWeights);
@@ -71,4 +72,4 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag * const aInnerBag
 }
 WARNING_POP
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

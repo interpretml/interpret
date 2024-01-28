@@ -28,18 +28,13 @@ struct TransposeDimension {
 };
 
 template<bool bCopyToIncrement, typename TIncrement, typename TStride>
-extern void Transpose(
-   const Term * const pTerm,
-   const size_t cScores,
-   TIncrement * pIncrement,
-   TStride * pStride
-) {
+extern void Transpose(const Term* const pTerm, const size_t cScores, TIncrement* pIncrement, TStride* pStride) {
    EBM_ASSERT(0 < cScores);
    const size_t cBytesPerCell = sizeof(*pStride) * cScores;
 
    const size_t cDimensions = pTerm->GetCountDimensions();
-   if(size_t { 0 } == cDimensions) {
-      TIncrement * const pIncrementEnd = pIncrement + cScores;
+   if(size_t{0} == cDimensions) {
+      TIncrement* const pIncrementEnd = pIncrement + cScores;
       do {
          if(bCopyToIncrement) {
             *pIncrement = static_cast<TIncrement>(*pStride);
@@ -53,13 +48,13 @@ extern void Transpose(
       return;
    }
 
-   const TermFeature * const aTermFeatures = pTerm->GetTermFeatures();
-   const TermFeature * pTermFeature = aTermFeatures;
+   const TermFeature* const aTermFeatures = pTerm->GetTermFeatures();
+   const TermFeature* pTermFeature = aTermFeatures;
 
    TransposeDimension aDim[k_cDimensionsMax];
 
-   TransposeDimension * pDimInit = aDim;
-   const TransposeDimension * const pDimEnd = &aDim[cDimensions];
+   TransposeDimension* pDimInit = aDim;
+   const TransposeDimension* const pDimEnd = &aDim[cDimensions];
 
    size_t cSkip;
    size_t cSkipLevelInit;
@@ -71,14 +66,14 @@ extern void Transpose(
       // we process this in the order of pIncrement. The m_iTranspose of the TermFeature indicates where
       // we need to look to find the feature we are transposing to the location of the pIncrement dimension
 
-      const FeatureBoosting * const pFeature = aTermFeatures[pTermFeature->m_iTranspose].m_pFeature;
+      const FeatureBoosting* const pFeature = aTermFeatures[pTermFeature->m_iTranspose].m_pFeature;
       pDimInit->cBytesStride = aTermFeatures[pTermFeature->m_iTranspose].m_cStride * cBytesPerCell;
 
       const size_t cBinsReduced = pFeature->GetCountBins();
       EBM_ASSERT(1 <= cBinsReduced); // otherwise we should have exited in the caller
       bool bMissing = pFeature->IsMissing();
       bool bUnknown = pFeature->IsUnknown();
-      const size_t cBins = cBinsReduced + (bMissing ? size_t { 0 } : size_t { 1 }) + (bUnknown ? size_t { 0 } : size_t { 1 });
+      const size_t cBins = cBinsReduced + (bMissing ? size_t{0} : size_t{1}) + (bUnknown ? size_t{0} : size_t{1});
       EBM_ASSERT(2 <= cBins); // just missing and unknown required
 
       pDimInit->cBins = cBins;
@@ -107,11 +102,11 @@ extern void Transpose(
    }
 
    while(true) {
-      TIncrement * const pIncrementEnd = pIncrement + cScores;
+      TIncrement* const pIncrementEnd = pIncrement + cScores;
 
       size_t cSkipLevel;
       if(bCopyToIncrement) {
-         TStride * pStrideTemp = pStride;
+         TStride* pStrideTemp = pStride;
          do {
             *pIncrement = static_cast<TIncrement>(*pStrideTemp);
             ++pStrideTemp;
@@ -119,15 +114,15 @@ extern void Transpose(
          } while(pIncrementEnd != pIncrement);
       } else {
          if(0 == cSkip) {
-            TStride * pStrideTemp = pStride;
+            TStride* pStrideTemp = pStride;
             do {
                *pStrideTemp = static_cast<TStride>(*pIncrement);
                ++pStrideTemp;
                ++pIncrement;
             } while(pIncrementEnd != pIncrement);
          } else {
-            // TODO: instead of using a counter, use a pointer that we compare to *pIncrement. No need to decrement it 
-            // then and we can use a branchless comparison to update the pStrideSkipTo pointer when adding to the 
+            // TODO: instead of using a counter, use a pointer that we compare to *pIncrement. No need to decrement it
+            // then and we can use a branchless comparison to update the pStrideSkipTo pointer when adding to the
             // equivalent to cSkip which will be executed less than this decrement that happen each loop
             --cSkip;
             pIncrement = pIncrementEnd;
@@ -135,7 +130,7 @@ extern void Transpose(
          cSkipLevel = 1;
       }
 
-      TransposeDimension * pDim = aDim;
+      TransposeDimension* pDim = aDim;
       while(true) {
          // TODO: instead of iBinsRemaining, use a pFirst and pLast on each dimension to keep track of our state
          // and to keep track of where we want to return to after we have finished the stripe
@@ -151,7 +146,7 @@ extern void Transpose(
             if(!pDim->bDropLast) {
                // there is a corner case to handle where we're leaving the missing and entering the unknown bin
                if(1 != pDim->cBinsReduced) {
-                  pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) + pDim->cBytesStride);
+                  pStride = reinterpret_cast<TStride*>(reinterpret_cast<char*>(pStride) + pDim->cBytesStride);
                }
             } else {
                if(!bCopyToIncrement) {
@@ -166,11 +161,11 @@ extern void Transpose(
 
             // we're moving away from the first position
             if(!pDim->bDropFirst) {
-               pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) + pDim->cBytesStride);
+               pStride = reinterpret_cast<TStride*>(reinterpret_cast<char*>(pStride) + pDim->cBytesStride);
             }
             break;
          } else if(0 != iBinsRemaining) {
-            pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) + pDim->cBytesStride);
+            pStride = reinterpret_cast<TStride*>(reinterpret_cast<char*>(pStride) + pDim->cBytesStride);
             break;
          }
 
@@ -187,7 +182,7 @@ extern void Transpose(
          pDim->iBinsRemaining = pDim->cBins;
 
          const size_t cBinsStride = pDim->cBinsReduced - 1;
-         pStride = reinterpret_cast<TStride *>(reinterpret_cast<char *>(pStride) - pDim->cBytesStride * cBinsStride);
+         pStride = reinterpret_cast<TStride*>(reinterpret_cast<char*>(pStride) - pDim->cBytesStride * cBinsStride);
 
          ++pDim;
          if(pDimEnd == pDim) {
@@ -197,6 +192,6 @@ extern void Transpose(
    }
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // TRANSPOSE_HPP

@@ -24,7 +24,7 @@ class FeatureInteraction;
 class InteractionCore final {
 
    // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
-   // and revoked the trivial nature of the class.  So, this means our InteractionCore class needs to have a constructor 
+   // and revoked the trivial nature of the class.  So, this means our InteractionCore class needs to have a constructor
    // and destructor
    // https://stackoverflow.com/questions/48794325/why-stdatomic-is-not-trivial-type-in-only-visual-c
    // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
@@ -34,7 +34,7 @@ class InteractionCore final {
    BoolEbm m_bDisableApprox;
 
    size_t m_cFeatures;
-   FeatureInteraction * m_aFeatures;
+   FeatureInteraction* m_aFeatures;
 
    DataSetInteraction m_dataFrame;
 
@@ -51,67 +51,51 @@ class InteractionCore final {
    };
 
    inline InteractionCore() noexcept :
-      m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
-      m_cScores(0),
-      m_bDisableApprox(EBM_FALSE),
-      m_cFeatures(0),
-      m_aFeatures(nullptr)
-   {
+         m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
+         m_cScores(0),
+         m_bDisableApprox(EBM_FALSE),
+         m_cFeatures(0),
+         m_aFeatures(nullptr) {
       m_dataFrame.SafeInitDataSetInteraction();
       InitializeObjectiveWrapperUnfailing(&m_objectiveCpu);
       InitializeObjectiveWrapperUnfailing(&m_objectiveSIMD);
    }
 
-public:
-
+ public:
    inline void AddReferenceCount() {
-      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1, 
+      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1,
       // so no result will change our behavior below
       // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   inline size_t GetCountScores() const {
-      return m_cScores;
-   }
+   inline size_t GetCountScores() const { return m_cScores; }
 
-   inline const DataSetInteraction * GetDataSetInteraction() const {
-      return &m_dataFrame;
-   }
-   inline DataSetInteraction * GetDataSetInteraction() {
-      return &m_dataFrame;
-   }
+   inline const DataSetInteraction* GetDataSetInteraction() const { return &m_dataFrame; }
+   inline DataSetInteraction* GetDataSetInteraction() { return &m_dataFrame; }
 
-   inline const FeatureInteraction * GetFeatures() const {
-      return m_aFeatures;
-   }
+   inline const FeatureInteraction* GetFeatures() const { return m_aFeatures; }
 
-   inline size_t GetCountFeatures() const {
-      return m_cFeatures;
-   }
+   inline size_t GetCountFeatures() const { return m_cFeatures; }
 
-   static void Free(InteractionCore * const pInteractionCore);
-   static ErrorEbm Create(
-      const unsigned char * const pDataSetShared,
-      const size_t cSamples,
-      const size_t cFeatures,
-      const size_t cWeights,
-      const BagEbm * const aBag,
-      const CreateInteractionFlags flags,
-      const AccelerationFlags acceleration,
-      const char * const sObjective,
-      const double * const experimentalParams,
-      InteractionCore ** const ppInteractionCoreOut
-   );
+   static void Free(InteractionCore* const pInteractionCore);
+   static ErrorEbm Create(const unsigned char* const pDataSetShared,
+         const size_t cSamples,
+         const size_t cFeatures,
+         const size_t cWeights,
+         const BagEbm* const aBag,
+         const CreateInteractionFlags flags,
+         const AccelerationFlags acceleration,
+         const char* const sObjective,
+         const double* const experimentalParams,
+         InteractionCore** const ppInteractionCoreOut);
 
-   ErrorEbm InitializeInteractionGradientsAndHessians(
-      const unsigned char * const pDataSetShared,
-      const size_t cWeights,
-      const BagEbm * const aBag,
-      const double * const aInitScores
-   );
+   ErrorEbm InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
+         const size_t cWeights,
+         const BagEbm* const aBag,
+         const double* const aInitScores);
 
-   inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
+   inline BoolEbm CheckTargets(const size_t c, const void* const aTargets) const noexcept {
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
       return CheckTargetsC(&m_objectiveCpu, c, aTargets);
@@ -127,9 +111,7 @@ public:
       return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
-   inline BoolEbm IsDisableApprox() const {
-      return m_bDisableApprox;
-   }
+   inline BoolEbm IsDisableApprox() const { return m_bDisableApprox; }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
@@ -152,6 +134,6 @@ public:
    }
 };
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // INTERACTION_CORE_HPP

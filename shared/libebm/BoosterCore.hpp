@@ -32,7 +32,7 @@ class Tensor;
 class BoosterCore final {
 
    // std::atomic_size_t used to be standard layout and trivial, but the C++ standard comitee judged that an error
-   // and revoked the trivial nature of the class.  So, this means our BoosterCore class needs to have a constructor 
+   // and revoked the trivial nature of the class.  So, this means our BoosterCore class needs to have a constructor
    // and destructor
    // https://stackoverflow.com/questions/48794325/why-stdatomic-is-not-trivial-type-in-only-visual-c
    // https://stackoverflow.com/questions/41308372/stdatomic-for-built-in-types-non-lock-free-vs-trivial-destructor
@@ -42,15 +42,15 @@ class BoosterCore final {
    BoolEbm m_bDisableApprox;
 
    size_t m_cFeatures;
-   FeatureBoosting * m_aFeatures;
+   FeatureBoosting* m_aFeatures;
 
    size_t m_cTerms;
-   Term ** m_apTerms;
+   Term** m_apTerms;
 
    size_t m_cInnerBags;
 
-   Tensor ** m_apCurrentTermTensors;
-   Tensor ** m_apBestTermTensors;
+   Tensor** m_apCurrentTermTensors;
+   Tensor** m_apBestTermTensors;
 
    double m_bestModelMetric;
 
@@ -66,134 +66,95 @@ class BoosterCore final {
    ObjectiveWrapper m_objectiveCpu;
    ObjectiveWrapper m_objectiveSIMD;
 
-   static void DeleteTensors(const size_t cTerms, Tensor ** const apTensors);
+   static void DeleteTensors(const size_t cTerms, Tensor** const apTensors);
 
    static ErrorEbm InitializeTensors(
-      const size_t cTerms,
-      const Term * const * const apTerms,
-      const size_t cScores,
-      Tensor *** papTensorsOut
-   );
+         const size_t cTerms, const Term* const* const apTerms, const size_t cScores, Tensor*** papTensorsOut);
 
    ~BoosterCore();
 
    inline BoosterCore() noexcept :
-      m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
-      m_cScores(0),
-      m_bDisableApprox(EBM_FALSE),
-      m_cFeatures(0),
-      m_aFeatures(nullptr),
-      m_cTerms(0),
-      m_apTerms(nullptr),
-      m_cInnerBags(0),
-      m_apCurrentTermTensors(nullptr),
-      m_apBestTermTensors(nullptr),
-      m_bestModelMetric(std::numeric_limits<double>::infinity()),
-      m_cBytesFastBins(0),
-      m_cBytesMainBins(0),
-      m_cBytesSplitPositions(0),
-      m_cBytesTreeNodes(0)
-   {
+         m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
+         m_cScores(0),
+         m_bDisableApprox(EBM_FALSE),
+         m_cFeatures(0),
+         m_aFeatures(nullptr),
+         m_cTerms(0),
+         m_apTerms(nullptr),
+         m_cInnerBags(0),
+         m_apCurrentTermTensors(nullptr),
+         m_apBestTermTensors(nullptr),
+         m_bestModelMetric(std::numeric_limits<double>::infinity()),
+         m_cBytesFastBins(0),
+         m_cBytesMainBins(0),
+         m_cBytesSplitPositions(0),
+         m_cBytesTreeNodes(0) {
       m_trainingSet.SafeInitDataSetBoosting();
       m_validationSet.SafeInitDataSetBoosting();
       InitializeObjectiveWrapperUnfailing(&m_objectiveCpu);
       InitializeObjectiveWrapperUnfailing(&m_objectiveSIMD);
    }
 
-public:
-
+ public:
    inline void AddReferenceCount() {
-      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1, 
+      // incrementing reference counts can be relaxed memory order since we're guaranteed to be above 1,
       // so no result will change our behavior below
       // https://www.boost.org/doc/libs/1_59_0/doc/html/atomic/usage_examples.html
       m_REFERENCE_COUNT.fetch_add(1, std::memory_order_relaxed);
    };
 
-   inline size_t GetCountScores() const {
-      return m_cScores;
-   }
+   inline size_t GetCountScores() const { return m_cScores; }
 
-   inline size_t GetCountBytesFastBins() const {
-      return m_cBytesFastBins;
-   }
+   inline size_t GetCountBytesFastBins() const { return m_cBytesFastBins; }
 
-   inline size_t GetCountBytesMainBins() const {
-      return m_cBytesMainBins;
-   }
+   inline size_t GetCountBytesMainBins() const { return m_cBytesMainBins; }
 
-   inline size_t GetCountBytesSplitPositions() const {
-      return m_cBytesSplitPositions;
-   }
+   inline size_t GetCountBytesSplitPositions() const { return m_cBytesSplitPositions; }
 
-   inline size_t GetCountBytesTreeNodes() const {
-      return m_cBytesTreeNodes;
-   }
+   inline size_t GetCountBytesTreeNodes() const { return m_cBytesTreeNodes; }
 
-   inline size_t GetCountTerms() const {
-      return m_cTerms;
-   }
+   inline size_t GetCountTerms() const { return m_cTerms; }
 
-   inline Term * const * GetTerms() const {
-      return m_apTerms;
-   }
+   inline Term* const* GetTerms() const { return m_apTerms; }
 
-   inline DataSetBoosting * GetTrainingSet() {
-      return &m_trainingSet;
-   }
+   inline DataSetBoosting* GetTrainingSet() { return &m_trainingSet; }
 
-   inline DataSetBoosting * GetValidationSet() {
-      return &m_validationSet;
-   }
+   inline DataSetBoosting* GetValidationSet() { return &m_validationSet; }
 
-   inline size_t GetCountInnerBags() const {
-      return m_cInnerBags;
-   }
+   inline size_t GetCountInnerBags() const { return m_cInnerBags; }
 
-   inline Tensor * const * GetCurrentModel() const {
-      return m_apCurrentTermTensors;
-   }
+   inline Tensor* const* GetCurrentModel() const { return m_apCurrentTermTensors; }
 
-   inline Tensor * const * GetBestModel() const {
-      return m_apBestTermTensors;
-   }
+   inline Tensor* const* GetBestModel() const { return m_apBestTermTensors; }
 
-   inline double GetBestModelMetric() const {
-      return m_bestModelMetric;
-   }
+   inline double GetBestModelMetric() const { return m_bestModelMetric; }
 
-   inline void SetBestModelMetric(const double bestModelMetric) {
-      m_bestModelMetric = bestModelMetric;
-   }
+   inline void SetBestModelMetric(const double bestModelMetric) { m_bestModelMetric = bestModelMetric; }
 
-   static void Free(BoosterCore * const pBoosterCore);
+   static void Free(BoosterCore* const pBoosterCore);
 
-   static ErrorEbm Create(
-      void * const rng,
-      const size_t cTerms,
-      const size_t cInnerBags,
-      const double * const experimentalParams,
-      const IntEbm * const acTermDimensions,
-      const IntEbm * const aiTermFeatures,
-      const unsigned char * const pDataSetShared,
-      const BagEbm * const aBag,
-      const double * const aInitScores,
-      const CreateBoosterFlags flags,
-      const AccelerationFlags acceleration,
-      const char * const sObjective,
-      BoosterCore ** const ppBoosterCoreOut
-   );
+   static ErrorEbm Create(void* const rng,
+         const size_t cTerms,
+         const size_t cInnerBags,
+         const double* const experimentalParams,
+         const IntEbm* const acTermDimensions,
+         const IntEbm* const aiTermFeatures,
+         const unsigned char* const pDataSetShared,
+         const BagEbm* const aBag,
+         const double* const aInitScores,
+         const CreateBoosterFlags flags,
+         const AccelerationFlags acceleration,
+         const char* const sObjective,
+         BoosterCore** const ppBoosterCoreOut);
 
-   ErrorEbm InitializeBoosterGradientsAndHessians(
-      void * const aMulticlassMidwayTemp,
-      FloatScore * const aUpdateScores
-   );
+   ErrorEbm InitializeBoosterGradientsAndHessians(void* const aMulticlassMidwayTemp, FloatScore* const aUpdateScores);
 
    inline double FinishMetric(const double metricSum) {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
       return FinishMetricC(&m_objectiveCpu, metricSum);
    }
 
-   inline BoolEbm CheckTargets(const size_t c, const void * const aTargets) const noexcept {
+   inline BoolEbm CheckTargets(const size_t c, const void* const aTargets) const noexcept {
       EBM_ASSERT(nullptr != aTargets);
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
       return CheckTargetsC(&m_objectiveCpu, c, aTargets);
@@ -209,9 +170,7 @@ public:
       return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
-   inline BoolEbm IsDisableApprox() const {
-      return m_bDisableApprox;
-   }
+   inline BoolEbm IsDisableApprox() const { return m_bDisableApprox; }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
@@ -254,6 +213,6 @@ public:
    }
 };
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // BOOSTER_CORE_HPP

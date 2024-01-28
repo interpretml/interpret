@@ -6,11 +6,15 @@
 
 // Do not use this file as a reference for other objectives. LogLoss is special.
 
-template<typename TFloat>
-struct LogLossMulticlassObjective : MulticlassObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective, MINIMIZE_METRIC, Link_mlogit, true, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)
+template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjective {
+   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective,
+         MINIMIZE_METRIC,
+         Link_mlogit,
+         true,
+         k_cItemsPerBitPackDynamic,
+         k_cItemsPerBitPackDynamic)
 
-   inline LogLossMulticlassObjective(const Config & config) {
+   inline LogLossMulticlassObjective(const Config& config) {
       if(1 == config.cOutputs) {
          // we share the tag "log_loss" with binary classification
          throw SkipRegistrationException();
@@ -25,9 +29,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       }
    }
 
-   inline double LinkParam() const noexcept {
-      return std::numeric_limits<double>::quiet_NaN();
-   }
+   inline double LinkParam() const noexcept { return std::numeric_limits<double>::quiet_NaN(); }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
       return 1.0; // typically leave this at 1.0 (unmodified)
@@ -49,38 +51,38 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       return 1.0; // typically leave this at 1.0 (unmodified)
    }
 
-   inline double GradientConstant() const noexcept {
-      return 1.0;
-   }
+   inline double GradientConstant() const noexcept { return 1.0; }
 
-   inline double HessianConstant() const noexcept {
-      return 1.0;
-   }
+   inline double HessianConstant() const noexcept { return 1.0; }
 
-   inline double FinishMetric(const double metricSum) const noexcept {
-      return metricSum;
-   }
+   inline double FinishMetric(const double metricSum) const noexcept { return metricSum; }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat& score, const TFloat& target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(
+         const TFloat& score, const TFloat& target) const noexcept {
       // This function is here to signal the LogLossMulticlassObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   template<bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, int cCompilerPack>
-   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+   template<bool bValidation,
+         bool bWeight,
+         bool bHessian,
+         bool bDisableApprox,
+         size_t cCompilerScores,
+         int cCompilerPack>
+   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
       static_assert(k_dynamicScores == cCompilerScores || 2 <= cCompilerScores, "Multiclass needs more than 1 score");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
@@ -92,7 +94,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
-      EBM_ASSERT(0 == pData->m_cSamples % size_t { TFloat::k_cSIMDPack });
+      EBM_ASSERT(0 == pData->m_cSamples % size_t{TFloat::k_cSIMDPack});
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
       EBM_ASSERT(2 <= pData->m_cScores);
       EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pData->m_cScores);
@@ -100,26 +102,26 @@ struct LogLossMulticlassObjective : MulticlassObjective {
       EBM_ASSERT(nullptr != pData->m_aTargets);
 #endif // GPU_COMPILE
 
-      alignas(alignof(TFloat)) typename TFloat::T
-         aLocalExpVector[bDynamic ? size_t { 1 } : (cCompilerScores * size_t { TFloat::k_cSIMDPack })];
-      typename TFloat::T * const aExps = bDynamic ? 
-         reinterpret_cast<typename TFloat::T *>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;
+      alignas(alignof(TFloat))
+            typename TFloat::T aLocalExpVector[bDynamic ? size_t{1} : (cCompilerScores * size_t{TFloat::k_cSIMDPack})];
+      typename TFloat::T* const aExps =
+            bDynamic ? reinterpret_cast<typename TFloat::T*>(pData->m_aMulticlassMidwayTemp) : aLocalExpVector;
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-      const typename TFloat::T * const aUpdateTensorScores = 
-         reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+      const typename TFloat::T* const aUpdateTensorScores =
+            reinterpret_cast<const typename TFloat::T*>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      typename TFloat::T * pSampleScore = reinterpret_cast<typename TFloat::T *>(pData->m_aSampleScores);
-      const typename TFloat::T * const pSampleScoresEnd = pSampleScore + cSamples * cScores;
+      typename TFloat::T* pSampleScore = reinterpret_cast<typename TFloat::T*>(pData->m_aSampleScores);
+      const typename TFloat::T* const pSampleScoresEnd = pSampleScore + cSamples * cScores;
 
       int cBitsPerItemMax;
       int cShift;
       int cShiftReset;
       typename TFloat::TInt maskBits;
-      const typename TFloat::TInt::T * pInputData;
+      const typename TFloat::TInt::T* pInputData;
       typename TFloat::TInt::T cCastScores;
 
       if(!bCompilerZeroDimensional) {
@@ -136,12 +138,14 @@ struct LogLossMulticlassObjective : MulticlassObjective {
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShift = static_cast<int>(
+                        ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+               cBitsPerItemMax;
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
-         pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aPacked);
+         pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pData->m_aPacked);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
@@ -149,22 +153,22 @@ struct LogLossMulticlassObjective : MulticlassObjective {
          cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
       }
 
-      const typename TFloat::TInt::T * pTargetData = 
-         reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aTargets);
+      const typename TFloat::TInt::T* pTargetData =
+            reinterpret_cast<const typename TFloat::TInt::T*>(pData->m_aTargets);
 
-      const typename TFloat::T * pWeight;
+      const typename TFloat::T* pWeight;
       TFloat metricSum;
-      typename TFloat::T * pGradientAndHessian;
+      typename TFloat::T* pGradientAndHessian;
       if(bValidation) {
          if(bWeight) {
-            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+            pWeight = reinterpret_cast<const typename TFloat::T*>(pData->m_aWeights);
 #ifndef GPU_COMPILE
             EBM_ASSERT(nullptr != pWeight);
 #endif // GPU_COMPILE
          }
          metricSum = 0.0;
       } else {
-         pGradientAndHessian = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians);
+         pGradientAndHessian = reinterpret_cast<typename TFloat::T*>(pData->m_aGradientsAndHessians);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pGradientAndHessian);
 #endif // GPU_COMPILE
@@ -176,7 +180,8 @@ struct LogLossMulticlassObjective : MulticlassObjective {
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          while(true) {
-            // TODO: the speed of this loop can probably be improved by (AFTER eliminating the target by sorting the data):
+            // TODO: the speed of this loop can probably be improved by (AFTER eliminating the target by sorting the
+            // data):
             //   0) eliminate the target by sorting the data and making it a templated argument, so it has 0 CPU cost
             //   1) fetch the score from memory (predictable load is fast)
             //   2) issue the gather operation FOR THE NEXT loop(unpredictable load is slow)
@@ -190,20 +195,22 @@ struct LogLossMulticlassObjective : MulticlassObjective {
             if(!bCompilerZeroDimensional) {
                iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
-               // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD multiplication
-               // and even if SIMD multiplication exists it has high latency and cost.  We could avoid it entirely 
-               // by changing the memory layout of the tensor at aUpdateTensorScores.  If we made cScores separate 
-               // tensors, where we colocated all the updates for each class, then we could use the non-multiplied 
-               // indexes to fetch the tensor bins from the first class, then we would add cTensorBins * sizeof(TFloat)
-               // to each iTensorBin value each to proceed to the next class score. This elimaintes all multiplication 
-               // and we just need to add the value in a SIMD register to another SIMD register. This addition is free
-               // since we already have a "iTensorBin += 1" instruction below. The potential drawback is that if the
-               // tensors are really large we might benefit from keeping the scores for each clase co-located where
-               // they would probably be loaded as a single cache line load, and perhpas might be prefetched 
-               // speculativley by the CPU more reliably. Since we typically use shifts to do the multiplication
-               // we only really benefit a lot potentially when k_dynamicScores == cCompilerScores.
+               // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD
+               // multiplication and even if SIMD multiplication exists it has high latency and cost.  We could avoid it
+               // entirely by changing the memory layout of the tensor at aUpdateTensorScores.  If we made cScores
+               // separate tensors, where we colocated all the updates for each class, then we could use the
+               // non-multiplied indexes to fetch the tensor bins from the first class, then we would add cTensorBins *
+               // sizeof(TFloat) to each iTensorBin value each to proceed to the next class score. This elimaintes all
+               // multiplication and we just need to add the value in a SIMD register to another SIMD register. This
+               // addition is free since we already have a "iTensorBin += 1" instruction below. The potential drawback
+               // is that if the tensors are really large we might benefit from keeping the scores for each clase
+               // co-located where they would probably be loaded as a single cache line load, and perhpas might be
+               // prefetched speculativley by the CPU more reliably. Since we typically use shifts to do the
+               // multiplication we only really benefit a lot potentially when k_dynamicScores == cCompilerScores.
 
-               iTensorBin = Multiply<typename TFloat::TInt, typename TFloat::TInt::T, k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack, static_cast<typename TFloat::TInt::T>(cCompilerScores)>(iTensorBin, cCastScores);
+               iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+               k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+               static_cast<typename TFloat::TInt::T>(cCompilerScores) > (iTensorBin, cCastScores);
             }
 
             TFloat sumExp = 0.0;
@@ -233,7 +240,7 @@ struct LogLossMulticlassObjective : MulticlassObjective {
             pTargetData += TFloat::TInt::k_cSIMDPack;
 
             if(bValidation) {
-               // TODO: instead of writing the exp values to memory, since we just need 1 and the sum, 
+               // TODO: instead of writing the exp values to memory, since we just need 1 and the sum,
                // we could use an if selector to keep only the one that matches our target and we don't need
                // to store (or re-load) from memory.  This also saves us a gathering load, which will be expensive
                // in latency

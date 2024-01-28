@@ -20,11 +20,11 @@ struct Objective;
 
 // these are going to be extern "C++", which we require to call our static member functions per:
 // https://www.drdobbs.com/c-theory-and-practice/184403437
-typedef ErrorEbm (* APPLY_UPDATE_CPP)(const Objective * const pObjective, ApplyUpdateBridge * const pData);
-typedef double (* FINISH_METRIC_CPP)(const Objective * const pObjective, const double metricSum);
-typedef BoolEbm (* CHECK_TARGETS_CPP)(const Objective * const pObjective, const size_t c, const void * const aTargets);
-typedef ErrorEbm (* BIN_SUMS_BOOSTING_CPP)(BinSumsBoostingBridge * const pParams);
-typedef ErrorEbm (* BIN_SUMS_INTERACTION_CPP)(BinSumsInteractionBridge * const pParams);
+typedef ErrorEbm (*APPLY_UPDATE_CPP)(const Objective* const pObjective, ApplyUpdateBridge* const pData);
+typedef double (*FINISH_METRIC_CPP)(const Objective* const pObjective, const double metricSum);
+typedef BoolEbm (*CHECK_TARGETS_CPP)(const Objective* const pObjective, const size_t c, const void* const aTargets);
+typedef ErrorEbm (*BIN_SUMS_BOOSTING_CPP)(BinSumsBoostingBridge* const pParams);
+typedef ErrorEbm (*BIN_SUMS_INTERACTION_CPP)(BinSumsInteractionBridge* const pParams);
 
 struct FunctionPointersCpp {
    // unfortunately, function pointers are not interchangable with data pointers since in some architectures
@@ -39,6 +39,6 @@ struct FunctionPointersCpp {
    BIN_SUMS_INTERACTION_CPP m_pBinSumsInteractionCpp;
 };
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // ZONED_BRIDGE_CPP_FUNCTIONS_HPP

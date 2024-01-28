@@ -34,106 +34,96 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern void ConvertAddBin(
-   const size_t cScores,
-   const bool bHessian,
-   const size_t cBins,
-   const bool bUInt64Src,
-   const bool bDoubleSrc,
-   const void * const aSrc,
-   const bool bUInt64Dest,
-   const bool bDoubleDest,
-   void * const aAddDest
-);
+extern void ConvertAddBin(const size_t cScores,
+      const bool bHessian,
+      const size_t cBins,
+      const bool bUInt64Src,
+      const bool bDoubleSrc,
+      const void* const aSrc,
+      const bool bUInt64Dest,
+      const bool bDoubleDest,
+      void* const aAddDest);
 
-extern void TensorTotalsBuild(
-   const bool bHessian,
-   const size_t cScores,
-   const size_t cRealDimensions,
-   const size_t * const acBins,
-   BinBase * aAuxiliaryBinsBase,
-   BinBase * const aBinsBase
+extern void TensorTotalsBuild(const bool bHessian,
+      const size_t cScores,
+      const size_t cRealDimensions,
+      const size_t* const acBins,
+      BinBase* aAuxiliaryBinsBase,
+      BinBase* const aBinsBase
 #ifndef NDEBUG
-   , BinBase * const aDebugCopyBinsBase
-   , const BinBase * const pBinsEndDebug
+      ,
+      BinBase* const aDebugCopyBinsBase,
+      const BinBase* const pBinsEndDebug
 #endif // NDEBUG
 );
 
-extern ErrorEbm PartitionOneDimensionalBoosting(
-   RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
-   const size_t cBins,
-   const size_t iDimension,
-   const size_t cSamplesLeafMin,
-   const size_t cSplitsMax,
-   const size_t cSamplesTotal,
-   const FloatMain weightTotal,
-   double * const pTotalGain
-);
+extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
+      BoosterShell* const pBoosterShell,
+      const size_t cBins,
+      const size_t iDimension,
+      const size_t cSamplesLeafMin,
+      const size_t cSplitsMax,
+      const size_t cSamplesTotal,
+      const FloatMain weightTotal,
+      double* const pTotalGain);
 
-extern ErrorEbm PartitionTwoDimensionalBoosting(
-   BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
-   const size_t * const acBins,
-   const size_t cSamplesLeafMin,
-   BinBase * aAuxiliaryBinsBase,
-   double * const pTotalGain
+extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShell,
+      const Term* const pTerm,
+      const size_t* const acBins,
+      const size_t cSamplesLeafMin,
+      BinBase* aAuxiliaryBinsBase,
+      double* const pTotalGain
 #ifndef NDEBUG
-   , const BinBase * const aDebugCopyBinsBase
+      ,
+      const BinBase* const aDebugCopyBinsBase
 #endif // NDEBUG
 );
 
-extern ErrorEbm PartitionRandomBoosting(
-   RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
-   const TermBoostFlags flags,
-   const IntEbm * const aLeavesMax,
-   double * const pTotalGain
-);
+extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
+      BoosterShell* const pBoosterShell,
+      const Term* const pTerm,
+      const TermBoostFlags flags,
+      const IntEbm* const aLeavesMax,
+      double* const pTotalGain);
 
-static void BoostZeroDimensional(
-   BoosterShell * const pBoosterShell, 
-   const TermBoostFlags flags
-) {
+static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBoostFlags flags) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = pBoosterCore->GetCountScores();
 
-   BinBase * const pMainBin = pBoosterShell->GetBoostingMainBins();
+   BinBase* const pMainBin = pBoosterShell->GetBoostingMainBins();
    EBM_ASSERT(nullptr != pMainBin);
 
-   Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
-   FloatScore * aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+   Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
+   FloatScore* aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
    if(pBoosterCore->IsHessian()) {
-      const auto * const pBin = pMainBin->Specialize<FloatMain, UIntMain, true>();
-      const auto * const aGradientPairs = pBin->GetGradientPairs();
+      const auto* const pBin = pMainBin->Specialize<FloatMain, UIntMain, true>();
+      const auto* const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(
+                  static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       } else {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
-               static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-               static_cast<FloatCalc>(aGradientPairs[iScore].GetHess())
-            );
+            const FloatCalc updateScore =
+                  EbmStats::ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+                        static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
    } else {
-      const auto * const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
-      const auto * const aGradientPairs = pBin->GetGradientPairs();
+      const auto* const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
+      const auto* const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
-         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients));
+         const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(
+               static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients));
          aUpdateScores[0] = static_cast<FloatScore>(updateScore);
       } else {
          const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdate(
-            static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients),
-            static_cast<FloatCalc>(pBin->GetWeight())
-         );
+               static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients), static_cast<FloatCalc>(pBin->GetWeight()));
          aUpdateScores[0] = static_cast<FloatScore>(updateScore);
       }
    }
@@ -141,62 +131,56 @@ static void BoostZeroDimensional(
    LOG_0(Trace_Verbose, "Exited BoostZeroDimensional");
 }
 
-static ErrorEbm BoostSingleDimensional(
-   RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
-   const size_t cBins,
-   const FloatMain weightTotal,
-   const size_t iDimension,
-   const size_t cSamplesLeafMin,
-   const IntEbm countLeavesMax,
-   double * const pTotalGain
-) {
+static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
+      BoosterShell* const pBoosterShell,
+      const size_t cBins,
+      const FloatMain weightTotal,
+      const size_t iDimension,
+      const size_t cSamplesLeafMin,
+      const IntEbm countLeavesMax,
+      double* const pTotalGain) {
    ErrorEbm error;
 
    LOG_0(Trace_Verbose, "Entered BoostSingleDimensional");
 
-   EBM_ASSERT(IntEbm { 2 } <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
-   size_t cSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
+   EBM_ASSERT(IntEbm{2} <= countLeavesMax); // otherwise we would have called BoostZeroDimensional
+   size_t cSplitsMax = static_cast<size_t>(countLeavesMax) - size_t{1};
    if(IsConvertError<size_t>(countLeavesMax)) {
-      // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow because it will generate 
-      // the same results as if we used the true number
+      // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we were going to overflow
+      // because it will generate the same results as if we used the true number
       cSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
 
    EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
 
-   error = PartitionOneDimensionalBoosting(
-      pRng,
-      pBoosterShell,
-      cBins,
-      iDimension,
-      cSamplesLeafMin,
-      cSplitsMax,
-      pBoosterCore->GetTrainingSet()->GetCountSamples(),
-      weightTotal,
-      pTotalGain
-   );
+   error = PartitionOneDimensionalBoosting(pRng,
+         pBoosterShell,
+         cBins,
+         iDimension,
+         cSamplesLeafMin,
+         cSplitsMax,
+         pBoosterCore->GetTrainingSet()->GetCountSamples(),
+         weightTotal,
+         pTotalGain);
 
    LOG_0(Trace_Verbose, "Exited BoostSingleDimensional");
    return error;
 }
 
-// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required (yet) in order to make decisions about
-//   where to split.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that keeps only the gradients and then 
+// TODO: for higher dimensional spaces, we need to add/subtract individual cells alot and the hessian isn't required
+// (yet) in order to make decisions about
+//   where to split.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that
+//   keeps only the gradients and then
 //    go back to our original tensor after splits to determine the hessian
 static ErrorEbm BoostMultiDimensional(
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm,
-   const size_t cSamplesLeafMin,
-   double * const pTotalGain
-) {
+      BoosterShell* const pBoosterShell, const size_t iTerm, const size_t cSamplesLeafMin, double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    EBM_ASSERT(2 <= pTerm->GetCountDimensions());
    EBM_ASSERT(2 <= pTerm->GetCountRealDimensions());
@@ -207,15 +191,15 @@ static ErrorEbm BoostMultiDimensional(
    EBM_ASSERT(1 <= cTensorBins);
 
    size_t acBins[k_cDimensionsMax];
-   size_t * pcBins = acBins;
+   size_t* pcBins = acBins;
 
-   const TermFeature * pTermFeature = pTerm->GetTermFeatures();
-   const TermFeature * const pTermFeaturesEnd = &pTermFeature[pTerm->GetCountDimensions()];
+   const TermFeature* pTermFeature = pTerm->GetTermFeatures();
+   const TermFeature* const pTermFeaturesEnd = &pTermFeature[pTerm->GetCountDimensions()];
    do {
-      const FeatureBoosting * pFeature = pTermFeature->m_pFeature;
+      const FeatureBoosting* pFeature = pTermFeature->m_pFeature;
       const size_t cBins = pFeature->GetCountBins();
-      EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-      if(size_t { 1 } < cBins) {
+      EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
+      if(size_t{1} < cBins) {
          *pcBins = cBins;
          ++pcBins;
       }
@@ -229,19 +213,19 @@ static ErrorEbm BoostMultiDimensional(
    const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
 
    // we don't need to free this!  It's tracked and reused by pBoosterShell
-   BinBase * const aMainBins = pBoosterShell->GetBoostingMainBins();
+   BinBase* const aMainBins = pBoosterShell->GetBoostingMainBins();
    EBM_ASSERT(nullptr != aMainBins);
 
    // we also need to zero the auxillary bins
    aMainBins->ZeroMem(cBytesPerMainBin, cAuxillaryBins, cTensorBins);
- 
+
 #ifndef NDEBUG
    // make a copy of the original bins for debugging purposes
 
-   BinBase * aDebugCopyBins = nullptr;
+   BinBase* aDebugCopyBins = nullptr;
    if(!IsMultiplyError(cBytesPerMainBin, cTensorBins)) {
       ANALYSIS_ASSERT(0 != cBytesPerMainBin);
-      aDebugCopyBins = static_cast<BinBase *>(malloc(cBytesPerMainBin * cTensorBins));
+      aDebugCopyBins = static_cast<BinBase*>(malloc(cBytesPerMainBin * cTensorBins));
       if(nullptr != aDebugCopyBins) {
          // if we can't allocate, don't fail.. just stop checking
          memcpy(aDebugCopyBins, aMainBins, cBytesPerMainBin * cTensorBins);
@@ -249,104 +233,102 @@ static ErrorEbm BoostMultiDimensional(
    }
 #endif // NDEBUG
 
-   BinBase * aAuxiliaryBins = IndexBin(aMainBins, cBytesPerMainBin * cTensorBins);
+   BinBase* aAuxiliaryBins = IndexBin(aMainBins, cBytesPerMainBin * cTensorBins);
 
-   TensorTotalsBuild(
-      pBoosterCore->IsHessian(),
-      cScores,
-      pTerm->GetCountRealDimensions(),
-      acBins,
-      aAuxiliaryBins,
-      aMainBins
+   TensorTotalsBuild(pBoosterCore->IsHessian(),
+         cScores,
+         pTerm->GetCountRealDimensions(),
+         acBins,
+         aAuxiliaryBins,
+         aMainBins
 #ifndef NDEBUG
-      , aDebugCopyBins
-      , pBoosterShell->GetDebugMainBinsEnd()
+         ,
+         aDebugCopyBins,
+         pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
    );
 
-   //permutation0
-   //gain_permute0
-   //  divs0
-   //  gain0
-   //    divs00
-   //    gain00
-   //      divs000
-   //      gain000
-   //      divs001
-   //      gain001
-   //    divs01
-   //    gain01
-   //      divs010
-   //      gain010
-   //      divs011
-   //      gain011
-   //  divs1
-   //  gain1
-   //    divs10
-   //    gain10
-   //      divs100
-   //      gain100
-   //      divs101
-   //      gain101
-   //    divs11
-   //    gain11
-   //      divs110
-   //      gain110
-   //      divs111
-   //      gain111
+   // permutation0
+   // gain_permute0
+   //   divs0
+   //   gain0
+   //     divs00
+   //     gain00
+   //       divs000
+   //       gain000
+   //       divs001
+   //       gain001
+   //     divs01
+   //     gain01
+   //       divs010
+   //       gain010
+   //       divs011
+   //       gain011
+   //   divs1
+   //   gain1
+   //     divs10
+   //     gain10
+   //       divs100
+   //       gain100
+   //       divs101
+   //       gain101
+   //     divs11
+   //     gain11
+   //       divs110
+   //       gain110
+   //       divs111
+   //       gain111
    //---------------------------
-   //permutation1
-   //gain_permute1
-   //  divs0
-   //  gain0
-   //    divs00
-   //    gain00
-   //      divs000
-   //      gain000
-   //      divs001
-   //      gain001
-   //    divs01
-   //    gain01
-   //      divs010
-   //      gain010
-   //      divs011
-   //      gain011
-   //  divs1
-   //  gain1
-   //    divs10
-   //    gain10
-   //      divs100
-   //      gain100
-   //      divs101
-   //      gain101
-   //    divs11
-   //    gain11
-   //      divs110
-   //      gain110
-   //      divs111
-   //      gain111       *
+   // permutation1
+   // gain_permute1
+   //   divs0
+   //   gain0
+   //     divs00
+   //     gain00
+   //       divs000
+   //       gain000
+   //       divs001
+   //       gain001
+   //     divs01
+   //     gain01
+   //       divs010
+   //       gain010
+   //       divs011
+   //       gain011
+   //   divs1
+   //   gain1
+   //     divs10
+   //     gain10
+   //       divs100
+   //       gain100
+   //       divs101
+   //       gain101
+   //     divs11
+   //     gain11
+   //       divs110
+   //       gain110
+   //       divs111
+   //       gain111       *
 
-
-   //size_t aiDimensionPermutation[k_cDimensionsMax];
-   //for(unsigned int iDimensionInitialize = 0; iDimensionInitialize < cDimensions; ++iDimensionInitialize) {
-   //   aiDimensionPermutation[iDimensionInitialize] = iDimensionInitialize;
-   //}
-   //size_t aiDimensionPermutationBest[k_cDimensionsMax];
+   // size_t aiDimensionPermutation[k_cDimensionsMax];
+   // for(unsigned int iDimensionInitialize = 0; iDimensionInitialize < cDimensions; ++iDimensionInitialize) {
+   //    aiDimensionPermutation[iDimensionInitialize] = iDimensionInitialize;
+   // }
+   // size_t aiDimensionPermutationBest[k_cDimensionsMax];
 
    // DO this is a fixed length that we should make variable!
-   //size_t aDOSplits[1000000];
-   //size_t aDOSplitsBest[1000000];
+   // size_t aDOSplits[1000000];
+   // size_t aDOSplitsBest[1000000];
 
-   //do {
-   //   size_t aiDimensions[k_cDimensionsMax];
-   //   memset(aiDimensions, 0, sizeof(aiDimensions[0]) * cDimensions));
-   //   while(true) {
-
+   // do {
+   //    size_t aiDimensions[k_cDimensionsMax];
+   //    memset(aiDimensions, 0, sizeof(aiDimensions[0]) * cDimensions));
+   //    while(true) {
 
    //      EBM_ASSERT(0 == iDimension);
    //      while(true) {
    //         ++aiDimension[iDimension];
-   //         if(aiDimension[iDimension] != 
+   //         if(aiDimension[iDimension] !=
    //               pTerms->GetFeatures()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
    //            break;
    //         }
@@ -361,15 +343,15 @@ static ErrorEbm BoostMultiDimensional(
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
    if(2 == pTerm->GetCountRealDimensions()) {
-      error = PartitionTwoDimensionalBoosting(
-         pBoosterShell,
-         pTerm,
-         acBins,
-         cSamplesLeafMin,
-         aAuxiliaryBins,
-         pTotalGain
+      error = PartitionTwoDimensionalBoosting(pBoosterShell,
+            pTerm,
+            acBins,
+            cSamplesLeafMin,
+            aAuxiliaryBins,
+            pTotalGain
 #ifndef NDEBUG
-         , aDebugCopyBins
+            ,
+            aDebugCopyBins
 #endif // NDEBUG
       );
       if(Error_None != error) {
@@ -404,32 +386,23 @@ static ErrorEbm BoostMultiDimensional(
    return Error_None;
 }
 
-static ErrorEbm BoostRandom(
-   RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
-   const size_t iTerm,
-   const TermBoostFlags flags,
-   const IntEbm * const aLeavesMax,
-   double * const pTotalGain
-) {
+static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
+      BoosterShell* const pBoosterShell,
+      const size_t iTerm,
+      const TermBoostFlags flags,
+      const IntEbm* const aLeavesMax,
+      double* const pTotalGain) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
    LOG_0(Trace_Verbose, "Entered BoostRandom");
 
    ErrorEbm error;
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   error = PartitionRandomBoosting(
-      pRng,
-      pBoosterShell,
-      pTerm,
-      flags,
-      aLeavesMax,
-      pTotalGain
-   );
+   error = PartitionRandomBoosting(pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
    if(Error_None != error) {
       LOG_0(Trace_Verbose, "Exited BoostRandom with Error code");
       return error;
@@ -442,53 +415,48 @@ static ErrorEbm BoostRandom(
    return Error_None;
 }
 
-// we made this a global because if we had put this variable inside the BoosterCore object, then we would need to dereference that before getting 
-// the count.  By making this global we can send a log message incase a bad BoosterCore object is sent into us we only decrease the count if the 
-// count is non-zero, so at worst if there is a race condition then we'll output this log message more times than desired, but we can live with that
+// we made this a global because if we had put this variable inside the BoosterCore object, then we would need to
+// dereference that before getting the count.  By making this global we can send a log message incase a bad BoosterCore
+// object is sent into us we only decrease the count if the count is non-zero, so at worst if there is a race condition
+// then we'll output this log message more times than desired, but we can live with that
 static int g_cLogGenerateTermUpdate = 10;
 
-
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
-   void * rng,
-   BoosterHandle boosterHandle,
-   IntEbm indexTerm,
-   TermBoostFlags flags,
-   double learningRate,
-   IntEbm minSamplesLeaf,
-   const IntEbm * leavesMax,
-   double * avgGainOut
-) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
+      BoosterHandle boosterHandle,
+      IntEbm indexTerm,
+      TermBoostFlags flags,
+      double learningRate,
+      IntEbm minSamplesLeaf,
+      const IntEbm* leavesMax,
+      double* avgGainOut) {
    ErrorEbm error;
 
-   LOG_COUNTED_N(
-      &g_cLogGenerateTermUpdate,
-      Trace_Info,
-      Trace_Verbose,
-      "GenerateTermUpdate: "
-      "rng=%p, "
-      "boosterHandle=%p, "
-      "indexTerm=%" IntEbmPrintf ", "
-      "flags=0x%" UTermBoostFlagsPrintf ", "
-      "learningRate=%le, "
-      "minSamplesLeaf=%" IntEbmPrintf ", "
-      "leavesMax=%p, "
-      "avgGainOut=%p"
-      ,
-      rng,
-      static_cast<void *>(boosterHandle),
-      indexTerm,
-      static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
-      learningRate,
-      minSamplesLeaf,
-      static_cast<const void *>(leavesMax),
-      static_cast<void *>(avgGainOut)
-   );
+   LOG_COUNTED_N(&g_cLogGenerateTermUpdate,
+         Trace_Info,
+         Trace_Verbose,
+         "GenerateTermUpdate: "
+         "rng=%p, "
+         "boosterHandle=%p, "
+         "indexTerm=%" IntEbmPrintf ", "
+         "flags=0x%" UTermBoostFlagsPrintf ", "
+         "learningRate=%le, "
+         "minSamplesLeaf=%" IntEbmPrintf ", "
+         "leavesMax=%p, "
+         "avgGainOut=%p",
+         rng,
+         static_cast<void*>(boosterHandle),
+         indexTerm,
+         static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+         learningRate,
+         minSamplesLeaf,
+         static_cast<const void*>(leavesMax),
+         static_cast<void*>(avgGainOut));
 
    if(LIKELY(nullptr != avgGainOut)) {
       *avgGainOut = k_illegalGainDouble;
    }
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   BoosterShell* const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamVal;
@@ -502,7 +470,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       return Error_IllegalParamVal;
    }
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
 
    if(static_cast<IntEbm>(pBoosterCore->GetCountTerms()) <= indexTerm) {
@@ -511,23 +479,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
-   // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this function
+   // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this
+   // function
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
-   Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   LOG_COUNTED_0(
-      pTerm->GetPointerCountLogEnterGenerateTermUpdateMessages(),
-      Trace_Info,
-      Trace_Verbose,
-      "Entered GenerateTermUpdate"
-   );
+   LOG_COUNTED_0(pTerm->GetPointerCountLogEnterGenerateTermUpdateMessages(),
+         Trace_Info,
+         Trace_Verbose,
+         "Entered GenerateTermUpdate");
 
-   if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(~(
-      static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain) |
-      static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate) |
-      static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums) |
-      static_cast<UTermBoostFlags>(TermBoostFlags_RandomSplits)
-   )))) {
+   if(0 !=
+         (static_cast<UTermBoostFlags>(flags) &
+               static_cast<UTermBoostFlags>(~(static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain) |
+                     static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate) |
+                     static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums) |
+                     static_cast<UTermBoostFlags>(TermBoostFlags_RandomSplits))))) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 
@@ -537,15 +504,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is +infinity");
    } else if(0.0 == learningRate) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is zero");
-   } else if(learningRate < double { 0 }) {
+   } else if(learningRate < double{0}) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate learningRate is negative");
    }
 
-   size_t cSamplesLeafMin = size_t { 1 }; // this is the min value
-   if(IntEbm { 1 } <= minSamplesLeaf) {
+   size_t cSamplesLeafMin = size_t{1}; // this is the min value
+   if(IntEbm{1} <= minSamplesLeaf) {
       cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
       if(IsConvertError<size_t>(minSamplesLeaf)) {
-         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to 
+         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to
          // overflow because it will generate the same results as if we used the true number
          cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
@@ -554,9 +521,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    }
 
    const size_t cScores = pBoosterCore->GetCountScores();
-   if(size_t { 0 } == cScores) {
-      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.  
-      // The term scores are a tensor with zero length array logits, which means for our representation that we have 
+   if(size_t{0} == cScores) {
+      // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.
+      // The term scores are a tensor with zero length array logits, which means for our representation that we have
       // zero items in the array total. Since we can predit the output with 100% accuracy, our gain will be 0.
       if(LIKELY(nullptr != avgGainOut)) {
          *avgGainOut = 0.0;
@@ -570,7 +537,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
 
    size_t cTensorBins = pTerm->GetCountTensorBins();
-   if(size_t { 0 } == cTensorBins) {
+   if(size_t{0} == cTensorBins) {
       // there are zero samples and 0 bins in one of the features in the dimensions, so the update tensor has 0 bins
 
       // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
@@ -586,37 +553,38 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
    }
 
    const size_t cInnerBagsAfterZero =
-      size_t { 0 } == pBoosterCore->GetCountInnerBags() ? size_t { 1 } : pBoosterCore->GetCountInnerBags();
+         size_t{0} == pBoosterCore->GetCountInnerBags() ? size_t{1} : pBoosterCore->GetCountInnerBags();
    const size_t cRealDimensions = pTerm->GetCountRealDimensions();
    const size_t cDimensions = pTerm->GetCountDimensions();
 
-   // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from iDimensionImportant afterwards
-   IntEbm lastDimensionLeavesMax = IntEbm { 0 };
+   // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from
+   // iDimensionImportant afterwards
+   IntEbm lastDimensionLeavesMax = IntEbm{0};
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
-   size_t cSignificantBinCount = size_t { 0 };
+   size_t cSignificantBinCount = size_t{0};
    size_t iDimensionImportant = 0;
    if(nullptr == leavesMax) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
    } else {
       if(0 != cRealDimensions) {
          size_t iDimensionInit = 0;
-         const IntEbm * pLeavesMax = leavesMax;
-         const TermFeature * pTermFeature = pTerm->GetTermFeatures();
+         const IntEbm* pLeavesMax = leavesMax;
+         const TermFeature* pTermFeature = pTerm->GetTermFeatures();
          EBM_ASSERT(1 <= cDimensions);
-         const TermFeature * const pTermFeaturesEnd = &pTermFeature[cDimensions];
+         const TermFeature* const pTermFeaturesEnd = &pTermFeature[cDimensions];
          do {
-            const FeatureBoosting * const pFeature = pTermFeature->m_pFeature;
+            const FeatureBoosting* const pFeature = pTermFeature->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
-            if(size_t { 1 } < cBins) {
+            if(size_t{1} < cBins) {
                // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero
-               EBM_ASSERT(size_t { 2 } <= cRealDimensions || IntEbm { 0 } == lastDimensionLeavesMax);
+               EBM_ASSERT(size_t{2} <= cRealDimensions || IntEbm{0} == lastDimensionLeavesMax);
 
                iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbm countLeavesMax = *pLeavesMax;
-               if(countLeavesMax <= IntEbm { 1 }) {
+               if(countLeavesMax <= IntEbm{1}) {
                   LOG_0(Trace_Warning, "WARNING GenerateTermUpdate countLeavesMax is 1 or less.");
                } else {
                   // keep iteration even once we find this so that we output logs for any bins of 1
@@ -628,7 +596,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             ++pTermFeature;
          } while(pTermFeaturesEnd != pTermFeature);
 
-         EBM_ASSERT(size_t { 2 } <= cSignificantBinCount);
+         EBM_ASSERT(size_t{2} <= cSignificantBinCount);
       }
    }
 
@@ -644,7 +612,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       double gainMultiple = multipleCommon;
       if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums))) {
          multiple *= pBoosterCore->LearningRateAdjustmentDifferentialPrivacy();
-      } else if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate))) {
+      } else if(0 !=
+            (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate))) {
          multiple *= pBoosterCore->LearningRateAdjustmentGradientBoosting();
       } else {
          multiple /= pBoosterCore->HessianConstant();
@@ -659,14 +628,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
       multiple *= learningRate;
       gainMultiple *= gradientConstant;
 
-      RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      RandomDeterministic* pRng = reinterpret_cast<RandomDeterministic*>(rng);
       RandomDeterministic rngInternal;
-      // TODO: move this code down into our called functions since we can happily pass down nullptr into there and then use the rng CPU register trick at the lowest function level
+      // TODO: move this code down into our called functions since we can happily pass down nullptr into there and then
+      // use the rng CPU register trick at the lowest function level
       if(nullptr == pRng) {
          // We use the RNG for two things during the boosting update, and none of them requires
          // a cryptographically secure random number generator. We use the RNG for:
          //   - Deciding ties in regular boosting, but we use random boosting in DP-EBMs, which doesn't have ties
-         //   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect 
+         //   - Deciding split points during random boosting. The DP-EBM proof doesn't rely on the perfect
          //     randomness of the chosen split points. It only relies on the fact that the splits are
          //     chosen independently of the data. We could allow an attacker to choose the split points,
          //     and privacy would be preserved provided the attacker was not able to look at the data when
@@ -677,7 +647,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          try {
             RandomNondeterministic<uint64_t> randomGenerator;
             seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
-         } catch(const std::bad_alloc &) {
+         } catch(const std::bad_alloc&) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate Out of memory in std::random_device");
             return Error_OutOfMemory;
          } catch(...) {
@@ -690,27 +660,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
       pBoosterShell->GetInnerTermUpdate()->SetCountDimensions(cDimensions);
       // if we have ignored dimensions, set the splits count to zero!
-      // we only need to do this once instead of per-loop since any dimensions with 1 bin 
+      // we only need to do this once instead of per-loop since any dimensions with 1 bin
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
       EBM_ASSERT(1 <= cTensorBins);
 
-      if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
+      if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
          // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
          // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
          // but then collapse them afterwards into a single bin, but that's more work.
          cTensorBins = 1;
       }
 
-      BinBase * const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
+      BinBase* const aFastBins = pBoosterShell->GetBoostingFastBinsTemp();
       EBM_ASSERT(nullptr != aFastBins);
 
       const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(pBoosterCore->IsHessian(), cScores);
       EBM_ASSERT(!IsMultiplyError(cBytesPerMainBin, cTensorBins));
       const size_t cBytesMainBins = cBytesPerMainBin * cTensorBins;
 
-      BinBase * const aMainBins = pBoosterShell->GetBoostingMainBins();
+      BinBase* const aMainBins = pBoosterShell->GetBoostingMainBins();
       EBM_ASSERT(nullptr != aMainBins);
 
 #ifndef NDEBUG
@@ -730,18 +700,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          memset(aMainBins, 0, cBytesMainBins);
 
          EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSubsets());
-         DataSubsetBoosting * pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
-         const DataSubsetBoosting * const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
+         DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+         const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             int cPack;
-            if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
+            if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
                // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
                // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
                // but then collapse them afterwards into a single bin, but that's more work.
                cPack = k_cItemsPerBitPackNone;
             } else {
                EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
-               cPack = GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+               cPack =
+                     GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
             }
 
             size_t cBytesPerFastBin;
@@ -775,25 +746,23 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             params.m_pCountOccurrences = pSubset->GetInnerBag(iBag)->GetCountOccurrences();
             params.m_aPacked = pSubset->GetTermData(iTerm);
             params.m_aFastBins = aFastBins;
-   #ifndef NDEBUG
+#ifndef NDEBUG
             params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
-   #endif // NDEBUG
+#endif // NDEBUG
             error = pSubset->BinSumsBoosting(&params);
             if(Error_None != error) {
                return error;
             }
 
-            ConvertAddBin(
-               cScores,
-               pBoosterCore->IsHessian(),
-               cTensorBins,
-               sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
-               sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
-               aFastBins,
-               std::is_same<UIntMain, uint64_t>::value,
-               std::is_same<FloatMain, double>::value,
-               aMainBins
-            );
+            ConvertAddBin(cScores,
+                  pBoosterCore->IsHessian(),
+                  cTensorBins,
+                  sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
+                  sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
+                  aFastBins,
+                  std::is_same<UIntMain, uint64_t>::value,
+                  std::is_same<FloatMain, double>::value,
+                  aMainBins);
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
 
@@ -805,8 +774,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
          //       which is more complicated.  It will be nicer if we end up eliminated inner bagging
          //       or use subsampling each boost step to avoid having multiple inner bags
 
-
-         if(UNLIKELY(IntEbm { 0 } == lastDimensionLeavesMax)) {
+         if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
             BoostZeroDimensional(pBoosterShell, flags);
          } else {
@@ -815,53 +783,38 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
             double gain;
             if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
-               if(size_t { 1 } != cSamplesLeafMin) {
+               if(size_t{1} != cSamplesLeafMin) {
                   LOG_0(Trace_Warning,
-                     "WARNING GenerateTermUpdate cSamplesLeafMin is ignored when doing random splitting"
-                  );
+                        "WARNING GenerateTermUpdate cSamplesLeafMin is ignored when doing random splitting");
                }
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-               error = BoostRandom(
-                  pRng,
-                  pBoosterShell,
-                  iTerm,
-                  flags,
-                  leavesMax,
-                  &gain
-               );
+               error = BoostRandom(pRng, pBoosterShell, iTerm, flags, leavesMax, &gain);
                if(Error_None != error) {
                   return error;
                }
             } else if(1 == cRealDimensions) {
                EBM_ASSERT(nullptr != leavesMax); // otherwise we'd use BoostZeroDimensional above
-               EBM_ASSERT(IntEbm { 2 } <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
-               EBM_ASSERT(size_t { 2 } <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
+               EBM_ASSERT(IntEbm{2} <= lastDimensionLeavesMax); // otherwise we'd use BoostZeroDimensional above
+               EBM_ASSERT(size_t{2} <= cSignificantBinCount); // otherwise we'd use BoostZeroDimensional above
 
                EBM_ASSERT(1 == pTerm->GetCountRealDimensions());
                EBM_ASSERT(cSignificantBinCount == pTerm->GetCountTensorBins());
                EBM_ASSERT(0 == pTerm->GetCountAuxillaryBins());
 
-               error = BoostSingleDimensional(
-                  pRng,
-                  pBoosterShell,
-                  cSignificantBinCount,
-                  static_cast<FloatMain>(weightTotal),
-                  iDimensionImportant,
-                  cSamplesLeafMin,
-                  lastDimensionLeavesMax,
-                  &gain
-               );
+               error = BoostSingleDimensional(pRng,
+                     pBoosterShell,
+                     cSignificantBinCount,
+                     static_cast<FloatMain>(weightTotal),
+                     iDimensionImportant,
+                     cSamplesLeafMin,
+                     lastDimensionLeavesMax,
+                     &gain);
                if(Error_None != error) {
                   return error;
                }
             } else {
-               error = BoostMultiDimensional(
-                  pBoosterShell,
-                  iTerm,
-                  cSamplesLeafMin,
-                  &gain
-               );
+               error = BoostMultiDimensional(pBoosterShell, iTerm, cSamplesLeafMin, &gain);
                if(Error_None != error) {
                   return error;
                }
@@ -879,8 +832,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
             EBM_ASSERT(0.0 <= gainAvg);
          }
 
-         // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.  They'll each do it while the 
-         // others are working, so there should be no blocking and our final result won't require adding by the main thread
+         // TODO : when we thread this code, let's have each thread take a lock and update the combined line segment.
+         // They'll each do it while the others are working, so there should be no blocking and our final result won't
+         // require adding by the main thread
          error = pBoosterShell->GetTermUpdate()->Add(*pBoosterShell->GetInnerTermUpdate());
          if(Error_None != error) {
             return error;
@@ -916,27 +870,28 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
       bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
-      // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we multiply by a user defined learning rate
-      if(size_t { 2 } == cScores) {
-         //if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {
-         //   EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_cClasses);
-         //   // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as 
-         //       pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by 
-         //       pBoosterCore->m_cClasses here to keep learning rates as equivalent as possible..  
-         //       Actually, I think the real solution here is that 
-         //   pBoosterCore->m_pTermUpdate->Multiply(
-         //      learningRateFloat / cInnerBagsAfterZero * (pBoosterCore->m_cClasses - 1) / 
-         //      pBoosterCore->m_cClasses
-         //   );
-         //} else {
-         //   // TODO : for classification, is our learning rate essentially being inflated as 
-         //        pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by 
-         //        pBoosterCore->m_cClasses here to keep learning rates equivalent as possible
-         //   pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat / cInnerBagsAfterZero);
-         //}
+      // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we
+      // multiply by a user defined learning rate
+      if(size_t{2} == cScores) {
+         // if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {
+         //    EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_cClasses);
+         //    // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as
+         //        pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by
+         //        pBoosterCore->m_cClasses here to keep learning rates as equivalent as possible..
+         //        Actually, I think the real solution here is that
+         //    pBoosterCore->m_pTermUpdate->Multiply(
+         //       learningRateFloat / cInnerBagsAfterZero * (pBoosterCore->m_cClasses - 1) /
+         //       pBoosterCore->m_cClasses
+         //    );
+         // } else {
+         //    // TODO : for classification, is our learning rate essentially being inflated as
+         //         pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by
+         //         pBoosterCore->m_cClasses here to keep learning rates equivalent as possible
+         //    pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat / cInnerBagsAfterZero);
+         // }
 
          // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
-         // https://arxiv.org/pdf/1810.09092v2.pdf (forumla 5) and also the 
+         // https://arxiv.org/pdf/1810.09092v2.pdf (forumla 5) and also the
          // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
          // https://arxiv.org/pdf/1006.5051.pdf
 
@@ -960,23 +915,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(
 
    EBM_ASSERT(!std::isnan(gainAvg));
    EBM_ASSERT(std::numeric_limits<double>::infinity() != gainAvg);
-   EBM_ASSERT(k_illegalGainDouble == gainAvg || double { 0 } <= gainAvg);
+   EBM_ASSERT(k_illegalGainDouble == gainAvg || double{0} <= gainAvg);
 
    if(nullptr != avgGainOut) {
       *avgGainOut = gainAvg;
    }
 
-   LOG_COUNTED_N(
-      pTerm->GetPointerCountLogExitGenerateTermUpdateMessages(),
-      Trace_Info,
-      Trace_Verbose,
-      "Exited GenerateTermUpdate: "
-      "gainAvg=%le"
-      ,
-      gainAvg
-   );
+   LOG_COUNTED_N(pTerm->GetPointerCountLogExitGenerateTermUpdateMessages(),
+         Trace_Info,
+         Trace_Verbose,
+         "Exited GenerateTermUpdate: "
+         "gainAvg=%le",
+         gainAvg);
 
    return Error_None;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

@@ -18,27 +18,19 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm GetObjective(
-   const Config * const pConfig,
-   const char * sObjective,
-   const AccelerationFlags acceleration,
-   ObjectiveWrapper * const pCpuObjectiveWrapperOut,
-   ObjectiveWrapper * const pSIMDObjectiveWrapperOut
-) noexcept;
+extern ErrorEbm GetObjective(const Config* const pConfig,
+      const char* sObjective,
+      const AccelerationFlags acceleration,
+      ObjectiveWrapper* const pCpuObjectiveWrapperOut,
+      ObjectiveWrapper* const pSIMDObjectiveWrapperOut) noexcept;
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(
-   const char * objective,
-   TaskEbm * taskOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered DetermineTask: "
-      "objective=%p, "
-      "taskOut=%p"
-      ,
-      static_cast<const void *>(objective),
-      static_cast<void *>(taskOut)
-   );
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(const char* objective, TaskEbm* taskOut) {
+   LOG_N(Trace_Info,
+         "Entered DetermineTask: "
+         "objective=%p, "
+         "taskOut=%p",
+         static_cast<const void*>(objective),
+         static_cast<void*>(taskOut));
 
    ObjectiveWrapper objectiveWrapper;
    InitializeObjectiveWrapperUnfailing(&objectiveWrapper);
@@ -69,27 +61,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-   LinkFlags flags,
-   const char * objective,
-   IntEbm countClasses,
-   LinkEbm * linkOut,
-   double * linkParamOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered DetermineLinkFunction: "
-      "flags=0x%" ULinkFlagsPrintf ", "
-      "objective=%p, "
-      "countClasses=%" IntEbmPrintf ", "
-      "linkOut=%p, "
-      "linkParamOut=%p"
-      ,
-      static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
-      static_cast<const void *>(objective),
-      countClasses,
-      static_cast<void *>(linkOut),
-      static_cast<void *>(linkParamOut)
-   );
+      LinkFlags flags, const char* objective, IntEbm countClasses, LinkEbm* linkOut, double* linkParamOut) {
+   LOG_N(Trace_Info,
+         "Entered DetermineLinkFunction: "
+         "flags=0x%" ULinkFlagsPrintf ", "
+         "objective=%p, "
+         "countClasses=%" IntEbmPrintf ", "
+         "linkOut=%p, "
+         "linkParamOut=%p",
+         static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+         static_cast<const void*>(objective),
+         countClasses,
+         static_cast<void*>(linkOut),
+         static_cast<void*>(linkParamOut));
 
    if(IsConvertError<ptrdiff_t>(countClasses)) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction IsConvertError<ptrdiff_t>(countClasses)");
@@ -97,7 +81,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    }
    const ptrdiff_t cClasses = static_cast<ptrdiff_t>(countClasses);
 
-   if(ptrdiff_t { 0 } == cClasses || ptrdiff_t { 1 } == cClasses) {
+   if(ptrdiff_t{0} == cClasses || ptrdiff_t{1} == cClasses) {
       if(nullptr != linkOut) {
          *linkOut = Link_monoclassification;
       }
@@ -112,9 +96,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
    size_t cScores;
    if(0 != (LinkFlags_BinaryAsMulticlass & flags)) {
-      cScores = cClasses < ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
    } else {
-      cScores = cClasses <= ptrdiff_t { 2 } ? size_t { 1 } : static_cast<size_t>(cClasses);
+      cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
    }
 
    ObjectiveWrapper objectiveWrapper;
@@ -171,7 +155,7 @@ static const char g_sInverse[] = "inverse";
 static const char g_sInverseSquare[] = "inverse_square";
 static const char g_sSqrt[] = "sqrt";
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link) {
+EBM_API_BODY const char* EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link) {
    switch(link) {
    case Link_custom_regression:
       return g_sCustomRegression;
@@ -216,7 +200,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link
    }
 }
 
-EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link) {
+EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* link) {
    if(nullptr != link) {
       link = SkipWhitespace(link);
       if(IsStringEqualsForgiving(link, g_sCustomRegression))
@@ -264,7 +248,7 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char * link
 static const char g_sClassification[] = "classification";
 static const char g_sRegression[] = "regression";
 static const char g_sRanking[] = "ranking";
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task) {
+EBM_API_BODY const char* EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task) {
    if(Task_GeneralClassification <= task) {
       return g_sClassification;
    }
@@ -277,7 +261,7 @@ EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task) {
    return nullptr;
 }
 
-EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char * task) {
+EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char* task) {
    if(nullptr != task) {
       task = SkipWhitespace(task);
       if(IsStringEqualsForgiving(task, g_sClassification))
@@ -290,4 +274,4 @@ EBM_API_BODY TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char * task) {
    return Task_Unknown;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

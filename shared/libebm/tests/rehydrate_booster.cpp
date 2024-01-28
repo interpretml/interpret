@@ -10,17 +10,7 @@
 static constexpr TestPriority k_filePriority = TestPriority::Rehydration;
 
 TEST_CASE("Test Rehydration, boosting, regression") {
-   TestBoost testContinuous = TestBoost(
-      Task_Regression,
-      {},
-      { {} },
-      { 
-         TestSample({}, 10) 
-      },
-      { 
-         TestSample({}, 12) 
-      }
-   );
+   TestBoost testContinuous = TestBoost(Task_Regression, {}, {{}}, {TestSample({}, 10)}, {TestSample({}, 12)});
 
    double termScore0 = 0;
 
@@ -29,16 +19,7 @@ TEST_CASE("Test Rehydration, boosting, regression") {
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       TestBoost testRestart = TestBoost(
-         Task_Regression,
-         {},
-         { {} },
-         { 
-            TestSample({}, 10, 1, { termScore0 }) 
-         },
-         { 
-            TestSample({}, 12, 1, { termScore0 }) 
-         }
-      );
+            Task_Regression, {}, {{}}, {TestSample({}, 10, 1, {termScore0})}, {TestSample({}, 12, 1, {termScore0})});
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;
@@ -51,22 +32,16 @@ TEST_CASE("Test Rehydration, boosting, regression") {
 }
 
 TEST_CASE("Test Rehydration, boosting, binary") {
-   TestBoost testContinuous = TestBoost(
-      Task_BinaryClassification, 
-      {},
-      { {} },
-      { 
-         TestSample({}, 0) 
-      },
-      { 
-         TestSample({}, 0) 
-      },
-      k_countInnerBagsDefault, 
-      k_testCreateBoosterFlags_Default,
-      k_testAccelerationFlags_Default,
-      nullptr, 
-      0
-   );
+   TestBoost testContinuous = TestBoost(Task_BinaryClassification,
+         {},
+         {{}},
+         {TestSample({}, 0)},
+         {TestSample({}, 0)},
+         k_countInnerBagsDefault,
+         k_testCreateBoosterFlags_Default,
+         k_testAccelerationFlags_Default,
+         nullptr,
+         0);
 
    double termScore0 = 0;
    double termScore1 = 0;
@@ -75,22 +50,16 @@ TEST_CASE("Test Rehydration, boosting, binary") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestBoost testRestart = TestBoost(
-         Task_BinaryClassification, 
-         {},
-         { {} },
-         { 
-            TestSample({}, 0, 1, { termScore0, termScore1 }) 
-         },
-         { 
-            TestSample({}, 0, 1, { termScore0, termScore1 }) 
-         },
-         k_countInnerBagsDefault,
-         k_testCreateBoosterFlags_Default,
-         k_testAccelerationFlags_Default,
-         nullptr,
-         0
-      );
+      TestBoost testRestart = TestBoost(Task_BinaryClassification,
+            {},
+            {{}},
+            {TestSample({}, 0, 1, {termScore0, termScore1})},
+            {TestSample({}, 0, 1, {termScore0, termScore1})},
+            k_countInnerBagsDefault,
+            k_testCreateBoosterFlags_Default,
+            k_testAccelerationFlags_Default,
+            nullptr,
+            0);
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;
@@ -107,17 +76,7 @@ TEST_CASE("Test Rehydration, boosting, binary") {
 }
 
 TEST_CASE("Test Rehydration, boosting, multiclass") {
-   TestBoost testContinuous = TestBoost(
-      3,
-      {},
-      { {} },
-      { 
-         TestSample({}, 0) 
-      }, 
-      { 
-         TestSample({}, 0) 
-      }
-   );
+   TestBoost testContinuous = TestBoost(3, {}, {{}}, {TestSample({}, 0)}, {TestSample({}, 0)});
 
    double termScore0 = 0;
    double termScore1 = 0;
@@ -127,17 +86,11 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
    double termScoreContinuous;
    double validationMetricRestart;
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
-      TestBoost testRestart = TestBoost(
-         3,
-         {},
-         { {} },
-         { 
-            TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) 
-         },
-         { 
-            TestSample({}, 0, 1, { termScore0, termScore1, termScore2 }) 
-         }
-      );
+      TestBoost testRestart = TestBoost(3,
+            {},
+            {{}},
+            {TestSample({}, 0, 1, {termScore0, termScore1, termScore2})},
+            {TestSample({}, 0, 1, {termScore0, termScore1, termScore2})});
 
       validationMetricRestart = testRestart.Boost(0).validationMetric;
       validationMetricContinuous = testContinuous.Boost(0).validationMetric;
@@ -156,4 +109,3 @@ TEST_CASE("Test Rehydration, boosting, multiclass") {
       CHECK_APPROX(termScoreContinuous, termScore2);
    }
 }
-

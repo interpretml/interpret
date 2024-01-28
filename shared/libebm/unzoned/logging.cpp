@@ -19,10 +19,10 @@ TraceEbm g_traceLevel = Trace_Off;
 static LogCallbackFunction g_pLogCallbackFunction = NULL;
 
 #ifndef NDEBUG
-unsigned int g_coverage[TEST_COVERAGE_COUNT] = { 0 };
+unsigned int g_coverage[TEST_COVERAGE_COUNT] = {0};
 #endif // NDEBUG
 
-EBM_API_BODY const char * EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
+EBM_API_BODY const char* EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel) {
    static const char g_sTraceOff[] = "OFF";
    static const char g_sTraceError[] = "ERROR";
    static const char g_sTraceWarning[] = "WARNING";
@@ -68,7 +68,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
    static const char sStartLogVerbose[] = "Native logging set to VERBOSE in " COMPILE_MODE " build.";
    static const char sStartLogIllegal[] = "Native logging set to ILLEGAL in " COMPILE_MODE " build.";
 
-   const char * sMessage;
+   const char* sMessage;
    switch(traceLevel) {
    case Trace_Off:
       // if the previous logging level allows us to log a message, then do it before turning logging off
@@ -99,7 +99,7 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
    }
 
    if(g_traceLevel < traceLevel) {
-      // if the new logging level is more permissive, then set it now. log level is an observable within the 
+      // if the new logging level is more permissive, then set it now. log level is an observable within the
       // log callback even though the log callback shouldn't re-enter, but we are not very trusting.
       g_traceLevel = traceLevel;
    }
@@ -112,22 +112,25 @@ EBM_API_BODY void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel) {
    g_traceLevel = traceLevel;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithArguments(const TraceEbm traceLevel, const char * const sMessage, ...) {
+INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithArguments(const TraceEbm traceLevel, const char* const sMessage, ...) {
    assert(NULL != g_pLogCallbackFunction);
    // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallbackFunction) {
-      // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below functionality directly into a MACRO or an 
-      // inline function then the memory gets reserved on the stack of the function which calls our logging MACRO.  The reserved memory will be held when 
-      // our calling function calls any children functions.  By putting the buffer insdie this purposely separated function we allocate it on the stack, 
-      // then immedicately deallocate it, so our caller doesn't need to hold valuable stack space all the way down when calling it's offspring functions.  
-      // We also don't need to allocate any stack when logging is turned off.
+      // this function is here largely to clip the stack memory needed for messageSpace.  If we put the below
+      // functionality directly into a MACRO or an inline function then the memory gets reserved on the stack of the
+      // function which calls our logging MACRO.  The reserved memory will be held when our calling function calls any
+      // children functions.  By putting the buffer insdie this purposely separated function we allocate it on the
+      // stack, then immedicately deallocate it, so our caller doesn't need to hold valuable stack space all the way
+      // down when calling it's offspring functions. We also don't need to allocate any stack when logging is turned
+      // off.
 
       va_list args;
       char messageSpace[1024];
       va_start(args, sMessage);
-      // vsnprintf specifically says that the count parameter is in bytes of buffer space, but let's be safe and assume someone might change this to a 
-      // unicode function someday and that new function might be in characters instead of bytes.  For us #bytes == #chars.  If a unicode specific version 
-      // is in bytes it won't overflow, but it will waste memory
+      // vsnprintf specifically says that the count parameter is in bytes of buffer space, but let's be safe and assume
+      // someone might change this to a unicode function someday and that new function might be in characters instead of
+      // bytes.  For us #bytes == #chars.  If a unicode specific version is in bytes it won't overflow, but it will
+      // waste memory
 
       // turn off clang-tidy warning about insecurity of vsnprintf
       // NOLINTNEXTLINE
@@ -142,7 +145,7 @@ INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithArguments(const TraceEbm traceLev
    }
 }
 
-INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithoutArguments(const TraceEbm traceLevel, const char * const sMessage) {
+INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithoutArguments(const TraceEbm traceLevel, const char* const sMessage) {
    assert(NULL != g_pLogCallbackFunction);
    // it is illegal for g_pLogCallbackFunction to be NULL at this point, but in the interest of not crashing check it
    if(NULL != g_pLogCallbackFunction) {
@@ -150,14 +153,13 @@ INTERNAL_IMPORT_EXPORT_BODY void InteralLogWithoutArguments(const TraceEbm trace
    }
 }
 
-INTERNAL_IMPORT_EXPORT_BODY void LogAssertFailure(
-   const unsigned long long lineNumber,
-   const char * const sFileName,
-   const char * const sFunctionName,
-   const char * const sAssertText
-) LOGGING_ANALYZER_NORETURN {
+INTERNAL_IMPORT_EXPORT_BODY void LogAssertFailure(const unsigned long long lineNumber,
+      const char* const sFileName,
+      const char* const sFunctionName,
+      const char* const sAssertText) LOGGING_ANALYZER_NORETURN {
    if(Trace_Error <= g_traceLevel) {
-      static const char g_sAssertLogMessage[] = "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
+      static const char g_sAssertLogMessage[] =
+            "ASSERT ERROR on line %llu of file \"%s\" in function \"%s\" for condition \"%s\"";
       InteralLogWithArguments(Trace_Error, g_sAssertLogMessage, lineNumber, sFileName, sFunctionName, sAssertText);
    }
 }

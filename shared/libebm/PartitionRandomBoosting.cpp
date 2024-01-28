@@ -30,88 +30,88 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<bool bHessian, size_t cCompilerScores>
-class PartitionRandomBoostingInternal final {
-public:
-
+template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInternal final {
+ public:
    PartitionRandomBoostingInternal() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
-      RandomDeterministic * const pRng,
-      BoosterShell * const pBoosterShell,
-      const Term * const pTerm,
-      const TermBoostFlags flags,
-      const IntEbm * const aLeavesMax,
-      double * const pTotalGain
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(RandomDeterministic* const pRng,
+         BoosterShell* const pBoosterShell,
+         const Term* const pTerm,
+         const TermBoostFlags flags,
+         const IntEbm* const aLeavesMax,
+         double* const pTotalGain) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-      // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the best gain
+      // TODO: add a new random_rety option that will retry random splitting for N times and select the one with the
+      // best gain
       // TODO: accept the minimum number of items in a split and then refuse to allow the split if we violate it, or
       //       provide a soft trigger that generates 10 random ones and selects the one that violates the least
       //       maybe provide a flag to indicate if we want a hard or soft allowance.  We won't be splitting if we
       //       require a soft allowance and a lot of regions have zeros.
-      // TODO: accept 0 == minSamplesLeaf as a minimum number of items so that we can always choose to allow a tensor split (for DP)
+      // TODO: accept 0 == minSamplesLeaf as a minimum number of items so that we can always choose to allow a tensor
+      // split (for DP)
       // TODO: move most of this code out of this function into a non-templated place
 
       ErrorEbm error;
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+      BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
 
-      auto * const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+      auto* const aBins = pBoosterShell->GetBoostingMainBins()
+                                ->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
 
-      Tensor * const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
+      Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
-      const IntEbm * pLeavesMax1 = aLeavesMax;
-      const TermFeature * pTermFeature1 = pTerm->GetTermFeatures();
-      const TermFeature * const pTermFeaturesEnd = &pTermFeature1[pTerm->GetCountDimensions()];
+      const IntEbm* pLeavesMax1 = aLeavesMax;
+      const TermFeature* pTermFeature1 = pTerm->GetTermFeatures();
+      const TermFeature* const pTermFeaturesEnd = &pTermFeature1[pTerm->GetCountDimensions()];
       size_t cSlicesTotal = 0;
       size_t cSlicesPlusRandomMax = 0;
       size_t cCollapsedTensorCells = 1;
       do {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax1) {
-            cLeavesMax = size_t { 1 };
+            cLeavesMax = size_t{1};
          } else {
             const IntEbm countLeavesMax = *pLeavesMax1;
             ++pLeavesMax1;
-            if(countLeavesMax <= IntEbm { 1 }) {
-               cLeavesMax = size_t { 1 };
+            if(countLeavesMax <= IntEbm{1}) {
+               cLeavesMax = size_t{1};
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
                if(IsConvertError<size_t>(countLeavesMax)) {
-                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
                }
             }
          }
 
-         const FeatureBoosting * const pFeature = pTermFeature1->m_pFeature;
+         const FeatureBoosting* const pFeature = pTermFeature1->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
+         EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
          const size_t cSlices = EbmMin(cLeavesMax, cBins);
          EBM_ASSERT(1 <= cSlices);
 
-         const size_t cPossibleSplitLocations = cBins - size_t { 1 };
-         if(size_t { 0 } != cPossibleSplitLocations) {
+         const size_t cPossibleSplitLocations = cBins - size_t{1};
+         if(size_t{0} != cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             if(IsAddError(cSlicesTotal, cPossibleSplitLocations)) {
-               LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleSplitLocations)");
+               LOG_0(Trace_Warning,
+                     "WARNING PartitionRandomBoostingInternal IsAddError(cSlicesTotal, cPossibleSplitLocations)");
                return Error_OutOfMemory;
             }
             const size_t cSlicesPlusRandom = cSlicesTotal + cPossibleSplitLocations;
             cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesPlusRandom);
 
-            // our histogram is a tensor where we multiply the number of cells on each pass.  Addition of those 
-            // same numbers can't be bigger than multiplication unless one of the dimensions is less than 2 wide.  
-            // At 2, multiplication and addition would yield the same size.  All other numbers will be bigger for 
+            // our histogram is a tensor where we multiply the number of cells on each pass.  Addition of those
+            // same numbers can't be bigger than multiplication unless one of the dimensions is less than 2 wide.
+            // At 2, multiplication and addition would yield the same size.  All other numbers will be bigger for
             // multiplication, so we can conclude that addition won't overflow since the multiplication didn't
             EBM_ASSERT(!IsAddError(cSlicesTotal, cSlices));
             cSlicesTotal += cSlices;
@@ -126,7 +126,8 @@ public:
       cSlicesPlusRandomMax = EbmMax(cSlicesPlusRandomMax, cSlicesTotal);
 
       if(IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)) {
-         LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
+         LOG_0(Trace_Warning,
+               "WARNING PartitionRandomBoostingInternal IsMultiplyError(sizeof(size_t), cSlicesPlusRandomMax)");
          return Error_OutOfMemory;
       }
       const size_t cBytesSlicesPlusRandom = sizeof(size_t) * cSlicesPlusRandomMax;
@@ -145,11 +146,12 @@ public:
       EBM_ASSERT(!IsMultiplyError(cBytesPerBin, cCollapsedTensorCells)); // our allocated histogram is bigger
       cCollapsedTensorCells *= cBytesPerBin;
       if(IsAddError(cBytesSlices, cCollapsedTensorCells)) {
-         LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
+         LOG_0(Trace_Warning,
+               "WARNING PartitionRandomBoostingInternal IsAddError(cBytesSlices, cBytesCollapsedTensor1)");
          return Error_OutOfMemory;
       }
 
-      // We previously handled conditions where a dimension had 0 bins in one of the features, so 
+      // We previously handled conditions where a dimension had 0 bins in one of the features, so
       // all dimensions should have had 1 bin and we set the number of leaves to 1 minimum, and
       // the cBytesPerBin value must be greater than 0, so cCollapsedTensorCells must be non-zero
       // The Clang static analyzer seems to not understand these things, so specify it here
@@ -160,59 +162,60 @@ public:
       const size_t cBytesBuffer = EbmMax(cBytesSlicesAndCollapsedTensor, cBytesSlicesPlusRandom);
 
       // TODO: use GrowThreadByteBuffer2 for this, but first we need to change that to allocate void or bytes
-      char * const pBuffer = static_cast<char *>(malloc(cBytesBuffer));
+      char* const pBuffer = static_cast<char*>(malloc(cBytesBuffer));
       if(UNLIKELY(nullptr == pBuffer)) {
          LOG_0(Trace_Warning, "WARNING PartitionRandomBoostingInternal nullptr == pBuffer");
          return Error_OutOfMemory;
       }
-      size_t * const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t *>(pBuffer);
+      size_t* const acItemsInNextSliceOrBytesInCurrentSlice = reinterpret_cast<size_t*>(pBuffer);
 
-      const IntEbm * pLeavesMax2 = aLeavesMax;
-      size_t * pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      const TermFeature * pTermFeature2 = pTerm->GetTermFeatures();
+      const IntEbm* pLeavesMax2 = aLeavesMax;
+      size_t* pcItemsInNextSliceOrBytesInCurrentSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
+      const TermFeature* pTermFeature2 = pTerm->GetTermFeatures();
       do {
          size_t cTreeSplitsMax;
          if(nullptr == pLeavesMax2) {
-            cTreeSplitsMax = size_t { 0 };
+            cTreeSplitsMax = size_t{0};
          } else {
             const IntEbm countLeavesMax = *pLeavesMax2;
             ++pLeavesMax2;
-            if(countLeavesMax <= IntEbm { 1 }) {
-               cTreeSplitsMax = size_t { 0 };
+            if(countLeavesMax <= IntEbm{1}) {
+               cTreeSplitsMax = size_t{0};
             } else {
-               cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t { 1 };
+               cTreeSplitsMax = static_cast<size_t>(countLeavesMax) - size_t{1};
                if(IsConvertError<size_t>(countLeavesMax)) {
-                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we
                   // were going to overflow because it will generate the same results as if we used the true number
-                  cTreeSplitsMax = std::numeric_limits<size_t>::max() - size_t { 1 };
+                  cTreeSplitsMax = std::numeric_limits<size_t>::max() - size_t{1};
                }
             }
          }
 
-         const FeatureBoosting * const pFeature = pTermFeature2->m_pFeature;
+         const FeatureBoosting* const pFeature = pTermFeature2->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-         size_t cPossibleSplitLocations = cBins - size_t { 1 };
-         if(size_t { 0 } != cPossibleSplitLocations) {
+         EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
+         size_t cPossibleSplitLocations = cBins - size_t{1};
+         if(size_t{0} != cPossibleSplitLocations) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
-            if(size_t { 0 } != cTreeSplitsMax) {
-               size_t * pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
+            if(size_t{0} != cTreeSplitsMax) {
+               size_t* pFillIndexes = pcItemsInNextSliceOrBytesInCurrentSlice2;
                size_t iEdge = cPossibleSplitLocations; // 1 means split between bin 0 and bin 1
                do {
                   *pFillIndexes = iEdge;
                   ++pFillIndexes;
                   --iEdge;
-               } while(size_t { 0 } != iEdge);
+               } while(size_t{0} != iEdge);
 
-               size_t * pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
+               size_t* pOriginal = pcItemsInNextSliceOrBytesInCurrentSlice2;
 
                const size_t cSplits = EbmMin(cTreeSplitsMax, cPossibleSplitLocations);
                EBM_ASSERT(1 <= cSplits);
-               const size_t * const pcItemsInNextSliceOrBytesInCurrentSliceEnd = pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
+               const size_t* const pcItemsInNextSliceOrBytesInCurrentSliceEnd =
+                     pcItemsInNextSliceOrBytesInCurrentSlice2 + cSplits;
                do {
                   const size_t iRandom = pRng->NextFast(cPossibleSplitLocations);
-                  size_t * const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
+                  size_t* const pRandomSwap = pcItemsInNextSliceOrBytesInCurrentSlice2 + iRandom;
                   const size_t temp = *pRandomSwap;
                   *pRandomSwap = *pcItemsInNextSliceOrBytesInCurrentSlice2;
                   *pcItemsInNextSliceOrBytesInCurrentSlice2 = temp;
@@ -228,26 +231,26 @@ public:
          ++pTermFeature2;
       } while(pTermFeaturesEnd != pTermFeature2);
 
-      const IntEbm * pLeavesMax3 = aLeavesMax;
-      const size_t * pcBytesInSliceEnd;
-      const TermFeature * pTermFeature3 = pTerm->GetTermFeatures();
-      size_t * pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
+      const IntEbm* pLeavesMax3 = aLeavesMax;
+      const size_t* pcBytesInSliceEnd;
+      const TermFeature* pTermFeature3 = pTerm->GetTermFeatures();
+      size_t* pcItemsInNextSliceOrBytesInCurrentSlice3 = acItemsInNextSliceOrBytesInCurrentSlice;
       size_t cBytesCollapsedTensor3;
       while(true) {
          EBM_ASSERT(pTermFeature3 < pTermFeaturesEnd);
 
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
-            cLeavesMax = size_t { 1 };
+            cLeavesMax = size_t{1};
          } else {
             const IntEbm countLeavesMax = *pLeavesMax3;
             ++pLeavesMax3;
-            if(countLeavesMax <= IntEbm { 1 }) {
-               cLeavesMax = size_t { 1 };
+            if(countLeavesMax <= IntEbm{1}) {
+               cLeavesMax = size_t{1};
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
                if(IsConvertError<size_t>(countLeavesMax)) {
-                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
                }
@@ -255,24 +258,24 @@ public:
          }
 
          // the first dimension is special.  we put byte until next item into it instead of counts remaining
-         const FeatureBoosting * const pFeature = pTermFeature3->m_pFeature;
+         const FeatureBoosting* const pFeature = pTermFeature3->m_pFeature;
          ++pTermFeature3;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-         if(size_t { 1 } < cBins) {
+         EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
+         if(size_t{1} < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             const size_t cFirstSlices = EbmMin(cLeavesMax, cBins);
             cBytesCollapsedTensor3 = cBytesPerBin * cFirstSlices;
 
             pcBytesInSliceEnd = acItemsInNextSliceOrBytesInCurrentSlice + cFirstSlices;
-            size_t iPrev = size_t { 0 };
+            size_t iPrev = size_t{0};
             do {
-               // The Clang static analysis tool does not like our access here to the 
+               // The Clang static analysis tool does not like our access here to the
                // acItemsInNextSliceOrBytesInCurrentSlice buffer via the pcItemsInNextSliceOrBytesInCurrentSlice3
                // pointer. I think this is because we allocate the buffer to contain both the split information
                // and also the tensor information, and above this point we have only filled in the split information
-               // which leaves the buffer only partly initialized as we use it here. If we put a 
+               // which leaves the buffer only partly initialized as we use it here. If we put a
                // memset(acItemsInNextSliceOrBytesInCurrentSlice, 0, cBytesBuffer) after allocation then
                // this analysis warning goes away which reinforces this suspicion.
                StopClangAnalysis();
@@ -292,38 +295,38 @@ public:
       }
 
       struct RandomSplitState {
-         size_t         m_cItemsInSliceRemaining;
-         size_t         m_cBytesSubtractResetCollapsedBin;
+         size_t m_cItemsInSliceRemaining;
+         size_t m_cBytesSubtractResetCollapsedBin;
 
-         const size_t * m_pcItemsInNextSlice;
-         const size_t * m_pcItemsInNextSliceEnd;
+         const size_t* m_pcItemsInNextSlice;
+         const size_t* m_pcItemsInNextSliceEnd;
       };
-      RandomSplitState randomSplitState[k_cDimensionsMax - size_t { 1 }]; // the first dimension is special cased
-      RandomSplitState * pStateInit = &randomSplitState[0];
+      RandomSplitState randomSplitState[k_cDimensionsMax - size_t{1}]; // the first dimension is special cased
+      RandomSplitState* pStateInit = &randomSplitState[0];
 
       for(; pTermFeaturesEnd != pTermFeature3; ++pTermFeature3) {
          size_t cLeavesMax;
          if(nullptr == pLeavesMax3) {
-            cLeavesMax = size_t { 1 };
+            cLeavesMax = size_t{1};
          } else {
             const IntEbm countLeavesMax = *pLeavesMax3;
             ++pLeavesMax3;
-            if(countLeavesMax <= IntEbm { 1 }) {
-               cLeavesMax = size_t { 1 };
+            if(countLeavesMax <= IntEbm{1}) {
+               cLeavesMax = size_t{1};
             } else {
                cLeavesMax = static_cast<size_t>(countLeavesMax);
                if(IsConvertError<size_t>(countLeavesMax)) {
-                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we 
+                  // we can never exceed a size_t number of leaves, so let's just set it to the maximum if we
                   // were going to overflow because it will generate the same results as if we used the true number
                   cLeavesMax = std::numeric_limits<size_t>::max();
                }
             }
          }
 
-         const FeatureBoosting * const pFeature = pTermFeature3->m_pFeature;
+         const FeatureBoosting* const pFeature = pTermFeature3->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
-         EBM_ASSERT(size_t { 1 } <= cBins); // we don't boost on empty training sets
-         if(size_t { 1 } < cBins) {
+         EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
+         if(size_t{1} < cBins) {
             // drop any dimensions with 1 bin since the tensor is the same without the extra dimension
 
             size_t cSlices = EbmMin(cLeavesMax, cBins);
@@ -339,8 +342,8 @@ public:
             pStateInit->m_pcItemsInNextSlice = pcItemsInNextSliceOrBytesInCurrentSlice3;
 
             size_t iPrev = iFirst;
-            for(--cSlices; LIKELY(size_t { 0 } != cSlices); --cSlices) {
-               size_t * const pCur = pcItemsInNextSliceOrBytesInCurrentSlice3 + size_t { 1 };
+            for(--cSlices; LIKELY(size_t{0} != cSlices); --cSlices) {
+               size_t* const pCur = pcItemsInNextSliceOrBytesInCurrentSlice3 + size_t{1};
                const size_t iCur = *pCur;
                EBM_ASSERT(iPrev < iCur);
                *pcItemsInNextSliceOrBytesInCurrentSlice3 = iCur - iPrev;
@@ -355,36 +358,37 @@ public:
       }
 
       // put the histograms right after our slice array
-      auto * const aCollapsedBins =
-         reinterpret_cast<Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)> *>(pcItemsInNextSliceOrBytesInCurrentSlice3);
+      auto* const aCollapsedBins =
+            reinterpret_cast<Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>*>(
+                  pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);
-      const auto * const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
+      const auto* const pCollapsedBinEnd = IndexBin(aCollapsedBins, cBytesCollapsedTensor3);
 
       // we special case the first dimension, so drop it by subtracting
-      EBM_ASSERT(&randomSplitState[pTerm->GetCountRealDimensions() - size_t { 1 }] == pStateInit);
+      EBM_ASSERT(&randomSplitState[pTerm->GetCountRealDimensions() - size_t{1}] == pStateInit);
 
-      const auto * pBin = aBins;
-      auto * pCollapsedBin1 = aCollapsedBins;
+      const auto* pBin = aBins;
+      auto* pCollapsedBin1 = aCollapsedBins;
 
       {
       move_next_slice:;
 
-         // for the first dimension, acItemsInNextSliceOrBytesInCurrentSlice contains the number of bytes to proceed 
-         // until the next pBinSliceEnd point.  For the second dimension and higher, it contains a 
+         // for the first dimension, acItemsInNextSliceOrBytesInCurrentSlice contains the number of bytes to proceed
+         // until the next pBinSliceEnd point.  For the second dimension and higher, it contains a
          // count of items for the NEXT slice.  The 0th element contains the count of items for the
          // 1st slice.  Yeah, it's pretty confusing, but it allows for some pretty compact code in this
          // super critical inner loop without overburdening the CPU registers when we execute the outer loop.
-         const size_t * pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
+         const size_t* pcItemsInNextSliceOrBytesInCurrentSlice = acItemsInNextSliceOrBytesInCurrentSlice;
          do {
-            const auto * const pBinSliceEnd = IndexBin(pBin, *pcItemsInNextSliceOrBytesInCurrentSlice);
+            const auto* const pBinSliceEnd = IndexBin(pBin, *pcItemsInNextSliceOrBytesInCurrentSlice);
             do {
                ASSERT_BIN_OK(cBytesPerBin, pBin, pBoosterShell->GetDebugMainBinsEnd());
                // TODO: add this first into a local Bin that can be put in registers then write it to
                // pCollapsedBin1 aferwards
                pCollapsedBin1->Add(cScores, *pBin);
 
-               // we're walking through all bins, so just move to the next one in the flat array, 
+               // we're walking through all bins, so just move to the next one in the flat array,
                // with the knowledge that we'll figure out it's multi-dimenional index below
                pBin = IndexBin(pBin, cBytesPerBin);
             } while(LIKELY(pBinSliceEnd != pBin));
@@ -394,10 +398,10 @@ public:
             ++pcItemsInNextSliceOrBytesInCurrentSlice;
          } while(PREDICTABLE(pcBytesInSliceEnd != pcItemsInNextSliceOrBytesInCurrentSlice));
 
-         for(RandomSplitState * pState = randomSplitState; PREDICTABLE(pStateInit != pState); ++pState) {
-            EBM_ASSERT(size_t { 1 } <= pState->m_cItemsInSliceRemaining);
-            const size_t cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t { 1 };
-            if(LIKELY(size_t { 0 } != cItemsInSliceRemaining)) {
+         for(RandomSplitState* pState = randomSplitState; PREDICTABLE(pStateInit != pState); ++pState) {
+            EBM_ASSERT(size_t{1} <= pState->m_cItemsInSliceRemaining);
+            const size_t cItemsInSliceRemaining = pState->m_cItemsInSliceRemaining - size_t{1};
+            if(LIKELY(size_t{0} != cItemsInSliceRemaining)) {
                // ideally, the compiler would move this to the location right above the first loop and it would
                // jump over it on the first loop, but I wasn't able to make the Visual Studio compiler do it
 
@@ -407,7 +411,7 @@ public:
                goto move_next_slice;
             }
 
-            const size_t * pcItemsInNextSlice = pState->m_pcItemsInNextSlice;
+            const size_t* pcItemsInNextSlice = pState->m_pcItemsInNextSlice;
             EBM_ASSERT(pcItemsInNextSliceOrBytesInCurrentSlice <= pcItemsInNextSlice);
             EBM_ASSERT(pcItemsInNextSlice < pState->m_pcItemsInNextSliceEnd);
             pState->m_cItemsInSliceRemaining = *pcItemsInNextSlice;
@@ -429,28 +433,27 @@ public:
          }
       }
 
-      //TODO: retrieve the gain.  Always calculate the gain without respect to the parent and pick the best one
-      //      Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
-      //      bin from which we can calculate the parent and subtract the best child from the parent.
-      
-      //FloatCalc gain;
-      //FloatCalc gainParent = 0;
+      // TODO: retrieve the gain.  Always calculate the gain without respect to the parent and pick the best one
+      //       Then, before exiting, on the last one we collapse the collapsed tensor even more into just a single
+      //       bin from which we can calculate the parent and subtract the best child from the parent.
+
+      // FloatCalc gain;
+      // FloatCalc gainParent = 0;
       FloatCalc gain = 0;
 
-
-      const TermFeature * pTermFeature4 = pTerm->GetTermFeatures();
-      size_t iDimensionWrite = static_cast<size_t>(~size_t { 0 }); // this is -1, but without the compiler warning
+      const TermFeature* pTermFeature4 = pTerm->GetTermFeatures();
+      size_t iDimensionWrite = static_cast<size_t>(~size_t{0}); // this is -1, but without the compiler warning
       size_t cBinsWrite;
       do {
-         const FeatureBoosting * const pFeature = pTermFeature4->m_pFeature;
+         const FeatureBoosting* const pFeature = pTermFeature4->m_pFeature;
          cBinsWrite = pFeature->GetCountBins();
          ++iDimensionWrite;
          ++pTermFeature4;
-      } while(cBinsWrite <= size_t { 1 });
+      } while(cBinsWrite <= size_t{1});
 
       EBM_ASSERT(acItemsInNextSliceOrBytesInCurrentSlice < pcBytesInSliceEnd);
       const size_t cFirstSlices = pcBytesInSliceEnd - acItemsInNextSliceOrBytesInCurrentSlice;
-      // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and 
+      // 3 items in the acItemsInNextSliceOrBytesInCurrentSlice means 2 splits and
       // one last item to indicate the termination point
       error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, cFirstSlices);
       if(UNLIKELY(Error_None != error)) {
@@ -458,10 +461,10 @@ public:
          free(pBuffer);
          return error;
       }
-      const size_t * pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
-      if(LIKELY(size_t { 1 } < cFirstSlices)) {
-         const size_t * const pcBytesInSliceLast = pcBytesInSliceEnd - size_t { 1 };
-         UIntSplit * pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
+      const size_t* pcBytesInSlice2 = acItemsInNextSliceOrBytesInCurrentSlice;
+      if(LIKELY(size_t{1} < cFirstSlices)) {
+         const size_t* const pcBytesInSliceLast = pcBytesInSliceEnd - size_t{1};
+         UIntSplit* pSplitFirst = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
          size_t iEdgeFirst = 0;
          do {
             EBM_ASSERT(pcBytesInSlice2 < pcBytesInSliceLast);
@@ -477,28 +480,28 @@ public:
          } while(LIKELY(pcBytesInSliceLast != pcBytesInSlice2));
       }
 
-      RandomSplitState * pState = randomSplitState;
+      RandomSplitState* pState = randomSplitState;
       if(PREDICTABLE(pStateInit != pState)) {
          do {
             do {
-               const FeatureBoosting * const pFeature = pTermFeature4->m_pFeature;
+               const FeatureBoosting* const pFeature = pTermFeature4->m_pFeature;
                cBinsWrite = pFeature->GetCountBins();
                ++iDimensionWrite;
                ++pTermFeature4;
-            } while(cBinsWrite <= size_t { 1 });
+            } while(cBinsWrite <= size_t{1});
 
             ++pcBytesInSlice2; // we have one less split than we have slices, so move to the next one
 
-            const size_t * pcItemsInNextSliceEnd = pState->m_pcItemsInNextSliceEnd;
+            const size_t* pcItemsInNextSliceEnd = pState->m_pcItemsInNextSliceEnd;
             error = pInnerTermUpdate->SetCountSlices(iDimensionWrite, pcItemsInNextSliceEnd - pcBytesInSlice2);
             if(Error_None != error) {
                // already logged
                free(pBuffer);
                return error;
             }
-            const size_t * pcItemsInNextSliceLast = pcItemsInNextSliceEnd - size_t { 1 };
+            const size_t* pcItemsInNextSliceLast = pcItemsInNextSliceEnd - size_t{1};
             if(pcItemsInNextSliceLast != pcBytesInSlice2) {
-               UIntSplit * pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
+               UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimensionWrite);
                size_t iEdge2 = *pcItemsInNextSliceLast;
                // we checked earlier that countBins could be converted to a UIntSplit
                EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge2));
@@ -519,15 +522,16 @@ public:
          } while(PREDICTABLE(pStateInit != pState));
       }
 
-      FloatScore * pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-      auto * pCollapsedBin2 = aCollapsedBins;
+      FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+      auto* pCollapsedBin2 = aCollapsedBins;
 
       if(0 != (TermBoostFlags_GradientSums & flags)) {
          do {
-            auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
+            auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients));
+               const FloatCalc updateScore = EbmStats::ComputeSinglePartitionUpdateGradientSum(
+                     static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients));
                *pUpdateScore = static_cast<FloatScore>(updateScore);
                ++pUpdateScore;
             }
@@ -538,7 +542,7 @@ public:
             const auto cSamples = pCollapsedBin2->GetCountSamples();
             if(UNLIKELY(0 == cSamples)) {
                // TODO: this section can probably be eliminated since ComputeSinglePartitionUpdate now checks
-               // for zero in the denominator, but I'm leaving it here to see how the removal of the 
+               // for zero in the denominator, but I'm leaving it here to see how the removal of the
                // GetCountSamples property works in the future in combination with the check on hessians
 
                // normally, we'd eliminate regions where the number of items was zero before putting down a split
@@ -548,19 +552,17 @@ public:
                   ++pUpdateScore;
                }
             } else {
-               auto * const pGradientPair = pCollapsedBin2->GetGradientPairs();
+               auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatCalc updateScore;
                   if(bHessian) {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess())
-                     );
+                           static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                           static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
                   } else {
                      updateScore = EbmStats::ComputeSinglePartitionUpdate(
-                        static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(pCollapsedBin2->GetWeight())
-                     );
+                           static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                           static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
                   }
                   *pUpdateScore = static_cast<FloatScore>(updateScore);
                   ++pUpdateScore;
@@ -576,123 +578,71 @@ public:
    }
 };
 
-template<bool bHessian, size_t cPossibleScores>
-class PartitionRandomBoostingTarget final {
-public:
-
+template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTarget final {
+ public:
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
-      RandomDeterministic * const pRng,
-      BoosterShell * const pBoosterShell,
-      const Term * const pTerm,
-      const TermBoostFlags flags,
-      const IntEbm * const aLeavesMax,
-      double * const pTotalGain
-   ) {
-      BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(RandomDeterministic* const pRng,
+         BoosterShell* const pBoosterShell,
+         const Term* const pTerm,
+         const TermBoostFlags flags,
+         const IntEbm* const aLeavesMax,
+         double* const pTotalGain) {
+      BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       if(cPossibleScores == pBoosterCore->GetCountScores()) {
          return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       } else {
          return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       }
    }
 };
 
-template<bool bHessian>
-class PartitionRandomBoostingTarget<bHessian, k_cCompilerScoresMax + 1> final {
-public:
-
+template<bool bHessian> class PartitionRandomBoostingTarget<bHessian, k_cCompilerScoresMax + 1> final {
+ public:
    PartitionRandomBoostingTarget() = delete; // this is a static class.  Do not construct
 
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(
-      RandomDeterministic * const pRng,
-      BoosterShell * const pBoosterShell,
-      const Term * const pTerm,
-      const TermBoostFlags flags,
-      const IntEbm * const aLeavesMax,
-      double * const pTotalGain
-   ) {
+   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(RandomDeterministic* const pRng,
+         BoosterShell* const pBoosterShell,
+         const Term* const pTerm,
+         const TermBoostFlags flags,
+         const IntEbm* const aLeavesMax,
+         double* const pTotalGain) {
       return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(
-         pRng,
-         pBoosterShell,
-         pTerm,
-         flags,
-         aLeavesMax,
-         pTotalGain
-      );
+            pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
    }
 };
 
-extern ErrorEbm PartitionRandomBoosting(
-   RandomDeterministic * const pRng,
-   BoosterShell * const pBoosterShell,
-   const Term * const pTerm,
-   const TermBoostFlags flags,
-   const IntEbm * const aLeavesMax,
-   double * const pTotalGain
-) {
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
+      BoosterShell* const pBoosterShell,
+      const Term* const pTerm,
+      const TermBoostFlags flags,
+      const IntEbm* const aLeavesMax,
+      double* const pTotalGain) {
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
 
    EBM_ASSERT(1 <= cRuntimeScores);
    if(pBoosterCore->IsHessian()) {
-      if(size_t { 1 } != cRuntimeScores) {
+      if(size_t{1} != cRuntimeScores) {
          // muticlass
          return PartitionRandomBoostingTarget<true, k_cCompilerScoresStart>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<true, k_oneScore>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       }
    } else {
-      if(size_t { 1 } != cRuntimeScores) {
+      if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          return PartitionRandomBoostingInternal<false, k_dynamicScores>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<false, k_oneScore>::Func(
-            pRng,
-            pBoosterShell,
-            pTerm,
-            flags,
-            aLeavesMax,
-            pTotalGain
-         );
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
       }
    }
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

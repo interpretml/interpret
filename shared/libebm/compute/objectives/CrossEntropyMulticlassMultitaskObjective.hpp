@@ -5,11 +5,10 @@
 // !! To add a new objective in C++ follow the steps at the top of the "objective_registrations.hpp" file !!
 
 // TFloat could be double, float, or some SIMD intrinsic type
-template <typename TFloat>
-struct CrossEntropyMulticlassMultitaskObjective : MulticlassMultitaskObjective {
+template<typename TFloat> struct CrossEntropyMulticlassMultitaskObjective : MulticlassMultitaskObjective {
 
    // This is the most general format that I could envision we'd handle as a non-custom objective.
-   // It's not clear that we can really handle it nicely, but I'm leaving a placeholder here to think about it.  
+   // It's not clear that we can really handle it nicely, but I'm leaving a placeholder here to think about it.
    // An example of this might include a prediction problem having 2 targets, with the first target having 3 classes
    // and the second target having 4 classes.  In a higher level language this might be represented as two separate
    // models, or a single model that contains two targets.  We'd want to expose this externally as two tensors that
@@ -27,20 +26,19 @@ struct CrossEntropyMulticlassMultitaskObjective : MulticlassMultitaskObjective {
    // score[index_term][dimension1, dimension2, dimension3, ... , index_target;index_class]
    //
    // To do this properly, we'd need to accept from the caller a count of targets, and then have an array with the
-   // count of classes for each target.  We can mirror that information here by using the special template overrides 
+   // count of classes for each target.  We can mirror that information here by using the special template overrides
    // and do our softmax per-target.  We can't use the compiler version of the count of scores though since our
    // arrays are jagged, so it'll be an oddball in that we'll have a score count of 7 if we have 2 targets with 3
    // and 4 classes, so our count of scores will be 7, but we'll want to pass through either 0 or 1 for the count
    // of scores that we pass to the templated TObjective functions since we don't want to use the templated hard-coded
    // compiler optimized count of outputs
 
-   // There's an even more general case of multi-task learning with the targets being a mix of 
+   // There's an even more general case of multi-task learning with the targets being a mix of
    // regression, binary classification, and multiclass, but that would obviously require a custom objective.
 
-   // In terms of being able to use the compiler to optimize the number of scores, MulticlassMultitaskObjective is different
-   // than MulticlassObjective*, BinaryMultitaskObjective*, and RegressionMultitaskObjective* because those other task types
-   // have a last dimension that is uniform, which can therefore use the templating system to get complier optimized 
-   // counts of scores, unlike this more general case that needs to be special cased since the last
+   // In terms of being able to use the compiler to optimize the number of scores, MulticlassMultitaskObjective is
+   // different than MulticlassObjective*, BinaryMultitaskObjective*, and RegressionMultitaskObjective* because those
+   // other task types have a last dimension that is uniform, which can therefore use the templating system to get
+   // complier optimized counts of scores, unlike this more general case that needs to be special cased since the last
    // array is a jagged one with different inner array sizes.
-
 };

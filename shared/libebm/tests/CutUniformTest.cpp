@@ -15,8 +15,8 @@ static constexpr double k_minNonSubnormal = 2.2250738585072014e-308; // std::num
 static constexpr double k_maxNonInf = 1.7976931348623158e+308; // std::numeric_limits<double>::max()
 static constexpr double k_subnormToNorm = 4503599627370496.0; // multiplying by this will move a subnormal into a normal
 
-static constexpr double illegalVal = double { -888.88 };
-static double * const pIllegal = reinterpret_cast<double *>(1);
+static constexpr double illegalVal = double{-888.88};
+static double* const pIllegal = reinterpret_cast<double*>(1);
 
 TEST_CASE("CutUniform, zero cuts") {
    IntEbm countCuts = CutUniform(100, pIllegal, 0, pIllegal);
@@ -34,34 +34,34 @@ TEST_CASE("CutUniform, 1 sample") {
 }
 
 TEST_CASE("CutUniform, only missing") {
-   std::vector<double> featureVals { 
-      std::numeric_limits<double>::quiet_NaN(), 
-      std::numeric_limits<double>::quiet_NaN(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
    };
    IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, only -inf") {
-   std::vector<double> featureVals {
-      -std::numeric_limits<double>::infinity(),
-      -std::numeric_limits<double>::infinity(),
+   std::vector<double> featureVals{
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
    };
    IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, only +inf") {
-   std::vector<double> featureVals {
-      std::numeric_limits<double>::infinity(),
-      std::numeric_limits<double>::infinity(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
    };
    IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 3, pIllegal);
    CHECK(0 == countCuts);
 }
 
 TEST_CASE("CutUniform, identical values + missing") {
-   std::vector<double> featureVals { 1, 1, std::numeric_limits<double>::quiet_NaN(), 1 };
+   std::vector<double> featureVals{1, 1, std::numeric_limits<double>::quiet_NaN(), 1};
    IntEbm countCuts = CutUniform(featureVals.size(), &featureVals[0], 10, pIllegal);
    CHECK(0 == countCuts);
 }
@@ -165,9 +165,9 @@ TEST_CASE("CutUniform, insufficient floting point range for all cuts") {
 }
 
 TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
-   std::vector<double> featureVals {
-      std::numeric_limits<double>::infinity(),
-      -std::numeric_limits<double>::infinity(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
    };
    std::vector<double> cuts(1, illegalVal);
 
@@ -178,9 +178,9 @@ TEST_CASE("CutUniform, one cut, -infinity and +infinity") {
 }
 
 TEST_CASE("CutUniform, mid-point overflow if not special cased") {
-   std::vector<double> featureVals {
-      std::numeric_limits<double>::lowest(),
-      std::numeric_limits<double>::max(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::lowest(),
+         std::numeric_limits<double>::max(),
    };
    std::vector<double> cuts(13, illegalVal);
 
@@ -192,11 +192,11 @@ TEST_CASE("CutUniform, mid-point overflow if not special cased") {
 TEST_CASE("CutUniform, infinite diff, even cuts") {
    IntEbm countCuts = 2;
 
-   std::vector<double> featureVals {
-      std::numeric_limits<double>::max(),
-      std::numeric_limits<double>::lowest(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::max(),
+         std::numeric_limits<double>::lowest(),
    };
-   static const std::vector<double> expectedCuts { -5.9923104495410517e+307, 5.9923104495410517e+307 };
+   static const std::vector<double> expectedCuts{-5.9923104495410517e+307, 5.9923104495410517e+307};
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -214,11 +214,11 @@ TEST_CASE("CutUniform, infinite diff, even cuts") {
 TEST_CASE("CutUniform, infinite diff, odd cuts") {
    IntEbm countCuts = 3;
 
-   std::vector<double> featureVals {
-      std::numeric_limits<double>::lowest(),
-      std::numeric_limits<double>::max(),
+   std::vector<double> featureVals{
+         std::numeric_limits<double>::lowest(),
+         std::numeric_limits<double>::max(),
    };
-   static const std::vector<double> expectedCuts { -8.9884656743115785e+307, 0, 8.9884656743115785e+307 };
+   static const std::vector<double> expectedCuts{-8.9884656743115785e+307, 0, 8.9884656743115785e+307};
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -236,8 +236,8 @@ TEST_CASE("CutUniform, infinite diff, odd cuts") {
 TEST_CASE("CutUniform, min and max at interior positions") {
    IntEbm countCuts = 9;
 
-   std::vector<double> featureVals { 1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9 };
-   static const std::vector<double> expectedCuts { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+   std::vector<double> featureVals{1, 2, 3, 4, 5, 0, 10, 6, 7, 8, 9};
+   static const std::vector<double> expectedCuts{1, 2, 3, 4, 5, 6, 7, 8, 9};
 
    std::vector<double> cuts(static_cast<size_t>(countCuts), illegalVal);
 
@@ -260,7 +260,7 @@ TEST_CASE("CutUniform, low start, hit float resolution before end") {
       // backup a few ticks
       val = FloatTickDecrementTest(val);
    }
-   for(size_t iPast = 0; iPast < 10; ) {
+   for(size_t iPast = 0; iPast < 10;) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
@@ -284,7 +284,7 @@ TEST_CASE("CutUniform, high start, hit float resolution before end") {
       // backup a few ticks
       val = FloatTickDecrementTest(val);
    }
-   for(size_t iPast = 0; iPast < 5; ) {
+   for(size_t iPast = 0; iPast < 5;) {
       if(std::numeric_limits<double>::min() <= val) {
          ++iPast;
       }
@@ -316,32 +316,31 @@ TEST_CASE("CutUniform, stress test reproducible") {
    double result = 0.0;
    double seed = 64906263;
 
-   double featureVals[2] = { 0, 0 };
+   double featureVals[2] = {0, 0};
 
    static constexpr size_t cInteresting = 19;
-   static constexpr double interestingVals[cInteresting] = {
-      -k_maxNonInf,
-      -3.0,
-      -2.0,
-      -1.5,
-      -1.0,
-      -0.5,
-      -2 * k_subnormToNorm * k_minNonSubnormal,
-      -k_subnormToNorm * k_minNonSubnormal,
-      -k_minNonSubnormal,
-      0.0,
-      k_minNonSubnormal,
-      k_subnormToNorm * k_minNonSubnormal,
-      2 * k_subnormToNorm * k_minNonSubnormal,
-      0.5,
-      1.0,
-      1.5,
-      2.0,
-      3.0,
-      k_maxNonInf
-   };
+   static constexpr double interestingVals[cInteresting] = {-k_maxNonInf,
+         -3.0,
+         -2.0,
+         -1.5,
+         -1.0,
+         -0.5,
+         -2 * k_subnormToNorm * k_minNonSubnormal,
+         -k_subnormToNorm * k_minNonSubnormal,
+         -k_minNonSubnormal,
+         0.0,
+         k_minNonSubnormal,
+         k_subnormToNorm * k_minNonSubnormal,
+         2 * k_subnormToNorm * k_minNonSubnormal,
+         0.5,
+         1.0,
+         1.5,
+         2.0,
+         3.0,
+         k_maxNonInf};
    static constexpr size_t cCutsMax = 31; // 31 is prime
-   double cuts[cCutsMax] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+   double cuts[cCutsMax] = {
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
    // this is a really crappy Middle-square random number generator so that we can replicate it in any language
    for(iTest = 0; iTest < 20000; ++iTest) {
@@ -421,4 +420,3 @@ TEST_CASE("CutUniform, stress test reproducible") {
 
    CHECK(0.083452131729086054 == result);
 }
-

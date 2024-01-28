@@ -6,8 +6,7 @@
 
 // Do not use this file as a reference for other objectives. RMSE is special.
 
-template<typename TFloat>
-struct RmseRegressionObjective : RegressionObjective {
+template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
    using TFloatInternal = TFloat;
    static constexpr bool k_bRmse = true;
    static constexpr bool k_bApprox = false;
@@ -16,22 +15,24 @@ struct RmseRegressionObjective : RegressionObjective {
    static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);
    static constexpr int k_cItemsPerBitPackMax = 64;
    static constexpr int k_cItemsPerBitPackMin = 1;
-   static ErrorEbm StaticApplyUpdate(const Objective * const pThis, ApplyUpdateBridge * const pData) {
-      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentApplyUpdate<const RmseRegressionObjective<TFloat>>(pData);
+   static ErrorEbm StaticApplyUpdate(const Objective* const pThis, ApplyUpdateBridge* const pData) {
+      return (static_cast<const RmseRegressionObjective<TFloat>*>(pThis))
+            ->ParentApplyUpdate<const RmseRegressionObjective<TFloat>>(pData);
    }
-   template<typename T = void, typename std::enable_if<AccelerationFlags_NONE == TFloat::k_zone, T>::type * = nullptr>
-   static double StaticFinishMetric(const Objective * const pThis, const double metricSum) {
-      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->FinishMetric(metricSum);
+   template<typename T = void, typename std::enable_if<AccelerationFlags_NONE == TFloat::k_zone, T>::type* = nullptr>
+   static double StaticFinishMetric(const Objective* const pThis, const double metricSum) {
+      return (static_cast<const RmseRegressionObjective<TFloat>*>(pThis))->FinishMetric(metricSum);
    }
-   template<typename T = void, typename std::enable_if<AccelerationFlags_NONE == TFloat::k_zone, T>::type * = nullptr>
-   static BoolEbm StaticCheckTargets(const Objective * const pThis, const size_t c, const void * const aTargets) {
-      return (static_cast<const RmseRegressionObjective<TFloat> *>(pThis))->ParentCheckTargets<const RmseRegressionObjective<TFloat>>(c, aTargets);
+   template<typename T = void, typename std::enable_if<AccelerationFlags_NONE == TFloat::k_zone, T>::type* = nullptr>
+   static BoolEbm StaticCheckTargets(const Objective* const pThis, const size_t c, const void* const aTargets) {
+      return (static_cast<const RmseRegressionObjective<TFloat>*>(pThis))
+            ->ParentCheckTargets<const RmseRegressionObjective<TFloat>>(c, aTargets);
    }
-   void FillWrapper(const AccelerationFlags zones, void * const pWrapperOut) noexcept {
+   void FillWrapper(const AccelerationFlags zones, void* const pWrapperOut) noexcept {
       FillObjectiveWrapper<RmseRegressionObjective>(zones, pWrapperOut);
    }
 
-   inline RmseRegressionObjective(const Config & config) {
+   inline RmseRegressionObjective(const Config& config) {
       if(1 != config.cOutputs) {
          throw ParamMismatchWithConfigException();
       }
@@ -41,9 +42,7 @@ struct RmseRegressionObjective : RegressionObjective {
       return std::isnan(target) || std::isinf(target);
    }
 
-   inline double LinkParam() const noexcept {
-      return std::numeric_limits<double>::quiet_NaN();
-   }
+   inline double LinkParam() const noexcept { return std::numeric_limits<double>::quiet_NaN(); }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
       // we follow the gradient adjustment for DP since we have a similar change in rate and we want to make
@@ -55,7 +54,7 @@ struct RmseRegressionObjective : RegressionObjective {
 
    inline double LearningRateAdjustmentGradientBoosting() const noexcept {
       // the hessian is 2.0 for RMSE. If we change to gradient boosting we divide by the weight/count which is
-      // normalized to 1, so we double the effective learning rate without this adjustment.  We want 
+      // normalized to 1, so we double the effective learning rate without this adjustment.  We want
       // gradient boosting and hessian boosting to have similar rates, and this adjustment makes it that way
       return 0.5;
    }
@@ -67,7 +66,7 @@ struct RmseRegressionObjective : RegressionObjective {
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
       // the hessian is 2.0 for RMSE. If we change to gradient boosting we divide by the weight/count which is
-      // normalized to 1, so we double the effective learning rate without this adjustment.  We want 
+      // normalized to 1, so we double the effective learning rate without this adjustment.  We want
       // gradient boosting and hessian boosting to have similar rates, and this adjustment makes it that way
       return 0.5;
    }
@@ -77,13 +76,9 @@ struct RmseRegressionObjective : RegressionObjective {
       return 1.0;
    }
 
-   inline double GradientConstant() const noexcept {
-      return 2.0;
-   }
+   inline double GradientConstant() const noexcept { return 2.0; }
 
-   inline double HessianConstant() const noexcept {
-      return 2.0;
-   }
+   inline double HessianConstant() const noexcept { return 2.0; }
 
    inline double FinishMetric(const double metricSum) const noexcept {
       // TODO for now we return mse in actual fact, but we don't really expose the final value in pyton
@@ -93,24 +88,28 @@ struct RmseRegressionObjective : RegressionObjective {
       // then we can get exactness between platforms and then there will be no reason not to expose
       // RMSE instead of MSE
       return metricSum;
-      //return std::sqrt(metricSum); // finish the 'r' in 'rmse'
+      // return std::sqrt(metricSum); // finish the 'r' in 'rmse'
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat& score, const TFloat& target) const noexcept {
       // This function is here to signal the RmseRegressionObjective class abilities, but it will not be called
       UNUSED(score);
       UNUSED(target);
    }
 
-
-   template<bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox, size_t cCompilerScores, int cCompilerPack>
-   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge * const pData) const {
+   template<bool bValidation,
+         bool bWeight,
+         bool bHessian,
+         bool bDisableApprox,
+         size_t cCompilerScores,
+         int cCompilerPack>
+   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
@@ -122,24 +121,26 @@ struct RmseRegressionObjective : RegressionObjective {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
-      EBM_ASSERT(0 == pData->m_cSamples % size_t { TFloat::k_cSIMDPack });
+      EBM_ASSERT(0 == pData->m_cSamples % size_t{TFloat::k_cSIMDPack});
       EBM_ASSERT(nullptr == pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
 #endif // GPU_COMPILE
 
-      const typename TFloat::T * const aUpdateTensorScores = reinterpret_cast<const typename TFloat::T *>(pData->m_aUpdateTensorScores);
+      const typename TFloat::T* const aUpdateTensorScores =
+            reinterpret_cast<const typename TFloat::T*>(pData->m_aUpdateTensorScores);
 
       const size_t cSamples = pData->m_cSamples;
 
-      typename TFloat::T * pGradient = reinterpret_cast<typename TFloat::T *>(pData->m_aGradientsAndHessians); // no hessians for regression
-      const typename TFloat::T * const pGradientsEnd = pGradient + cSamples;
+      typename TFloat::T* pGradient =
+            reinterpret_cast<typename TFloat::T*>(pData->m_aGradientsAndHessians); // no hessians for regression
+      const typename TFloat::T* const pGradientsEnd = pGradient + cSamples;
 
       int cBitsPerItemMax;
       int cShift;
       int cShiftReset;
       typename TFloat::TInt maskBits;
-      const typename TFloat::TInt::T * pInputData;
+      const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
 
@@ -159,22 +160,24 @@ struct RmseRegressionObjective : RegressionObjective {
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         cShift = static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+         cShift = static_cast<int>(
+                        ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+               cBitsPerItemMax;
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
-         pInputData = reinterpret_cast<const typename TFloat::TInt::T *>(pData->m_aPacked);
+         pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pData->m_aPacked);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
       }
 
-      const typename TFloat::T * pWeight;
+      const typename TFloat::T* pWeight;
       TFloat metricSum;
       if(bValidation) {
          if(bWeight) {
-            pWeight = reinterpret_cast<const typename TFloat::T *>(pData->m_aWeights);
+            pWeight = reinterpret_cast<const typename TFloat::T*>(pData->m_aWeights);
 #ifndef GPU_COMPILE
             EBM_ASSERT(nullptr != pWeight);
 #endif // GPU_COMPILE

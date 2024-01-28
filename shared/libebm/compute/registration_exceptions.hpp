@@ -13,68 +13,68 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 class SkipRegistrationException final : public std::exception {
-public:
+ public:
    SkipRegistrationException() = default;
 };
 
 class ParamValOutOfRangeException final : public std::exception {
-public:
+ public:
    ParamValOutOfRangeException() = default;
 };
 
 class ParamMismatchWithConfigException final : public std::exception {
-public:
+ public:
    ParamMismatchWithConfigException() = default;
 };
 
 class ParamValMalformedException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    ParamValMalformedException() = default;
 };
 
 class ParamUnknownException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    ParamUnknownException() = default;
 };
 
 class RegistrationConstructorException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    RegistrationConstructorException() = default;
 };
 
 class IllegalParamNameException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    IllegalParamNameException() = default;
 };
 
 class IllegalRegistrationNameException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    IllegalRegistrationNameException() = default;
 };
 
 class DuplicateParamNameException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    DuplicateParamNameException() = default;
 };
 
 class NonPrivateRegistrationException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    NonPrivateRegistrationException() = default;
 };
 
 class NonPrivateParamException final : public std::exception {
    // this should not be thrown from the Registrable constructor
-public:
+ public:
    NonPrivateParamException() = default;
 };
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // REGISTRATION_EXCEPTIONS_HPP

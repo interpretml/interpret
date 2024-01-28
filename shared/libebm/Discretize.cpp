@@ -4,8 +4,10 @@
 
 #include "pch.hpp"
 
-// TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions better if it knows there are no exceptions
-// TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions, otherwise use the C versions that provide this guarantee
+// TODO: use noexcept throughout our codebase (exception extern "C" functions) !  The compiler can optimize functions
+// better if it knows there are no exceptions
+// TODO: review all the C++ library calls, including things like std::abs and verify that none of them throw exceptions,
+// otherwise use the C versions that provide this guarantee
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
@@ -53,7 +55,7 @@ namespace DEFINED_ZONE_NAME {
 //       from combining the logits at binary search time
 //     - in theory we might gain something if we had two single cut features because we could load the 2 values we're
 //       cutting into 2 registers, then have the cut points in 2 persistent registers, and have 4 registers for the
-//       logit results.  We can overwrite one of the two registers loaded with the sum of the resulting logits.  
+//       logit results.  We can overwrite one of the two registers loaded with the sum of the resulting logits.
 //       That's a total of 8 registers.  For 2 cuts, we'd need 2 for loading, 4 for cuts, 6 for logits, so 12 registers
 //       Which is also doable.  Beyond that, we'd need to use or access memory when combining processing for 2 features
 //       and I think it would be better to pay the streaming to memory cost than to fetch somewhat unpredictably
@@ -83,7 +85,7 @@ namespace DEFINED_ZONE_NAME {
 //     the L1 cahce, so the "best" solution is probably use thread afinity to keep CPUs working on the same feature
 //     and dividing up the samples between the hyper-threads, but then benefit from larger batch sizes by putting
 //     different features on different CPUs
-//   - the exact threading solution will probably depend on exact numbers of samples and threads and machine 
+//   - the exact threading solution will probably depend on exact numbers of samples and threads and machine
 //     architecture
 //   - whether dividing the work by samples or features or a mix, if we make multiple calls into our discritize
 //     function, we would want to preserve our threads since they are costly to make, so we'd want to have a
@@ -107,7 +109,7 @@ namespace DEFINED_ZONE_NAME {
 //   - one complication is that for pairs we need to have both feature in memory to evaluate.  If the pairs are
 //     not in the same stripe we need to preserve them until they are.  In most cases we can probably just hold the
 //     features we need or organize which stripes we load at which times, but in the worst case we may want
-//     to re-bin some features, or in the worst case bin all features (preserving in a compressed 
+//     to re-bin some features, or in the worst case bin all features (preserving in a compressed
 //     format?).  This really needs to be threshed out.
 //
 //   - Table of matrix access speeds (for summing cells in a matrix):
@@ -132,22 +134,19 @@ namespace DEFINED_ZONE_NAME {
 //       transpose_16384 = 7.73406
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
-   const double featureVal,
-   IntEbm countCuts,
-   const double * cutsLowerBoundInclusive
-) {
+      const double featureVal, IntEbm countCuts, const double* cutsLowerBoundInclusive) {
    // unlike all of our other public interfaces we don't check our inputs for validity.  The caller is expected
    // to get these right otherwise there will be a segfault.  We do this because we want lightening fast prediction
    // speed.  We can still use EBM_ASSERT though to catch input errors on debug builds, so do that.
 
    EBM_ASSERT(nullptr != cutsLowerBoundInclusive);
 
-   EBM_ASSERT(IntEbm { 0 } <= countCuts);
+   EBM_ASSERT(IntEbm{0} <= countCuts);
    // IntEbm::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
    // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
    // bin, so we have max-1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
    // have a maximum of max - 2 cuts.
-   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbm>::max() - IntEbm { 2 });
+   EBM_ASSERT(countCuts <= std::numeric_limits<IntEbm>::max() - IntEbm{2});
    // cutsLowerBoundInclusive needs to hold all the cuts, so we should be able to at least convert countCuts to size_t
    EBM_ASSERT(!IsConvertError<size_t>(countCuts));
    // cutsLowerBoundInclusive needs to hold all the cuts, so all the bytes need to be addressable
@@ -161,30 +160,30 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
    EBM_ASSERT(static_cast<size_t>(countCuts) < std::numeric_limits<size_t>::max());
    // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
    // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
-   EBM_ASSERT(static_cast<size_t>(countCuts) <= size_t { std::numeric_limits<ptrdiff_t>::max() });
-   // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
+   EBM_ASSERT(static_cast<size_t>(countCuts) <= size_t{std::numeric_limits<ptrdiff_t>::max()});
+   // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't
    // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
-   EBM_ASSERT(static_cast<size_t>(countCuts) <= std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 });
+   EBM_ASSERT(static_cast<size_t>(countCuts) <= std::numeric_limits<size_t>::max() / size_t{2} + size_t{1});
 
    if(PREDICTABLE(std::isnan(featureVal))) {
-      return IntEbm { 0 };
+      return IntEbm{0};
    }
-   if(UNLIKELY(countCuts <= IntEbm { 0 })) {
-      return IntEbm { 1 };
+   if(UNLIKELY(countCuts <= IntEbm{0})) {
+      return IntEbm{1};
    }
 
    size_t middle;
-   const ptrdiff_t highStart = static_cast<ptrdiff_t>(countCuts) - ptrdiff_t { 1 };
+   const ptrdiff_t highStart = static_cast<ptrdiff_t>(countCuts) - ptrdiff_t{1};
    ptrdiff_t high = highStart;
-   ptrdiff_t low = ptrdiff_t { 0 };
+   ptrdiff_t low = ptrdiff_t{0};
    double midVal;
    do {
-      EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < static_cast<size_t>(countCuts));
-      EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < static_cast<size_t>(countCuts));
+      EBM_ASSERT(ptrdiff_t{0} <= low && static_cast<size_t>(low) < static_cast<size_t>(countCuts));
+      EBM_ASSERT(ptrdiff_t{0} <= high && static_cast<size_t>(high) < static_cast<size_t>(countCuts));
       EBM_ASSERT(low <= high);
       // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
       // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
-      // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
+      // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled
       // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
       // the following must be false (which we check above):
       // "std::numeric_limits<size_t>::max() / 2 < static_cast<size_t>(countCuts) - 1"
@@ -193,16 +192,16 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
       EBM_ASSERT(middle <= static_cast<size_t>(high));
       EBM_ASSERT(middle < static_cast<size_t>(countCuts));
       midVal = cutsLowerBoundInclusive[middle];
-      EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
-      low = UNPREDICTABLE(midVal <= featureVal) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
-      EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= static_cast<size_t>(countCuts));
-      high = UNPREDICTABLE(midVal <= featureVal) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
-      EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+      EBM_ASSERT(middle < size_t{std::numeric_limits<ptrdiff_t>::max()});
+      low = UNPREDICTABLE(midVal <= featureVal) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t{1} : low;
+      EBM_ASSERT(ptrdiff_t{0} <= low && static_cast<size_t>(low) <= static_cast<size_t>(countCuts));
+      high = UNPREDICTABLE(midVal <= featureVal) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t{1};
+      EBM_ASSERT(ptrdiff_t{-1} <= high && high <= highStart);
 
       // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
       // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
       // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
-      // has a check at the end where we'd need to fetch cutsLowerBoundInclusive[low] after exiting the 
+      // has a check at the end where we'd need to fetch cutsLowerBoundInclusive[low] after exiting the
       // loop, so this version we have here is faster given that we only need to compare to a value that
       // we've already fetched from memory.  Also, this version makes slightly faster progress since
       // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
@@ -210,9 +209,9 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
       // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
       // for accessing memory are always size_t, so those should always work.
    } while(LIKELY(low <= high));
-   EBM_ASSERT(size_t { 0 } <= middle && middle < static_cast<size_t>(countCuts));
-   middle = UNPREDICTABLE(midVal <= featureVal) ? middle + size_t { 2 } : middle + size_t { 1 };
-   EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + static_cast<size_t>(countCuts));
+   EBM_ASSERT(size_t{0} <= middle && middle < static_cast<size_t>(countCuts));
+   middle = UNPREDICTABLE(midVal <= featureVal) ? middle + size_t{2} : middle + size_t{1};
+   EBM_ASSERT(size_t{1} <= middle && middle <= size_t{1} + static_cast<size_t>(countCuts));
    EBM_ASSERT(!IsConvertError<IntEbm>(middle));
    return static_cast<IntEbm>(middle);
 }
@@ -221,14 +220,12 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION DiscretizeOneSample(
 static int g_cLogEnterDiscretize = 25;
 static int g_cLogExitDiscretize = 25;
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
-   IntEbm countSamples,
-   const double * featureVals,
-   IntEbm countCuts,
-   const double * cutsLowerBoundInclusive,
-   IntEbm * binIndexesOut
-) {
-   // make the 0th bin always the missing value.  This makes cutting mains easier, since we always know where the 
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(IntEbm countSamples,
+      const double* featureVals,
+      IntEbm countCuts,
+      const double* cutsLowerBoundInclusive,
+      IntEbm* binIndexesOut) {
+   // make the 0th bin always the missing value.  This makes cutting mains easier, since we always know where the
    // missing bin will be, and also the first non-missing bin.  We can also increment the pointer to the histogram
    // to the first non-missing bin and reduce our bin index numbers by one, which will allow us to compress
    // binary features into 1 bit still.  It will make handling tensors with missing or no missing easier since
@@ -241,15 +238,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
    // so we can do things like try putting the missing values into the left and right statistics of any cuts easily
    //
    // this function has exactly the same behavior as numpy.digitize, including the lower bound inclusive semantics
-   
+
    // TODO: we want this function super-fast to handle the case where someone calls Discretize repeatedly
    //       once per-sample.  We can make this faster by eliminating a lot of the initial checks by:
    //       - eliminate the checks for nullptr on our input points.  We just crash if we get these illegal inputs
    //         we can't handle bad input points in general, so this is just accepting a reality for a tradeoff in speed
-   //       - create a function that converts any signed value into the proper unsigned value 
+   //       - create a function that converts any signed value into the proper unsigned value
    //         we can do this using std::make_unsigned to find the type and then use the twos compliment
    //         trick in RandomDeterministic to convert the signed value into the corresponding unsigned value
-   //         (also replace the code in RandomDeterministic with this new function).  This function will be 
+   //         (also replace the code in RandomDeterministic with this new function).  This function will be
    //         a no-op in assembly.
    //       - we check for both negative AND positive countCuts values that are too high.  We can
    //         combine these checks by first converting negatives into big positive unsigned values
@@ -274,33 +271,30 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
    //         then doing our upper bound comparison all in one check.  We can then filter our 0 ==countCuts
    //         after that as a special case
 
-   LOG_COUNTED_N(
-      &g_cLogEnterDiscretize,
-      Trace_Info,
-      Trace_Verbose,
-      "Entered Discretize: "
-      "countSamples=%" IntEbmPrintf ", "
-      "featureVals=%p, "
-      "countCuts=%" IntEbmPrintf ", "
-      "cutsLowerBoundInclusive=%p, "
-      "binIndexesOut=%p"
-      ,
-      countSamples,
-      static_cast<const void *>(featureVals),
-      countCuts,
-      static_cast<const void *>(cutsLowerBoundInclusive),
-      static_cast<void *>(binIndexesOut)
-   );
+   LOG_COUNTED_N(&g_cLogEnterDiscretize,
+         Trace_Info,
+         Trace_Verbose,
+         "Entered Discretize: "
+         "countSamples=%" IntEbmPrintf ", "
+         "featureVals=%p, "
+         "countCuts=%" IntEbmPrintf ", "
+         "cutsLowerBoundInclusive=%p, "
+         "binIndexesOut=%p",
+         countSamples,
+         static_cast<const void*>(featureVals),
+         countCuts,
+         static_cast<const void*>(cutsLowerBoundInclusive),
+         static_cast<void*>(binIndexesOut));
 
    ErrorEbm error;
-   
-   if(UNLIKELY(countSamples <= IntEbm { 0 })) {
-      if(UNLIKELY(countSamples < IntEbm { 0 })) {
+
+   if(UNLIKELY(countSamples <= IntEbm{0})) {
+      if(UNLIKELY(countSamples < IntEbm{0})) {
          LOG_0(Trace_Error, "ERROR Discretize countSamples cannot be negative");
          error = Error_IllegalParamVal;
          goto exit_with_log;
       } else {
-         EBM_ASSERT(IntEbm { 0 } == countSamples);
+         EBM_ASSERT(IntEbm{0} == countSamples);
          error = Error_None;
          goto exit_with_log;
       }
@@ -338,22 +332,22 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      const double * pVal = featureVals;
-      const double * const pValsEnd = featureVals + cSamples;
-      IntEbm * piBin = binIndexesOut;
+      const double* pVal = featureVals;
+      const double* const pValsEnd = featureVals + cSamples;
+      IntEbm* piBin = binIndexesOut;
 
-      if(UNLIKELY(countCuts <= IntEbm { 0 })) {
-         if(UNLIKELY(countCuts < IntEbm { 0 })) {
+      if(UNLIKELY(countCuts <= IntEbm{0})) {
+         if(UNLIKELY(countCuts < IntEbm{0})) {
             LOG_0(Trace_Error, "ERROR Discretize countCuts cannot be negative");
             error = Error_IllegalParamVal;
             goto exit_with_log;
          }
-         EBM_ASSERT(IntEbm { 0 } == countCuts);
+         EBM_ASSERT(IntEbm{0} == countCuts);
 
          do {
             const double val = *pVal;
             IntEbm iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : IntEbm { 1 };
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : IntEbm{1};
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
             *piBin = iBin;
             ++piBin;
@@ -387,16 +381,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             iDebug = iDebugInc;
          }
       }
-# endif // NDEBUG
+#endif // NDEBUG
 
-      if(PREDICTABLE(IntEbm { 1 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{1} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          do {
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -408,16 +402,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbm { 2 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{2} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          do {
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm{3} : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -429,7 +423,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbm { 3 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{3} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -437,10 +431,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm{3} : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm{4} : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -452,7 +446,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbm { 4 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{4} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -461,11 +455,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm{3} : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm{4} : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm{5} : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -477,7 +471,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbm { 5 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{5} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -487,12 +481,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
-            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm { 6 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm{3} : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm{4} : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm{5} : iBin;
+            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm{6} : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -504,7 +498,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(PREDICTABLE(IntEbm { 6 } == countCuts)) {
+      if(PREDICTABLE(IntEbm{6} == countCuts)) {
          const double cut0 = cutsLowerBoundInclusive[0];
          const double cut1 = cutsLowerBoundInclusive[1];
          const double cut2 = cutsLowerBoundInclusive[2];
@@ -515,13 +509,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double val = *pVal;
             IntEbm iBin;
 
-            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm { 2 } : IntEbm { 1 };
-            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm { 3 } : iBin;
-            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm { 4 } : iBin;
-            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm { 5 } : iBin;
-            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm { 6 } : iBin;
-            iBin = UNPREDICTABLE(cut5 <= val) ? IntEbm { 7 } : iBin;
-            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm { 0 } : iBin;
+            iBin = UNPREDICTABLE(cut0 <= val) ? IntEbm{2} : IntEbm{1};
+            iBin = UNPREDICTABLE(cut1 <= val) ? IntEbm{3} : iBin;
+            iBin = UNPREDICTABLE(cut2 <= val) ? IntEbm{4} : iBin;
+            iBin = UNPREDICTABLE(cut3 <= val) ? IntEbm{5} : iBin;
+            iBin = UNPREDICTABLE(cut4 <= val) ? IntEbm{6} : iBin;
+            iBin = UNPREDICTABLE(cut5 <= val) ? IntEbm{7} : iBin;
+            iBin = UNPREDICTABLE(std::isnan(val)) ? IntEbm{0} : iBin;
 
             EBM_ASSERT(iBin == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -541,21 +535,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
       // it's always legal in C++ to convert a signed value to unsigned.  We check below for out of bounds if needed
       const size_t cCuts = static_cast<size_t>(countCuts);
 
-      if(PREDICTABLE(countCuts <= IntEbm { 14 })) {
+      if(PREDICTABLE(countCuts <= IntEbm{14})) {
          static constexpr size_t cPower = 16;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -568,14 +560,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -586,21 +582,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 30 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{30})) {
          static constexpr size_t cPower = 32;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -613,15 +607,21 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -632,21 +632,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 62 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{62})) {
          static constexpr size_t cPower = 64;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -659,16 +657,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 15 } * sizeof(double)) <= val) ? size_t { 16 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{15} * sizeof(double)) <= val) ?
+                     size_t{16} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -679,21 +685,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 126 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{126})) {
          static constexpr size_t cPower = 128;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -706,17 +710,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 31 } * sizeof(double)) <= val) ? size_t { 32 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 15 } * sizeof(double)) <= val) ? size_t { 16 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{31} * sizeof(double)) <= val) ?
+                     size_t{32} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{15} * sizeof(double)) <= val) ?
+                     size_t{16} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -727,21 +741,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 254 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{254})) {
          static constexpr size_t cPower = 256;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -754,18 +766,30 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 63 } * sizeof(double)) <= val) ? size_t { 64 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 31 } * sizeof(double)) <= val) ? size_t { 32 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 15 } * sizeof(double)) <= val) ? size_t { 16 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{63} * sizeof(double)) <= val) ?
+                     size_t{64} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{31} * sizeof(double)) <= val) ?
+                     size_t{32} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{15} * sizeof(double)) <= val) ?
+                     size_t{16} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -776,21 +800,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 510 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{510})) {
          static constexpr size_t cPower = 512;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 <= sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -803,19 +825,33 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 127 } * sizeof(double)) <= val) ? size_t { 128 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 63 } * sizeof(double)) <= val) ? size_t { 64 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 31 } * sizeof(double)) <= val) ? size_t { 32 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 15 } * sizeof(double)) <= val) ? size_t { 16 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{127} * sizeof(double)) <= val) ?
+                     size_t{128} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{63} * sizeof(double)) <= val) ?
+                     size_t{64} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{31} * sizeof(double)) <= val) ?
+                     size_t{32} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{15} * sizeof(double)) <= val) ?
+                     size_t{16} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -826,21 +862,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             error = Error_None;
             goto exit_with_log;
          }
-      } else if(PREDICTABLE(countCuts <= IntEbm { 1022 })) {
+      } else if(PREDICTABLE(countCuts <= IntEbm{1022})) {
          static constexpr size_t cPower = 1024;
          if(cPower * 4 <= cSamples) {
-            static_assert(cPower - 1 == sizeof(cutsLowerBoundInclusiveCopy) /
-               sizeof(cutsLowerBoundInclusiveCopy[0]), "cutsLowerBoundInclusiveCopy buffer not large enough");
+            static_assert(cPower - 1 == sizeof(cutsLowerBoundInclusiveCopy) / sizeof(cutsLowerBoundInclusiveCopy[0]),
+                  "cutsLowerBoundInclusiveCopy buffer not large enough");
 
-            memcpy(
-               size_t { 1 } + cutsLowerBoundInclusiveCopy,
-               cutsLowerBoundInclusive,
-               sizeof(*cutsLowerBoundInclusive) * cCuts
-            );
+            memcpy(size_t{1} + cutsLowerBoundInclusiveCopy,
+                  cutsLowerBoundInclusive,
+                  sizeof(*cutsLowerBoundInclusive) * cCuts);
 
-            if(LIKELY(cCuts != cPower - size_t { 2 })) {
-               double * pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t { 1 }];
-               const double * const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t { 1 }];
+            if(LIKELY(cCuts != cPower - size_t{2})) {
+               double* pFill = &cutsLowerBoundInclusiveCopy[cCuts + size_t{1}];
+               const double* const pEndFill = &cutsLowerBoundInclusiveCopy[cPower - size_t{1}];
                do {
                   // NaN will always move us downwards into the region of valid cuts.  The first cut is always
                   // guaranteed to be non-NaN, so if we have a missing (NaN) value, then the binary search will
@@ -853,20 +887,36 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
             const double firstComparison = cutsLowerBoundInclusiveCopy[cPower / 2 - 1];
             do {
                const double val = *pVal;
-               char * pCut = reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy);
+               char* pCut = reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy);
 
-               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t { cPower / 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 255 } * sizeof(double)) <= val) ? size_t { 256 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 127 } * sizeof(double)) <= val) ? size_t { 128 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 63 } * sizeof(double)) <= val) ? size_t { 64 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 31 } * sizeof(double)) <= val) ? size_t { 32 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 15 } * sizeof(double)) <= val) ? size_t { 16 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 7 } * sizeof(double)) <= val) ? size_t { 8 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 3 } * sizeof(double)) <= val) ? size_t { 4 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut + size_t { 1 } * sizeof(double)) <= val) ? size_t { 2 } * sizeof(double) : size_t { 0 };
-               pCut += UNPREDICTABLE(*reinterpret_cast<double *>(pCut) <= val) ? size_t { 1 } * sizeof(double) : size_t { 0 };
+               pCut += UNPREDICTABLE(firstComparison <= val) ? size_t{cPower / 2} * sizeof(double) : size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{255} * sizeof(double)) <= val) ?
+                     size_t{256} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{127} * sizeof(double)) <= val) ?
+                     size_t{128} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{63} * sizeof(double)) <= val) ?
+                     size_t{64} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{31} * sizeof(double)) <= val) ?
+                     size_t{32} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{15} * sizeof(double)) <= val) ?
+                     size_t{16} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{7} * sizeof(double)) <= val) ?
+                     size_t{8} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{3} * sizeof(double)) <= val) ?
+                     size_t{4} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut + size_t{1} * sizeof(double)) <= val) ?
+                     size_t{2} * sizeof(double) :
+                     size_t{0};
+               pCut += UNPREDICTABLE(*reinterpret_cast<double*>(pCut) <= val) ? size_t{1} * sizeof(double) : size_t{0};
 
-               const size_t iBin = (pCut - reinterpret_cast<char *>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
+               const size_t iBin = (pCut - reinterpret_cast<char*>(cutsLowerBoundInclusiveCopy)) / sizeof(double);
 
                EBM_ASSERT(static_cast<IntEbm>(iBin) == DiscretizeOneSample(val, countCuts, cutsLowerBoundInclusive));
 
@@ -887,20 +937,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
       }
 
       if(IsMultiplyError(sizeof(*cutsLowerBoundInclusive), cCuts)) {
-         LOG_0(Trace_Error,
-            "ERROR Discretize countCuts was too large to fit into cutsLowerBoundInclusive");
+         LOG_0(Trace_Error, "ERROR Discretize countCuts was too large to fit into cutsLowerBoundInclusive");
          error = Error_IllegalParamVal; // the cutsLowerBoundInclusive array wouldn't be possible
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<IntEbm>::max() - IntEbm { 2 } < countCuts)) {
+      if(UNLIKELY(std::numeric_limits<IntEbm>::max() - IntEbm{2} < countCuts)) {
          // IntEbm::max should be the maximum number of bins that we allow.  This prevents our caller from accidentally
-         // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special missing
-         // bin, so we have max - 1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so we can
-         // have a maximum of max - 2 cuts.
+         // overflowing when using either the count (eg: 255) or the index (eg: 0-254).  The 0th bin is the special
+         // missing bin, so we have max - 1 normal bins.  We have 1 less cuts than we have bins (1 cut means 2 bins), so
+         // we can have a maximum of max - 2 cuts.
 
          LOG_0(Trace_Error,
-            "ERROR Discretize countCuts was too large to allow for a missing value placeholder and -+inf bins");
+               "ERROR Discretize countCuts was too large to allow for a missing value placeholder and -+inf bins");
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
          // tried to allocate it since it doesn't seem worth creating a new error class for it
@@ -910,8 +959,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
 
       if(UNLIKELY(std::numeric_limits<size_t>::max() == cCuts)) {
          // we add 1 to cCuts as our missing value, so this addition must succeed
-         LOG_0(Trace_Error,
-            "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
+         LOG_0(Trace_Error, "ERROR Discretize countCuts was too large to allow for a missing value placeholder");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -920,11 +968,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(UNLIKELY(size_t { std::numeric_limits<ptrdiff_t>::max() } < cCuts)) {
+      if(UNLIKELY(size_t{std::numeric_limits<ptrdiff_t>::max()} < cCuts)) {
          // the low value can increase until it's equal to cCuts, so cCuts must be expressable as a ptrdiff_t
          // we need to keep low as a ptrdiff_t since we compare it right after with high, which can be -1
-         LOG_0(Trace_Error,
-            "ERROR Discretize countCuts was too large to allow for the binary search comparison");
+         LOG_0(Trace_Error, "ERROR Discretize countCuts was too large to allow for the binary search comparison");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -933,11 +980,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
          goto exit_with_log;
       }
 
-      if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t { 2 } + size_t { 1 } < cCuts)) {
-         // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't 
-         // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that value
-         LOG_0(Trace_Error,
-            "ERROR Discretize countCuts was too large to allow for the binary search add");
+      if(UNLIKELY(std::numeric_limits<size_t>::max() / size_t{2} + size_t{1} < cCuts)) {
+         // our first operation towards getting the mid-point is to add the size_t low and size_t high, and that can't
+         // overflow, so check that the maximum high added to the maximum low (which is the high) don't exceed that
+         // value
+         LOG_0(Trace_Error, "ERROR Discretize countCuts was too large to allow for the binary search add");
 
          // this is a non-overflow somewhat arbitrary number for the upper level software to understand
          // so instead of returning illegal parameter, we should return out of memory and pretend that we
@@ -947,34 +994,34 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
       }
 
       EBM_ASSERT(cCuts < std::numeric_limits<size_t>::max());
-      EBM_ASSERT(size_t { 1 } <= cCuts);
-      EBM_ASSERT(cCuts <= size_t { std::numeric_limits<ptrdiff_t>::max() });
-      const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCuts) - ptrdiff_t { 1 };
+      EBM_ASSERT(size_t{1} <= cCuts);
+      EBM_ASSERT(cCuts <= size_t{std::numeric_limits<ptrdiff_t>::max()});
+      const ptrdiff_t highStart = static_cast<ptrdiff_t>(cCuts) - ptrdiff_t{1};
 
       // if we're going to runroll our first loop, then we need to ensure that there's a next loop after the first
       // unrolled loop, otherwise we would need to check if we were done before the first real loop iteration.
       // To ensure we have 2 original loop iterations, we need 1 cut in the center, 1 cut above, and 1 cut below, so 3
-      EBM_ASSERT(size_t { 3 } <= cCuts);
+      EBM_ASSERT(size_t{3} <= cCuts);
       const size_t firstMiddle = static_cast<size_t>(highStart) >> 1;
       EBM_ASSERT(firstMiddle < cCuts);
       const double firstMidVal = cutsLowerBoundInclusive[firstMiddle];
-      const ptrdiff_t firstMidLow = static_cast<ptrdiff_t>(firstMiddle) + ptrdiff_t { 1 };
-      const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t { 1 };
+      const ptrdiff_t firstMidLow = static_cast<ptrdiff_t>(firstMiddle) + ptrdiff_t{1};
+      const ptrdiff_t firstMidHigh = static_cast<ptrdiff_t>(firstMiddle) - ptrdiff_t{1};
 
       do {
          const double val = *pVal;
-         size_t middle = size_t { 0 };
+         size_t middle = size_t{0};
          if(PREDICTABLE(!std::isnan(val))) {
             ptrdiff_t high = UNPREDICTABLE(firstMidVal <= val) ? highStart : firstMidHigh;
-            ptrdiff_t low = UNPREDICTABLE(firstMidVal <= val) ? firstMidLow : ptrdiff_t { 0 };
+            ptrdiff_t low = UNPREDICTABLE(firstMidVal <= val) ? firstMidLow : ptrdiff_t{0};
             double midVal;
             do {
-               EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) < cCuts);
-               EBM_ASSERT(ptrdiff_t { 0 } <= high && static_cast<size_t>(high) < cCuts);
+               EBM_ASSERT(ptrdiff_t{0} <= low && static_cast<size_t>(low) < cCuts);
+               EBM_ASSERT(ptrdiff_t{0} <= high && static_cast<size_t>(high) < cCuts);
                EBM_ASSERT(low <= high);
                // low is equal or lower than high, so summing them can't exceed 2 * high, and after division it
                // can't be higher than high, so middle can't overflow ptrdiff_t after the division since high
-               // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled 
+               // is already a ptrdiff_t.  Generally the maximum positive value of a ptrdiff_t can be doubled
                // when converted to a size_t, although that isn't guaranteed.  A more correct statement is that
                // the following must be false (which we check above):
                // "std::numeric_limits<size_t>::max() / 2 < cCuts - 1"
@@ -983,16 +1030,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
                EBM_ASSERT(middle <= static_cast<size_t>(high));
                EBM_ASSERT(middle < cCuts);
                midVal = cutsLowerBoundInclusive[middle];
-               EBM_ASSERT(middle < size_t { std::numeric_limits<ptrdiff_t>::max() });
-               low = UNPREDICTABLE(midVal <= val) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t { 1 } : low;
-               EBM_ASSERT(ptrdiff_t { 0 } <= low && static_cast<size_t>(low) <= cCuts);
-               high = UNPREDICTABLE(midVal <= val) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t { 1 };
-               EBM_ASSERT(ptrdiff_t { -1 } <= high && high <= highStart);
+               EBM_ASSERT(middle < size_t{std::numeric_limits<ptrdiff_t>::max()});
+               low = UNPREDICTABLE(midVal <= val) ? static_cast<ptrdiff_t>(middle) + ptrdiff_t{1} : low;
+               EBM_ASSERT(ptrdiff_t{0} <= low && static_cast<size_t>(low) <= cCuts);
+               high = UNPREDICTABLE(midVal <= val) ? high : static_cast<ptrdiff_t>(middle) - ptrdiff_t{1};
+               EBM_ASSERT(ptrdiff_t{-1} <= high && high <= highStart);
 
                // high can become -1 in some cases, so it needs to be ptrdiff_t.  It's tempting to try and change
                // this code and use the Hermann Bottenbruch version that checks for low != high in the loop comparison
                // since then we wouldn't have negative values and we could use size_t, but unfortunately that version
-               // has a check at the end where we'd need to fetch cutsLowerBoundInclusive[low] after exiting the 
+               // has a check at the end where we'd need to fetch cutsLowerBoundInclusive[low] after exiting the
                // loop, so this version we have here is faster given that we only need to compare to a value that
                // we've already fetched from memory.  Also, this version makes slightly faster progress since
                // it does middle + 1 AND middle - 1 instead of just middle - 1, so it often eliminates one loop
@@ -1000,9 +1047,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
                // bytes, so we shouldn't have difficulty expressing any indexes with ptrdiff_t, and our indexes
                // for accessing memory are always size_t, so those should always work.
             } while(LIKELY(low <= high));
-            EBM_ASSERT(size_t { 0 } <= middle && middle < cCuts);
-            middle = UNPREDICTABLE(midVal <= val) ? middle + size_t { 2 } : middle + size_t { 1 };
-            EBM_ASSERT(size_t { 1 } <= middle && middle <= size_t { 1 } + cCuts);
+            EBM_ASSERT(size_t{0} <= middle && middle < cCuts);
+            middle = UNPREDICTABLE(midVal <= val) ? middle + size_t{2} : middle + size_t{1};
+            EBM_ASSERT(size_t{1} <= middle && middle <= size_t{1} + cCuts);
          }
          EBM_ASSERT(!IsConvertError<IntEbm>(middle));
          const IntEbm iBin = static_cast<IntEbm>(middle);
@@ -1018,17 +1065,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Discretize(
 
 exit_with_log:;
 
-   LOG_COUNTED_N(
-      &g_cLogExitDiscretize,
-      Trace_Info,
-      Trace_Verbose,
-      "Exited Discretize: "
-      "return=%" ErrorEbmPrintf
-      ,
-      error
-   );
+   LOG_COUNTED_N(&g_cLogExitDiscretize,
+         Trace_Info,
+         Trace_Verbose,
+         "Exited Discretize: "
+         "return=%" ErrorEbmPrintf,
+         error);
 
    return error;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

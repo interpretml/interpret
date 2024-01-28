@@ -63,14 +63,7 @@ TEST_CASE("SampleWithoutReplacementStratified, 0 samples") {
 
    ErrorEbm error;
 
-   error = SampleWithoutReplacementStratified(
-      nullptr,
-      cClasses,
-      0,
-      0,
-      nullptr,
-      nullptr
-   );
+   error = SampleWithoutReplacementStratified(nullptr, cClasses, 0, 0, nullptr, nullptr);
    CHECK(Error_None == error);
 }
 
@@ -80,21 +73,14 @@ TEST_CASE("SampleWithoutReplacementStratified, 0 training samples") {
 
    ErrorEbm error;
 
-   IntEbm targets[cSamples] = { 0 };
+   IntEbm targets[cSamples] = {0};
    BagEbm sampleCounts[cSamples];
 
-   error = SampleWithoutReplacementStratified(
-      nullptr,
-      cClasses,
-      0,
-      2,
-      targets,
-      sampleCounts
-   );
+   error = SampleWithoutReplacementStratified(nullptr, cClasses, 0, 2, targets, sampleCounts);
    CHECK(Error_None == error);
 
-   CHECK(BagEbm { -1 } == sampleCounts[0]);
-   CHECK(BagEbm { -1 } == sampleCounts[1]);
+   CHECK(BagEbm{-1} == sampleCounts[0]);
+   CHECK(BagEbm{-1} == sampleCounts[1]);
 }
 
 TEST_CASE("SampleWithoutReplacementStratified, 0 validation samples") {
@@ -103,21 +89,14 @@ TEST_CASE("SampleWithoutReplacementStratified, 0 validation samples") {
 
    ErrorEbm error;
 
-   IntEbm targets[cSamples] = { 1 };
+   IntEbm targets[cSamples] = {1};
    BagEbm sampleCounts[cSamples];
 
-   error = SampleWithoutReplacementStratified(
-      nullptr,
-      cClasses,
-      2,
-      0,
-      targets,
-      sampleCounts
-   );
+   error = SampleWithoutReplacementStratified(nullptr, cClasses, 2, 0, targets, sampleCounts);
    CHECK(Error_None == error);
 
-   CHECK(BagEbm { 1 } == sampleCounts[0]);
-   CHECK(BagEbm { 1 } == sampleCounts[1]);
+   CHECK(BagEbm{1} == sampleCounts[0]);
+   CHECK(BagEbm{1} == sampleCounts[1]);
 }
 
 TEST_CASE("SampleWithoutReplacementStratified, monoclassification") {
@@ -126,23 +105,16 @@ TEST_CASE("SampleWithoutReplacementStratified, monoclassification") {
 
    ErrorEbm error;
 
-   IntEbm targets[cSamples] = { 0 };
+   IntEbm targets[cSamples] = {0};
    BagEbm sampleCounts[cSamples];
 
-   error = SampleWithoutReplacementStratified(
-      nullptr,
-      cClasses,
-      1,
-      1,
-      targets,
-      sampleCounts
-   );
+   error = SampleWithoutReplacementStratified(nullptr, cClasses, 1, 1, targets, sampleCounts);
    CHECK(Error_None == error);
 
-   CHECK(BagEbm { -1 } == sampleCounts[0] || BagEbm { 1 } == sampleCounts[0]);
-   CHECK(BagEbm { -1 } == sampleCounts[1] || BagEbm { 1 } == sampleCounts[1]);
+   CHECK(BagEbm{-1} == sampleCounts[0] || BagEbm{1} == sampleCounts[0]);
+   CHECK(BagEbm{-1} == sampleCounts[1] || BagEbm{1} == sampleCounts[1]);
 
-   CHECK(BagEbm { 0 } == sampleCounts[0] + sampleCounts[1]);
+   CHECK(BagEbm{0} == sampleCounts[0] + sampleCounts[1]);
 }
 
 TEST_CASE("SampleWithoutReplacementStratified, stress test") {
@@ -159,16 +131,16 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
    SeedEbm seed = k_seed;
 
    for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
-      IntEbm targets[cSamples] = { 0 };
+      IntEbm targets[cSamples] = {0};
       BagEbm sampleCounts[cSamples];
 
-      size_t classCount[cClasses] = { 0 };
-      size_t trainingCount[cClasses] = { 0 };
-      size_t valCount[cClasses] = { 0 };
+      size_t classCount[cClasses] = {0};
+      size_t trainingCount[cClasses] = {0};
+      size_t valCount[cClasses] = {0};
 
       size_t cRandomSamples = randomStream.Next(cSamples + 1);
       size_t cClassSize = randomStream.Next(cClasses) + 1;
-      size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
+      size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t{1});
       EBM_ASSERT(cTrainingSamples <= cSamples);
       size_t cValidationSamples = cRandomSamples - cTrainingSamples;
       EBM_ASSERT(cValidationSamples <= cSamples);
@@ -186,13 +158,7 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       InitRNG(k_seed, &rng[0]);
 
       error = SampleWithoutReplacementStratified(
-         &rng[0],
-         cClassSize,
-         cTrainingSamples,
-         cValidationSamples,
-         targets,
-         sampleCounts
-      );
+            &rng[0], cClassSize, cTrainingSamples, cValidationSamples, targets, sampleCounts);
       CHECK(Error_None == error);
 
       // Check the overall correct number of training/validation samples have been returned
@@ -215,15 +181,15 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       CHECK(cValidationSamplesVerified == cValidationSamples);
 
       // This stratified sampling algorithm guarantees:
-      // (1) Either the train/validation counts work out perfectly for each class -or- there is at 
+      // (1) Either the train/validation counts work out perfectly for each class -or- there is at
       //     least one class with a count above the ideal training count and at least one class with
       //     a training count below the ideal count,
-      // (2) Given a sufficient amount of training samples, if a class has only one sample, it 
+      // (2) Given a sufficient amount of training samples, if a class has only one sample, it
       //     should go to training,
-      // (3) Given a sufficient amount of training samples, if a class only has two samples, one 
+      // (3) Given a sufficient amount of training samples, if a class only has two samples, one
       //     should go to train and one should go to test,
       // (4) If a class has enough samples to hit the target train/validation count, its actual
-      //     train/validation count should be no more than one away from the ideal count. 
+      //     train/validation count should be no more than one away from the ideal count.
 
       const double idealTrainSplit = static_cast<double>(cTrainingSamples) / (cTrainingSamples + cValidationSamples);
 
@@ -304,26 +270,24 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 
       for(IntEbm iRun = 0; iRun < 10000; ++iRun) {
          size_t cRandomSamples = randomStream.Next(cSamples + 1);
-         size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t { 1 });
+         size_t cTrainingSamples = randomStream.Next(cRandomSamples + size_t{1});
          size_t cValidationSamples = cRandomSamples - cTrainingSamples;
 
-         error = SampleWithoutReplacement(
-            0 == iBool ? nullptr : &rng[0],
-            static_cast<IntEbm>(cTrainingSamples),
-            static_cast<IntEbm>(cValidationSamples),
-            samples
-         );
+         error = SampleWithoutReplacement(0 == iBool ? nullptr : &rng[0],
+               static_cast<IntEbm>(cTrainingSamples),
+               static_cast<IntEbm>(cValidationSamples),
+               samples);
          CHECK(Error_None == error);
 
          size_t cTrainingSamplesVerified = 0;
          size_t cValidationSamplesVerified = 0;
          for(size_t i = 0; i < cRandomSamples; ++i) {
             const BagEbm val = samples[i];
-            CHECK(BagEbm { -1 } == val || BagEbm { 1 } == val);
-            if(BagEbm { 0 } < val) {
+            CHECK(BagEbm{-1} == val || BagEbm{1} == val);
+            if(BagEbm{0} < val) {
                ++cTrainingSamplesVerified;
             }
-            if(val < BagEbm { 0 }) {
+            if(val < BagEbm{0}) {
                ++cValidationSamplesVerified;
             }
          }
@@ -337,20 +301,11 @@ TEST_CASE("SampleWithoutReplacement, stress test") {
 TEST_CASE("test random number generator equivalency") {
    std::vector<TestSample> samples;
    for(int i = 0; i < 1000; ++i) {
-      samples.push_back(TestSample({ 0 == (i * 7) % 3 }, i % 2));
+      samples.push_back(TestSample({0 == (i * 7) % 3}, i % 2));
    }
 
-   TestBoost test = TestBoost(
-      Task_Regression,
-      { FeatureTest(2) },
-      { { 0 } },
-      samples,
-      { 
-         TestSample({ 0 }, 0), 
-         TestSample({ 1 }, 1) 
-      },
-      2
-   );
+   TestBoost test =
+         TestBoost(Task_Regression, {FeatureTest(2)}, {{0}}, samples, {TestSample({0}, 0), TestSample({1}, 1)}, 2);
 
    for(int iEpoch = 0; iEpoch < 100; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
@@ -358,7 +313,7 @@ TEST_CASE("test random number generator equivalency") {
       }
    }
 
-   double termScore = test.GetCurrentTermScore(0, { 0 }, 0);
+   double termScore = test.GetCurrentTermScore(0, {0}, 0);
    // this is meant to be an exact check for this value.  We are testing here if we can generate identical results
    // accross different OSes and C/C++ libraries.  We specificed 2 inner samples, which will use the random generator
    // and if there are any differences between environments then this will catch those

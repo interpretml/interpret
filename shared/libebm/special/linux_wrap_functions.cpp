@@ -11,15 +11,15 @@
 // If we run the command: objdump -T libebm_linux_x64.so | grep GLIBC_
 // we see the following entry:
 // 0000000000000000      DF *UND*  0000000000000000  GLIBC_2.14  memcpy
-// We can also see this information in the "Version References" section of the disassembly of libebm*.s that 
+// We can also see this information in the "Version References" section of the disassembly of libebm*.s that
 // build.sh optionally generates. We put that file into the artifacts of the Azure build pipeline.
-// 
+//
 // The version 2.14 for memcpy has been a problem for some of our CentOS users.
 // Unfortunately, this function is called by the libgcc OR libstdc++ libraries which we've statically linked in.
 // We can demand an older version of this function here using the ".symver" below, and then we can make the compiler
 // substitute our wrapper function below for other calls throughout our library, which then calls the older function.
 // The wrapper function also needs to be included in the gcc/g++ command line in build.sh using "-Wl,--wrap=memcpy"
-// 
+//
 // It is possible to get a list of function versions available to link to with the following command:
 // objdump -T /lib/x86_64-linux-gnu/libc.so.6    OR   objdump -T /lib/x86_64-linux-gnu/libm.so.6
 //
@@ -43,27 +43,13 @@ __asm__(".symver expf, expf@GLIBC_2.2.5");
 __asm__(".symver logf, logf@GLIBC_2.2.5");
 
 extern "C" {
-   void * __wrap_memcpy(void * dest, const void * src, size_t n) {
-      return memcpy(dest, src, n);
-   }
-   double __wrap_exp(double x) {
-      return exp(x);
-   }
-   double __wrap_log(double x) {
-      return log(x);
-   }
-   double __wrap_log2(double x) {
-      return log2(x);
-   }
-   double __wrap_pow(double base, double exponent) {
-      return pow(base, exponent);
-   }
-   float __wrap_expf(float x) {
-      return expf(x);
-   }
-   float __wrap_logf(float x) {
-      return logf(x);
-   }
+void* __wrap_memcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
+double __wrap_exp(double x) { return exp(x); }
+double __wrap_log(double x) { return log(x); }
+double __wrap_log2(double x) { return log2(x); }
+double __wrap_pow(double base, double exponent) { return pow(base, exponent); }
+float __wrap_expf(float x) { return expf(x); }
+float __wrap_logf(float x) { return logf(x); }
 }
 
 #elif defined(__i386__)
@@ -74,4 +60,3 @@ extern "C" {
 #else
 #error unrecognized GCC architecture
 #endif
-
