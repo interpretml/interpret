@@ -1817,29 +1817,28 @@ class EBMModel(BaseEstimator):
         """
 
         check_is_fitted(self, "has_fitted_")
+        n_features = len(self.term_features_)
+        if hasattr(self, "classes_") and len(self.classes_) <= 1:
+            # everything is useless if we're predicting 1 class
+            return np.zeros(n_features, np.float64)
+        if hasattr(self, "classes_") and len(self.classes_) > 2:
+            def optional_class_avg(score):
+                return np.average(score, axis=-1)
+        else:  # no-opt
+            def optional_class_avg(score):
+                return score
 
         if importance_type == "avg_weight":
-            importances = np.empty(len(self.term_features_), np.float64)
-            for i in range(len(self.term_features_)):
-                if hasattr(self, "classes_"):
-                    # everything is useless if we're predicting 1 class
-                    mean_abs_score = 0
-                    if 1 < len(self.classes_):
-                        mean_abs_score = np.abs(self.term_scores_[i])
-                        if 2 < len(self.classes_):
-                            mean_abs_score = np.average(mean_abs_score, axis=-1)
-                        mean_abs_score = np.average(
-                            mean_abs_score, weights=self.bin_weights_[i]
-                        )
-                else:
-                    mean_abs_score = np.abs(self.term_scores_[i])
-                    mean_abs_score = np.average(
-                        mean_abs_score, weights=self.bin_weights_[i]
-                    )
-                importances.itemset(i, mean_abs_score)
+            importances = np.empty(n_features, np.float64)
+            for i in range(n_features):
+                mean_abs_score = np.abs(self.term_scores_[i])
+                mean_abs_score = optional_class_avg(mean_abs_score)
+                mean_abs_score = np.average(
+                    mean_abs_score, weights=self.bin_weights_[i]
+                )
+                importances[i] = mean_abs_score
             return importances
         elif importance_type == "min_max":
-            # TODO: handle mono-classification
             return np.array(
                 [np.max(tensor) - np.min(tensor) for tensor in self.term_scores_],
                 np.float64,
