@@ -334,7 +334,6 @@ static constexpr FloatCalc k_gainMin = 0;
 //     histogram generation in separate work items less than a certain size, we can then merge the resulting histograms
 //     which would sidestep the issue since we'd never be adding 1 to a number that was fairly small.
 
-namespace EbmStats {
 INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, const FloatCalc sumHessian) {
    // typically this is not performance critical, unless the caller has a very large number of bins
 
@@ -485,7 +484,6 @@ INLINE_ALWAYS static FloatCalc ComputeSinglePartitionUpdateGradientSum(const Flo
 
    return sumGradient;
 }
-}; // namespace EbmStats
 
 } // namespace DEFINED_ZONE_NAME
 

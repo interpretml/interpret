@@ -283,10 +283,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                                  const FloatCalc p11 = common / (FloatCalc{1} + d11 / d00 + d11 / d01 + d11 / d10);
 
                                  // g = gain
-                                 const FloatCalc g00 = EbmStats::CalcPartialGainFromUpdate(p00, d00);
-                                 const FloatCalc g01 = EbmStats::CalcPartialGainFromUpdate(p01, d01);
-                                 const FloatCalc g10 = EbmStats::CalcPartialGainFromUpdate(p10, d10);
-                                 const FloatCalc g11 = EbmStats::CalcPartialGainFromUpdate(p11, d11);
+                                 const FloatCalc g00 = CalcPartialGainFromUpdate(p00, d00);
+                                 const FloatCalc g01 = CalcPartialGainFromUpdate(p01, d01);
+                                 const FloatCalc g10 = CalcPartialGainFromUpdate(p10, d10);
+                                 const FloatCalc g11 = CalcPartialGainFromUpdate(p11, d11);
 
 #ifndef NDEBUG
                                  // r = reconsituted numerator (after purification)
@@ -305,10 +305,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                                  // be zero, which means we can avoid calculating the parent partial gain.
                                  EBM_ASSERT(std::abs(r00 + r01 + r10 + r11) < 0.001);
 
-                                 EBM_ASSERT(std::abs(g00 - EbmStats::CalcPartialGain(r00, d00)) < 0.001);
-                                 EBM_ASSERT(std::abs(g01 - EbmStats::CalcPartialGain(r01, d01)) < 0.001);
-                                 EBM_ASSERT(std::abs(g10 - EbmStats::CalcPartialGain(r10, d10)) < 0.001);
-                                 EBM_ASSERT(std::abs(g11 - EbmStats::CalcPartialGain(r11, d11)) < 0.001);
+                                 EBM_ASSERT(std::abs(g00 - CalcPartialGain(r00, d00)) < 0.001);
+                                 EBM_ASSERT(std::abs(g01 - CalcPartialGain(r01, d01)) < 0.001);
+                                 EBM_ASSERT(std::abs(g10 - CalcPartialGain(r10, d10)) < 0.001);
+                                 EBM_ASSERT(std::abs(g11 - CalcPartialGain(r11, d11)) < 0.001);
 #endif // NDEBUG
                                  gain += g00;
                                  gain += g01;
@@ -317,10 +317,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                               }
                            } else {
                               // non-purified gain
-                              gain += EbmStats::CalcPartialGain(n00, d00);
-                              gain += EbmStats::CalcPartialGain(n01, d01);
-                              gain += EbmStats::CalcPartialGain(n10, d10);
-                              gain += EbmStats::CalcPartialGain(n11, d11);
+                              gain += CalcPartialGain(n00, d00);
+                              gain += CalcPartialGain(n01, d01);
+                              gain += CalcPartialGain(n10, d10);
+                              gain += CalcPartialGain(n11, d11);
                            }
                         }
                         EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
@@ -362,7 +362,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             // NewtonRaphsonStep for gain
 
             static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
-            bestGain -= EbmStats::CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+            bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
                   static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll));
          }
 

@@ -733,6 +733,7 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
    size_t iBag = 0;
    do {
       if(nullptr != aOccurrencesFrom) {
+         EBM_ASSERT(size_t{0} != cInnerBags);
          memset(aOccurrencesFrom, 0, sizeof(*aOccurrencesFrom) * cIncludedSamples);
 
          size_t cSamplesRemaining = cIncludedSamples;
@@ -753,6 +754,7 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
       if(nullptr == aWeightsFrom) {
          totalWeight = static_cast<double>(cIncludedSamples);
          if(nullptr != aOccurrencesFrom) {
+            EBM_ASSERT(size_t{0} != cInnerBags);
             const uint8_t* pOccurrencesFrom = aOccurrencesFrom;
             DataSubsetBoosting* pSubset = m_aSubsets;
             do {
@@ -842,6 +844,7 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
 
             uint8_t* pOccurrencesTo;
             if(nullptr != pOccurrencesFrom) {
+               EBM_ASSERT(size_t{0} != cInnerBags);
                EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
                EBM_ASSERT(sizeof(uint8_t) <= pSubset->m_pObjective->m_cFloatBytes);
                pOccurrencesTo = static_cast<uint8_t*>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
@@ -885,6 +888,7 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
 
                double result = weight;
                if(nullptr != pOccurrencesFrom) {
+                  EBM_ASSERT(size_t{0} != cInnerBags);
                   EBM_ASSERT(nullptr != pOccurrencesTo);
                   const uint8_t cOccurrences = *pOccurrencesFrom;
                   ++pOccurrencesFrom;
@@ -931,6 +935,7 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
    } while(cInnerBagsAfterZero != iBag);
 
    if(nullptr != aOccurrencesFrom) {
+      EBM_ASSERT(size_t{0} != cInnerBags);
       if(nullptr != rng) {
          RandomDeterministic* pRng = reinterpret_cast<RandomDeterministic*>(rng);
          pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers

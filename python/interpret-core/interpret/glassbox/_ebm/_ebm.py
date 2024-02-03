@@ -306,6 +306,7 @@ class EBMModel(BaseEstimator):
         learning_rate=0.01,
         greediness=0.0,
         smoothing_rounds=0,
+        interaction_smoothing_rounds=0,
         max_rounds=5000,
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
@@ -345,6 +346,7 @@ class EBMModel(BaseEstimator):
         if not is_private(self):
             self.greediness = greediness
             self.smoothing_rounds = smoothing_rounds
+            self.interaction_smoothing_rounds = interaction_smoothing_rounds
         self.max_rounds = max_rounds
         if not is_private(self):
             self.early_stopping_rounds = early_stopping_rounds
@@ -465,6 +467,18 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             elif self.smoothing_rounds < 0:
                 msg = "smoothing_rounds cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            if (
+                not isinstance(self.interaction_smoothing_rounds, int)
+                and not self.interaction_smoothing_rounds.is_integer()
+            ):
+                msg = "interaction_smoothing_rounds must be an integer"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif self.interaction_smoothing_rounds < 0:
+                msg = "interaction_smoothing_rounds cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -817,6 +831,7 @@ class EBMModel(BaseEstimator):
             inner_bags = 0
             greediness = 0.0
             smoothing_rounds = 0
+            interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
             early_stopping_tolerance = 0
             min_samples_leaf = 0
@@ -828,6 +843,7 @@ class EBMModel(BaseEstimator):
             inner_bags = self.inner_bags
             greediness = self.greediness
             smoothing_rounds = self.smoothing_rounds
+            interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
             min_samples_leaf = self.min_samples_leaf
@@ -1118,7 +1134,7 @@ class EBMModel(BaseEstimator):
                         min_samples_leaf,
                         self.max_leaves,
                         greediness,
-                        smoothing_rounds,
+                        interaction_smoothing_rounds,
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
@@ -1817,26 +1833,20 @@ class EBMModel(BaseEstimator):
         """
 
         check_is_fitted(self, "has_fitted_")
-        n_features = len(self.term_features_)
+
+        n_terms = len(self.term_features_)
         if hasattr(self, "classes_") and len(self.classes_) <= 1:
             # everything is useless if we're predicting 1 class
-            return np.zeros(n_features, np.float64)
-        if hasattr(self, "classes_") and len(self.classes_) > 2:
-            def optional_class_avg(score):
-                return np.average(score, axis=-1)
-        else:  # no-opt
-            def optional_class_avg(score):
-                return score
+            return np.zeros(n_terms, np.float64)
 
         if importance_type == "avg_weight":
-            importances = np.empty(n_features, np.float64)
-            for i in range(n_features):
-                mean_abs_score = np.abs(self.term_scores_[i])
-                mean_abs_score = optional_class_avg(mean_abs_score)
-                mean_abs_score = np.average(
-                    mean_abs_score, weights=self.bin_weights_[i]
-                )
-                importances[i] = mean_abs_score
+            importances = np.empty(n_terms, np.float64)
+            for i in range(n_terms):
+                scores = np.abs(self.term_scores_[i])
+                if hasattr(self, "classes_") and len(self.classes_) >= 3:
+                    # for multiclass, average the abs class scores
+                    scores = np.average(scores, axis=-1)
+                importances[i] = np.average(scores, weights=self.bin_weights_[i])
             return importances
         elif importance_type == "min_max":
             return np.array(
@@ -2326,6 +2336,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
     smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
+    interaction_smoothing_rounds : int, default=0
+        Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=5000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=50
@@ -2463,6 +2475,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greediness: Optional[float] = 0.0,
         smoothing_rounds: Optional[int] = 0,
+        interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
@@ -2487,6 +2500,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             learning_rate=learning_rate,
             greediness=greediness,
             smoothing_rounds=smoothing_rounds,
+            interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
@@ -2599,6 +2613,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
     smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
+    interaction_smoothing_rounds : int, default=0
+        Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=5000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=50
@@ -2736,6 +2752,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greediness: Optional[float] = 0.0,
         smoothing_rounds: Optional[int] = 0,
+        interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
@@ -2760,6 +2777,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             learning_rate=learning_rate,
             greediness=greediness,
             smoothing_rounds=smoothing_rounds,
+            interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
@@ -2971,6 +2989,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             learning_rate=learning_rate,
             greediness=0.0,
             smoothing_rounds=0,
+            interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,
@@ -3233,6 +3252,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             learning_rate=learning_rate,
             greediness=0.0,
             smoothing_rounds=0,
+            interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,

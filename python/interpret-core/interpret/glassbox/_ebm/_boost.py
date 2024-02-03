@@ -52,7 +52,9 @@ def boost(
 
             min_metric = np.inf
             min_prev_metric = np.inf
-            circular = np.full(early_stopping_rounds * len(term_features), np.inf, np.float64)
+            circular = np.full(
+                early_stopping_rounds * len(term_features), np.inf, np.float64
+            )
             circular_index = 0
 
             _log.info("Start boosting")
@@ -133,8 +135,8 @@ def boost(
                     # improves the model, so boosting past the minimum can yield
                     # a better overall model after averaging
                     if cur_metric <= min_metric - min(0.0, early_stopping_tolerance):
-                        # TODO : change the C API to allow us to "commit" the current 
-                        # model into the best model instead of having the C layer 
+                        # TODO : change the C API to allow us to "commit" the current
+                        # model into the best model instead of having the C layer
                         # decide that base on what it returned us
                         pass
                     min_metric = min(cur_metric, min_metric)
