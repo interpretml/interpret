@@ -102,8 +102,11 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
 
 // do not inline this.  Not inlining it makes fewer versions that can be called from the more templated functions
 template<bool bHessian>
-static ErrorEbm Flatten(
-      BoosterShell* const pBoosterShell, const size_t iDimension, const size_t cBins, const size_t cSlices) {
+static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
+      const size_t iDimension,
+      const size_t cBins,
+      const size_t cSlices) {
    LOG_0(Trace_Verbose, "Entered Flatten");
 
    EBM_ASSERT(nullptr != pBoosterShell);
@@ -129,6 +132,8 @@ static ErrorEbm Flatten(
       // already logged
       return error;
    }
+
+   const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
 
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
@@ -180,13 +185,11 @@ static ErrorEbm Flatten(
          size_t iScore = 0;
          do {
             FloatCalc updateScore;
-            if(bHessian) {
-               updateScore = ComputeSinglePartitionUpdate(
-                     static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+            if(bUpdateWithHessian) {
+               updateScore = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(aGradientPair[iScore].GetHess()));
             } else {
-               updateScore = ComputeSinglePartitionUpdate(
-                     static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+               updateScore = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(pTreeNode->GetWeight()));
             }
 
@@ -544,6 +547,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
    static ErrorEbm Func(RandomDeterministic* const pRng,
          BoosterShell* const pBoosterShell,
+         const TermBoostFlags flags,
          const size_t cBins,
          const size_t iDimension,
          const size_t cSamplesLeafMin,
@@ -693,12 +697,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       }
       *pTotalGain = static_cast<double>(totalGain);
       const size_t cSplits = cSplitsMax - cSplitsRemaining;
-      return Flatten<bHessian>(pBoosterShell, iDimension, cBins, cSplits + 1);
+      return Flatten<bHessian>(pBoosterShell, flags, iDimension, cBins, cSplits + 1);
    }
 };
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
@@ -718,6 +723,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<true, k_oneScore>::Func(pRng,
                pBoosterShell,
+               flags,
                cBins,
                iDimension,
                cSamplesLeafMin,
@@ -729,6 +735,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // 3 classes
          error = PartitionOneDimensionalBoostingInternal<true, 3>::Func(pRng,
                pBoosterShell,
+               flags,
                cBins,
                iDimension,
                cSamplesLeafMin,
@@ -740,6 +747,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // muticlass
          error = PartitionOneDimensionalBoostingInternal<true, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               flags,
                cBins,
                iDimension,
                cSamplesLeafMin,
@@ -752,6 +760,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<false, k_oneScore>::Func(pRng,
                pBoosterShell,
+               flags,
                cBins,
                iDimension,
                cSamplesLeafMin,
@@ -763,6 +772,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          error = PartitionOneDimensionalBoostingInternal<false, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               flags,
                cBins,
                iDimension,
                cSamplesLeafMin,

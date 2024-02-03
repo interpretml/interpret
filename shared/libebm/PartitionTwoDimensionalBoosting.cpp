@@ -190,6 +190,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BoosterShell* const pBoosterShell,
+         const TermBoostFlags flags,
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
@@ -460,6 +461,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       const FloatMain weightAll = pTotal->GetWeight();
       EBM_ASSERT(0 < weightAll);
 
+      const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
+
       *pTotalGain = 0;
       EBM_ASSERT(FloatCalc{0} <= k_gainMin);
       if(LIKELY(/* NaN */ !UNLIKELY(bestGain < k_gainMin))) {
@@ -565,7 +568,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         FloatCalc predictionHighLow;
                         FloatCalc predictionHighHigh;
 
-                        if(bHessian) {
+                        if(bUpdateWithHessian) {
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess()));
@@ -688,7 +691,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         FloatCalc predictionHighLow;
                         FloatCalc predictionHighHigh;
 
-                        if(bHessian) {
+                        if(bUpdateWithHessian) {
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess()));
@@ -772,7 +775,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatCalc update;
-         if(bHessian) {
+         if(bUpdateWithHessian) {
             update = ComputeSinglePartitionUpdate(
                   static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                   static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess()));
@@ -794,6 +797,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BoosterShell* const pBoosterShell,
+         const TermBoostFlags flags,
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
@@ -807,6 +811,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       if(cPossibleScores == pBoosterCore->GetCountScores()) {
          return PartitionTwoDimensionalBoostingInternal<bHessian, cPossibleScores>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,
@@ -819,6 +824,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          );
       } else {
          return PartitionTwoDimensionalBoostingTarget<bHessian, cPossibleScores + 1>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,
@@ -838,6 +844,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
    PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BoosterShell* const pBoosterShell,
+         const TermBoostFlags flags,
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
@@ -849,6 +856,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
 #endif // NDEBUG
    ) {
       return PartitionTwoDimensionalBoostingInternal<bHessian, k_dynamicScores>::Func(pBoosterShell,
+            flags,
             pTerm,
             acBins,
             cSamplesLeafMin,
@@ -863,6 +871,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
 };
 
 extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
@@ -881,6 +890,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       if(size_t{1} != cRuntimeScores) {
          // muticlass
          return PartitionTwoDimensionalBoostingTarget<true, k_cCompilerScoresStart>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,
@@ -893,6 +903,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
          );
       } else {
          return PartitionTwoDimensionalBoostingInternal<true, k_oneScore>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,
@@ -908,6 +919,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          return PartitionTwoDimensionalBoostingInternal<false, k_dynamicScores>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,
@@ -920,6 +932,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
          );
       } else {
          return PartitionTwoDimensionalBoostingInternal<false, k_oneScore>::Func(pBoosterShell,
+               flags,
                pTerm,
                acBins,
                cSamplesLeafMin,

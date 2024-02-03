@@ -59,6 +59,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
@@ -68,6 +69,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       double* const pTotalGain);
 
 extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
@@ -107,10 +109,13 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       } else {
+         const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore =
                   ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
+                        0 != (TermBoostFlags_DisableNewtonUpdate & flags) ?
+                              weight :
+                              static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
@@ -118,13 +123,18 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
       const auto* const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
       const auto* const aGradientPairs = pBin->GetGradientPairs();
       if(0 != (TermBoostFlags_GradientSums & flags)) {
-         const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
-               static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients));
-         aUpdateScores[0] = static_cast<FloatScore>(updateScore);
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
+                  static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
+         }
       } else {
-         const FloatCalc updateScore = ComputeSinglePartitionUpdate(
-               static_cast<FloatCalc>(aGradientPairs[0].m_sumGradients), static_cast<FloatCalc>(pBin->GetWeight()));
-         aUpdateScores[0] = static_cast<FloatScore>(updateScore);
+         const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            const FloatCalc updateScore =
+                  ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
+            aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
+         }
       }
    }
 
@@ -133,6 +143,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
 
 static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       const size_t cBins,
       const FloatMain weightTotal,
       const size_t iDimension,
@@ -157,6 +168,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
 
    error = PartitionOneDimensionalBoosting(pRng,
          pBoosterShell,
+         flags,
          cBins,
          iDimension,
          cSamplesLeafMin,
@@ -175,7 +187,11 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
 //   keeps only the gradients and then
 //    go back to our original tensor after splits to determine the hessian
 static ErrorEbm BoostMultiDimensional(
-      BoosterShell* const pBoosterShell, const size_t iTerm, const size_t cSamplesLeafMin, double* const pTotalGain) {
+      BoosterShell* const pBoosterShell, 
+      const TermBoostFlags flags,
+      const size_t iTerm, 
+      const size_t cSamplesLeafMin, 
+      double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -344,6 +360,7 @@ static ErrorEbm BoostMultiDimensional(
 
    if(2 == pTerm->GetCountRealDimensions()) {
       error = PartitionTwoDimensionalBoosting(pBoosterShell,
+            flags,
             pTerm,
             acBins,
             cSamplesLeafMin,
@@ -804,6 +821,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                error = BoostSingleDimensional(pRng,
                      pBoosterShell,
+                     flags,
                      cSignificantBinCount,
                      static_cast<FloatMain>(weightTotal),
                      iDimensionImportant,
@@ -814,7 +832,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   return error;
                }
             } else {
-               error = BoostMultiDimensional(pBoosterShell, iTerm, cSamplesLeafMin, &gain);
+               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, &gain);
                if(Error_None != error) {
                   return error;
                }

@@ -538,6 +538,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
+         const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
          do {
             const auto cSamples = pCollapsedBin2->GetCountSamples();
             if(UNLIKELY(0 == cSamples)) {
@@ -555,7 +556,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
                auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatCalc updateScore;
-                  if(bHessian) {
+                  if(bUpdateWithHessian) {
                      updateScore = ComputeSinglePartitionUpdate(
                            static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
                            static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
