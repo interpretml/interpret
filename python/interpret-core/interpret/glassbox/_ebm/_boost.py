@@ -51,8 +51,10 @@ def boost(
             greedy_portion = 0.0
 
             min_metric = np.inf
-            no_change_run_length = 0
-            bp_metric = np.inf
+            min_prev_metric = np.inf
+            circular = np.full(early_stopping_rounds * len(term_features), np.inf, np.float64)
+            circular_index = 0
+
             _log.info("Start boosting")
             native = Native.get_native_singleton()
 
@@ -125,46 +127,41 @@ def boost(
                         booster.set_term_update(term_idx, noisy_update_tensor)
 
                     cur_metric = booster.apply_term_update()
-
+                    # if early_stopping_tolerance is negative then keep accepting
+                    # model updates as they get worse past the minimum. We might
+                    # want to boost past the lowest because averaging the outer bags
+                    # improves the model, so boosting past the minimum can yield
+                    # a better overall model after averaging
+                    if cur_metric <= min_metric - min(0.0, early_stopping_tolerance):
+                        # TODO : change the C API to allow us to "commit" the current 
+                        # model into the best model instead of having the C layer 
+                        # decide that base on what it returned us
+                        pass
                     min_metric = min(cur_metric, min_metric)
 
-                # TODO PK this early_stopping_tolerance is a little inconsistent
-                #      since it triggers intermittently and only re-triggers if the
-                #      threshold is re-passed, but not based on a smooth windowed set
-                #      of checks.  We can do better by keeping a list of the last
-                #      number of measurements to have a consistent window of values.
-                #      If we only cared about the metric at the start and end of the epoch
-                #      window a circular buffer would be best choice with O(1).
-                if no_change_run_length == 0:
-                    bp_metric = min_metric
+                    if early_stopping_rounds > 0 and smoothing_rounds <= 0:
+                        # during smoothing, do not use early stopping because smoothing
+                        # is using random cuts, which means gain is highly variable
+                        toss = circular[circular_index]
+                        circular[circular_index] = cur_metric
+                        circular_index = (circular_index + 1) % len(circular)
+                        min_prev_metric = min(toss, min_prev_metric)
 
-                # TODO: PK, I think this is a bug and the first iteration no_change_run_length
-                # get incremented to 1, so if early_stopping_rounds is 1 it will always
-                # exit on the first round? I haven't changed it since it's just going to affect 1
-                # and changing it would change the results so I need to benchmark update it
-                if min_metric + early_stopping_tolerance < bp_metric:
-                    no_change_run_length = 0
-                else:
-                    no_change_run_length += 1
+                        if min_prev_metric - early_stopping_tolerance < circular.min():
+                            circular_index = -1
+                            break
+
+                if circular_index < 0:
+                    break
 
                 if 1.0 <= greedy_portion:
                     greedy_portion -= 1.0
 
                 if 0 < smoothing_rounds:
-                    # disable early stopping progress during the smoothing rounds since
-                    # cuts are chosen randomly, which will lead to high variance on the
-                    # validation metric
-                    no_change_run_length = 0
                     smoothing_rounds -= 1
                 else:
                     # do not progress into greedy rounds until we're done with the smoothing_rounds
                     greedy_portion += greediness
-
-                if (
-                    early_stopping_rounds > 0
-                    and no_change_run_length >= early_stopping_rounds
-                ):
-                    break
 
             _log.info(
                 "End boosting, Best Metric: {0}, Num Rounds: {1}".format(
