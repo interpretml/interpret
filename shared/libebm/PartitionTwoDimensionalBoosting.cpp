@@ -33,6 +33,7 @@ namespace DEFINED_ZONE_NAME {
 template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions>
 static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
       const size_t cRuntimeRealDimensions,
+      const TermBoostFlags flags,
       const size_t* const aiPoint,
       const size_t* const acBins,
       const size_t directionVectorLow,
@@ -89,6 +90,8 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
 
    EBM_ASSERT(0 < cSamplesLeafMin);
 
+   const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
+
    FloatCalc bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
@@ -135,8 +138,6 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
                // numerators (but only do this after we've determined the best node splitting score for classification,
                // and the NewtonRaphsonStep for gain
-
-               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
 
                const FloatCalc gain1 = CalcPartialGain(
                      static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
@@ -281,6 +282,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          auto* pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
          const FloatCalc gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
                pTerm->GetCountRealDimensions(),
+               flags,
                aiStart,
                acBins,
                0x0,
@@ -305,6 +307,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             const FloatCalc gain2 =
                   SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
                         pTerm->GetCountRealDimensions(),
+                        flags,
                         aiStart,
                         acBins,
                         0x1,
@@ -373,6 +376,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          auto* pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 17);
          const FloatCalc gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
                pTerm->GetCountRealDimensions(),
+               flags,
                aiStart,
                acBins,
                0x0,
@@ -397,6 +401,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             const FloatCalc gain2 =
                   SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
                         pTerm->GetCountRealDimensions(),
+                        flags,
                         aiStart,
                         acBins,
                         0x2,
@@ -475,13 +480,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(0 <= bestGain);
             EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
 
+            const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
+
             // now subtract the parent partial gain
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
                // numerators (but only do this after we've determined the best node splitting score for classification,
                // and the NewtonRaphsonStep for gain
 
-               static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
                const FloatCalc gain1 =
                      CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                            static_cast<FloatCalc>(bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll));

@@ -239,10 +239,11 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 template<bool bHessian, size_t cCompilerScores>
 static int FindBestSplitGain(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pTreeNode,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* const pTreeNodeScratchSpace,
       const size_t cSamplesLeafMin) {
-   static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
+   const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
 
    LOG_N(Trace_Verbose,
          "Entered FindBestSplitGain: "
@@ -588,7 +589,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       auto* pTreeNodeScratchSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
 
       int retFind = FindBestSplitGain<bHessian, cCompilerScores>(
-            pRng, pBoosterShell, pRootTreeNode, pTreeNodeScratchSpace, cSamplesLeafMin);
+            pRng, pBoosterShell, flags, pRootTreeNode, pTreeNodeScratchSpace, cSamplesLeafMin);
       size_t cSplitsRemaining = cSplitsMax;
       FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
@@ -648,8 +649,12 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
                auto* const pLeftChild = GetLeftNode(pTreeNode->AFTER_GetChildren());
 
-               retFind = FindBestSplitGain<bHessian, cCompilerScores>(
-                     pRng, pBoosterShell, pLeftChild, pTreeNodeScratchSpace, cSamplesLeafMin);
+               retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
+                     pBoosterShell,
+                     flags,
+                     pLeftChild,
+                     pTreeNodeScratchSpace,
+                     cSamplesLeafMin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -664,8 +669,12 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
                auto* const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
 
-               retFind = FindBestSplitGain<bHessian, cCompilerScores>(
-                     pRng, pBoosterShell, pRightChild, pTreeNodeScratchSpace, cSamplesLeafMin);
+               retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
+                     pBoosterShell,
+                     flags,
+                     pRightChild,
+                     pTreeNodeScratchSpace,
+                     cSamplesLeafMin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
