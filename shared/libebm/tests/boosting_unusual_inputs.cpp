@@ -598,10 +598,8 @@ TEST_CASE("Zero validation samples, boosting, regression") {
       }
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 0));
 
-      // the best term doesn't update since we don't have any basis to validate any changes
-      termScore = test.GetBestTermScore(0, {0}, 0);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 0), test.GetBestTermScore(0, {1}, 0));
    }
 }
 
@@ -636,14 +634,12 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       }
       CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 1));
 
-      // the best term doesn't update since we don't have any basis to validate any changes
-      termScore = test.GetBestTermScore(0, {0}, 0);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 0), test.GetBestTermScore(0, {1}, 0));
 
-      termScore = test.GetBestTermScore(0, {0}, 1);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 1));
+
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 1), test.GetBestTermScore(0, {0}, 1));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 1), test.GetBestTermScore(0, {1}, 1));
    }
 }
 
@@ -675,16 +671,12 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
          CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double{1e-2});
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 2) - zeroLogit);
       }
-      // the best term doesn't update since we don't have any basis to validate any changes
-      termScore = test.GetBestTermScore(0, {0}, 0);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 0));
-      termScore = test.GetBestTermScore(0, {0}, 1);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 1));
-      termScore = test.GetBestTermScore(0, {0}, 2);
-      CHECK(0 == termScore);
-      CHECK_APPROX(termScore, test.GetBestTermScore(0, {1}, 2));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 1), test.GetBestTermScore(0, {0}, 1));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 2), test.GetBestTermScore(0, {0}, 2));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 0), test.GetBestTermScore(0, {1}, 0));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 1), test.GetBestTermScore(0, {1}, 1));
+      CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 2), test.GetBestTermScore(0, {1}, 2));
    }
 }
 

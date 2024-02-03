@@ -263,41 +263,42 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
       validationMetricAvg /= totalWeight; // if totalWeight < 1.0 then this can overflow to +inf
 
       EBM_ASSERT(!std::isnan(validationMetricAvg)); // NaNs can happen, but we should have cleaned them up
+   }
 
-      if(LIKELY(validationMetricAvg < pBoosterCore->GetBestModelMetric())) {
-         // we keep on improving, so this is more likely than not, and we'll exit if it becomes negative a lot
-         pBoosterCore->SetBestModelMetric(validationMetricAvg);
+   if(LIKELY(validationMetricAvg <= pBoosterCore->GetBestModelMetric())) {
+      pBoosterCore->SetBestModelMetric(validationMetricAvg);
 
-         // TODO: We're doing a lot more work here than necessary.  Typically in the early phases we improve
-         // on each boosting step, and in that case we should only need to copy over the term's tensor that
-         // we just improved on since all the other ones are up to date.  Later though we'll get into a stage
-         // where some of the terms will improve on the metric but others won't. At that point if we see
-         // two terms not improve the stopping metric, then we see one that does, we'd need to copy over the
-         // last 3 terms to maintain consistency.  That requires that we keep track of the terms we boosted
-         // on since the last improvement.  This can get even more interesting if we do more than a full boosting
-         // round where a term might have been boosted on a few times.  In that case we only need to overwrite
-         // it once.  We can do this by keeping a set that holds the terms that have been bosted on since the last
-         // improvement and then we would overwrite only those whenever we see an improvement. Instead of a set though
-         // we could instead maintan a reversed linked list of terms that we've boosted on using a flat array
-         // with 1 pointer entry for each term.  If a term is already in the linked list there is no need to add it
-         // again.  This way we can avoid a sweep of the entire list of terms on each boosting round.
+      // TODO: We're doing a lot more work here than necessary.  Typically in the early phases we improve
+      // on each boosting step, and in that case we should only need to copy over the term's tensor that
+      // we just improved on since all the other ones are up to date.  Later though we'll get into a stage
+      // where some of the terms will improve on the metric but others won't. At that point if we see
+      // two terms not improve the stopping metric, then we see one that does, we'd need to copy over the
+      // last 3 terms to maintain consistency.  That requires that we keep track of the terms we boosted
+      // on since the last improvement.  This can get even more interesting if we do more than a full boosting
+      // round where a term might have been boosted on a few times.  In that case we only need to overwrite
+      // it once.  We can do this by keeping a set that holds the terms that have been bosted on since the last
+      // improvement and then we would overwrite only those whenever we see an improvement. Instead of a set though
+      // we could instead maintan a reversed linked list of terms that we've boosted on using a flat array
+      // with 1 pointer entry for each term.  If a term is already in the linked list there is no need to add it
+      // again.  This way we can avoid a sweep of the entire list of terms on each boosting round.
+      // Or just use an array of bools (1 per term) and sweep the array of bools each time. Since it's co-located
+      // doing the sweep will be fast and resetting to zero is easy with memset
 
-         size_t iTermCopy = 0;
-         size_t iTermCopyEnd = pBoosterCore->GetCountTerms();
-         do {
-            if(nullptr != pBoosterCore->GetCurrentModel()[iTermCopy]) {
-               EBM_ASSERT(nullptr != pBoosterCore->GetBestModel()[iTermCopy]);
-               error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
-               if(Error_None != error) {
-                  LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
-                  return error;
-               }
-            } else {
-               EBM_ASSERT(nullptr == pBoosterCore->GetBestModel()[iTermCopy]);
+      size_t iTermCopy = 0;
+      size_t iTermCopyEnd = pBoosterCore->GetCountTerms();
+      do {
+         if(nullptr != pBoosterCore->GetCurrentModel()[iTermCopy]) {
+            EBM_ASSERT(nullptr != pBoosterCore->GetBestModel()[iTermCopy]);
+            error = pBoosterCore->GetBestModel()[iTermCopy]->Copy(*pBoosterCore->GetCurrentModel()[iTermCopy]);
+            if(Error_None != error) {
+               LOG_0(Trace_Verbose, "Exited ApplyTermUpdateInternal with memory allocation error in copy");
+               return error;
             }
-            ++iTermCopy;
-         } while(iTermCopy != iTermCopyEnd);
-      }
+         } else {
+            EBM_ASSERT(nullptr == pBoosterCore->GetBestModel()[iTermCopy]);
+         }
+         ++iTermCopy;
+      } while(iTermCopy != iTermCopyEnd);
    }
 
    if(nullptr != avgValidationMetricOut) {
