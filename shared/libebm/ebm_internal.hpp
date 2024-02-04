@@ -50,8 +50,6 @@ static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowes
 static constexpr FloatCalc k_epsilonNegativeGainAllowed = FloatCalc{-1e-7};
 #endif // NDEBUG
 
-static constexpr bool k_bUseLogitboost = false;
-
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;
 extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept;
 

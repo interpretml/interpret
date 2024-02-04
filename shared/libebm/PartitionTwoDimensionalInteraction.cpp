@@ -100,6 +100,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       bool bAnySplits = false;
 #endif // NDEBUG
 
+      const bool bUseLogitBoost = bHessian && 0 != (CalcInteractionFlags_EnableNewton & flags);
+
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
       FloatCalc bestGain = 0;
 
@@ -182,8 +184,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all
                            // the numerators (but only do this after we've determined the best node splitting score for
                            // classification, and the NewtonRaphsonStep for gain
-
-                           static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
 
                            // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
 
@@ -361,7 +361,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             // (but only do this after we've determined the best node splitting score for classification, and the
             // NewtonRaphsonStep for gain
 
-            static constexpr bool bUseLogitBoost = k_bUseLogitboost && bHessian;
             bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
                   static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll));
          }

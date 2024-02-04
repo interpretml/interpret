@@ -243,7 +243,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pTreeNode,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* const pTreeNodeScratchSpace,
       const size_t cSamplesLeafMin) {
-   const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
 
    LOG_N(Trace_Verbose,
          "Entered FindBestSplitGain: "
@@ -338,7 +337,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             const FloatMain newSumHessiansLeft =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
-            if(bUseLogitBoost) {
+            if(0 == (TermBoostFlags_DisableNewtonGain & flags)) {
                sumHessiansLeft = newSumHessiansLeft;
                sumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
             }
@@ -444,7 +443,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    do {
       const FloatMain sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
       if(bHessian) {
-         if(bUseLogitBoost) {
+         if(0 == (TermBoostFlags_DisableNewtonGain & flags)) {
             sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }
