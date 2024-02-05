@@ -22,7 +22,7 @@ def rank_interactions(
     exclude,
     calc_interaction_flags,
     max_cardinality,
-    min_samples_leaf,
+    min_hessian,
     create_interaction_flags,
     objective,
     experimental_params=None,
@@ -45,7 +45,7 @@ def rank_interactions(
                     feature_idxs,
                     calc_interaction_flags,
                     max_cardinality,
-                    min_samples_leaf,
+                    min_hessian,
                 )
                 item = (strength, feature_idxs)
                 if n_output_interactions <= 0:

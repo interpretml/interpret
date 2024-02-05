@@ -311,7 +311,7 @@ class EBMModel(BaseEstimator):
         early_stopping_rounds=50,
         early_stopping_tolerance=1e-4,
         # Trees
-        min_samples_leaf=2,
+        min_hessian=1e-3,
         max_leaves=3,
         objective=None,
         # Overall
@@ -352,7 +352,7 @@ class EBMModel(BaseEstimator):
             self.early_stopping_rounds = early_stopping_rounds
             self.early_stopping_tolerance = early_stopping_tolerance
 
-            self.min_samples_leaf = min_samples_leaf
+            self.min_hessian = min_hessian
 
         self.max_leaves = max_leaves
         self.objective = objective
@@ -834,7 +834,7 @@ class EBMModel(BaseEstimator):
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
             early_stopping_tolerance = 0
-            min_samples_leaf = 0
+            min_hessian = 0
             interactions = 0
         else:
             noise_scale_boosting = None
@@ -846,7 +846,7 @@ class EBMModel(BaseEstimator):
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
-            min_samples_leaf = self.min_samples_leaf
+            min_hessian = self.min_hessian
             interactions = self.interactions
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
@@ -890,7 +890,7 @@ class EBMModel(BaseEstimator):
                     inner_bags,
                     term_boost_flags,
                     self.learning_rate,
-                    min_samples_leaf,
+                    min_hessian,
                     self.max_leaves,
                     greediness,
                     smoothing_rounds,
@@ -1013,7 +1013,7 @@ class EBMModel(BaseEstimator):
                             exclude,
                             Native.CalcInteractionFlags_Default,
                             max_cardinality,
-                            min_samples_leaf,
+                            min_hessian,
                             (
                                 Native.CreateInteractionFlags_DifferentialPrivacy
                                 if is_differential_privacy
@@ -1131,7 +1131,7 @@ class EBMModel(BaseEstimator):
                         inner_bags,
                         term_boost_flags,
                         self.learning_rate,
-                        min_samples_leaf,
+                        min_hessian,
                         self.max_leaves,
                         greediness,
                         interaction_smoothing_rounds,
@@ -2345,8 +2345,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-4
         Tolerance that dictates the smallest delta required to be considered an improvement.
-    min_samples_leaf : int, default=2
-        Minimum number of samples allowed in the leaves.
+    min_hessian : float, default=1e-3
+        Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     objective : str, default="log_loss"
@@ -2480,7 +2480,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
+        min_hessian: Optional[float] = 1e-3,
         max_leaves: int = 3,
         objective: str = "log_loss",
         # Overall
@@ -2504,7 +2504,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
+            min_hessian=min_hessian,
             max_leaves=max_leaves,
             objective=objective,
             n_jobs=n_jobs,
@@ -2622,8 +2622,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-4
         Tolerance that dictates the smallest delta required to be considered an improvement.
-    min_samples_leaf : int, default=2
-        Minimum number of samples allowed in the leaves.
+    min_hessian : float, default=1e-3
+        Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     objective : str, default="rmse"
@@ -2757,7 +2757,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
+        min_hessian: Optional[float] = 1e-3,
         max_leaves: int = 3,
         objective: str = "rmse",
         # Overall
@@ -2781,7 +2781,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
+            min_hessian=min_hessian,
             max_leaves=max_leaves,
             objective=objective,
             n_jobs=n_jobs,
@@ -2993,7 +2993,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
+            min_hessian=0,
             max_leaves=max_leaves,
             objective="log_loss",
             n_jobs=n_jobs,
@@ -3256,7 +3256,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
+            min_hessian=0,
             max_leaves=max_leaves,
             objective="rmse",
             n_jobs=n_jobs,

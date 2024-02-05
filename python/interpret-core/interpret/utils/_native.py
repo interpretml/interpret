@@ -1466,7 +1466,7 @@ class Booster(AbstractContextManager):
         term_idx,
         term_boost_flags,
         learning_rate,
-        min_samples_leaf,
+        min_hessian,
         max_leaves,
     ):
         """Generates a boosting step update per feature
@@ -1476,7 +1476,7 @@ class Booster(AbstractContextManager):
             term_idx: The index for the term to generate the update for
             term_boost_flags: C interface options
             learning_rate: Learning rate as a float.
-            min_samples_leaf: Min observations required to split.
+            min_hessian: Min hessian required to split.
             max_leaves: Max leaf nodes on feature step.
 
         Returns:
@@ -1499,8 +1499,8 @@ class Booster(AbstractContextManager):
             term_idx,
             term_boost_flags,
             learning_rate,
-            min_samples_leaf,
-            0, # TODO: make this the default way to limit splits
+            0,
+            min_hessian,
             Native._make_pointer(max_leaves_arr, np.int64),
             ct.byref(avg_gain),
         )
@@ -1809,7 +1809,7 @@ class InteractionDetector(AbstractContextManager):
         _log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
-        self, feature_idxs, calc_interaction_flags, max_cardinality, min_samples_leaf
+        self, feature_idxs, calc_interaction_flags, max_cardinality, min_hessian
     ):
         """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")
@@ -1825,8 +1825,8 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(feature_idxs, np.int64),
             calc_interaction_flags,
             max_cardinality,
-            min_samples_leaf,
-            0, # TODO: make this the default way to limit splits
+            0,
+            min_hessian,
             ct.byref(strength),
         )
         if return_code:  # pragma: no cover
