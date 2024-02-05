@@ -410,6 +410,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       TermBoostFlags flags,
       double learningRate,
       IntEbm minSamplesLeaf,
+      double minHessian,
       const IntEbm* leavesMax,
       double* avgGainOut);
 // GetTermUpdateSplits must be called before calls to GetTermUpdate/SetTermUpdate
@@ -442,6 +443,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interact
       CalcInteractionFlags flags,
       IntEbm maxCardinality,
       IntEbm minSamplesLeaf,
+      double minHessian,
       double* avgInteractionStrengthOut);
 
 #ifdef __cplusplus

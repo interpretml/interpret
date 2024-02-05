@@ -40,6 +40,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
       const size_t iDimensionSweep,
       const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const pBinBestAndTemp,
       size_t* const piBestSplit
 #ifndef NDEBUG
@@ -89,6 +90,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
          bUseStackMemory ? binHigh.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_High->GetGradientPairs();
 
    EBM_ASSERT(0 < cSamplesLeafMin);
+   EBM_ASSERT(0.0 < hessianMin);
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
@@ -145,6 +147,25 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
             // numerators (but only do this after we've determined the best node splitting score for classification,
             // and the NewtonRaphsonStep for gain
 
+            FloatCalc hessianLow;
+            if(bHessian) {
+               hessianLow = aGradientPairsLow[iScore].GetHess();
+            } else {
+               hessianLow = binLow.GetWeight();
+            }
+            if(hessianLow < hessianMin) {
+               goto next;
+            }
+
+            FloatCalc hessianHigh;
+            if(bHessian) {
+               hessianHigh = aGradientPairsHigh[iScore].GetHess();
+            } else {
+               hessianHigh = binHigh.GetWeight();
+            }
+            if(hessianHigh < hessianMin) {
+               goto next;
+            }
 
             const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
                   static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
@@ -201,6 +222,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* const aAuxiliaryBinsBase,
          double* const pTotalGain
 #ifndef NDEBUG
@@ -278,6 +300,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       auto* pTotals1HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
 
       EBM_ASSERT(0 < cSamplesLeafMin);
+      EBM_ASSERT(0.0 < hessianMin);
 
       LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
@@ -295,6 +318,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                1,
                aBins,
                cSamplesLeafMin,
+               hessianMin,
                pTotals2LowLowBest,
                &splitSecond1LowBest
 #ifndef NDEBUG
@@ -320,6 +344,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         1,
                         aBins,
                         cSamplesLeafMin,
+                        hessianMin,
                         pTotals2HighLowBest,
                         &splitSecond1HighBest
 #ifndef NDEBUG
@@ -389,6 +414,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                0,
                aBins,
                cSamplesLeafMin,
+               hessianMin,
                pTotals1LowLowBestInner,
                &splitSecond2LowBest
 #ifndef NDEBUG
@@ -414,6 +440,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         0,
                         aBins,
                         cSamplesLeafMin,
+                        hessianMin,
                         pTotals1HighLowBestInner,
                         &splitSecond2HighBest
 #ifndef NDEBUG
@@ -812,6 +839,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
          double* const pTotalGain
 #ifndef NDEBUG
@@ -826,6 +854,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG
@@ -839,6 +868,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG
@@ -859,6 +889,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
          double* const pTotalGain
 #ifndef NDEBUG
@@ -871,6 +902,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             pTerm,
             acBins,
             cSamplesLeafMin,
+            hessianMin,
             aAuxiliaryBinsBase,
             pTotalGain
 #ifndef NDEBUG
@@ -886,6 +918,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
       double* const pTotalGain
 #ifndef NDEBUG
@@ -905,6 +938,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG
@@ -918,6 +952,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG
@@ -934,6 +969,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG
@@ -947,6 +983,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                pTerm,
                acBins,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                pTotalGain
 #ifndef NDEBUG

@@ -34,6 +34,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* const aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -95,6 +96,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             bUseStackMemory ? bin11.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_11->GetGradientPairs();
 
       EBM_ASSERT(0 < cSamplesLeafMin);
+      EBM_ASSERT(0.0 < hessianMin);
 
 #ifndef NDEBUG
       bool bAnySplits = false;
@@ -193,6 +195,46 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                   // classification, and the NewtonRaphsonStep for gain
 
                   // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
+
+                  FloatCalc hessian00;
+                  if(bHessian) {
+                     hessian00 = aGradientPairs00[iScore].GetHess();
+                  } else {
+                     hessian00 = bin00.GetWeight();
+                  }
+                  if(hessian00 < hessianMin) {
+                     goto next;
+                  }
+
+                  FloatCalc hessian01;
+                  if(bHessian) {
+                     hessian01 = aGradientPairs01[iScore].GetHess();
+                  } else {
+                     hessian01 = bin01.GetWeight();
+                  }
+                  if(hessian01 < hessianMin) {
+                     goto next;
+                  }
+
+                  FloatCalc hessian10;
+                  if(bHessian) {
+                     hessian10 = aGradientPairs10[iScore].GetHess();
+                  } else {
+                     hessian10 = bin10.GetWeight();
+                  }
+                  if(hessian10 < hessianMin) {
+                     goto next;
+                  }
+
+                  FloatCalc hessian11;
+                  if(bHessian) {
+                     hessian11 = aGradientPairs11[iScore].GetHess();
+                  } else {
+                     hessian11 = bin11.GetWeight();
+                  }
+                  if(hessian11 < hessianMin) {
+                     goto next;
+                  }
 
                   const FloatCalc n00 = static_cast<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
                   const FloatCalc d00 =
@@ -401,6 +443,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -415,6 +458,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG
@@ -429,6 +473,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG
@@ -450,6 +495,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
+         const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -463,6 +509,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
             acBins,
             flags,
             cSamplesLeafMin,
+            hessianMin,
             aAuxiliaryBinsBase,
             aBinsBase
 #ifndef NDEBUG
@@ -479,6 +526,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const size_t* const acBins,
       const CalcInteractionFlags flags,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -498,6 +546,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG
@@ -512,6 +561,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG
@@ -529,6 +579,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG
@@ -543,6 +594,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
                acBins,
                flags,
                cSamplesLeafMin,
+               hessianMin,
                aAuxiliaryBinsBase,
                aBinsBase
 #ifndef NDEBUG

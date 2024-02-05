@@ -462,9 +462,13 @@ TEST_CASE("one leavesMax, boosting, regression") {
          },
          {TestSample({1}, 12)});
 
-   double validationMetric =
-         test.Boost(0, TermBoostFlags_Default, k_learningRateDefault, k_minSamplesLeafDefault, k_leavesMax)
-               .validationMetric;
+   double validationMetric = test.Boost(0,
+                                       TermBoostFlags_Default,
+                                       k_learningRateDefault,
+                                       k_minSamplesLeafDefault,
+                                       k_minHessianDefault,
+                                       k_leavesMax)
+                                   .validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
    double termScore;
    termScore = test.GetCurrentTermScore(0, {0}, 0);
@@ -494,6 +498,7 @@ TEST_CASE("mono-classification") {
          TermBoostFlags_Default,
          k_learningRateDefault,
          k_minSamplesLeafDefault,
+         k_minHessianDefault,
          &k_leavesMaxDefault[0],
          &avgGain);
    CHECK(Error_None == error);
@@ -1120,6 +1125,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
                                              TermBoostFlags_RandomSplits,
                                              k_learningRateDefault,
                                              k_minSamplesLeafDefault,
+                                             k_minHessianDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1152,6 +1158,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
                                              TermBoostFlags_RandomSplits | TermBoostFlags_GradientSums,
                                              k_learningRateDefault,
                                              k_minSamplesLeafDefault,
+                                             k_minHessianDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1201,7 +1208,9 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric =
-               test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+               test.Boost(
+                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
+                     .validationMetric;
       }
    }
 
@@ -1256,7 +1265,9 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric =
-               test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+               test.Boost(
+                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
+                     .validationMetric;
       }
    }
    CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
@@ -1312,7 +1323,9 @@ TEST_CASE("Random splitting, pure tripples, regression") {
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
          validationMetric =
-               test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_leavesMax).validationMetric;
+               test.Boost(
+                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
+                     .validationMetric;
       }
    }
 
@@ -1336,6 +1349,7 @@ TEST_CASE("Random splitting, pure tripples, regression") {
 TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    static constexpr IntEbm k_cStates = 7;
    static constexpr IntEbm k_minSamplesLeaf = 1;
+   static constexpr double k_minHessian = k_minHessianDefault;
    static const std::vector<IntEbm> k_leavesMax = {IntEbm{1}, IntEbm{1}, IntEbm{1}};
 
    std::vector<TestSample> samples;
@@ -1363,9 +1377,13 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
    double validationMetric = double{0};
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric =
-               test.Boost(iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, k_minSamplesLeaf, k_leavesMax)
-                     .validationMetric;
+         validationMetric = test.Boost(iTerm,
+                                      TermBoostFlags_RandomSplits,
+                                      k_learningRateDefault,
+                                      k_minSamplesLeaf,
+                                      k_minHessian,
+                                      k_leavesMax)
+                                  .validationMetric;
       }
    }
 
@@ -1416,6 +1434,7 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
                                       TermBoostFlags_RandomSplits | TermBoostFlags_GradientSums,
                                       k_learningRateDefault,
                                       k_minSamplesLeafDefault,
+                                      k_minHessianDefault,
                                       k_leavesMax)
                                   .validationMetric;
          if(0 == iEpoch) {

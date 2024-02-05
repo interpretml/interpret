@@ -63,6 +63,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       const size_t cSplitsMax,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
@@ -73,6 +74,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
       double* const pTotalGain
 #ifndef NDEBUG
@@ -148,6 +150,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const FloatMain weightTotal,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       const IntEbm countLeavesMax,
       double* const pTotalGain) {
    ErrorEbm error;
@@ -172,6 +175,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          cBins,
          iDimension,
          cSamplesLeafMin,
+         hessianMin,
          cSplitsMax,
          pBoosterCore->GetTrainingSet()->GetCountSamples(),
          weightTotal,
@@ -191,6 +195,7 @@ static ErrorEbm BoostMultiDimensional(
       const TermBoostFlags flags,
       const size_t iTerm, 
       const size_t cSamplesLeafMin, 
+      const double hessianMin,
       double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
@@ -364,6 +369,7 @@ static ErrorEbm BoostMultiDimensional(
             pTerm,
             acBins,
             cSamplesLeafMin,
+            hessianMin,
             aAuxiliaryBins,
             pTotalGain
 #ifndef NDEBUG
@@ -444,6 +450,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       TermBoostFlags flags,
       double learningRate,
       IntEbm minSamplesLeaf,
+      double minHessian,
       const IntEbm* leavesMax,
       double* avgGainOut) {
    ErrorEbm error;
@@ -458,6 +465,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          "flags=0x%" UTermBoostFlagsPrintf ", "
          "learningRate=%le, "
          "minSamplesLeaf=%" IntEbmPrintf ", "
+         "minHessian=%le, "
          "leavesMax=%p, "
          "avgGainOut=%p",
          rng,
@@ -466,6 +474,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          learningRate,
          minSamplesLeaf,
+         minHessian,
          static_cast<const void*>(leavesMax),
          static_cast<void*>(avgGainOut));
 
@@ -530,6 +539,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       }
    } else {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 1.  Adjusting to 1.");
+   }
+
+   if(std::isnan(minHessian) || minHessian <= 0.0) {
+      minHessian = std::numeric_limits<double>::min();
+      LOG_0(Trace_Warning,
+            "WARNING GenerateTermUpdate minHessian must be a positive number. Adjusting to minimum float");
    }
 
    const size_t cScores = pBoosterCore->GetCountScores();
@@ -820,13 +835,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      static_cast<FloatMain>(weightTotal),
                      iDimensionImportant,
                      cSamplesLeafMin,
+                     minHessian,
                      lastDimensionLeavesMax,
                      &gain);
                if(Error_None != error) {
                   return error;
                }
             } else {
-               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, &gain);
+               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, minHessian, &gain);
                if(Error_None != error) {
                   return error;
                }

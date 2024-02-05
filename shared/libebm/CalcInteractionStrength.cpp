@@ -56,6 +56,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const size_t* const acBins,
       const CalcInteractionFlags flags,
       const size_t cSamplesLeafMin,
+      const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -75,6 +76,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       CalcInteractionFlags flags,
       IntEbm maxCardinality,
       IntEbm minSamplesLeaf,
+      double minHessian,
       double* avgInteractionStrengthOut) {
    LOG_COUNTED_N(&g_cLogCalcInteractionStrength,
          Trace_Info,
@@ -86,6 +88,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          "flags=0x%" UCalcInteractionFlagsPrintf ", "
          "maxCardinality=%" IntEbmPrintf ", "
          "minSamplesLeaf=%" IntEbmPrintf ", "
+         "minHessian=%le, "
          "avgInteractionStrengthOut=%p",
          static_cast<void*>(interactionHandle),
          countDimensions,
@@ -93,6 +96,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          static_cast<UCalcInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          maxCardinality,
          minSamplesLeaf,
+         minHessian,
          static_cast<void*>(avgInteractionStrengthOut));
 
    ErrorEbm error;
@@ -138,6 +142,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       }
    } else {
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
+   }
+
+   if(std::isnan(minHessian) || minHessian <= 0.0) {
+      minHessian = std::numeric_limits<double>::min();
+      LOG_0(Trace_Warning,
+            "WARNING CalcInteractionStrength minHessian must be a positive number. Adjusting to minimum float");
    }
 
    if(countDimensions <= IntEbm{0}) {
@@ -418,6 +428,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             binSums.m_acBins,
             flags,
             cSamplesLeafMin,
+            minHessian,
             aAuxiliaryBins,
             aMainBins
 #ifndef NDEBUG

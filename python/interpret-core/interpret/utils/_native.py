@@ -1184,6 +1184,8 @@ class Native:
             ct.c_double,
             # int64_t minSamplesLeaf
             ct.c_int64,
+            # double minHessian
+            ct.c_double,
             # int64_t * leavesMax
             ct.c_void_p,
             # double * avgGainOut
@@ -1288,6 +1290,8 @@ class Native:
             ct.c_int64,
             # int64_t minSamplesLeaf
             ct.c_int64,
+            # double minHessian
+            ct.c_double,
             # double * avgInteractionStrengthOut
             ct.POINTER(ct.c_double),
         ]
@@ -1496,6 +1500,7 @@ class Booster(AbstractContextManager):
             term_boost_flags,
             learning_rate,
             min_samples_leaf,
+            0, # TODO: make this the default way to limit splits
             Native._make_pointer(max_leaves_arr, np.int64),
             ct.byref(avg_gain),
         )
@@ -1821,6 +1826,7 @@ class InteractionDetector(AbstractContextManager):
             calc_interaction_flags,
             max_cardinality,
             min_samples_leaf,
+            0, # TODO: make this the default way to limit splits
             ct.byref(strength),
         )
         if return_code:  # pragma: no cover

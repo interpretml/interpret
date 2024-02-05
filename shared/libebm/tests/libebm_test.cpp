@@ -560,6 +560,7 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
       const TermBoostFlags flags,
       const double learningRate,
       const IntEbm minSamplesLeaf,
+      const double minHessian,
       const std::vector<IntEbm> leavesMax) {
    ErrorEbm error;
 
@@ -572,6 +573,7 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
          flags,
          learningRate,
          minSamplesLeaf,
+         minHessian,
          0 == leavesMax.size() ? nullptr : &leavesMax[0],
          &gainAvg);
    if(Error_None != error) {
@@ -889,8 +891,10 @@ TestInteraction::~TestInteraction() {
    }
 }
 
-double TestInteraction::TestCalcInteractionStrength(
-      const std::vector<IntEbm> features, const CalcInteractionFlags flags, const IntEbm minSamplesLeaf) const {
+double TestInteraction::TestCalcInteractionStrength(const std::vector<IntEbm> features,
+      const CalcInteractionFlags flags,
+      const IntEbm minSamplesLeaf,
+      const double minHessian) const {
    double avgInteractionStrength = double{0};
    const ErrorEbm error = CalcInteractionStrength(m_interactionHandle,
          features.size(),
@@ -898,6 +902,7 @@ double TestInteraction::TestCalcInteractionStrength(
          flags,
          0,
          minSamplesLeaf,
+         minHessian,
          &avgInteractionStrength);
    if(Error_None != error) {
       throw TestException(error, "CalcInteractionStrength");
