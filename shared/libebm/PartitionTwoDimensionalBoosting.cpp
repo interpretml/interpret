@@ -92,12 +92,13 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
+   // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
+   EBM_ASSERT(2 == cRealDimensions); 
+
    FloatCalc bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
       aDimensions[iDimensionSweep].m_iPoint = iBin;
-      EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have
-                                        // something other than 2 dimensions
       TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
             cRealDimensions,
             aDimensions,
@@ -111,71 +112,76 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
             pBinsEndDebug
 #endif // NDEBUG
       );
-      if(LIKELY(cSamplesLeafMin <= binLow.GetCountSamples())) {
-         EBM_ASSERT(2 == cRealDimensions); // our TensorTotalsSum needs to be templated as dynamic if we want to have
-                                           // something other than 2 dimensions
-         TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
-               cRealDimensions,
-               aDimensions,
-               directionVectorHigh,
-               aBins,
-               binHigh,
-               aGradientPairsHigh
+      if(binLow.GetCountSamples() < cSamplesLeafMin) {
+         goto next;
+      }
+
+      TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
+            cRealDimensions,
+            aDimensions,
+            directionVectorHigh,
+            aBins,
+            binHigh,
+            aGradientPairsHigh
 #ifndef NDEBUG
-               ,
-               aDebugCopyBins,
-               pBinsEndDebug
+            ,
+            aDebugCopyBins,
+            pBinsEndDebug
 #endif // NDEBUG
-         );
-         if(LIKELY(cSamplesLeafMin <= binHigh.GetCountSamples())) {
-            FloatCalc gain = 0;
-            EBM_ASSERT(0 < binLow.GetCountSamples());
-            EBM_ASSERT(0 < binHigh.GetCountSamples());
+      );
+      if(binHigh.GetCountSamples() < cSamplesLeafMin) {
+         goto next;
+      }
 
-            EBM_ASSERT(1 <= cScores);
-            size_t iScore = 0;
-            do {
-               // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
-               // numerators (but only do this after we've determined the best node splitting score for classification,
-               // and the NewtonRaphsonStep for gain
+      {
+         FloatCalc gain = 0;
+         EBM_ASSERT(0 < binLow.GetCountSamples());
+         EBM_ASSERT(0 < binHigh.GetCountSamples());
 
-               const FloatCalc gain1 = CalcPartialGain(
-                     static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
-                     static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
-               EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
-               gain += gain1;
+         EBM_ASSERT(1 <= cScores);
+         size_t iScore = 0;
+         do {
+            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
+            // numerators (but only do this after we've determined the best node splitting score for classification,
+            // and the NewtonRaphsonStep for gain
 
-               const FloatCalc gain2 =
-                     CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients),
-                           static_cast<FloatCalc>(
-                                 bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight()));
-               EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
-               gain += gain2;
 
-               ++iScore;
-            } while(cScores != iScore);
-            EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumation of positive numbers should be positive
+            const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
+                  static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
+            EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
+            gain += gain1;
 
-            if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
-               // propagate NaNs
+            const FloatCalc gain2 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients),
+                  static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight()));
+            EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
+            gain += gain2;
 
-               bestGain = gain;
-               iBestSplit = iBin;
+            ++iScore;
+         } while(cScores != iScore);
+         EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumation of positive numbers should be positive
 
-               auto* const pTotalsLowOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 0);
-               ASSERT_BIN_OK(cBytesPerBin, pTotalsLowOut, pBinsEndDebug);
+         if(UNLIKELY(/* NaN */ !LIKELY(gain <= bestGain))) {
+            // propagate NaNs
 
-               pTotalsLowOut->Copy(cScores, binLow, aGradientPairsLow);
+            bestGain = gain;
+            iBestSplit = iBin;
 
-               auto* const pTotalsHighOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 1);
-               ASSERT_BIN_OK(cBytesPerBin, pTotalsHighOut, pBinsEndDebug);
+            auto* const pTotalsLowOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 0);
+            ASSERT_BIN_OK(cBytesPerBin, pTotalsLowOut, pBinsEndDebug);
 
-               pTotalsHighOut->Copy(cScores, binHigh, aGradientPairsHigh);
-            } else {
-               EBM_ASSERT(!std::isnan(gain));
-            }
+            pTotalsLowOut->Copy(cScores, binLow, aGradientPairsLow);
+
+            auto* const pTotalsHighOut = IndexBin(pBinBestAndTemp, cBytesPerBin * 1);
+            ASSERT_BIN_OK(cBytesPerBin, pTotalsHighOut, pBinsEndDebug);
+
+            pTotalsHighOut->Copy(cScores, binHigh, aGradientPairsHigh);
+         } else {
+            EBM_ASSERT(!std::isnan(gain));
          }
       }
+
+   next:;
+
       ++iBin;
    } while(cSweepCuts != iBin);
    *piBestSplit = iBestSplit;
@@ -779,18 +785,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       // we don't need to call pInnerTermUpdate->EnsureTensorScoreCapacity,
       // since our value capacity would be 1, which is pre-allocated
 
+      FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatCalc update;
          if(bUpdateWithHessian) {
-            update = ComputeSinglePartitionUpdate(
-                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+            update = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                   static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess()));
          } else {
             update = ComputeSinglePartitionUpdate(
                   static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), static_cast<FloatCalc>(weightAll));
          }
 
-         FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
          aUpdateScores[iScore] = static_cast<FloatScore>(update);
       }
       return Error_None;

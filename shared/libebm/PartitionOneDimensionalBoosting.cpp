@@ -314,16 +314,19 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       const UIntMain cSamplesChange = pBinCur->GetCountSamples();
       cSamplesRight -= cSamplesChange;
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
-         break; // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
+         // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
+         goto done; 
       }
 
       binLeft.SetCountSamples(binLeft.GetCountSamples() + cSamplesChange);
-      binLeft.SetWeight(binLeft.GetWeight() + pBinCur->GetWeight());
+
+      FloatMain sumHessiansLeft = binLeft.GetWeight() + pBinCur->GetWeight();
+      FloatMain sumHessiansRight = binParent.GetWeight() - sumHessiansLeft;
+
+
+      binLeft.SetWeight(sumHessiansLeft);
 
       const auto* const aBinGradientPairs = pBinCur->GetGradientPairs();
-
-      FloatMain sumHessiansLeft = binLeft.GetWeight();
-      FloatMain sumHessiansRight = binParent.GetWeight() - binLeft.GetWeight();
       FloatCalc gain = 0;
 
       size_t iScore = 0;
@@ -336,10 +339,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          if(bHessian) {
             const FloatMain newSumHessiansLeft =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
+            const FloatMain newSumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
             if(!(TermBoostFlags_DisableNewtonGain & flags)) {
                sumHessiansLeft = newSumHessiansLeft;
-               sumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
+               sumHessiansRight = newSumHessiansRight;
             }
          }
 
@@ -363,53 +367,60 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       } while(cScores != iScore);
       EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
-      if(LIKELY(cSamplesLeafMin <= binLeft.GetCountSamples())) {
-         if(UNLIKELY(/* NaN */ !LIKELY(gain < bestGain))) {
-            // propagate NaN values since we stop boosting when we see them
-
-            // it's very possible that we have bins with zero samples in them, in which case we could easily be
-            // presented with equally favorable splits or it's even possible for two different possible unrelated
-            // sections of bins, or individual bins to have exactly the same gain (think low count symetric data) we
-            // want to avoid any bias of always choosing the higher or lower value to split on, so what we should do is
-            // store the indexes of any ties in a stack and we reset the stack if we later find a gain that's larger
-            // than any we have in the stack. The stack needs to be size_t to hold indexes, and we need the stack to be
-            // as long as the number of samples - 1, incase all gain for all bins are the same (potential_splits = bins
-            // - 1) after we exit the loop we can examine our stack and choose a random split from all the equivalent
-            // splits available.  eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random
-            // number between 0 -> 3 to select which one we actually split on
-            //
-            // DON'T use a floating point epsilon when comparing the gains.  It's not clear what the epsilon should be
-            // given that gain is continuously pushed to zero, so we can get very low numbers here eventually.  As an
-            // approximation, we should just take the assumption that if two numbers which have mathematically equality,
-            // end up with different gains due to floating point computation issues, that the error will be roughtly
-            // symetric such that either the first or the last could be chosen, which is fine for us since we just want
-            // to ensure randomized picking. Having two mathematically identical gains is pretty rare in any case,
-            // except for the situation where multiple bins have zero samples, but in that case we'll have floating
-            // point equality too since we'll be adding zero to the floating points values, which is an exact operation.
-            //
-            // TODO : implement the randomized splitting described for interaction effect, which can be done the same
-            // although we might want to
-            //   include near matches since there is floating point noise there due to the way we sum interaction effect
-            //   region totals
-
-            // if gain becomes NaN, the first time we come through here we're comparing the non-NaN value in bestGain
-            // with gain, which is false.  Next time we come through here, both bestGain and gain,
-            // and that has a special case of being false!  So, we always choose pBestSplitsStart, which is great
-            // because we don't waste or fill memory unnessarily
-            pBestSplitsCur = UNPREDICTABLE(bestGain == gain) ? pBestSplitsCur : pBestSplitsStart;
-            bestGain = gain;
-
-            pBestSplitsCur->SetBinPosition(pBinCur);
-
-            pBestSplitsCur->GetLeftSum()->Copy(cScores, binLeft, aLeftGradientPairs);
-
-            pBestSplitsCur = IndexSplitPosition(pBestSplitsCur, cBytesPerSplitPosition);
-         } else {
-            EBM_ASSERT(!std::isnan(gain));
-         }
+      if(binLeft.GetCountSamples() < cSamplesLeafMin) {
+         goto next;
       }
+
+      if(UNLIKELY(/* NaN */ !LIKELY(gain < bestGain))) {
+         // propagate NaN values since we stop boosting when we see them
+
+         // it's very possible that we have bins with zero samples in them, in which case we could easily be
+         // presented with equally favorable splits or it's even possible for two different possible unrelated
+         // sections of bins, or individual bins to have exactly the same gain (think low count symetric data) we
+         // want to avoid any bias of always choosing the higher or lower value to split on, so what we should do is
+         // store the indexes of any ties in a stack and we reset the stack if we later find a gain that's larger
+         // than any we have in the stack. The stack needs to be size_t to hold indexes, and we need the stack to be
+         // as long as the number of samples - 1, incase all gain for all bins are the same (potential_splits = bins
+         // - 1) after we exit the loop we can examine our stack and choose a random split from all the equivalent
+         // splits available.  eg: we find that items at index 4,7,8,9 all have the same gain, so we pick a random
+         // number between 0 -> 3 to select which one we actually split on
+         //
+         // DON'T use a floating point epsilon when comparing the gains.  It's not clear what the epsilon should be
+         // given that gain is continuously pushed to zero, so we can get very low numbers here eventually.  As an
+         // approximation, we should just take the assumption that if two numbers which have mathematically equality,
+         // end up with different gains due to floating point computation issues, that the error will be roughtly
+         // symetric such that either the first or the last could be chosen, which is fine for us since we just want
+         // to ensure randomized picking. Having two mathematically identical gains is pretty rare in any case,
+         // except for the situation where multiple bins have zero samples, but in that case we'll have floating
+         // point equality too since we'll be adding zero to the floating points values, which is an exact operation.
+         //
+         // TODO : implement the randomized splitting described for interaction effect, which can be done the same
+         // although we might want to
+         //   include near matches since there is floating point noise there due to the way we sum interaction effect
+         //   region totals
+
+         // if gain becomes NaN, the first time we come through here we're comparing the non-NaN value in bestGain
+         // with gain, which is false.  Next time we come through here, both bestGain and gain,
+         // and that has a special case of being false!  So, we always choose pBestSplitsStart, which is great
+         // because we don't waste or fill memory unnessarily
+         pBestSplitsCur = UNPREDICTABLE(bestGain == gain) ? pBestSplitsCur : pBestSplitsStart;
+         bestGain = gain;
+
+         pBestSplitsCur->SetBinPosition(pBinCur);
+
+         pBestSplitsCur->GetLeftSum()->Copy(cScores, binLeft, aLeftGradientPairs);
+
+         pBestSplitsCur = IndexSplitPosition(pBestSplitsCur, cBytesPerSplitPosition);
+      } else {
+         EBM_ASSERT(!std::isnan(gain));
+      }
+
+   next:;
+
       pBinCur = IndexBin(pBinCur, cBytesPerBin);
    } while(pBinLast != pBinCur);
+
+done:;
 
    if(UNLIKELY(pBestSplitsStart == pBestSplitsCur)) {
       // no valid splits found
@@ -652,7 +663,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pBoosterShell,
                      flags,
                      pLeftChild,
-                     pTreeNodeScratchSpace,
+                     pTreeNodeScratchSpace, 
                      cSamplesLeafMin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
@@ -672,7 +683,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pBoosterShell,
                      flags,
                      pRightChild,
-                     pTreeNodeScratchSpace,
+                     pTreeNodeScratchSpace, 
                      cSamplesLeafMin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
