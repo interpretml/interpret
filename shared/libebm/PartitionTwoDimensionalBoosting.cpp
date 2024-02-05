@@ -90,7 +90,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
 
    EBM_ASSERT(0 < cSamplesLeafMin);
 
-   const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
+   const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
    FloatCalc bestGain = k_illegalGainFloat;
    size_t iBin = 0;
@@ -466,7 +466,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       const FloatMain weightAll = pTotal->GetWeight();
       EBM_ASSERT(0 < weightAll);
 
-      const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
+      const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
       *pTotalGain = 0;
       EBM_ASSERT(FloatCalc{0} <= k_gainMin);
@@ -480,7 +480,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(0 <= bestGain);
             EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
 
-            const bool bUseLogitBoost = bHessian && 0 == (TermBoostFlags_DisableNewtonGain & flags);
+            const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
             // now subtract the parent partial gain
             for(size_t iScore = 0; iScore < cScores; ++iScore) {

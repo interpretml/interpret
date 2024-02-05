@@ -201,7 +201,7 @@ extern ErrorEbm GetObjective(const Config* const pConfig,
 
    do {
 #ifdef BRIDGE_AVX512F_32
-      if(0 != (AccelerationFlags_AVX512F & zones)) {
+      if(AccelerationFlags_AVX512F & zones) {
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX512F compatibility");
          EBM_ASSERT(nullptr != pSIMDObjectiveWrapperOut);
          if(9 <= DetectInstructionset()) {
@@ -216,7 +216,7 @@ extern ErrorEbm GetObjective(const Config* const pConfig,
 #endif // BRIDGE_AVX512F_32
 
 #ifdef BRIDGE_AVX2_32
-      if(0 != (AccelerationFlags_AVX2 & zones)) {
+      if(AccelerationFlags_AVX2 & zones) {
          LOG_0(Trace_Info, "INFO GetObjective checking for AVX2 compatibility");
          EBM_ASSERT(nullptr != pSIMDObjectiveWrapperOut);
          if(8 <= DetectInstructionset() && IsFMA3()) {

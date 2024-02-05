@@ -133,7 +133,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       return error;
    }
 
-   const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
+   const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
@@ -337,7 +337,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             const FloatMain newSumHessiansLeft =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
-            if(0 == (TermBoostFlags_DisableNewtonGain & flags)) {
+            if(!(TermBoostFlags_DisableNewtonGain & flags)) {
                sumHessiansLeft = newSumHessiansLeft;
                sumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
             }
@@ -443,7 +443,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    do {
       const FloatMain sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
       if(bHessian) {
-         if(0 == (TermBoostFlags_DisableNewtonGain & flags)) {
+         if(!(TermBoostFlags_DisableNewtonGain & flags)) {
             sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }

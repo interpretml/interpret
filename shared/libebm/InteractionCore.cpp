@@ -180,7 +180,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
 
-   pInteractionCore->m_bDisableApprox = 0 != (CreateInteractionFlags_DisableApprox & flags) ? EBM_TRUE : EBM_FALSE;
+   pInteractionCore->m_bDisableApprox = CreateInteractionFlags_DisableApprox & flags ? EBM_TRUE : EBM_FALSE;
 
    size_t cBinsMax = 0;
 
@@ -256,7 +256,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
 
    if(ptrdiff_t{0} != cClasses && ptrdiff_t{1} != cClasses) {
       size_t cScores;
-      if(0 != (CreateInteractionFlags_BinaryAsMulticlass & flags)) {
+      if(CreateInteractionFlags_BinaryAsMulticlass & flags) {
          cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
       } else {
          cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
@@ -266,7 +266,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
       LOG_0(Trace_Info, "INFO InteractionCore::Create determining Objective");
       Config config;
       config.cOutputs = cScores;
-      config.isDifferentialPrivacy = 0 != (CreateInteractionFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
+      config.isDifferentialPrivacy = CreateInteractionFlags_DifferentialPrivacy & flags ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(
             &config, sObjective, acceleration, &pInteractionCore->m_objectiveCpu, &pInteractionCore->m_objectiveSIMD);
       if(Error_None != error) {

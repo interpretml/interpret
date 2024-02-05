@@ -39,7 +39,8 @@ class Native:
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
-    CalcInteractionFlags_Pure = 0x00000001
+    CalcInteractionFlags_DisableNewton = 0x00000001
+    CalcInteractionFlags_Pure = 0x00000002
 
     # AccelerationFlags
     AccelerationFlags_NONE = 0x00000000

@@ -223,12 +223,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   if(0 !=
-         (static_cast<UCreateBoosterFlags>(flags) &
-               static_cast<UCreateBoosterFlags>(
-                     ~(static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DifferentialPrivacy) |
-                           static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DisableApprox) |
-                           static_cast<UCreateBoosterFlags>(CreateBoosterFlags_BinaryAsMulticlass))))) {
+   if(flags & ~(CreateBoosterFlags_DifferentialPrivacy | CreateBoosterFlags_DisableApprox | CreateBoosterFlags_BinaryAsMulticlass)) {
       LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
    }
 

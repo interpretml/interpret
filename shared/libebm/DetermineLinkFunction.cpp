@@ -95,7 +95,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    }
 
    size_t cScores;
-   if(0 != (LinkFlags_BinaryAsMulticlass & flags)) {
+   if(LinkFlags_BinaryAsMulticlass & flags) {
       cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
    } else {
       cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
@@ -106,7 +106,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
 
    Config config;
    config.cOutputs = cScores;
-   config.isDifferentialPrivacy = 0 != (LinkFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
+   config.isDifferentialPrivacy = LinkFlags_DifferentialPrivacy & flags ? EBM_TRUE : EBM_FALSE;
    const ErrorEbm error = GetObjective(&config, objective, AccelerationFlags_NONE, &objectiveWrapper, nullptr);
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");

@@ -426,7 +426,7 @@ TEST_CASE("compare boosting gain to interaction strength, which should be identi
                TestSample({1, 1}, 7, 1.355),
          });
 
-   const double interactionStrength = test1.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_EnableNewton);
+   const double interactionStrength = test1.TestCalcInteractionStrength({0, 1});
 
    // we have a 2x2 matrix for boosting, which means there is only 1 cut point and it is known
    // so the gain should be from going from a singularity to the 4 quadrants
@@ -454,6 +454,6 @@ TEST_CASE("tweedie, interaction") {
          k_testAccelerationFlags_Default,
          "tweedie_deviance:variance_power=1.3");
 
-   double metricReturn = test.TestCalcInteractionStrength({0, 1});
+   double metricReturn = test.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_DisableNewton);
    CHECK_APPROX(metricReturn, 1.25);
 }

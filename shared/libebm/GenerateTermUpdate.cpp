@@ -102,7 +102,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
    if(pBoosterCore->IsHessian()) {
       const auto* const pBin = pMainBin->Specialize<FloatMain, UIntMain, true>();
       const auto* const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (TermBoostFlags_GradientSums & flags)) {
+      if(TermBoostFlags_GradientSums & flags) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
                   static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
@@ -113,7 +113,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore =
                   ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-                        0 != (TermBoostFlags_DisableNewtonUpdate & flags) ?
+                        TermBoostFlags_DisableNewtonUpdate & flags ?
                               weight :
                               static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
@@ -122,7 +122,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
    } else {
       const auto* const pBin = pMainBin->Specialize<FloatMain, UIntMain, false>();
       const auto* const aGradientPairs = pBin->GetGradientPairs();
-      if(0 != (TermBoostFlags_GradientSums & flags)) {
+      if(TermBoostFlags_GradientSums & flags) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
                   static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
@@ -506,12 +506,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          Trace_Verbose,
          "Entered GenerateTermUpdate");
 
-   if(0 !=
-         (static_cast<UTermBoostFlags>(flags) &
-               static_cast<UTermBoostFlags>(~(static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain) |
-                     static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate) |
-                     static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums) |
-                     static_cast<UTermBoostFlags>(TermBoostFlags_RandomSplits))))) {
+   if(flags & ~(TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums | TermBoostFlags_RandomSplits)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 
@@ -627,16 +622,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       const double multipleCommon = gradientConstant / cInnerBagsAfterZero;
       double multiple = multipleCommon;
       double gainMultiple = multipleCommon;
-      if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_GradientSums))) {
+      if(TermBoostFlags_GradientSums & flags) {
          multiple *= pBoosterCore->LearningRateAdjustmentDifferentialPrivacy();
-      } else if(0 !=
-            (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonUpdate))) {
+      } else if(TermBoostFlags_DisableNewtonUpdate & flags) {
          multiple *= pBoosterCore->LearningRateAdjustmentGradientBoosting();
       } else {
          multiple /= pBoosterCore->HessianConstant();
          multiple *= pBoosterCore->LearningRateAdjustmentHessianBoosting();
       }
-      if(0 != (static_cast<UTermBoostFlags>(flags) & static_cast<UTermBoostFlags>(TermBoostFlags_DisableNewtonGain))) {
+      if(TermBoostFlags_DisableNewtonGain & flags) {
          gainMultiple *= pBoosterCore->GainAdjustmentGradientBoosting();
       } else {
          gainMultiple /= pBoosterCore->HessianConstant();

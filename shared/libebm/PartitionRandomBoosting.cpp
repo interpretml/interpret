@@ -525,7 +525,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
       FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
       auto* pCollapsedBin2 = aCollapsedBins;
 
-      if(0 != (TermBoostFlags_GradientSums & flags)) {
+      if(TermBoostFlags_GradientSums & flags) {
          do {
             auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
 
@@ -538,7 +538,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
-         const bool bUpdateWithHessian = bHessian && 0 == (TermBoostFlags_DisableNewtonUpdate & flags);
+         const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
          do {
             const auto cSamples = pCollapsedBin2->GetCountSamples();
             if(UNLIKELY(0 == cSamples)) {

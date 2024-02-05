@@ -323,7 +323,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
    // give ownership of our object back to the caller, even if there is a failure
    *ppBoosterCoreOut = pBoosterCore;
 
-   pBoosterCore->m_bDisableApprox = 0 != (CreateBoosterFlags_DisableApprox & flags) ? EBM_TRUE : EBM_FALSE;
+   pBoosterCore->m_bDisableApprox = CreateBoosterFlags_DisableApprox & flags ? EBM_TRUE : EBM_FALSE;
 
    UIntShared countSamples;
    size_t cFeatures;
@@ -598,7 +598,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
    // since they have zero memory allocated to them. Having 0 classes means there are also 0 samples.
    if(ptrdiff_t{0} != cClasses && ptrdiff_t{1} != cClasses) {
       size_t cScores;
-      if(0 != (CreateBoosterFlags_BinaryAsMulticlass & flags)) {
+      if(CreateBoosterFlags_BinaryAsMulticlass & flags) {
          cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
       } else {
          cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
@@ -608,7 +608,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
       LOG_0(Trace_Info, "INFO BoosterCore::Create determining Objective");
       Config config;
       config.cOutputs = cScores;
-      config.isDifferentialPrivacy = 0 != (CreateBoosterFlags_DifferentialPrivacy & flags) ? EBM_TRUE : EBM_FALSE;
+      config.isDifferentialPrivacy = CreateBoosterFlags_DifferentialPrivacy & flags ? EBM_TRUE : EBM_FALSE;
       error = GetObjective(
             &config, sObjective, acceleration, &pBoosterCore->m_objectiveCpu, &pBoosterCore->m_objectiveSIMD);
       if(Error_None != error) {

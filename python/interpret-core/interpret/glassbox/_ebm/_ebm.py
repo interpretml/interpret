@@ -1011,7 +1011,7 @@ class EBMModel(BaseEstimator):
                             scores_bags[idx],
                             combinations(range(n_features_in), 2),
                             exclude,
-                            Native.CalcInteractionFlags_Default,
+                            Native.CalcInteractionFlags_DisableNewton,
                             max_cardinality,
                             min_samples_leaf,
                             (

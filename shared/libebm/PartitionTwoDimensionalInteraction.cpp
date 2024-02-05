@@ -100,7 +100,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       bool bAnySplits = false;
 #endif // NDEBUG
 
-      const bool bUseLogitBoost = bHessian && 0 != (CalcInteractionFlags_EnableNewton & flags);
+      const bool bUseLogitBoost = bHessian && !(CalcInteractionFlags_DisableNewton & flags);
 
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
       FloatCalc bestGain = 0;
@@ -203,7 +203,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                            const FloatCalc d11 = static_cast<FloatCalc>(
                                  bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
 
-                           if(0 != (CalcInteractionFlags_Pure & flags)) {
+                           if(CalcInteractionFlags_Pure & flags) {
                               // purified gain
 
                               // If we have a 2x2 matrix of updates, we can purify the updates using an equation
@@ -345,7 +345,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
-      if(0 == (CalcInteractionFlags_Pure & flags)) {
+      if(!(CalcInteractionFlags_Pure & flags)) {
          // if we are detecting impure interaction then so far we have only calculated the children partial gain
          // but we still need to subtract the partial gain of the parent to have
          // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it

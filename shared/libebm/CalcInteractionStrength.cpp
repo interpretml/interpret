@@ -111,10 +111,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          Trace_Verbose,
          "Entered CalcInteractionStrength");
 
-   if(0 !=
-         (static_cast<UCalcInteractionFlags>(flags) &
-               static_cast<UCalcInteractionFlags>(~(static_cast<UCalcInteractionFlags>(CalcInteractionFlags_Pure) |
-                     static_cast<UCalcInteractionFlags>(CalcInteractionFlags_EnableNewton))))) {
+   if(flags & ~(CalcInteractionFlags_DisableNewton | CalcInteractionFlags_Pure)) {
       LOG_0(Trace_Error, "ERROR CalcInteractionStrength flags contains unknown flags. Ignoring extras.");
    }
 
@@ -434,13 +431,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       const double totalWeight = pDataSet->GetWeightTotal();
       EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
       bestGain /= totalWeight;
-      if(0 !=
-            (static_cast<UCalcInteractionFlags>(flags) &
-                  static_cast<UCalcInteractionFlags>(CalcInteractionFlags_EnableNewton))) {
+      if(CalcInteractionFlags_DisableNewton & flags) {
+         bestGain *= pInteractionCore->GainAdjustmentGradientBoosting();
+      } else {
          bestGain /= pInteractionCore->HessianConstant();
          bestGain *= pInteractionCore->GainAdjustmentHessianBoosting();
-      } else {
-         bestGain *= pInteractionCore->GainAdjustmentGradientBoosting();
       }
       const double gradientConstant = pInteractionCore->GradientConstant();
       bestGain *= gradientConstant;
