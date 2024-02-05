@@ -287,7 +287,7 @@ static constexpr ptrdiff_t k_iZeroClassificationLogitDefault = ptrdiff_t{-1};
 static constexpr IntEbm k_countInnerBagsDefault = IntEbm{0};
 static constexpr double k_learningRateDefault = double{0.01};
 static constexpr IntEbm k_minSamplesLeafDefault = IntEbm{1};
-static constexpr double k_minHessianDefault = 1e-4;
+static constexpr double k_minHessianDefault = 1e-3;
 
 #ifdef EXPAND_BINARY_LOGITS
 static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_BinaryAsMulticlass;

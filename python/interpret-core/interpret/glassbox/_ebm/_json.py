@@ -169,6 +169,9 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "smoothing_rounds"):
             params["smoothing_rounds"] = ebm.smoothing_rounds
 
+        if hasattr(ebm, "interaction_smoothing_rounds"):
+            params["interaction_smoothing_rounds"] = ebm.interaction_smoothing_rounds
+
         if hasattr(ebm, "max_rounds"):
             params["max_rounds"] = ebm.max_rounds
 
@@ -178,8 +181,8 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "early_stopping_tolerance"):
             params["early_stopping_tolerance"] = ebm.early_stopping_tolerance
 
-        if hasattr(ebm, "min_samples_leaf"):
-            params["min_samples_leaf"] = ebm.min_samples_leaf
+        if hasattr(ebm, "min_hessian"):
+            params["min_hessian"] = ebm.min_hessian
 
         if hasattr(ebm, "max_leaves"):
             params["max_leaves"] = ebm.max_leaves

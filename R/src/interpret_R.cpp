@@ -777,14 +777,14 @@ SEXP GenerateTermUpdate_R(
    SEXP boosterHandleWrapped,
    SEXP indexTerm,
    SEXP learningRate,
-   SEXP minSamplesLeaf,
+   SEXP minHessian,
    SEXP leavesMax
 ) {
    EBM_ASSERT(nullptr != rng);
    EBM_ASSERT(nullptr != boosterHandleWrapped);
    EBM_ASSERT(nullptr != indexTerm);
    EBM_ASSERT(nullptr != learningRate);
-   EBM_ASSERT(nullptr != minSamplesLeaf);
+   EBM_ASSERT(nullptr != minHessian);
    EBM_ASSERT(nullptr != leavesMax);
 
    void * pRng = nullptr;
@@ -808,7 +808,7 @@ SEXP GenerateTermUpdate_R(
 
    const double learningRateLocal = ConvertDouble(learningRate);
 
-   const IntEbm samplesLeafMin = ConvertIndexApprox(minSamplesLeaf);
+   const double hessianMin = ConvertDouble(minHessian);
 
    const IntEbm cDimensions = CountDoubles(leavesMax);
    const IntEbm * const aLeavesMax = ConvertDoublesToIndexes(cDimensions, leavesMax);
@@ -827,7 +827,8 @@ SEXP GenerateTermUpdate_R(
       iTerm,
       TermBoostFlags_Default,
       learningRateLocal,
-      samplesLeafMin,
+      0,
+      hessianMin,
       aLeavesMax,
       &avgGain
    );
@@ -1058,11 +1059,11 @@ SEXP FreeInteractionDetector_R(SEXP interactionHandleWrapped) {
    return R_NilValue;
 }
 
-SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexes, SEXP maxCardinality, SEXP minSamplesLeaf) {
+SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexes, SEXP maxCardinality, SEXP minHessian) {
    EBM_ASSERT(nullptr != interactionHandleWrapped); // shouldn't be possible
    EBM_ASSERT(nullptr != featureIndexes); // shouldn't be possible
    EBM_ASSERT(nullptr != maxCardinality);
-   EBM_ASSERT(nullptr != minSamplesLeaf);
+   EBM_ASSERT(nullptr != minHessian);
 
    if(EXTPTRSXP != TYPEOF(interactionHandleWrapped)) {
       error("CalcInteractionStrength_R EXTPTRSXP != TYPEOF(interactionHandleWrapped)");
@@ -1076,7 +1077,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
    const IntEbm * const aFeatureIndexes = ConvertDoublesToIndexes(cDimensions, featureIndexes);
 
    const IntEbm cardinalityMax = ConvertIndexApprox(maxCardinality);
-   const IntEbm samplesLeafMin = ConvertIndexApprox(minSamplesLeaf);
+   const double hessianMin = ConvertDouble(minHessian);
 
    double avgInteractionStrength;
    const ErrorEbm err = CalcInteractionStrength(
@@ -1085,7 +1086,8 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
       aFeatureIndexes, 
       CalcInteractionFlags_Default, 
       cardinalityMax, 
-      samplesLeafMin, 
+      0,
+      hessianMin,
       &avgInteractionStrength
    );
    if(Error_None != err) {

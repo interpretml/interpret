@@ -202,12 +202,12 @@ def test_max_bins_and_binning_options(regression_data):
     assert 6 == len(ranked_pairs)
 
 
-def test_min_samples_leaf(regression_data):
+def test_min_hessian(regression_data):
     X, y = regression_data
 
-    min_samples_leaf = 4
+    min_hessian = 1.1
 
-    ranked_pairs = measure_interactions(X, y, min_samples_leaf=min_samples_leaf)
+    ranked_pairs = measure_interactions(X, y, min_hessian=min_hessian)
     assert 6 == len(ranked_pairs)
 
 
@@ -303,7 +303,7 @@ def test_impure_interaction_is_zero():
         measure_interactions(
             X,
             y,
-            min_samples_leaf=1,
+            min_hessian=1e-99,
             sample_weight=sample_weight,
             objective="rmse",
         )
@@ -322,12 +322,12 @@ def test_added_impure_contribution_is_zero():
     sample_weight = [2.5, 20, 1.25, 5]
 
     ranked_strengths_pure_int = dict(
-        measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight)
+        measure_interactions(X, y, min_hessian=1e-99, sample_weight=sample_weight)
     )
 
     y = [-16.0 + 3.0 + 11.0, 2.0 + 3.0 + 7.0, 32.0 + 5.0 + 11.0, -8.0 + 5.0 + 7.0]
 
     ranked_strengths_impure = dict(
-        measure_interactions(X, y, min_samples_leaf=1, sample_weight=sample_weight)
+        measure_interactions(X, y, min_hessian=1e-99, sample_weight=sample_weight)
     )
     assert ranked_strengths_pure_int[(0, 1)] == ranked_strengths_impure[(0, 1)]

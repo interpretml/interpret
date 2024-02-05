@@ -51,7 +51,7 @@ ebm_classify <- function(
    early_stopping_rounds = 50, 
    early_stopping_tolerance = 1e-4, 
    max_rounds = 5000, 
-   min_samples_leaf = 2, 
+   min_hessian = 1e-3, 
    max_leaves = 3, 
    random_state = 42
 ) {
@@ -104,7 +104,7 @@ ebm_classify <- function(
          terms,
          inner_bags,
          learning_rate,
-         min_samples_leaf, 
+         min_hessian, 
          max_leaves, 
          early_stopping_rounds, 
          early_stopping_tolerance,
