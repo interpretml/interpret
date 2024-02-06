@@ -134,7 +134,15 @@ def boost(
                     # want to boost past the lowest because averaging the outer bags
                     # improves the model, so boosting past the minimum can yield
                     # a better overall model after averaging
-                    if cur_metric <= min_metric - min(0.0, early_stopping_tolerance):
+
+                    modified_tolerance = (
+                        min(abs(min_metric), abs(min_prev_metric))
+                        * early_stopping_tolerance
+                    )
+                    if np.isinf(modified_tolerance):
+                        modified_tolerance = 0.0
+
+                    if cur_metric <= min_metric - min(0.0, modified_tolerance):
                         # TODO : change the C API to allow us to "commit" the current
                         # model into the best model instead of having the C layer
                         # decide that base on what it returned us
@@ -149,7 +157,7 @@ def boost(
                         circular_index = (circular_index + 1) % len(circular)
                         min_prev_metric = min(toss, min_prev_metric)
 
-                        if min_prev_metric - early_stopping_tolerance <= circular.min():
+                        if min_prev_metric - modified_tolerance <= circular.min():
                             circular_index = -1
                             break
 
