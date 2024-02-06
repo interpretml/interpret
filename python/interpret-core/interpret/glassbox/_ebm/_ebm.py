@@ -2343,7 +2343,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=1e-4
+    early_stopping_tolerance : float, default=0.0
         Tolerance that dictates the smallest delta required to be considered an improvement.
     min_hessian : float, default=1e-3
         Minimum hessian required to consider a potential split valid.
@@ -2478,7 +2478,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 1e-4,
+        early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_hessian: Optional[float] = 1e-3,
         max_leaves: int = 3,
@@ -2627,9 +2627,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=1e-4
+    early_stopping_tolerance : float, default=0.0
         Tolerance that dictates the smallest delta required to be considered an improvement.
-    min_hessian : float, default=1e-3
+    min_hessian : float, default=1.01
         Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
@@ -2762,9 +2762,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 1e-4,
+        early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
-        min_hessian: Optional[float] = 1e-3,
+        min_hessian: Optional[float] = 1.01,
         max_leaves: int = 3,
         objective: str = "rmse",
         # Overall
@@ -3007,7 +3007,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,
-            min_hessian=0,
+            min_hessian=0.0,
             max_leaves=max_leaves,
             objective="log_loss",
             n_jobs=n_jobs,
@@ -3272,7 +3272,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             max_rounds=max_rounds,
             early_stopping_rounds=0,
             early_stopping_tolerance=0.0,
-            min_hessian=0,
+            min_hessian=0.0,
             max_leaves=max_leaves,
             objective="rmse",
             n_jobs=n_jobs,

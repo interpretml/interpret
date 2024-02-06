@@ -55,6 +55,7 @@ def test_merge_ebms():
         ebm1 = ExplainableBoostingClassifier(
             names,
             random_state=random_state,
+            max_bins=10,
             max_interaction_bins=5,
             interactions=[(8, 3, 0)],
         )
@@ -67,6 +68,7 @@ def test_merge_ebms():
         ebm2 = ExplainableBoostingClassifier(
             names,
             random_state=random_state,
+            max_bins=11,
             max_interaction_bins=4,
             interactions=[(8, 2), (7, 3), (1, 2)],
         )
@@ -79,6 +81,7 @@ def test_merge_ebms():
         ebm3 = ExplainableBoostingClassifier(
             names,
             random_state=random_state,
+            max_bins=12,
             max_interaction_bins=3,
             interactions=[(1, 2), (2, 8)],
         )
@@ -95,7 +98,11 @@ def test_merge_ebms():
             X, y, test_size=0.10, random_state=random_state
         )
         ebm4 = ExplainableBoostingClassifier(
-            names, random_state=random_state, max_interaction_bins=8, interactions=2
+            names,
+            random_state=random_state,
+            max_bins=13,
+            max_interaction_bins=8,
+            interactions=2,
         )
         ebm4.fit(X_train, y_train)
 
@@ -110,7 +117,11 @@ def test_merge_ebms():
             X, y, test_size=0.50, random_state=random_state
         )
         ebm5 = ExplainableBoostingClassifier(
-            names, random_state=random_state, max_interaction_bins=8, interactions=2
+            names,
+            random_state=random_state,
+            max_bins=14,
+            max_interaction_bins=8,
+            interactions=2,
         )
         ebm5.fit(X_train, y_train)
 
@@ -135,6 +146,7 @@ def test_merge_ebms_multiclass():
     ebm1 = ExplainableBoostingClassifier(
         random_state=random_state,
         interactions=0,
+        max_bins=10,
     )
     ebm1.fit(X_train, y_train)
 
@@ -145,6 +157,7 @@ def test_merge_ebms_multiclass():
     ebm2 = ExplainableBoostingClassifier(
         random_state=random_state,
         interactions=0,
+        max_bins=11,
     )
     ebm2.fit(X_train, y_train)
 
@@ -155,6 +168,7 @@ def test_merge_ebms_multiclass():
     ebm3 = ExplainableBoostingClassifier(
         random_state=random_state,
         interactions=0,
+        max_bins=12,
     )
     ebm3.fit(X_train, y_train)
 
@@ -168,7 +182,9 @@ def test_merge_ebms_multiclass():
     X_train, _, y_train, _ = train_test_split(
         X, y, test_size=0.10, random_state=random_state
     )
-    ebm4 = ExplainableBoostingClassifier(random_state=random_state, interactions=0)
+    ebm4 = ExplainableBoostingClassifier(
+        random_state=random_state, interactions=0, max_bins=13
+    )
     ebm4.fit(X_train, y_train)
 
     merged_ebm2 = merge_ebms([merged_ebm1, ebm4])
@@ -181,7 +197,9 @@ def test_merge_ebms_multiclass():
     X_train, _, y_train, _ = train_test_split(
         X, y, test_size=0.50, random_state=random_state
     )
-    ebm5 = ExplainableBoostingClassifier(random_state=random_state, interactions=0)
+    ebm5 = ExplainableBoostingClassifier(
+        random_state=random_state, interactions=0, max_bins=14
+    )
     ebm5.fit(X_train, y_train)
 
     merged_ebm3 = merge_ebms([ebm5, merged_ebm2])
