@@ -149,7 +149,7 @@ def boost(
                         circular_index = (circular_index + 1) % len(circular)
                         min_prev_metric = min(toss, min_prev_metric)
 
-                        if min_prev_metric - early_stopping_tolerance < circular.min():
+                        if min_prev_metric - early_stopping_tolerance <= circular.min():
                             circular_index = -1
                             break
 

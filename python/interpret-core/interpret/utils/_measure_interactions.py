@@ -261,6 +261,11 @@ def measure_interactions(
         n_output_interactions = 0
         iter_term_features = interactions
 
+    # TODO: benchmarking indicates that using CalcInteractionFlags_Pure is
+    # slightly worse than not using it when boosting pairs AFTER mains, but
+    # I'm leaving it here for now until we can benchmark the scenario where
+    # interaction detection is used without fitting any mains which someone
+    # could do using this interaface currently, but is not possible in regular EBMs.
     ranked_interactions = rank_interactions(
         dataset=dataset,
         bag=None,
