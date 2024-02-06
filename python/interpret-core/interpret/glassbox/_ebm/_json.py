@@ -181,6 +181,9 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "early_stopping_tolerance"):
             params["early_stopping_tolerance"] = ebm.early_stopping_tolerance
 
+        if hasattr(ebm, "min_samples_leaf"):
+            params["min_samples_leaf"] = ebm.min_samples_leaf
+
         if hasattr(ebm, "min_hessian"):
             params["min_hessian"] = ebm.min_hessian
 

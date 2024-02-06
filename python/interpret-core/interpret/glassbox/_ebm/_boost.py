@@ -20,6 +20,7 @@ def boost(
     n_inner_bags,
     term_boost_flags,
     learning_rate,
+    min_samples_leaf,
     min_hessian,
     max_leaves,
     greediness,
@@ -85,6 +86,7 @@ def boost(
                         term_idx=term_idx,
                         term_boost_flags=term_boost_flags_local,
                         learning_rate=learning_rate,
+                        min_samples_leaf=min_samples_leaf,
                         min_hessian=min_hessian,
                         max_leaves=max_leaves,
                     )

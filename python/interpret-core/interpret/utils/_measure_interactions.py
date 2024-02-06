@@ -43,6 +43,7 @@ def measure_interactions(
     feature_names=None,
     feature_types=None,
     max_interaction_bins=32,
+    min_samples_leaf=2,
     min_hessian=1e-3,
     objective=None,
 ):
@@ -60,6 +61,7 @@ def measure_interactions(
         feature_names: List of feature names
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
+        min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
         min_hessian: Minimum hessian required to consider a potential split valid
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
             "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
@@ -274,6 +276,7 @@ def measure_interactions(
         exclude=set(),
         calc_interaction_flags=Native.CalcInteractionFlags_Pure,
         max_cardinality=max_cardinality,
+        min_samples_leaf=min_samples_leaf,
         min_hessian=min_hessian,
         create_interaction_flags=(
             Native.CreateInteractionFlags_DifferentialPrivacy
