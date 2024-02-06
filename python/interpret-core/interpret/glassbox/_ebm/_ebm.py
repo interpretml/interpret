@@ -290,41 +290,41 @@ class EBMModel(BaseEstimator):
     def __init__(
         self,
         # Explainer
-        feature_names=None,
-        feature_types=None,
+        feature_names,
+        feature_types,
         # Preprocessor
-        max_bins=256,
-        max_interaction_bins=32,
+        max_bins,
+        max_interaction_bins,
         # Stages
-        interactions=10,
-        exclude=[],
+        interactions,
+        exclude,
         # Ensemble
-        validation_size=0.15,
-        outer_bags=8,
-        inner_bags=0,
+        validation_size,
+        outer_bags,
+        inner_bags,
         # Boosting
-        learning_rate=0.01,
-        greediness=0.0,
-        smoothing_rounds=0,
-        interaction_smoothing_rounds=0,
-        max_rounds=5000,
-        early_stopping_rounds=50,
-        early_stopping_tolerance=1e-4,
+        learning_rate,
+        greediness,
+        smoothing_rounds,
+        interaction_smoothing_rounds,
+        max_rounds,
+        early_stopping_rounds,
+        early_stopping_tolerance,
         # Trees
-        min_hessian=1e-3,
-        max_leaves=3,
-        objective=None,
+        min_hessian,
+        max_leaves,
+        objective,
         # Overall
-        n_jobs=-2,
-        random_state=42,
+        n_jobs,
+        random_state,
         # Differential Privacy
-        epsilon=1,
-        delta=1e-5,
-        composition="gdp",
-        bin_budget_frac=0.1,
-        privacy_bounds=None,
-        privacy_target_min=None,
-        privacy_target_max=None,
+        epsilon,
+        delta,
+        composition,
+        bin_budget_frac,
+        privacy_bounds,
+        privacy_target_min,
+        privacy_target_max,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -2306,11 +2306,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
             - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
-    max_bins : int, default=256
+    max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=32
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=10
+    interactions : int, float, or list of tuples of feature indices, default=0.95
 
         Interaction terms to be included in the model. Options are:
 
@@ -2326,17 +2326,17 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=8
+    outer_bags : int, default=14
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=0.0
+    greediness : float, default=0.5
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
-    smoothing_rounds : int, default=0
+    smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=0
+    interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=5000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2460,22 +2460,22 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             Sequence[Union[None, str, Sequence[str], Sequence[float]]]
         ] = None,
         # Preprocessor
-        max_bins: int = 256,
+        max_bins: int = 1024,
         max_interaction_bins: int = 32,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 10,
+        ] = 0.95,
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 8,
+        outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 0.0,
-        smoothing_rounds: Optional[int] = 0,
-        interaction_smoothing_rounds: Optional[int] = 0,
+        greediness: Optional[float] = 0.5,
+        smoothing_rounds: Optional[int] = 200,
+        interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
@@ -2509,6 +2509,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
+            epsilon=None,
+            delta=None,
+            composition=None,
+            bin_budget_frac=None,
+            privacy_bounds=None,
+            privacy_target_min=None,
+            privacy_target_max=None,
         )
 
     def predict_proba(self, X, init_score=None):
@@ -2583,11 +2590,11 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
             - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
-    max_bins : int, default=256
+    max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=32
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=10
+    interactions : int, float, or list of tuples of feature indices, default=0.95
 
         Interaction terms to be included in the model. Options are:
 
@@ -2603,17 +2610,17 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=8
+    outer_bags : int, default=14
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=0.0
+    greediness : float, default=0.5
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
-    smoothing_rounds : int, default=0
+    smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=0
+    interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=5000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2737,22 +2744,22 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             Sequence[Union[None, str, Sequence[str], Sequence[float]]]
         ] = None,
         # Preprocessor
-        max_bins: int = 256,
+        max_bins: int = 1024,
         max_interaction_bins: int = 32,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 10,
+        ] = 0.95,
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 8,
+        outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 0.0,
-        smoothing_rounds: Optional[int] = 0,
-        interaction_smoothing_rounds: Optional[int] = 0,
+        greediness: Optional[float] = 0.5,
+        smoothing_rounds: Optional[int] = 200,
+        interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 1e-4,
@@ -2786,6 +2793,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
+            epsilon=None,
+            delta=None,
+            composition=None,
+            bin_budget_frac=None,
+            privacy_bounds=None,
+            privacy_target_min=None,
+            privacy_target_max=None,
         )
 
     def predict(self, X, init_score=None):
@@ -3003,6 +3017,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             composition=composition,
             bin_budget_frac=bin_budget_frac,
             privacy_bounds=privacy_bounds,
+            privacy_target_min=None,
+            privacy_target_max=None,
         )
 
     def predict_proba(self, X, init_score=None):
