@@ -399,6 +399,12 @@ class EBMModel(BaseEstimator):
 
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
+        nominal_smoothing = True
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=2 so
+        # that we don't need to have the count when boosting or for interaction 
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup.
+        min_samples_bin=1
 
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
             msg = "outer_bags must be an integer"
@@ -695,7 +701,7 @@ class EBMModel(BaseEstimator):
             feature_types_given=self.feature_types,
             max_bins_leveled=bin_levels,
             binning=binning,
-            min_samples_bin=1,
+            min_samples_bin=min_samples_bin,
             min_unique_continuous=min_unique_continuous,
             seed=seed,
             epsilon=bin_eps,
@@ -899,6 +905,7 @@ class EBMModel(BaseEstimator):
                     self.max_leaves,
                     greediness,
                     smoothing_rounds,
+                    nominal_smoothing,
                     self.max_rounds,
                     early_stopping_rounds_local,
                     early_stopping_tolerance,
@@ -1142,6 +1149,7 @@ class EBMModel(BaseEstimator):
                         self.max_leaves,
                         greediness,
                         interaction_smoothing_rounds,
+                        nominal_smoothing,
                         self.max_rounds,
                         early_stopping_rounds_local,
                         early_stopping_tolerance,
