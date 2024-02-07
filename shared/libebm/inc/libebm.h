@@ -364,6 +364,8 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(const void*
       IntEbm* countFeaturesOut,
       IntEbm* countWeightsOut,
       IntEbm* countTargetsOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractNominals(
+      const void* dataSet, IntEbm countFeaturesVerify, BoolEbm* nominalsOut);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
       const void* dataSet, IntEbm countFeaturesVerify, IntEbm* binCountsOut);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(

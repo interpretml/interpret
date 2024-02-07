@@ -28,6 +28,7 @@
       FillRegressionTarget;
       CheckDataSet;
       ExtractDataSetHeader;
+      ExtractNominals;
       ExtractBinCounts;
       ExtractTargetClasses;
       SampleWithoutReplacement;

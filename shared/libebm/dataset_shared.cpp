@@ -2021,6 +2021,62 @@ extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetSh
    return pRet;
 }
 
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractNominals(
+      const void* dataSet, IntEbm countFeaturesVerify, BoolEbm* nominalsOut) {
+   if(nullptr == dataSet) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals nullptr == dataSet");
+      return Error_IllegalParamVal;
+   }
+
+   if(IsConvertError<size_t>(countFeaturesVerify)) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals IsConvertError<size_t>(countFeaturesVerify)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
+
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(dataSet);
+
+   if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      return Error_IllegalParamVal;
+   }
+
+   const UIntShared countFeatures = pHeaderDataSetShared->m_cFeatures;
+   EBM_ASSERT(!IsConvertError<size_t>(countFeatures)); // it's allocated so must fit into size_t
+   size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   if(cFeatures != cFeaturesVerify) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals cFeatures != cFeaturesVerify");
+      return Error_IllegalParamVal;
+   }
+   if(size_t{0} != cFeatures) {
+      if(nullptr == nominalsOut) {
+         LOG_0(Trace_Error, "ERROR ExtractNominals nullptr == nominalsOut");
+         return Error_IllegalParamVal;
+      }
+
+      const UIntShared* pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
+      BoolEbm* pbNominal = nominalsOut;
+      const BoolEbm* const pbNominalsEnd = nominalsOut + cFeatures;
+      do {
+         const UIntShared indexOffsetCur = *pOffset;
+         ++pOffset;
+
+         EBM_ASSERT(!IsConvertError<size_t>(indexOffsetCur)); // it is in allocated space so size_t must fit
+         const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
+
+         const FeatureDataSetShared* pFeatureDataSetShared =
+               reinterpret_cast<const FeatureDataSetShared*>(static_cast<const char*>(dataSet) + iOffsetCur);
+
+         EBM_ASSERT(IsFeature(pFeatureDataSetShared->m_id));
+
+         *pbNominal = IsNominalFeature(pFeatureDataSetShared->m_id) ? EBM_TRUE : EBM_FALSE;
+         ++pbNominal;
+      } while(pbNominalsEnd != pbNominal);
+   }
+   return Error_None;
+}
+
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
       const void* dataSet, IntEbm countFeaturesVerify, IntEbm* binCountsOut) {
    if(nullptr == dataSet) {

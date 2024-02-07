@@ -510,6 +510,21 @@ class Native:
 
         return n_samples.value, n_features.value, n_weights.value, n_targets.value
 
+    def extract_nominals(self, dataset):
+        _, n_features, _, _ = self.extract_dataset_header(dataset)
+
+        nominals = np.empty(n_features, np.int32, order="C")
+
+        return_code = self._unsafe.ExtractNominals(
+            Native._make_pointer(dataset, np.ubyte),
+            n_features,
+            Native._make_pointer(nominals, np.int32),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "ExtractNominals")
+
+        return nominals.astype(np.bool_)
+
     def extract_bin_counts(self, dataset, n_features):
         bin_counts = np.empty(n_features, dtype=np.int64, order="C")
 
@@ -1052,6 +1067,16 @@ class Native:
             ct.POINTER(ct.c_int64),
         ]
         self._unsafe.ExtractDataSetHeader.restype = ct.c_int32
+
+        self._unsafe.ExtractNominals.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t countFeaturesVerify
+            ct.c_int64,
+            # int32_t * nominalsOut
+            ct.c_void_p,
+        ]
+        self._unsafe.ExtractNominals.restype = ct.c_int32
 
         self._unsafe.ExtractBinCounts.argtypes = [
             # void * dataSet
