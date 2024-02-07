@@ -2354,7 +2354,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Tolerance that dictates the smallest delta required to be considered an improvement.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-3
+    min_hessian : float, default=1e-4
         Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
@@ -2490,7 +2490,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-3,
+        min_hessian: Optional[float] = 1e-4,
         max_leaves: int = 3,
         objective: str = "log_loss",
         # Overall
@@ -2642,7 +2642,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Tolerance that dictates the smallest delta required to be considered an improvement.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-3
+    min_hessian : float, default=1e-4
         Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
@@ -2778,7 +2778,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-3,
+        min_hessian: Optional[float] = 1e-4,
         max_leaves: int = 3,
         objective: str = "rmse",
         # Overall

@@ -137,7 +137,7 @@ def boost(
                         min(abs(min_metric), abs(min_prev_metric))
                         * early_stopping_tolerance
                     )
-                    if np.isinf(modified_tolerance):
+                    if np.isnan(modified_tolerance) or np.isinf(modified_tolerance):
                         modified_tolerance = 0.0
 
                     if cur_metric <= min_metric - min(0.0, modified_tolerance):
