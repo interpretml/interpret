@@ -596,6 +596,7 @@ We also build on top of many great packages. Please check them out!
 
 # External links
 
+- [Explainable AI: unlocking value in FEC operations](https://analytiqal.nl/2024/01/22/fec-value-from-explainable-ai/)
 - [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
 - [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
@@ -615,6 +616,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [DimVis: Interpreting Visual Clusters in Dimensionality Reduction With Explainable Boosting Machine](https://arxiv.org/pdf/2402.06885.pdf)
 - [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
 - [Cost of Explainability in AI: An Example with Credit Scoring Models](https://link.springer.com/chapter/10.1007/978-3-031-44064-9_26)
@@ -708,6 +710,7 @@ We also build on top of many great packages. Please check them out!
 - [On the Physical Nature of Lya Transmission Spikes in High Redshift Quasar Spectra](https://arxiv.org/pdf/2401.04762.pdf)
 - [GRAND-SLAMIN’ Interpretable Additive Modeling with Structural Constraints](https://openreview.net/pdf?id=F5DYsAc7Rt)
 - [Identification of groundwater potential zones in data-scarce mountainous region using explainable machine learning](https://www.sciencedirect.com/science/article/pii/S0022169423013598)
+
 # Books that cover EBMs
 
 - [Machine Learning for High-Risk Applications](https://www.oreilly.com/library/view/machine-learning-for/9781098102425/)

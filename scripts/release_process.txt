@@ -39,7 +39,7 @@
   - conda env remove --name interpret_bdist && conda create --yes --name interpret_bdist python=3.10 && conda activate interpret_bdist
   - pip install interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
   - cd <REPO_ROOT>
-  - cd examples/python
+  - cd docs/interpret/python/examples
   - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
@@ -57,7 +57,7 @@ set_visualize_provider(InlineProvider())
   - IN WINDOWS: get the Visual studio environment with: "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
   - pip install interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
   - cd <REPO_ROOT>
-  - cd examples/python/
+  - cd docs/interpret/python/examples
   - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
@@ -173,7 +173,7 @@ set_visualize_provider(InlineProvider())
   - conda env remove --name interpret_conda && conda create --yes --name interpret_conda python=3.10 && conda activate interpret_conda
   - conda install --yes -c conda-forge interpret-core psutil ipykernel ipython plotly lime SALib shap dill dash dash-core-components dash-html-components dash-table dash_cytoscape gevent requests
   - cd <REPO_ROOT>
-  - cd examples/python
+  - cd docs/interpret/python/examples
   - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
@@ -196,21 +196,21 @@ set_visualize_provider(InlineProvider())
       https://pypi.org/project/interpret/#files
 
 - test PyPI release on colab:
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Regression_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Differentially_Private_EBMs.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Merging_EBM_Models.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/EBM_Importances.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Classifiers.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Regressors.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Prototype_Selection_with_SPOTgreedy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Interpretable_Classification_Methods.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Interpretable_Regression_Methods.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Differentially_Private_EBMs.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Merging_EBM_Models.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/EBM_Importances.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Explaining_Blackbox_Classifiers.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Explaining_Blackbox_Regressors.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Prototype_Selection_with_SPOTgreedy.ipynb
 
 - test PyPI release locally:
   - open anaconda console window
   - conda env remove --name interpret_pypi && conda create --yes --name interpret_pypi python=3.10 && conda activate interpret_pypi
   - pip install interpret lime  # remove lime if we remove lime from example notebooks
   - cd <REPO_ROOT>
-  - cd examples/python
+  - cd docs/interpret/python/examples
   - pip install jupyter
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
