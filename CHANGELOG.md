@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.1] - 2024-02-08
+### Added
+- Added new init parameter: interaction_smoothing_rounds
+- Added new init parameter: min_hessian
+- synthetic dataset generator (make_synthetic) for testing GAMs and for documentation
+### Changed
+- default parameters have been modified to improve the accuracy of EBMs
+- changed boosting internals to use LogitBoost to improve accuracy
+- changed interaction detection to use hessians to improve interaction selection
+- enabled smoothing_rounds by default to improve the smoothness of EBMs
+- added the ability to specify interactions via feature names or negative indexing
+- improved the speed of Morris sensitivity and partial dependence
+- python 3.12 support for core EBMs. Some of our optional dependencies do not yet support python 3.12 though
+- made early stopping more consistent and changed the early_stopping_tolerance to be a percentage
+### Fixed
+- avoid displaying a scroll bar by default in jupyter notebook cells
+- removed the dependency on deprecated distutils
+### Breaking Changes
+- changed the internal representation for classifiers that have just 1 class
+
 ## [v0.5.0] - 2023-12-13
 ### Added
 - added support for AVX-512 in PyPI installations to improve fitting speed
