@@ -24,6 +24,7 @@ def boost(
     min_hessian,
     max_leaves,
     greediness,
+    refresh_period,
     smoothing_rounds,
     nominal_smoothing,
     max_rounds,
@@ -70,30 +71,60 @@ def boost(
                 if greedy_portion < 1.0:
                     # we're doing a cyclic round
                     heap = []
+                    # add 1 to avoid counting the first step after a cyclic round
+                    refresh_remain = refresh_period + 1
 
                 for term_idx in range(len(term_features)):
-                    if 1.0 <= greedy_portion:
-                        # we're being greedy, so select something from our
-                        # queue and overwrite the term_idx we'll work on
-                        _, term_idx = heapq.heappop(heap)
-
                     term_boost_flags_local = term_boost_flags
                     contains_nominals = any(nominals[i] for i in term_features[term_idx])
                     if 0 < smoothing_rounds and (nominal_smoothing or not contains_nominals):
                         # modify some of our parameters temporarily
                         term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
 
-                    avg_gain = booster.generate_term_update(
-                        rng,
-                        term_idx=term_idx,
-                        term_boost_flags=term_boost_flags_local,
-                        learning_rate=learning_rate,
-                        min_samples_leaf=min_samples_leaf,
-                        min_hessian=min_hessian,
-                        max_leaves=max_leaves,
-                    )
+                    gainkey = None
+                    if 1.0 <= greedy_portion:
+                        # we're being greedy
+                        refresh_remain -= 1
+                        if refresh_remain == 0:
+                            # we've reached the point where we need to refresh
+                            refresh_remain = refresh_period
+                            heap = []
+                            for refresh_idx in range(len(term_features)):
+                                avg_gain = booster.generate_term_update(
+                                    rng,
+                                    term_idx=refresh_idx,
+                                    term_boost_flags=term_boost_flags_local,
+                                    learning_rate=learning_rate,
+                                    min_samples_leaf=min_samples_leaf,
+                                    min_hessian=min_hessian,
+                                    max_leaves=max_leaves,
+                                )
+                                newgainkey = (-avg_gain, native.generate_seed(rng), refresh_idx)
+                                if gainkey is None or newgainkey < gainkey:
+                                    gainkey = newgainkey
+                                    cached_update = booster.get_term_update()
+                                heapq.heappush(heap, newgainkey)
 
-                    heapq.heappush(heap, (-avg_gain, term_idx))
+                        # select something from our
+                        # queue and overwrite the term_idx we'll work on
+                        _, _, term_idx = heapq.heappop(heap)
+
+                    if gainkey is None:
+                        avg_gain = booster.generate_term_update(
+                            rng,
+                            term_idx=term_idx,
+                            term_boost_flags=term_boost_flags_local,
+                            learning_rate=learning_rate,
+                            min_samples_leaf=min_samples_leaf,
+                            min_hessian=min_hessian,
+                            max_leaves=max_leaves,
+                        )
+                        gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
+                    else:
+                        assert term_idx == gainkey[2] # heap and cached must agree
+                        booster.set_term_update(term_idx, cached_update)
+
+                    heapq.heappush(heap, gainkey)
 
                     if noise_scale:  # Differentially private updates
                         splits = booster.get_term_update_splits()[0]

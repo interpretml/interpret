@@ -305,6 +305,7 @@ class EBMModel(BaseEstimator):
         # Boosting
         learning_rate,
         greediness,
+        refresh_rate,
         smoothing_rounds,
         interaction_smoothing_rounds,
         max_rounds,
@@ -346,6 +347,7 @@ class EBMModel(BaseEstimator):
         self.learning_rate = learning_rate
         if not is_private(self):
             self.greediness = greediness
+            self.refresh_rate = refresh_rate
             self.smoothing_rounds = smoothing_rounds
             self.interaction_smoothing_rounds = interaction_smoothing_rounds
         self.max_rounds = max_rounds
@@ -400,10 +402,12 @@ class EBMModel(BaseEstimator):
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=2 so
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
         # that we don't need to have the count when boosting or for interaction 
         # detection. Benchmarking indicates switching these would decrease the accuracy
-        # slightly, but it might be worth the speedup.
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as 
+        # a boosting restriction.
         min_samples_bin=1
 
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
@@ -463,6 +467,16 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             elif 1.0 < self.greediness:
                 msg = "greediness must be a percentage between 0.0 and 1.0 inclusive"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            refresh_rate = float(self.refresh_rate)
+            if np.isnan(refresh_rate):
+                msg = "refresh_rate cannot be NaN"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif refresh_rate < 0.0:
+                msg = "refresh_rate cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -838,6 +852,7 @@ class EBMModel(BaseEstimator):
             )
             inner_bags = 0
             greediness = 0.0
+            refresh_rate = 0.0
             smoothing_rounds = 0
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
@@ -851,6 +866,7 @@ class EBMModel(BaseEstimator):
             term_boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
             greediness = self.greediness
+            refresh_rate = self.refresh_rate
             smoothing_rounds = self.smoothing_rounds
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
@@ -871,6 +887,15 @@ class EBMModel(BaseEstimator):
             feature_names_in,
             feature_types_in,
         )
+
+        if refresh_rate == 0.0:
+            refresh_period = Native.FLOAT64_TO_INT64_MAX
+        else:
+            refresh_period = n_features_in / refresh_rate
+            if refresh_period < Native.FLOAT64_TO_INT64_MAX:
+                refresh_period = int(ceil(refresh_period))
+            else:
+                refresh_period = Native.FLOAT64_TO_INT64_MAX
 
         parallel_args = []
         for idx in range(self.outer_bags):
@@ -904,6 +929,7 @@ class EBMModel(BaseEstimator):
                     min_hessian,
                     self.max_leaves,
                     greediness,
+                    refresh_period,
                     smoothing_rounds,
                     nominal_smoothing,
                     self.max_rounds,
@@ -1148,6 +1174,7 @@ class EBMModel(BaseEstimator):
                         min_hessian,
                         self.max_leaves,
                         greediness,
+                        refresh_period,
                         interaction_smoothing_rounds,
                         nominal_smoothing,
                         self.max_rounds,
@@ -2351,6 +2378,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Learning rate for boosting.
     greediness : float, default=0.5
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
+    refresh_rate : float, default=0.0
+        How frequently the gain is recalculated on potential term updates during greedy
+        rounds. eg: 2.0 refreshes the gain calculations twice per greedy round. 0.5 
+        will recalculate the gains every 2 full greedy rounds, and 0.0 will turn 
+        this functionality off.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2493,6 +2525,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greediness: Optional[float] = 0.5,
+        refresh_rate=0.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
@@ -2519,6 +2552,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             inner_bags=inner_bags,
             learning_rate=learning_rate,
             greediness=greediness,
+            refresh_rate=refresh_rate,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
@@ -2639,6 +2673,11 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Learning rate for boosting.
     greediness : float, default=0.5
         Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
+    refresh_rate : float, default=0.0
+        How frequently the gain is recalculated on potential term updates during greedy
+        rounds. eg: 2.0 refreshes the gain calculations twice per greedy round. 0.5 
+        will recalculate the gains every 2 full greedy rounds, and 0.0 will turn 
+        this functionality off.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2781,6 +2820,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greediness: Optional[float] = 0.5,
+        refresh_rate=0.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 5000,
@@ -2807,6 +2847,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=inner_bags,
             learning_rate=learning_rate,
             greediness=greediness,
+            refresh_rate=refresh_rate,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
@@ -3027,6 +3068,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
+            refresh_rate=0.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
@@ -3293,6 +3335,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
+            refresh_rate=0.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,

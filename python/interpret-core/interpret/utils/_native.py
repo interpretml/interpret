@@ -16,6 +16,9 @@ _log = logging.getLogger(__name__)
 
 
 class Native:
+    # see notes in libebm.h on the maximum representable int64 in float64 format
+    FLOAT64_TO_INT64_MAX = 9223372036854774784
+
     # LinkFlags
     LinkFlags_Default = 0x00000000
     LinkFlags_DifferentialPrivacy = 0x00000001
