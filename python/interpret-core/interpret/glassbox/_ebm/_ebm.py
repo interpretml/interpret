@@ -2126,6 +2126,8 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+        return self
+
     def scale(self, term, factor):
         """Scale the individual term contribution by a constant factor. For
         example, you can nullify the contribution of specific terms by setting
