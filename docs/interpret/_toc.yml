@@ -70,6 +70,7 @@ chapters:
   - file: privacy
     sections:
     - file: dpebm
+- file: hyperparameters
 - file: ebm-internals
   sections:
   - file: ebm-internals-regression
