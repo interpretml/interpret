@@ -9,10 +9,22 @@ import os
 from copy import deepcopy
 from itertools import combinations, count
 from math import ceil, isnan
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    ClassVar,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 from warnings import warn
 
 import numpy as np
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt
+from pydantic.dataclasses import dataclass
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -22,6 +34,7 @@ from sklearn.base import (
 )  # type: ignore
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted  # type: ignore
+from typing_extensions import Annotated
 
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -55,7 +68,6 @@ from ...utils._unify_data import unify_data
 from ._bin import (
     ebm_eval_terms,
     ebm_predict_scores,
-    eval_terms,
     make_bin_weights,
 )
 from ._boost import boost
@@ -273,95 +285,48 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
+@dataclass
 class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
-    def __init__(
-        self,
-        # Explainer
-        feature_names,
-        feature_types,
-        # Preprocessor
-        max_bins,
-        max_interaction_bins,
-        # Stages
-        interactions,
-        exclude,
-        # Ensemble
-        validation_size,
-        outer_bags,
-        inner_bags,
-        # Boosting
-        learning_rate,
-        greediness,
-        cyclic_progress,
-        smoothing_rounds,
-        interaction_smoothing_rounds,
-        max_rounds,
-        early_stopping_rounds,
-        early_stopping_tolerance,
-        # Trees
-        min_samples_leaf,
-        min_hessian,
-        max_leaves,
-        objective,
-        # Overall
-        n_jobs,
-        random_state,
-        # Differential Privacy
-        epsilon,
-        delta,
-        composition,
-        bin_budget_frac,
-        privacy_bounds,
-        privacy_target_min,
-        privacy_target_max,
-    ):
-        self.feature_names = feature_names
-        self.feature_types = feature_types
-
-        self.max_bins = max_bins
-        if not is_private(self):
-            self.max_interaction_bins = max_interaction_bins
-
-        if not is_private(self):
-            self.interactions = interactions
-        self.exclude = exclude
-
-        self.validation_size = validation_size
-        self.outer_bags = outer_bags
-        if not is_private(self):
-            self.inner_bags = inner_bags
-
-        self.learning_rate = learning_rate
-        if not is_private(self):
-            self.greediness = greediness
-            self.cyclic_progress = cyclic_progress
-            self.smoothing_rounds = smoothing_rounds
-            self.interaction_smoothing_rounds = interaction_smoothing_rounds
-        self.max_rounds = max_rounds
-        if not is_private(self):
-            self.early_stopping_rounds = early_stopping_rounds
-            self.early_stopping_tolerance = early_stopping_tolerance
-
-            self.min_samples_leaf = min_samples_leaf
-            self.min_hessian = min_hessian
-
-        self.max_leaves = max_leaves
-        self.objective = objective
-
-        self.n_jobs = n_jobs
-        self.random_state = random_state
-
-        if is_private(self):
-            # Arguments for differential privacy
-            self.epsilon = epsilon
-            self.delta = delta
-            self.composition = composition
-            self.bin_budget_frac = bin_budget_frac
-            self.privacy_bounds = privacy_bounds
-            self.privacy_target_min = privacy_target_min
-            self.privacy_target_max = privacy_target_max
+    # Explainer
+    feature_names: Sequence[str] | None
+    feature_types: Sequence[str | None] | None
+    # Preprocessor
+    max_bins: NonNegativeInt
+    max_interaction_bins: NonNegativeInt
+    # Stages
+    interactions: (
+        Annotated[int, Field(strict=True, ge=0)] |
+        Annotated[float, Field(gt=0.0, lt=1.0)] |
+        list[tuple | Sequence[int | str]] |
+        None
+    )
+    exclude: Literal["mains"] | list[Sequence[int | str] | str | int] | None
+    # Ensemble
+    validation_size: (
+        Annotated[int, Field(strict=True, ge=0)] |
+        Annotated[float, Field(ge=0.0, lt=1.0)]
+    )
+    outer_bags: Annotated[int, Field(ge=1)]
+    inner_bags: NonNegativeInt
+    # Boosting
+    learning_rate: PositiveFloat
+    greediness: Annotated[float, Field(ge=0.0, le=1.0)]
+    refresh_rate: NonNegativeFloat
+    smoothing_rounds: NonNegativeInt
+    interaction_smoothing_rounds: NonNegativeInt
+    max_rounds: NonNegativeInt
+    early_stopping_rounds: NonNegativeInt
+    early_stopping_tolerance: float
+    # Trees
+    min_samples_leaf: NonNegativeInt
+    min_hessian: NonNegativeFloat
+    max_leaves: PositiveInt
+    objective: str | None
+    # Overall
+    n_jobs: int
+    random_state: int | None
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
@@ -380,161 +345,28 @@ class EBMModel(BaseEstimator):
         Returns:
             Itself.
         """
+        self.__pydantic_validator__.validate_python(self.get_params())
 
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
         # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
-        # that we don't need to have the count when boosting or for interaction 
+        # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
         # slightly, but it might be worth the speedup. Unfortunately, with outer bags
-        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as 
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
         # a boosting restriction.
-        min_samples_bin=1
+        min_samples_bin = 1
 
-        if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
-            msg = "outer_bags must be an integer"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.outer_bags < 1:
-            msg = "outer_bags must be 1 or greater. Did you mean to set: outer_bags=1, validation_size=0?"
+        if bags is not None and len(bags) != self.outer_bags:
+            msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
             _log.error(msg)
             raise ValueError(msg)
 
-        if bags is not None:
-            if len(bags) != self.outer_bags:
-                msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.validation_size, int) and not isinstance(
-            self.validation_size, float
-        ):
-            msg = "validation_size must be an integer or float"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.validation_size <= 0:
-            if self.validation_size < 0:
-                msg = "validation_size cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif 1 < self.outer_bags:
-                warn(
-                    "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
-                )
-        elif 1 <= self.validation_size:
-            # validation_size equal to 1 or more is an exact number specification, so it must be an integer
-            if (
-                not isinstance(self.validation_size, int)
-                and not self.validation_size.is_integer()
-            ):
-                msg = "If 1 <= validation_size, it is an exact count of samples, and must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.max_rounds, int) and not self.max_rounds.is_integer():
-            msg = "max_rounds must be an integer"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.max_rounds < 0:
-            # max_rounds == 0 means no boosting. This can be useful to just perform discretization
-            msg = "max_rounds cannot be negative"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if not is_private(self):
-            if isnan(self.greediness):
-                msg = "greediness cannot be NaN"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.greediness < 0.0:
-                msg = "greediness cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if isnan(self.cyclic_progress):
-                msg = "cyclic_progress cannot be NaN"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.cyclic_progress < 0.0:
-                msg = "cyclic_progress cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif 1.0 < self.cyclic_progress:
-                msg = "cyclic_progress cannot be above 1.0"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.smoothing_rounds, int)
-                and not self.smoothing_rounds.is_integer()
-            ):
-                msg = "smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.smoothing_rounds < 0:
-                msg = "smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.interaction_smoothing_rounds, int)
-                and not self.interaction_smoothing_rounds.is_integer()
-            ):
-                msg = "interaction_smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.interaction_smoothing_rounds < 0:
-                msg = "interaction_smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.inner_bags, int)
-                and not self.inner_bags.is_integer()
-            ):
-                msg = "inner_bags must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.inner_bags < 0:
-                # inner_bags == 0 turns off inner bagging
-                msg = "inner_bags cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.early_stopping_rounds, int)
-                and not self.early_stopping_rounds.is_integer()
-            ):
-                msg = "early_stopping_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.early_stopping_rounds < 0:
-                # early_stopping_rounds == 0 means turn off early_stopping
-                # early_stopping_rounds == 1 means check after the first round, etc
-                msg = "early_stopping_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if not isinstance(self.early_stopping_tolerance, int) and not isinstance(
-                self.early_stopping_tolerance, float
-            ):
-                msg = "early_stopping_tolerance must be a float"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.learning_rate, int) and not isinstance(
-            self.learning_rate, float
-        ):
-            msg = "learning_rate must be a float"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.learning_rate <= 0:
-            msg = "learning_rate must be a positive number"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        # TODO: check the other inputs for common mistakes here
+        if self.validation_size <= 0 and 1 < self.outer_bags:
+            warn(
+                "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
+            )
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
@@ -953,22 +785,11 @@ class EBMModel(BaseEstimator):
                 break
 
             if isinstance(interactions, int) or isinstance(interactions, float):
-                if interactions <= 0:
-                    if interactions == 0:
-                        break
-                    msg = "interactions cannot be negative"
-                    _log.error(msg)
-                    raise ValueError(msg)
+                if interactions == 0:
+                    break
 
                 if interactions < 1.0:
                     interactions = int(ceil(n_features_in * interactions))
-                elif isinstance(interactions, float):
-                    if not interactions.is_integer():
-                        msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    interactions = int(interactions)
-
                 if 2 < n_classes:
                     warn(
                         "Detected multiclass problem. Forcing interactions to 0. "
@@ -1090,12 +911,6 @@ class EBMModel(BaseEstimator):
                 for features in interactions:
                     feature_idxs = []
                     for feature in features:
-                        if isinstance(feature, float):
-                            if not feature.is_integer():
-                                msg = f"interaction feature index {feature} is not an integer."
-                                _log.error(msg)
-                                raise ValueError(msg)
-                            feature = int(feature)
 
                         if isinstance(feature, int):
                             if feature < 0:
@@ -1116,10 +931,6 @@ class EBMModel(BaseEstimator):
                                 msg = f'interaction feature "{feature}" not in the list of feature names.'
                                 _log.error(msg)
                                 raise ValueError(msg)
-                        else:
-                            msg = f'interaction feature "{feature}" has unsupported type {type(feature)}.'
-                            _log.error(msg)
-                            raise ValueError(msg)
                         feature_idxs.append(feature_idx)
                     feature_idxs = tuple(feature_idxs)
 
@@ -2492,8 +2303,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM classifier."""
 
@@ -2793,8 +2604,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM regressor."""
 
@@ -3020,8 +2831,8 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     intercept_: np.ndarray  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM classifier."""
 
@@ -3285,8 +3096,8 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM regressor."""
 
