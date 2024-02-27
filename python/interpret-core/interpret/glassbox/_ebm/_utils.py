@@ -165,8 +165,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
             temp_scores = scores.flatten().copy()
             temp_weights = weights.flatten().copy()
 
-            ignored = np.isinf(temp_scores)
-            ignored |= np.isnan(temp_scores)
+            ignored = ~np.isfinite(temp_scores)
             temp_scores[ignored] = 0.0
             temp_weights[ignored] = 0.0
 
@@ -179,8 +178,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
                 temp_scores = scores[..., i].flatten().copy()
                 temp_weights = weights.flatten().copy()
 
-                ignored = np.isinf(temp_scores)
-                ignored |= np.isnan(temp_scores)
+                ignored = ~np.isfinite(temp_scores)
                 temp_scores[ignored] = 0.0
                 temp_weights[ignored] = 0.0
 
@@ -312,11 +310,8 @@ def deduplicate_bins(bins):
 def convert_to_intervals(cuts):  # pragma: no cover
     cuts = np.array(cuts, dtype=np.float64)
 
-    if np.isnan(cuts).any():
-        raise Exception("cuts cannot contain nan")
-
-    if np.isinf(cuts).any():
-        raise Exception("cuts cannot contain infinity")
+    if not np.isfinite(cuts).all():
+        raise Exception("cuts must contain only finite numbers")
 
     intervals = [(-np.inf, cuts[0]), *zip(cuts[:-1], cuts[1:]), (cuts[-1], np.inf)]
 
