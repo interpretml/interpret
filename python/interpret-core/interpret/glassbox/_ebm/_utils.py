@@ -274,7 +274,7 @@ def order_terms(term_features, *args):
         else:
             return tuple([] for _ in range(len(args) + 1))
     keys = (
-        [len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features
+        [len(feature_idxs), *sorted(feature_idxs)] for feature_idxs in term_features
     )
     sorted_items = sorted(zip(keys, term_features, *args))
     ret = tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
@@ -303,8 +303,7 @@ def deduplicate_bins(bins):
     # use the id of the bins to identify feature data that was previously binned
 
     uniques = dict()
-    for feature_idx in range(len(bins)):
-        bin_levels = bins[feature_idx]
+    for bin_levels in bins:
         highest_key = None
         highest_idx = -1
         for level_idx, feature_bins in enumerate(bin_levels):
@@ -312,16 +311,15 @@ def deduplicate_bins(bins):
                 key = frozenset(feature_bins.items())
             else:
                 key = tuple(feature_bins)
-            existing = uniques.get(key, None)
-            if existing is None:
-                uniques[key] = feature_bins
+            if key in uniques:
+                bin_levels[level_idx] = uniques[key]
             else:
-                bin_levels[level_idx] = existing
+                uniques[key] = feature_bins
 
             if highest_key != key:
                 highest_key = key
                 highest_idx = level_idx
-        del bin_levels[highest_idx + 1 :]
+        del bin_levels[highest_idx + 1:]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover
@@ -333,11 +331,9 @@ def convert_to_intervals(cuts):  # pragma: no cover
     if np.isinf(cuts).any():
         raise Exception("cuts cannot contain infinity")
 
-    smaller = np.insert(cuts, 0, -np.inf)
-    larger = np.append(cuts, np.inf)
-    intervals = list(zip(smaller, larger))
+    intervals = [(-np.inf, cuts[0]), *zip(cuts[:-1], cuts[1:]), (cuts[-1], np.inf)]
 
-    if any(x[1] <= x[0] for x in intervals):
+    if any(higher <= lower for (lower, higher) in intervals):
         raise Exception("cuts must contain increasing values")
 
     return intervals
@@ -356,8 +352,8 @@ def convert_to_cuts(intervals):  # pragma: no cover
     if intervals[-1][-1] != np.inf:
         raise Exception("intervals must end with inf")
 
-    cuts = [x[0] for x in intervals[1:]]
-    cuts_verify = [x[1] for x in intervals[:-1]]
+    cuts = [lower for (lower, _) in intervals[1:]]
+    cuts_verify = [higher for (_, higher) in intervals[:-1]]
 
     if np.isnan(cuts).any():
         raise Exception("intervals cannot contain NaN")
