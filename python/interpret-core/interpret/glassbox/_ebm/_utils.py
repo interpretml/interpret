@@ -1,17 +1,16 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+import warnings
 from collections import defaultdict
-from math import ceil, isinf, exp, log, isfinite
-from ...utils._native import Native
-
-from ._tensor import restore_missing_value_zeros
+from itertools import islice
+from math import ceil, exp, isfinite, isinf, log
 
 import numpy as np
-import warnings
-from itertools import islice
 
-import logging
+from ...utils._native import Native
+from ._tensor import restore_missing_value_zeros
 
 _log = logging.getLogger(__name__)
 
