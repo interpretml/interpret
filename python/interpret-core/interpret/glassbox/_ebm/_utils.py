@@ -1,7 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, isnan, isinf, exp, log
+from collections import defaultdict
+from math import ceil, isinf, exp, log, isfinite
 from ...utils._native import Native
 
 from ._tensor import restore_missing_value_zeros
@@ -34,11 +35,11 @@ def convert_categorical_to_continuous(categories):
     # We can't convert a continuous feature that has cuts back into categoricals
     # since the categorical value could have been anything between the cuts that we know about.
 
-    clusters = dict()
+    clusters = defaultdict(list)
     non_float_idxs = set()
 
-    old_min = np.nan
-    old_max = np.nan
+    old_min = +np.inf
+    old_max = -np.inf
     for category, idx in categories.items():
         try:
             # this strips leading and trailing spaces
@@ -47,19 +48,13 @@ def convert_categorical_to_continuous(categories):
             non_float_idxs.add(idx)
             continue
 
-        if isnan(val) or isinf(val):
+        if not isfinite(val):
             continue
 
-        if isnan(old_min) or val < old_min:
-            old_min = val
-        if isnan(old_max) or old_max < val:
-            old_max = val
+        old_min = min(old_min, val)
+        old_max = max(old_max, val)
 
-        cluster_list = clusters.get(idx)
-        if cluster_list is None:
-            clusters[idx] = [val]
-        else:
-            cluster_list.append(val)
+        clusters[idx].append(val)
 
     # there's a super fringe case where two category strings map to the same bin, but
     # one of them is a float and the other is a non-float.  Normally, we'd include the
@@ -76,20 +71,13 @@ def convert_categorical_to_continuous(categories):
     if len(clusters) <= 1:
         return np.empty(0, np.float64)
 
-    cluster_bounds = []
-    for cluster_list in clusters.values():
-        cluster_list.sort()
-        cluster_bounds.append((cluster_list[0], cluster_list[-1]))
+    cluster_bounds = sorted((min(cluster_list), max(cluster_list))
+                            for cluster_list in clusters.values())
 
     # TODO: move everything below here into C++ to ensure cross language compatibility
-
-    cluster_bounds.sort()
-
     cuts = []
-    cluster_iter = iter(cluster_bounds)
-    low = next(cluster_iter)[-1]
-    for cluster in cluster_iter:
-        high = cluster[0]
+    _, low = cluster_bounds[0]
+    for (high, next_low) in cluster_bounds[1:]:
         if low < high:
             # if they are equal or if low is higher then we can't separate one cluster
             # from another, so we keep joining them until we can get clean separations
@@ -117,13 +105,13 @@ def convert_categorical_to_continuous(categories):
                 mid = high
 
             cuts.append(mid)
-        low = max(low, cluster[-1])
+        low = max(low, next_low)
     cuts = np.array(cuts, np.float64)
 
     mapping = [[] for _ in range(len(cuts) + 3)]
     for old_idx, cluster_list in clusters.items():
         # all the items in a cluster should be binned into the same bins
-        new_idx = np.searchsorted(cuts, cluster_list[:1], side="right")[0] + 1
+        new_idx = np.searchsorted(cuts, [min(cluster_list)], side="right")[0] + 1
         mapping[new_idx].append(old_idx)
 
     mapping[0].append(0)
