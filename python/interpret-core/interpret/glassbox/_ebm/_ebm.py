@@ -2387,7 +2387,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
-    max_rounds : int, default=5000
+    max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
@@ -2528,7 +2528,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         refresh_rate=0.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 5000,
+        max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
@@ -2682,7 +2682,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
-    max_rounds : int, default=5000
+    max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
@@ -2823,7 +2823,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         refresh_rate=0.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 5000,
+        max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
