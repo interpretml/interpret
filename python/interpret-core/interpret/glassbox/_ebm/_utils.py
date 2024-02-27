@@ -376,40 +376,39 @@ def make_bag(y, test_size, rng, is_stratified):
     # if we re-generate the train/test splits that they are generated exactly
     # the same as before
 
+    if test_size < 0:  # pragma: no cover
+        raise Exception("test_size must be a positive numeric value.")
     if test_size == 0:
         return None
-    elif test_size > 0:
-        n_samples = len(y)
-        n_test_samples = 0
+    n_samples = len(y)
+    n_test_samples = 0
 
-        if test_size >= 1:
-            if test_size % 1:
-                raise Exception(
-                    "If test_size >= 1, test_size should be a whole number."
-                )
-            n_test_samples = test_size
-        else:
-            n_test_samples = ceil(n_samples * test_size)
-
-        n_train_samples = n_samples - n_test_samples
-        native = Native.get_native_singleton()
-
-        # Adapt test size if too small relative to number of classes
-        if is_stratified:
-            n_classes = len(set(y))
-            if n_test_samples < n_classes:  # pragma: no cover
-                warnings.warn(
-                    "Too few samples per class, adapting test size to guarantee 1 sample per class."
-                )
-                n_test_samples = n_classes
-                n_train_samples = n_samples - n_test_samples
-
-            return native.sample_without_replacement_stratified(
-                rng, n_classes, n_train_samples, n_test_samples, y
+    if test_size >= 1:
+        if test_size % 1:
+            raise Exception(
+                "If test_size >= 1, test_size should be a whole number."
             )
-        else:
-            return native.sample_without_replacement(
-                rng, n_train_samples, n_test_samples
+        n_test_samples = test_size
+    else:
+        n_test_samples = ceil(n_samples * test_size)
+
+    n_train_samples = n_samples - n_test_samples
+    native = Native.get_native_singleton()
+
+    # Adapt test size if too small relative to number of classes
+    if is_stratified:
+        n_classes = len(set(y))
+        if n_test_samples < n_classes:  # pragma: no cover
+            warnings.warn(
+                "Too few samples per class, adapting test size to guarantee 1 sample per class."
             )
-    else:  # pragma: no cover
-        raise Exception("test_size must be a positive numeric value.")
+            n_test_samples = n_classes
+            n_train_samples = n_samples - n_test_samples
+
+        return native.sample_without_replacement_stratified(
+            rng, n_classes, n_train_samples, n_test_samples, y
+        )
+    else:
+        return native.sample_without_replacement(
+            rng, n_train_samples, n_test_samples
+        )
