@@ -24,6 +24,29 @@ def _weighted_std(a, axis, weights):
     return np.sqrt(variance)
 
 
+def _midpoint(low: float, high: float) -> float:
+    """Return midpoint between `low` and `high` with high numerical accuracy."""
+    half_diff = (high - low) / 2
+    if isinf(half_diff):
+        # first try to subtract then divide since that's more accurate but some float64
+        # values will fail eg (max_float - min_float == +inf) so we need to try
+        # a less accurate way of dividing first if we detect this.  Dividing
+        # first will always succeed, even with the most extreme possible values of
+        # max_float / 2 - min_float / 2
+        half_diff = high / 2 - low / 2
+
+    # floats have more precision the smaller they are,
+    # so use the smaller number as the anchor
+    mid = low + half_diff if abs(low) <= abs(high) else high - half_diff
+
+    if mid <= low:
+        # this can happen with very small half_diffs that underflow the add/subtract operation
+        # if this happens the numbers must be very close together on the order of a float tick.
+        # We use lower bound inclusive for our cut discretization, so make the mid == high
+        mid = high
+    return mid
+
+
 def convert_categorical_to_continuous(categories):
     # we do automagic detection of feature types by default, and sometimes a feature which
     # was really continuous might have most of it's data as one or two values.  An example would
@@ -81,30 +104,7 @@ def convert_categorical_to_continuous(categories):
         if low < high:
             # if they are equal or if low is higher then we can't separate one cluster
             # from another, so we keep joining them until we can get clean separations
-
-            half_diff = (high - low) / 2
-            if isinf(half_diff):
-                # first try to subtract then divide since that's more accurate but some float64
-                # values will fail eg (max_float - min_float == +inf) so we need to try
-                # a less accurate way of dividing first if we detect this.  Dividing
-                # first will always succeed, even with the most extreme possible values of
-                # max_float / 2 - min_float / 2
-                half_diff = high / 2 - low / 2
-
-            # floats have more precision the smaller they are,
-            # so use the smaller number as the anchor
-            if abs(low) <= abs(high):
-                mid = low + half_diff
-            else:
-                mid = high - half_diff
-
-            if mid <= low:
-                # this can happen with very small half_diffs that underflow the add/subtract operation
-                # if this happens the numbers must be very close together on the order of a float tick.
-                # We use lower bound inclusive for our cut discretization, so make the mid == high
-                mid = high
-
-            cuts.append(mid)
+            cuts.append(_midpoint(low, high))
         low = max(low, next_low)
     cuts = np.array(cuts, np.float64)
 
