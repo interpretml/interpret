@@ -16,6 +16,8 @@ _log = logging.getLogger(__name__)
 
 
 def _weighted_std(a, axis, weights):
+    if weights is None:
+        return np.std(a, axis=axis)
     average = np.average(a, axis, weights)
     variance = np.average((a - average) ** 2, axis, weights)
     return np.sqrt(variance)
@@ -230,27 +232,17 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
     if (bag_weights == bag_weights[0]).all():
         # if all the bags have the same total weight we can avoid some numeracy issues
         # by using a non-weighted standard deviation
-        for scores in bagged_scores:
-            averaged = np.average(scores, axis=0)
-            term_scores.append(averaged)
+        bag_weights = None
+    for scores in bagged_scores:
+        averaged = np.average(scores, axis=0, weights=bag_weights)
+        term_scores.append(averaged)
 
-            nans = np.isnan(averaged)
-            stddevs = np.std(scores, axis=0)
-            stddevs[np.isnan(stddevs)] = np.inf
-            stddevs[nans] = np.nan
-            standard_deviations.append(stddevs)
-        intercept = np.average(bagged_intercept, axis=0)
-    else:
-        for scores in bagged_scores:
-            averaged = np.average(scores, axis=0, weights=bag_weights)
-            term_scores.append(averaged)
-
-            nans = np.isnan(averaged)
-            stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
-            stddevs[np.isnan(stddevs)] = np.inf
-            stddevs[nans] = np.nan
-            standard_deviations.append(stddevs)
-        intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
+        nans = np.isnan(averaged)
+        stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
+        stddevs[np.isnan(stddevs)] = np.inf
+        stddevs[nans] = np.nan
+        standard_deviations.append(stddevs)
+    intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
 
     if n_classes < 0:
         # scikit-learn requires float for regression. We have np.float64 from average.
