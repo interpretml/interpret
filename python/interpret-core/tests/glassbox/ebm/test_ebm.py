@@ -5,37 +5,37 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
+import json
 import math
-from sklearn.metrics import log_loss
+import warnings
+from io import StringIO
 
-from interpret.utils import make_synthetic
-from ...tutils import (
-    synthetic_multiclass,
-    synthetic_classification,
-    iris_classification,
-    smoke_test_explanations,
+import numpy as np
+import pandas as pd  # type: ignore
+import pytest
+from sklearn.metrics import (
+    accuracy_score,  # type: ignore
+    log_loss,
 )
-from ...tutils import synthetic_regression
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.utils.estimator_checks import check_estimator  # type: ignore
+
 from interpret.glassbox import (
-    ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
 )
 from interpret.privacy import (
     DPExplainableBoostingClassifier,
     DPExplainableBoostingRegressor,
 )
-from interpret.utils import inv_link
-
-from io import StringIO
-import json
-import numpy as np
-import pandas as pd  # type: ignore
-from sklearn.model_selection import train_test_split  # type: ignore
-from sklearn.metrics import accuracy_score  # type: ignore
-from sklearn.utils.estimator_checks import check_estimator  # type: ignore
-import pytest
-
-import warnings
+from interpret.utils import inv_link, make_synthetic
+from ...tutils import (
+    iris_classification,
+    smoke_test_explanations,
+    synthetic_classification,
+    synthetic_multiclass,
+    synthetic_regression,
+)
 
 
 def warn(*args, **kwargs):

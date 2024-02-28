@@ -1,86 +1,75 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-
-from typing import Optional, List, Tuple, Sequence, Dict, Mapping, Union
-from copy import deepcopy
-
-from itertools import count
-
+import heapq
+import json
+import logging
+import operator
 import os
-from ...utils._explanation import gen_perf_dicts
-from ._boost import boost
-from ._utils import (
-    make_bag,
-    process_terms,
-    order_terms,
-    remove_unused_higher_bins,
-    deduplicate_bins,
-    generate_term_names,
-    generate_term_types,
-)
-from ._json import to_jsonable, UNTESTED_from_jsonable
+from copy import deepcopy
+from itertools import combinations, count
+from math import ceil, isnan
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from warnings import warn
 
-from ...utils._misc import clean_index, clean_indexes
-from ...utils._histogram import make_all_histogram_edges
-from ...utils._link import link_func, inv_link
-from ...utils._seed import normalize_seed
-from ...utils._clean_x import preclean_X
+import numpy as np
+from sklearn.base import (
+    BaseEstimator,
+    ClassifierMixin,
+    RegressorMixin,
+    is_classifier,
+    is_regressor,
+)  # type: ignore
+from sklearn.isotonic import IsotonicRegression
+from sklearn.utils.validation import check_is_fitted  # type: ignore
+
+from ...api.base import ExplainerMixin
+from ...api.templates import FeatureValueExplanation
+from ...provider import JobLibProvider
 from ...utils._clean_simple import (
     clean_dimensions,
     clean_init_score_and_X,
     typify_classification,
 )
-
-from ...utils._unify_data import unify_data
-
-from ...utils._preprocessor import construct_bins
+from ...utils._clean_x import preclean_X
 from ...utils._compressed_dataset import bin_native_by_dimension
-
-from ._bin import (
-    eval_terms,
-    ebm_predict_scores,
-    ebm_eval_terms,
-    make_bin_weights,
-)
-from ._tensor import remove_last, trim_tensor
-from ...utils._native import Native
-from ...api.base import ExplainerMixin
-from ...api.templates import FeatureValueExplanation
-from ...provider import JobLibProvider
 from ...utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
+    gen_perf_dicts,
 )
-from ...utils._rank_interactions import rank_interactions
+from ...utils._histogram import make_all_histogram_edges
+from ...utils._link import inv_link, link_func
+from ...utils._misc import clean_index, clean_indexes
+from ...utils._native import Native
+from ...utils._preprocessor import construct_bins
 from ...utils._privacy import (
-    validate_eps_delta,
     calc_classic_noise_multi,
     calc_gdp_noise_multi,
+    validate_eps_delta,
 )
-
-import json
-from math import isnan, ceil
-
-import numpy as np
-from warnings import warn
-
-from sklearn.base import is_classifier, is_regressor  # type: ignore
-from sklearn.utils.validation import check_is_fitted  # type: ignore
-from sklearn.isotonic import IsotonicRegression
-
-import heapq
-import operator
-
-from sklearn.base import (
-    BaseEstimator,
-    ClassifierMixin,
-    RegressorMixin,
-)  # type: ignore
-from itertools import combinations
-
-import logging
+from ...utils._rank_interactions import rank_interactions
+from ...utils._seed import normalize_seed
+from ...utils._unify_data import unify_data
+from ._bin import (
+    ebm_eval_terms,
+    ebm_predict_scores,
+    eval_terms,
+    make_bin_weights,
+)
+from ._boost import boost
+from ._json import UNTESTED_from_jsonable, to_jsonable
+from ._tensor import remove_last, trim_tensor
+from ._utils import (
+    deduplicate_bins,
+    generate_term_names,
+    generate_term_types,
+    make_bag,
+    order_terms,
+    process_terms,
+    remove_unused_higher_bins,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -130,10 +119,10 @@ class EBMExplanation(FeatureValueExplanation):
             A Plotly figure.
         """
         from ...visual.plot import (
+            is_multiclass_global_data_dict,
             plot_continuous_bar,
             plot_horizontal_bar,
             sort_take,
-            is_multiclass_global_data_dict,
         )
 
         data_dict = self.data(key)
