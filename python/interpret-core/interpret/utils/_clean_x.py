@@ -1086,7 +1086,7 @@ def unify_columns(
         if issubclass(X.dtype.type, np.complexfloating):
             msg = "Complex data not supported"
             _log.error(msg)
-            raise TypeError(msg)
+            raise ValueError(msg)
         elif issubclass(X.dtype.type, np.void):
             msg = "np.void data not supported"
             _log.error(msg)
