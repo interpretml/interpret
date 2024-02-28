@@ -819,12 +819,12 @@ class VariablesDataWorksheet(Worksheet):
                 )
 
         elif self.ebm_model.feature_types_in_[feature_index] == "nominal":
-            categories_mapping = self.ebm_model.bins_[feature_index]
+            categories_mapping = self.ebm_model.bins_[feature_index][0]
             x_compute = list({**{"<missing>": 0}, **categories_mapping}.keys())
-            y_compute = self.ebm_model.term_scores_[feature_index]
+            y_compute = self.ebm_model.term_scores_[feature_index][:-1]
             plot_data = None
             if options.tabs.Variables.charts.display_distribution:
-                d_y_plot = self.ebm_model.bin_weights_[feature_index]
+                d_y_plot = self.ebm_model.bin_weights_[feature_index][:-1]
                 d_x_plot = None
                 distribution_data = (
                     pd.DataFrame([d_y_plot])
