@@ -2,6 +2,8 @@ from math import ceil, floor
 from interpret.glassbox._ebm._utils import (
     make_bag,
     convert_categorical_to_continuous,
+    convert_to_cuts,
+    convert_to_intervals,
     _create_proportional_tensor,
     deduplicate_bins,
 )
@@ -31,6 +33,19 @@ def test_deduplicate_bins():
     assert id(bins[1][0]) != id(bins[1][1])
     assert id(bins[1][0]) == id(bins[1][2])
     assert id(bins[1][1]) != id(bins[1][2])
+
+
+def test_conversion_cut_intervals():
+    """Minimal test with roundtrip."""
+    # cuts -> intervals -> cuts
+    for cuts, intervals in [
+        ([1, 2], [(float("-inf"), 1.0), (1.0, 2.0), (2.0, float("inf"))]),
+        ([], [(float("-inf"), float("inf"))])
+    ]:
+        to_interval = convert_to_intervals(cuts)
+        assert to_interval == intervals
+        cut_rountrip = convert_to_cuts(to_interval)
+        assert cut_rountrip == cuts
 
 
 @pytest.mark.skip(reason="make_bag test needs to be updated")
