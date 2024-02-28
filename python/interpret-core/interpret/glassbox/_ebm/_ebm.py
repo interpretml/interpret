@@ -2330,6 +2330,9 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
+    def _more_tags(self):
+        return {"allow_nan": True}
+
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
