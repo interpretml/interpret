@@ -2363,7 +2363,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
             - List of tuples: The tuples contain the indices of the features within the additive term
-    exclude : 'mains' or list of tuples of feature indices|names, default=[]
+    exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
 
@@ -2519,7 +2519,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
         ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
         outer_bags: int = 14,
@@ -2658,7 +2658,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
             - List of tuples: The tuples contain the indices of the features within the additive term
-    exclude : 'mains' or list of tuples of feature indices|names, default=[]
+    exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
 
@@ -2814,7 +2814,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
         ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
         outer_bags: int = 14,
@@ -2907,7 +2907,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names. Uses private categorical binning.
     max_bins : int, default=32
         Max number of bins per feature.
-    exclude : list of tuples of feature indices|names, default=[]
+    exclude : list of tuples of feature indices|names, default=None
         Features to be excluded.
     validation_size : int or float, default=0
 
@@ -3037,7 +3037,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0,
         outer_bags: int = 1,
@@ -3163,7 +3163,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names. Uses private categorical binning.
     max_bins : int, default=32
         Max number of bins per feature.
-    exclude : list of tuples of feature indices|names, default=[]
+    exclude : list of tuples of feature indices|names, default=None
         Features to be excluded.
     validation_size : int or float, default=0
 
@@ -3302,7 +3302,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = [],
+        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0,
         outer_bags: int = 1,
