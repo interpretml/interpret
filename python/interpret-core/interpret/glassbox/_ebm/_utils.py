@@ -309,6 +309,8 @@ def deduplicate_bins(bins):
 
 def convert_to_intervals(cuts):  # pragma: no cover
     cuts = np.array(cuts, dtype=np.float64)
+    if cuts.size == 0:
+        return [(-np.inf, np.inf)]
 
     if not np.isfinite(cuts).all():
         raise Exception("cuts must contain only finite numbers")
