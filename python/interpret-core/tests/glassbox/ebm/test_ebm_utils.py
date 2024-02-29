@@ -60,6 +60,27 @@ def test_make_bag_stratified():
     bag = make_bag(y, test_size=0.25, rng=1, is_stratified=True)
 
 
+def test_convert_categorical_to_continuous_none():
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
+        {"ABCD": 1, "EFGH": 2, "IJKL": 1}
+    )
+    assert len(cuts) == 0
+    assert mapping == [[0], [], [1, 2, 3]]
+    assert np.isnan(old_min)
+    assert np.isnan(old_max)
+
+
+
+def test_convert_categorical_to_continuous_single():
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
+        {"10": 1, "+10": 2, "30": 1}
+    )
+    assert len(cuts) == 0
+    assert mapping == [[0], [1, 2], [3]]
+    assert old_min == 10
+    assert old_max == 30
+
+
 def test_convert_categorical_to_continuous_easy():
     cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
         {"10": 1, "20": 2, "30": 3}

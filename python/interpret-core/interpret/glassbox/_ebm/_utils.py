@@ -90,8 +90,8 @@ def convert_categorical_to_continuous(categories):
     non_float_idxs = [idx for idx in non_float_idxs if idx not in clusters]
     non_float_idxs.append(max(categories.values()) + 1)
 
-    if len(clusters) <= 1:
-        return np.empty(0, np.float64)
+    if len(clusters) == 0:
+        return np.empty(0, np.float64), [[0], [], non_float_idxs], np.nan, np.nan
 
     cluster_bounds = sorted((min(cluster_list), max(cluster_list))
                             for cluster_list in clusters.values())
