@@ -2318,7 +2318,11 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
     def _more_tags(self):
-        return {"allow_nan": True}
+        return {
+            "allow_nan": True,
+            "requires_y": True,
+            "X_types": ["2darray", "string", "sparse", "categorical"],
+        }
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
