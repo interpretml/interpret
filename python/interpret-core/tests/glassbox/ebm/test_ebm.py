@@ -920,20 +920,18 @@ def skip_sklearn() -> set:
     ec = estimator_checks
     return {
         ec.check_sample_weights_invariance,  # EBMs do not support sample weight=0
-        # overly specific error message
-        # TODO: For tags = {"X_types": ["2darray", "string"]} EBM would pass the test.
-        # Do EBM support strings?
-        ec.check_dtype_object,
-        # FIXME: EBM allows fitting to zero features. Is this meaningful?
+        # EBM allows fitting to zero features. Is this meaningful?
         ec.check_estimators_empty_data_messages,
         # test is bad, trained on floats, EBM predicts string labels
         # test fails as 1.0 != "1.0", maybe test should be fixed upstream?
         ec.check_classifiers_one_label,
         ec.check_classifiers_one_label_sample_weights,  # EBMs do not accept sample weight of 0
-        ec.check_fit1d,  # TODO: should EBMs really accept this?
+        ec.check_fit1d,  # EBMs accept 1d X for single feature
         ec.check_fit2d_predict1d,  # EBMs accept 1d for predict
         # EBM is more permissive and convert any y values to str
         ec.check_classifiers_regression_target,
+        ec.check_supervised_y_2d,  # EBM deliberately support `y.shape = (nsamples, 1)`
+        ec.check_requires_y_none,  # error message differs
     }
 
 
