@@ -1,24 +1,49 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import ceil, isnan, isinf, exp, log
-from ...utils._native import Native
-
-from ._tensor import restore_missing_value_zeros
+import logging
+import warnings
+from collections import defaultdict
+from itertools import islice
+from math import ceil, exp, isfinite, isinf, log
 
 import numpy as np
-import warnings
-from itertools import islice
 
-import logging
+from ...utils._native import Native
+from ._tensor import restore_missing_value_zeros
 
 _log = logging.getLogger(__name__)
 
 
 def _weighted_std(a, axis, weights):
+    if weights is None:
+        return np.std(a, axis=axis)
     average = np.average(a, axis, weights)
     variance = np.average((a - average) ** 2, axis, weights)
     return np.sqrt(variance)
+
+
+def _midpoint(low: float, high: float) -> float:
+    """Return midpoint between `low` and `high` with high numerical accuracy."""
+    half_diff = (high - low) / 2
+    if isinf(half_diff):
+        # first try to subtract then divide since that's more accurate but some float64
+        # values will fail eg (max_float - min_float == +inf) so we need to try
+        # a less accurate way of dividing first if we detect this.  Dividing
+        # first will always succeed, even with the most extreme possible values of
+        # max_float / 2 - min_float / 2
+        half_diff = high / 2 - low / 2
+
+    # floats have more precision the smaller they are,
+    # so use the smaller number as the anchor
+    mid = low + half_diff if abs(low) <= abs(high) else high - half_diff
+
+    if mid <= low:
+        # this can happen with very small half_diffs that underflow the add/subtract operation
+        # if this happens the numbers must be very close together on the order of a float tick.
+        # We use lower bound inclusive for our cut discretization, so make the mid == high
+        mid = high
+    return mid
 
 
 def convert_categorical_to_continuous(categories):
@@ -32,11 +57,11 @@ def convert_categorical_to_continuous(categories):
     # We can't convert a continuous feature that has cuts back into categoricals
     # since the categorical value could have been anything between the cuts that we know about.
 
-    clusters = dict()
+    clusters = defaultdict(list)
     non_float_idxs = set()
 
-    old_min = np.nan
-    old_max = np.nan
+    old_min = +np.inf
+    old_max = -np.inf
     for category, idx in categories.items():
         try:
             # this strips leading and trailing spaces
@@ -45,19 +70,13 @@ def convert_categorical_to_continuous(categories):
             non_float_idxs.add(idx)
             continue
 
-        if isnan(val) or isinf(val):
+        if not isfinite(val):
             continue
 
-        if isnan(old_min) or val < old_min:
-            old_min = val
-        if isnan(old_max) or old_max < val:
-            old_max = val
+        old_min = min(old_min, val)
+        old_max = max(old_max, val)
 
-        cluster_list = clusters.get(idx)
-        if cluster_list is None:
-            clusters[idx] = [val]
-        else:
-            cluster_list.append(val)
+        clusters[idx].append(val)
 
     # there's a super fringe case where two category strings map to the same bin, but
     # one of them is a float and the other is a non-float.  Normally, we'd include the
@@ -74,54 +93,24 @@ def convert_categorical_to_continuous(categories):
     if len(clusters) <= 1:
         return np.empty(0, np.float64)
 
-    cluster_bounds = []
-    for cluster_list in clusters.values():
-        cluster_list.sort()
-        cluster_bounds.append((cluster_list[0], cluster_list[-1]))
+    cluster_bounds = sorted((min(cluster_list), max(cluster_list))
+                            for cluster_list in clusters.values())
 
     # TODO: move everything below here into C++ to ensure cross language compatibility
-
-    cluster_bounds.sort()
-
     cuts = []
-    cluster_iter = iter(cluster_bounds)
-    low = next(cluster_iter)[-1]
-    for cluster in cluster_iter:
-        high = cluster[0]
+    _, low = cluster_bounds[0]
+    for (high, next_low) in cluster_bounds[1:]:
         if low < high:
             # if they are equal or if low is higher then we can't separate one cluster
             # from another, so we keep joining them until we can get clean separations
-
-            half_diff = (high - low) / 2
-            if isinf(half_diff):
-                # first try to subtract then divide since that's more accurate but some float64
-                # values will fail eg (max_float - min_float == +inf) so we need to try
-                # a less accurate way of dividing first if we detect this.  Dividing
-                # first will always succeed, even with the most extreme possible values of
-                # max_float / 2 - min_float / 2
-                half_diff = high / 2 - low / 2
-
-            # floats have more precision the smaller they are,
-            # so use the smaller number as the anchor
-            if abs(low) <= abs(high):
-                mid = low + half_diff
-            else:
-                mid = high - half_diff
-
-            if mid <= low:
-                # this can happen with very small half_diffs that underflow the add/subtract operation
-                # if this happens the numbers must be very close together on the order of a float tick.
-                # We use lower bound inclusive for our cut discretization, so make the mid == high
-                mid = high
-
-            cuts.append(mid)
-        low = max(low, cluster[-1])
+            cuts.append(_midpoint(low, high))
+        low = max(low, next_low)
     cuts = np.array(cuts, np.float64)
 
     mapping = [[] for _ in range(len(cuts) + 3)]
     for old_idx, cluster_list in clusters.items():
         # all the items in a cluster should be binned into the same bins
-        new_idx = np.searchsorted(cuts, cluster_list[:1], side="right")[0] + 1
+        new_idx = np.searchsorted(cuts, [min(cluster_list)], side="right")[0] + 1
         mapping[new_idx].append(old_idx)
 
     mapping[0].append(0)
@@ -176,8 +165,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
             temp_scores = scores.flatten().copy()
             temp_weights = weights.flatten().copy()
 
-            ignored = np.isinf(temp_scores)
-            ignored |= np.isnan(temp_scores)
+            ignored = ~np.isfinite(temp_scores)
             temp_scores[ignored] = 0.0
             temp_weights[ignored] = 0.0
 
@@ -190,8 +178,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
                 temp_scores = scores[..., i].flatten().copy()
                 temp_weights = weights.flatten().copy()
 
-                ignored = np.isinf(temp_scores)
-                ignored |= np.isnan(temp_scores)
+                ignored = ~np.isfinite(temp_scores)
                 temp_scores[ignored] = 0.0
                 temp_weights[ignored] = 0.0
 
@@ -230,27 +217,17 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
     if (bag_weights == bag_weights[0]).all():
         # if all the bags have the same total weight we can avoid some numeracy issues
         # by using a non-weighted standard deviation
-        for scores in bagged_scores:
-            averaged = np.average(scores, axis=0)
-            term_scores.append(averaged)
+        bag_weights = None
+    for scores in bagged_scores:
+        averaged = np.average(scores, axis=0, weights=bag_weights)
+        term_scores.append(averaged)
 
-            nans = np.isnan(averaged)
-            stddevs = np.std(scores, axis=0)
-            stddevs[np.isnan(stddevs)] = np.inf
-            stddevs[nans] = np.nan
-            standard_deviations.append(stddevs)
-        intercept = np.average(bagged_intercept, axis=0)
-    else:
-        for scores in bagged_scores:
-            averaged = np.average(scores, axis=0, weights=bag_weights)
-            term_scores.append(averaged)
-
-            nans = np.isnan(averaged)
-            stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
-            stddevs[np.isnan(stddevs)] = np.inf
-            stddevs[nans] = np.nan
-            standard_deviations.append(stddevs)
-        intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
+        nans = np.isnan(averaged)
+        stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
+        stddevs[np.isnan(stddevs)] = np.inf
+        stddevs[nans] = np.nan
+        standard_deviations.append(stddevs)
+    intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
 
     if n_classes < 0:
         # scikit-learn requires float for regression. We have np.float64 from average.
@@ -282,7 +259,7 @@ def order_terms(term_features, *args):
         else:
             return tuple([] for _ in range(len(args) + 1))
     keys = (
-        [len(feature_idxs)] + sorted(feature_idxs) for feature_idxs in term_features
+        [len(feature_idxs), *sorted(feature_idxs)] for feature_idxs in term_features
     )
     sorted_items = sorted(zip(keys, term_features, *args))
     ret = tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
@@ -311,8 +288,7 @@ def deduplicate_bins(bins):
     # use the id of the bins to identify feature data that was previously binned
 
     uniques = dict()
-    for feature_idx in range(len(bins)):
-        bin_levels = bins[feature_idx]
+    for bin_levels in bins:
         highest_key = None
         highest_idx = -1
         for level_idx, feature_bins in enumerate(bin_levels):
@@ -320,32 +296,28 @@ def deduplicate_bins(bins):
                 key = frozenset(feature_bins.items())
             else:
                 key = tuple(feature_bins)
-            existing = uniques.get(key, None)
-            if existing is None:
-                uniques[key] = feature_bins
+            if key in uniques:
+                bin_levels[level_idx] = uniques[key]
             else:
-                bin_levels[level_idx] = existing
+                uniques[key] = feature_bins
 
             if highest_key != key:
                 highest_key = key
                 highest_idx = level_idx
-        del bin_levels[highest_idx + 1 :]
+        del bin_levels[highest_idx + 1:]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover
     cuts = np.array(cuts, dtype=np.float64)
+    if cuts.size == 0:
+        return [(-np.inf, np.inf)]
 
-    if np.isnan(cuts).any():
-        raise Exception("cuts cannot contain nan")
+    if not np.isfinite(cuts).all():
+        raise Exception("cuts must contain only finite numbers")
 
-    if np.isinf(cuts).any():
-        raise Exception("cuts cannot contain infinity")
+    intervals = [(-np.inf, cuts[0]), *zip(cuts[:-1], cuts[1:]), (cuts[-1], np.inf)]
 
-    smaller = np.insert(cuts, 0, -np.inf)
-    larger = np.append(cuts, np.inf)
-    intervals = list(zip(smaller, larger))
-
-    if any(x[1] <= x[0] for x in intervals):
+    if any(higher <= lower for (lower, higher) in intervals):
         raise Exception("cuts must contain increasing values")
 
     return intervals
@@ -364,8 +336,8 @@ def convert_to_cuts(intervals):  # pragma: no cover
     if intervals[-1][-1] != np.inf:
         raise Exception("intervals must end with inf")
 
-    cuts = [x[0] for x in intervals[1:]]
-    cuts_verify = [x[1] for x in intervals[:-1]]
+    cuts = [lower for (lower, _) in intervals[1:]]
+    cuts_verify = [higher for (_, higher) in intervals[:-1]]
 
     if np.isnan(cuts).any():
         raise Exception("intervals cannot contain NaN")
@@ -384,40 +356,39 @@ def make_bag(y, test_size, rng, is_stratified):
     # if we re-generate the train/test splits that they are generated exactly
     # the same as before
 
+    if test_size < 0:  # pragma: no cover
+        raise Exception("test_size must be a positive numeric value.")
     if test_size == 0:
         return None
-    elif test_size > 0:
-        n_samples = len(y)
-        n_test_samples = 0
+    n_samples = len(y)
+    n_test_samples = 0
 
-        if test_size >= 1:
-            if test_size % 1:
-                raise Exception(
-                    "If test_size >= 1, test_size should be a whole number."
-                )
-            n_test_samples = test_size
-        else:
-            n_test_samples = ceil(n_samples * test_size)
-
-        n_train_samples = n_samples - n_test_samples
-        native = Native.get_native_singleton()
-
-        # Adapt test size if too small relative to number of classes
-        if is_stratified:
-            n_classes = len(set(y))
-            if n_test_samples < n_classes:  # pragma: no cover
-                warnings.warn(
-                    "Too few samples per class, adapting test size to guarantee 1 sample per class."
-                )
-                n_test_samples = n_classes
-                n_train_samples = n_samples - n_test_samples
-
-            return native.sample_without_replacement_stratified(
-                rng, n_classes, n_train_samples, n_test_samples, y
+    if test_size >= 1:
+        if test_size % 1:
+            raise Exception(
+                "If test_size >= 1, test_size should be a whole number."
             )
-        else:
-            return native.sample_without_replacement(
-                rng, n_train_samples, n_test_samples
+        n_test_samples = test_size
+    else:
+        n_test_samples = ceil(n_samples * test_size)
+
+    n_train_samples = n_samples - n_test_samples
+    native = Native.get_native_singleton()
+
+    # Adapt test size if too small relative to number of classes
+    if is_stratified:
+        n_classes = len(set(y))
+        if n_test_samples < n_classes:  # pragma: no cover
+            warnings.warn(
+                "Too few samples per class, adapting test size to guarantee 1 sample per class."
             )
-    else:  # pragma: no cover
-        raise Exception("test_size must be a positive numeric value.")
+            n_test_samples = n_classes
+            n_train_samples = n_samples - n_test_samples
+
+        return native.sample_without_replacement_stratified(
+            rng, n_classes, n_train_samples, n_test_samples, y
+        )
+    else:
+        return native.sample_without_replacement(
+            rng, n_train_samples, n_test_samples
+        )
