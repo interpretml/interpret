@@ -5,37 +5,38 @@
 # TODO PK add a test with a real regression dataset
 # TODO PK add a test with more than 1 multiclass interaction
 
+import json
 import math
-from sklearn.metrics import log_loss
+import warnings
+from io import StringIO
 
-from interpret.utils import make_synthetic
-from ...tutils import (
-    synthetic_multiclass,
-    synthetic_classification,
-    iris_classification,
-    smoke_test_explanations,
+import numpy as np
+import pandas as pd  # type: ignore
+import pytest
+from sklearn.metrics import (
+    accuracy_score,  # type: ignore
+    log_loss,
 )
-from ...tutils import synthetic_regression
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.utils import estimator_checks
+from sklearn.utils.estimator_checks import check_estimator  # type: ignore
+
 from interpret.glassbox import (
-    ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
 )
 from interpret.privacy import (
     DPExplainableBoostingClassifier,
     DPExplainableBoostingRegressor,
 )
-from interpret.utils import inv_link
-
-from io import StringIO
-import json
-import numpy as np
-import pandas as pd  # type: ignore
-from sklearn.model_selection import train_test_split  # type: ignore
-from sklearn.metrics import accuracy_score  # type: ignore
-from sklearn.utils.estimator_checks import check_estimator  # type: ignore
-import pytest
-
-import warnings
+from interpret.utils import inv_link, make_synthetic
+from ...tutils import (
+    iris_classification,
+    smoke_test_explanations,
+    synthetic_classification,
+    synthetic_multiclass,
+    synthetic_regression,
+)
 
 
 def warn(*args, **kwargs):
@@ -905,87 +906,56 @@ def test_bags():
     assert np.allclose(pred0, pred1)
 
 
-@pytest.mark.skip(
-    reason="can't run this test reliably until we depend on scikit-learn 0.22"
-)
-def test_scikit_learn_compatibility():
-    """Run scikit-learn compatibility tests"""
+# arguments for faster fitting time to reduce test time
+# we want to test the interface, not get good results
+_fast_kwds = {
+    "outer_bags": 1,
+    "max_rounds": 100,
+}
 
-    # sklearn tests in:
-    # https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/utils/estimator_checks.py
 
-    skip_tests = {
-        "check_dtype_object",  # the error message required to pass is too specific and incorrect for us
-        "check_classifiers_one_label",  # TODO: fix this!  We should accept 1 category
-        "check_classifiers_regression_target",  # we're more permissive and convert any y values to str
-        "check_supervised_y_no_nan",  # error message too specific
-        "check_supervised_y_2d",  # we ignore useless added dimensions
-        "check_fit2d_predict1d",  # we accept 1d for predict
-        "check_fit2d_1sample",  # TODO: we allow fitting on 1 sample, but this kind of input is likely a bug from the caller, so change this
+@pytest.fixture
+def skip_sklearn() -> set:
+    """Test which we do not adhere to."""
+    ec = estimator_checks
+    return {
+        ec.check_sample_weights_invariance,  # EBMs do not support sample weight=0
+        # EBM allows fitting to zero features. Is this meaningful?
+        ec.check_estimators_empty_data_messages,
+        # test is bad, trained on floats, EBM predicts string labels
+        # test fails as 1.0 != "1.0", maybe test should be fixed upstream?
+        ec.check_classifiers_one_label,
+        ec.check_classifiers_one_label_sample_weights,  # EBMs do not accept sample weight of 0
+        ec.check_fit1d,  # EBMs accept 1d X for single feature
+        ec.check_fit2d_predict1d,  # EBMs accept 1d for predict
+        # EBM is more permissive and convert any y values to str
+        ec.check_classifiers_regression_target,
+        ec.check_supervised_y_2d,  # EBM deliberately support `y.shape = (nsamples, 1)`
+        ec.check_requires_y_none,  # error message differs
     }
-    for estimator, check_func in check_estimator(
-        ExplainableBoostingClassifier(), generate_only=True
-    ):
-        f = check_func.func
-        module = f.__module__
-        shortname = f.__name__
-        fullname = f"{module}.{shortname}"
-        if shortname not in skip_tests:
-            try:
-                check_func(estimator)
-            except BaseException as e:
-                # print(fullname)
-                # print(f"{type(e).__name__}: {e}")
-                # print()
-                pass
 
-    for estimator, check_func in check_estimator(
-        ExplainableBoostingRegressor(), generate_only=True
-    ):
-        f = check_func.func
-        module = f.__module__
-        shortname = f.__name__
-        fullname = f"{module}.{shortname}"
-        if shortname not in skip_tests:
-            try:
-                check_func(estimator)
-            except BaseException as e:
-                # print(fullname)
-                # print(f"{type(e).__name__}: {e}")
-                # print()
-                pass
 
-    for estimator, check_func in check_estimator(
-        DPExplainableBoostingClassifier(), generate_only=True
-    ):
-        f = check_func.func
-        module = f.__module__
-        shortname = f.__name__
-        fullname = f"{module}.{shortname}"
-        if shortname not in skip_tests:
-            try:
-                check_func(estimator)
-            except BaseException as e:
-                # print(fullname)
-                # print(f"{type(e).__name__}: {e}")
-                # print()
-                pass
-
-    for estimator, check_func in check_estimator(
-        DPExplainableBoostingRegressor(), generate_only=True
-    ):
-        f = check_func.func
-        module = f.__module__
-        shortname = f.__name__
-        fullname = f"{module}.{shortname}"
-        if shortname not in skip_tests:
-            try:
-                check_func(estimator)
-            except BaseException as e:
-                # print(fullname)
-                # print(f"{type(e).__name__}: {e}")
-                # print()
-                pass
+@estimator_checks.parametrize_with_checks([
+    ExplainableBoostingClassifier(**_fast_kwds),
+    ExplainableBoostingRegressor(**_fast_kwds),
+    # DPExplainableBoostingClassifier(**_fast_kwds),
+    # DPExplainableBoostingRegressor(**_fast_kwds),
+])
+def test_sklearn_estimator(estimator, check, skip_sklearn):
+    if check.func in skip_sklearn:
+        pytest.skip("Deliberate deviation from scikit-learn.")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            "Detected multiclass problem. Forcing interactions to 0.",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            "Casting complex values to real discards the imaginary part",
+            category=np.ComplexWarning,
+        )
+        check(estimator)
 
 
 def test_json_classification():

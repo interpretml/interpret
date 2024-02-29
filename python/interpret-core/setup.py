@@ -240,7 +240,7 @@ https://github.com/interpretml/interpret
         "numpy>=1.11.1",
         "scipy>=0.18.1",
         "pandas>=0.19.2",
-        "scikit-learn>=0.18.1",
+        "scikit-learn>=0.24",
         "joblib>=0.11",
     ],
     extras_require={

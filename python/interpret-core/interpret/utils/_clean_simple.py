@@ -119,8 +119,8 @@ def clean_dimensions(data, param_name):
                 msg = f"{param_name} cannot have 3rd dimension"
                 _log.error(msg)
                 raise TypeError(msg)
-            if issubclass(data.dtype.type, np.floating) and np.isnan(data).any():
-                msg = f"{param_name} cannot contain missing values"
+            if issubclass(data.dtype.type, np.floating) and not np.isfinite(data).all():
+                msg = f"{param_name} cannot contain missing values or infinites"
                 _log.error(msg)
                 raise ValueError(msg)
             return data
