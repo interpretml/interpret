@@ -596,9 +596,10 @@ We also build on top of many great packages. Please check them out!
 
 # External links
 
-- [Explainable AI: unlocking value in FEC operations](https://analytiqal.nl/2024/01/22/fec-value-from-explainable-ai/)
-- [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
 - [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
+- [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
+- [Enhancing Trust in Credit Risk Models: A Comparative Analysis of EBMs and GBMs](https://2os.medium.com/enhancing-trust-in-credit-risk-models-a-comparative-analysis-of-ebms-and-gbms-25e02810300f)
+- [Explainable AI: unlocking value in FEC operations](https://analytiqal.nl/2024/01/22/fec-value-from-explainable-ai/)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
 - [The Explainable Boosting Machine. As accurate as gradient boosting, as interpretable as linear regression.](https://towardsdatascience.com/the-explainable-boosting-machine-f24152509ebb)
 - [Exploring explainable boosting machines](https://leinadj.github.io/2023/04/09/Exploring-Explainable-Boosting-Machines.html)
@@ -616,6 +617,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [Data Science with LLMs and Interpretable Models](https://arxiv.org/pdf/2402.14474v1.pdf)
 - [DimVis: Interpreting Visual Clusters in Dimensionality Reduction With Explainable Boosting Machine](https://arxiv.org/pdf/2402.06885.pdf)
 - [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
@@ -633,6 +635,7 @@ We also build on top of many great packages. Please check them out!
 - [Practice and Challenges in Building a Universal Search Quality Metric](https://www.researchgate.net/profile/Nuo-Chen-38/publication/370126720_Practice_and_Challenges_in_Building_a_Universal_Search_Quality_Metric/links/6440a0f239aa471a524cb77d/Practice-and-Challenges-in-Building-a-Universal-Search-Quality-Metric.pdf?origin=publication_detail)
 - [Explaining Phishing Attacks: An XAI Approach to Enhance User Awareness and Trust](https://www.researchgate.net/profile/Giuseppe-Desolda/publication/370003878_Explaining_Phishing_Attacks_An_XAI_Approach_to_Enhance_User_Awareness_and_Trust/links/643922a8e881690c4bd50ced/Explaining-Phishing-Attacks-An-XAI-Approach-to-Enhance-User-Awareness-and-Trust.pdf)
 - [Revealing the Galaxy-Halo Connection Through Machine Learning](https://arxiv.org/pdf/2204.10332.pdf)
+- [How the Galaxy–Halo Connection Depends on Large-Scale Environment](https://arxiv.org/pdf/2402.07995.pdf)
 - [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
 - [Using Explainable Boosting Machines (EBMs) to Detect Common Flaws in Data](https://link.springer.com/chapter/10.1007/978-3-030-93736-2_40)
 - [Differentially Private Gradient Boosting on Linear Learners for Tabular Data Analysis](https://assets.amazon.science/fa/3a/a62ba73f4bbda1d880b678c39193/differentially-private-gradient-boosting-on-linear-learners-for-tabular-data-analysis.pdf)
@@ -661,6 +664,8 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Artificial Intelligence for Cotton Yield Prediction With Multisource Data](https://ieeexplore.ieee.org/document/10214067)
 - [Monotone Tree-Based GAMI Models by Adapting XGBoost](https://arxiv.org/ftp/arxiv/papers/2309/2309.02426.pdf)
 - [Neural Graphical Models](https://arxiv.org/pdf/2210.00453.pdf)
+- [FAST: An Optimization Framework for Fast Additive Segmentation in Transparent ML](https://arxiv.org/pdf/2402.12630v1.pdf)
+- [The Quantitative Analysis of Explainable AI for Network Anomaly Detection](https://studenttheses.uu.nl/bitstream/handle/20.500.12932/45996/Thesis_SinievanderBen_6021794.pdf?sequence=1&isAllowed=y)
 - [Enhancing Predictive Battery Maintenance Through the Use of Explainable Boosting Machine](https://link.springer.com/chapter/10.1007/978-3-031-44146-2_6)
 - [Improved Differentially Private Regression via Gradient Boosting](https://arxiv.org/pdf/2303.03451.pdf)
 - [Explainable Artificial Intelligence in Job Recommendation Systems](http://essay.utwente.nl/96974/1/Tran_MA_EEMCS.pdf)
@@ -704,12 +709,14 @@ We also build on top of many great packages. Please check them out!
 - [Machine Learning Algorithms for Identifying Dependencies in OT Protocols](https://www.mdpi.com/1996-1073/16/10/4056)
 - [Causal Understanding of Why Users Share Hate Speech on Social Media](https://arxiv.org/pdf/2310.15772.pdf)
 - [Explainable Boosting Machine: A Contemporary Glass-Box Model to Analyze Work Zone-Related Road Traffic Crashes](https://www.mdpi.com/2313-576X/9/4/83)
+- [Efficient and Interpretable Traffic Destination Prediction using Explainable Boosting Machines](https://arxiv.org/pdf/2402.03457.pdf)
 - [Explainable Artificial Intelligence Paves the Way in Precision Diagnostics and Biomarker Discovery for the Subclass of Diabetic Retinopathy in Type 2 Diabetics](https://www.mdpi.com/2218-1989/13/12/1204)
 - [A proposed tree-based explainable artificial intelligence approach for the prediction of angina pectoris](https://www.nature.com/articles/s41598-023-49673-2)
 - [Explainable Boosting Machine: A Contemporary Glass-Box Strategy for the Assessment of Wind Shear Severity in the Runway Vicinity Based on the Doppler Light Detection and Ranging Data](https://www.mdpi.com/2073-4433/15/1/20)
 - [On the Physical Nature of Lya Transmission Spikes in High Redshift Quasar Spectra](https://arxiv.org/pdf/2401.04762.pdf)
 - [GRAND-SLAMIN’ Interpretable Additive Modeling with Structural Constraints](https://openreview.net/pdf?id=F5DYsAc7Rt)
 - [Identification of groundwater potential zones in data-scarce mountainous region using explainable machine learning](https://www.sciencedirect.com/science/article/pii/S0022169423013598)
+- [Explainable Classification Techniques for Quantum Dot Device Measurements](https://arxiv.org/pdf/2402.13699v1.pdf)
 
 # Books that cover EBMs
 
@@ -726,7 +733,7 @@ We also build on top of many great packages. Please check them out!
 
 - [EBM to Onnx converter by SoftAtHome](https://github.com/interpretml/ebm2onnx)
 - [GAM Changer](https://github.com/interpretml/gam-changer)
-- [ML 2 SQL (experimental)](https://github.com/kaspersgit/ml_2_sql)
+- [ML 2 SQL](https://github.com/kaspersgit/ml_2_sql)
 
 # Contact us
 

@@ -50,8 +50,9 @@ guidance: The default inner_bags value of 0 disables inner bagging. Setting this
 
 ## learning_rate
 default: 0.01
+hyperparameters: [0.02, 0.01, 0.005, 0.0025]
 
-guidance: A smaller learning_rate promotes finer model adjustments during fitting, but may require more iterations. Choose the smallest rate that still converges within a reasonable timeframe for your application.
+guidance: A smaller learning_rate promotes finer model adjustments during fitting, but may require more iterations. Generally, we believe a smaller learning_rate should improve the model, but sometimes hyperparameter tuning seems to be needed to select the best value.
 
 ## greediness
 default: 0.5
@@ -77,7 +78,7 @@ guidance: interaction_smoothing_rounds appears to have only a minor impact on mo
 ## max_rounds
 default: 25000
 
-ideal: 50000 (early stopping should stop before this point)
+ideal: 1000000000 (early stopping should stop before this point)
 
 guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid curtailing the early stopping mechanism. Consider increasing it if small yet consistent gains are observed in longer trainings.
 
