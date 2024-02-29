@@ -7,6 +7,9 @@ from xlsxwriter.workbook import Workbook
 import pandas as pd
 import numpy as np
 import dotsi
+import seaborn as sns
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 import logging
 
@@ -730,9 +733,20 @@ class VariablesDataWorksheet(Worksheet):
     def sheet_creation_handler(self):
         """Create sheet layout elements."""
         self.data_reference = []
-        for feature_index, feature_name in enumerate(self.ebm_model.feature_names_in_):
+        for feature_index, feature_term in enumerate(self.ebm_model.term_features_):
             start_row_feature = 6 * feature_index
-            self.__generate_feature_data(start_row_feature, feature_index, feature_name)
+            feature_name = self.ebm_model.term_names_[feature_index]
+            if len(feature_term) == 1:
+                self.__generate_feature_data(
+                    start_row_feature, feature_index, feature_name
+                )
+            else:
+                self.__generate_interaction_data(
+                    start_row_feature,
+                    feature_index,
+                    feature_name,
+                    feature_term,
+                )
 
     def __generate_feature_data(self, start_row, feature_index, feature_name):
         row_label = f"{feature_index}_{feature_name}"
@@ -818,7 +832,8 @@ class VariablesDataWorksheet(Worksheet):
                     .T
                 )
 
-        elif self.ebm_model.feature_types_in_[feature_index] == "nominal":
+        # If the feature is not continuous, it should be either nominal or ordinal
+        else:
             categories_mapping = self.ebm_model.bins_[feature_index][0]
             x_compute = list({**{"<missing>": 0}, **categories_mapping}.keys())
             y_compute = self.ebm_model.term_scores_[feature_index][:-1]
@@ -890,6 +905,111 @@ class VariablesDataWorksheet(Worksheet):
                 else None,
             }
         )
+    
+    def __generate_interaction_data(
+        self, start_row, feature_index, feature_name, feature_term
+    ):
+        row_label = f"{feature_index}_{feature_name}"
+        x_plot = {}
+        interaction_names = {}
+        for index in [0, 1]:
+            interaction_index = feature_term[index]
+            interaction_names[index] = self.ebm_model.feature_names_in_[
+                interaction_index
+            ]
+            if self.ebm_model.feature_types_in_[interaction_index] == "continuous":
+                x_compute = np.concatenate(
+                    [
+                        [np.NaN, -1e12],
+                        self.ebm_model.bins_[interaction_index][-1],
+                    ]
+                )
+                x_plot[index] = (
+                    [
+                        (
+                            self.ebm_model.feature_bounds_[interaction_index][0],
+                            self.ebm_model.bins_[interaction_index][-1][0],
+                        )
+                    ]
+                    + [
+                        *zip(
+                            self.ebm_model.bins_[interaction_index][-1][:-1],
+                            self.ebm_model.bins_[interaction_index][-1][1:],
+                        )
+                    ]
+                    + [
+                        (
+                            self.ebm_model.bins_[interaction_index][-1][-1],
+                            self.ebm_model.feature_bounds_[interaction_index][1],
+                        )
+                    ]
+                )
+            else:
+                x_compute = list(
+                    {
+                        **{"<missing>": 0},
+                        **self.ebm_model.bins_[interaction_index][-1],
+                    }.keys()
+                )
+                x_plot[index] = self.ebm_model.bins_[interaction_index][-1]
+
+            compute_data = (
+                pd.DataFrame([x_compute])
+                .T.rename(
+                    columns={
+                        0: f"{row_label}_compute_values_{index}",
+                    }
+                )
+                .T
+            )
+            compute_data.T.to_excel(
+                self.writer,
+                sheet_name=self.tab_name,
+                startrow=start_row + index,
+                startcol=0,
+                index=True,
+                header=False,
+                na_rep="<missing>",
+            )
+        y_compute = np.array(
+            [row[:-1] for row in self.ebm_model.term_scores_[feature_index][:-1]]
+        ).reshape(-1)
+        compute_data = (
+            pd.DataFrame([y_compute])
+            .T.rename(
+                columns={
+                    0: f"{row_label}_compute_contribution",
+                }
+            )
+            .T
+        )
+        compute_data.T.to_excel(
+            self.writer,
+            sheet_name=self.tab_name,
+            startrow=start_row + 2,
+            startcol=0,
+            index=True,
+            header=False,
+            na_rep="<missing>",
+        )
+
+        self.data_reference.append(
+            {
+                "compute_values_row_0": start_row,
+                "compute_values_row_1": start_row + 1,
+                "compute_contributions_row": start_row + 2,
+                "plot_values_0": x_plot[0],
+                "plot_values_1": x_plot[1],
+                "feature_name_0": interaction_names[0],
+                "feature_name_1": interaction_names[1],
+                "compute_contributions": np.array(
+                    [
+                        row[1:-1]
+                        for row in self.ebm_model.term_scores_[feature_index][1:-1]
+                    ]
+                ),
+            }
+        )
 
     def sheet_columns(self):
         """Declare columns settings for the worksheet."""
@@ -935,13 +1055,15 @@ class ShapePlotsWorksheet(Worksheet):
 
     def __shape_plots_doc(self):
         start_row = 1
-        for feature_index, feature_name in enumerate(self.ebm_model.feature_names_in_):
-            feature_type = self.ebm_model.feature_types_in_[feature_index]
-            next_row = self.__shape_plot_doc(feature_index, feature_name, feature_type, start_row)
+        for _, var in self.variables.iterrows():
+            next_row = self.__shape_plot_doc(var, start_row)
             # Next start row
             start_row = next_row
 
-    def __shape_plot_doc(self, feature_index, feature_name, feature_type, start_row):
+    def __shape_plot_doc(self, var, start_row):
+        feature_name = var.name
+        feature_index = var["#"]
+        feature_type = var["Type"]
         # Feature title (separator)
         self.worksheet.set_row(start_row, 25, cell_format=Formats.variables_titlebar_bg)
         self.worksheet.write_string(
@@ -959,37 +1081,46 @@ class ShapePlotsWorksheet(Worksheet):
         )
 
         # Feature plot(s)
-        compute_values_row = self.data_reference[feature_index][
-            "compute_values_row"
-        ]
-        compute_contributions_row = self.data_reference[feature_index][
-            "compute_contributions_row"
-        ]
-        compute_values_length = self.data_reference[feature_index][
-            "compute_values_length"
-        ]
-        if options.tabs.Variables.charts.display_distribution:
-            plot_distribution_y_row = self.data_reference[feature_index][
-                "plot_distribution_y_row"
-            ]
-        if feature_type == "continuous":
-            plot_values_row = self.data_reference[feature_index]["plot_values_row"]
-            plot_contributions_row = self.data_reference[feature_index][
-                "plot_contributions_row"
-            ]
-            plot_values_length = self.data_reference[feature_index][
-                "plot_values_length"
+        if feature_type != "interaction":
+            compute_values_row = self.data_reference[feature_index][
+                "compute_values_row"
             ]
             compute_contributions_row = self.data_reference[feature_index][
                 "compute_contributions_row"
             ]
+            compute_values_length = self.data_reference[feature_index][
+                "compute_values_length"
+            ]
             if options.tabs.Variables.charts.display_distribution:
-                plot_distribution_x_row = self.data_reference[feature_index][
-                    "plot_distribution_x_row"
+                plot_distribution_y_row = self.data_reference[feature_index][
+                    "plot_distribution_y_row"
                 ]
-                plot_distribution_length = self.data_reference[feature_index][
-                    "plot_distribution_length"
+            if feature_type == "continuous":
+                plot_values_row = self.data_reference[feature_index]["plot_values_row"]
+                plot_contributions_row = self.data_reference[feature_index][
+                    "plot_contributions_row"
                 ]
+                plot_values_length = self.data_reference[feature_index][
+                    "plot_values_length"
+                ]
+                compute_contributions_row = self.data_reference[feature_index][
+                    "compute_contributions_row"
+                ]
+                if options.tabs.Variables.charts.display_distribution:
+                    plot_distribution_x_row = self.data_reference[feature_index][
+                        "plot_distribution_x_row"
+                    ]
+                    plot_distribution_length = self.data_reference[feature_index][
+                        "plot_distribution_length"
+                    ]
+        else:
+            plot_values_0 = self.data_reference[feature_index]["plot_values_0"]
+            plot_values_1 = self.data_reference[feature_index]["plot_values_1"]
+            feature_name_0 = self.data_reference[feature_index]["feature_name_0"]
+            feature_name_1 = self.data_reference[feature_index]["feature_name_1"]
+            compute_contributions = self.data_reference[feature_index][
+                "compute_contributions"
+            ]
 
         if feature_type == "continuous":
             chart = self.workbook.add_chart(
@@ -1064,7 +1195,7 @@ class ShapePlotsWorksheet(Worksheet):
                         "line": {"none": True},
                     }
                 )
-        elif feature_type == "nominal":
+        elif feature_type in ["nominal", "ordinal"]:
             chart = self.workbook.add_chart({"type": "column"})
             chart.add_series(
                 {
@@ -1124,6 +1255,31 @@ class ShapePlotsWorksheet(Worksheet):
                     }
                 )
                 chart.combine(area_chart)
+        else:
+            imgdata = BytesIO()
+            heatmap = sns.heatmap(
+                compute_contributions.T,
+                xticklabels=plot_values_0,
+                yticklabels=plot_values_1,
+                cmap="RdBu_r",
+            )
+            heatmap.set_xlabel(feature_name_0)
+            heatmap.set_ylabel(feature_name_1)
+            heatmap.invert_yaxis()
+            plt.locator_params(
+                nbins=options.tabs.Variables.interaction.max_bins
+            )
+            fig = heatmap.get_figure()
+            plt.close(fig)
+            fig.savefig(imgdata, format="png", bbox_inches="tight")
+            self.worksheet.insert_image(
+                start_row + 7,
+                1,
+                "",
+                {"image_data": imgdata, "x_offset": -40, "y_offset": -110},
+            )
+            next_start_row = start_row + 25
+            return next_start_row
 
         # Chart style
         default_config = {
@@ -1267,12 +1423,23 @@ class ExportableEBMModel:
         self.variables = (
             pd.DataFrame(
                 data=[
-                    self.ebm_model.feature_types_in_,
-                    self.ebm_model.feature_names_in_,
-                    [f"{i}" for i in range(len(self.ebm_model.feature_names_in_))],
+                    [
+                        self.ebm_model.feature_types_in_[feature_index],
+                        self.ebm_model.term_names_[feature_index],
+                        feature_index,
+                    ]
+                    if len(feature_term) == 1
+                    else [
+                        "interaction",
+                        self.ebm_model.term_names_[feature_index],
+                        feature_index,
+                    ]
+                    for feature_index, feature_term in enumerate(
+                        self.ebm_model.term_features_
+                    )
                 ]
             )
-            .T.rename(columns={0: "Type", 1: "Variable", 2: "#"})
+            .rename(columns={0: "Type", 1: "Variable", 2: "#"})
             .set_index("Variable")
         )
 
@@ -1291,7 +1458,7 @@ class ExportableEBMModel:
                 pd.DataFrame([t.reshape(-1) for t in self.ebm_model.term_scores_])
                 .T.apply(min_max_abs)
                 .T[["Min", "Max", "Abs max"]],
-                pd.DataFrame(self.ebm_model.feature_names_in_, columns=["Variable"]),
+                pd.DataFrame(self.ebm_model.term_names_, columns=["Variable"]),
             ],
             axis=1,
         ).set_index("Variable")
