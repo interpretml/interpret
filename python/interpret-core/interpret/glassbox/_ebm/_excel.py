@@ -118,7 +118,7 @@ _global_config = {
         },
         # Evaluation tab: ability to evaluate model on one point
         "Evaluation": {
-            "enable": False,
+            "enable": True,
             "tab": {
                 "color": "#00B4D8",
                 "label": "Evaluation",
@@ -733,25 +733,20 @@ class VariablesDataWorksheet(Worksheet):
     def sheet_creation_handler(self):
         """Create sheet layout elements."""
         self.data_reference = []
-        for feature_index, feature_term in enumerate(self.ebm_model.term_features_):
-            start_row_feature = 6 * feature_index
-            feature_name = self.ebm_model.term_names_[feature_index]
-            if len(feature_term) == 1:
-                self.__generate_feature_data(
-                    start_row_feature, feature_index, feature_name
-                )
+        for _, var in self.variables.iterrows():
+            start_row_feature = 6 * var["#"]
+            if var.Type != "interaction":
+                self.__generate_feature_data(start_row_feature, var)
             else:
-                self.__generate_interaction_data(
-                    start_row_feature,
-                    feature_index,
-                    feature_name,
-                    feature_term,
-                )
+                self.__generate_interaction_data(start_row_feature, var)
 
-    def __generate_feature_data(self, start_row, feature_index, feature_name):
+    def __generate_feature_data(self, start_row, var):
+        feature_index = var["#"]
+        feature_name = var.name
+        feature_type = var.Type
         row_label = f"{feature_index}_{feature_name}"
         
-        if self.ebm_model.feature_types_in_[feature_index] == "continuous":
+        if feature_type == "continuous":
             # Continuous
             x_compute = np.concatenate(
                 [
@@ -906,41 +901,40 @@ class VariablesDataWorksheet(Worksheet):
             }
         )
     
-    def __generate_interaction_data(
-        self, start_row, feature_index, feature_name, feature_term
-    ):
+    def __generate_interaction_data(self, start_row, var):
+        feature_index = var["#"]
+        feature_name = var.name
         row_label = f"{feature_index}_{feature_name}"
-        x_plot = {}
-        interaction_names = {}
+        term_feature = self.ebm_model.term_features_[feature_index]
+        plot_values = {}
+        bin_lens = {}
+        term_interaction_names = feature_name.split(" & ")
         for index in [0, 1]:
-            interaction_index = feature_term[index]
-            interaction_names[index] = self.ebm_model.feature_names_in_[
-                interaction_index
-            ]
-            if self.ebm_model.feature_types_in_[interaction_index] == "continuous":
+            term_interaction = term_feature[index]
+            if self.ebm_model.feature_types_in_[term_interaction] == "continuous":
                 x_compute = np.concatenate(
                     [
                         [np.NaN, -1e12],
-                        self.ebm_model.bins_[interaction_index][-1],
+                        self.ebm_model.bins_[term_interaction][-1],
                     ]
                 )
-                x_plot[index] = (
+                plot_values[index] = (
                     [
                         (
-                            self.ebm_model.feature_bounds_[interaction_index][0],
-                            self.ebm_model.bins_[interaction_index][-1][0],
+                            self.ebm_model.feature_bounds_[term_interaction][0],
+                            self.ebm_model.bins_[term_interaction][-1][0],
                         )
                     ]
                     + [
                         *zip(
-                            self.ebm_model.bins_[interaction_index][-1][:-1],
-                            self.ebm_model.bins_[interaction_index][-1][1:],
+                            self.ebm_model.bins_[term_interaction][-1][:-1],
+                            self.ebm_model.bins_[term_interaction][-1][1:],
                         )
                     ]
                     + [
                         (
-                            self.ebm_model.bins_[interaction_index][-1][-1],
-                            self.ebm_model.feature_bounds_[interaction_index][1],
+                            self.ebm_model.bins_[term_interaction][-1][-1],
+                            self.ebm_model.feature_bounds_[term_interaction][1],
                         )
                     ]
                 )
@@ -948,20 +942,17 @@ class VariablesDataWorksheet(Worksheet):
                 x_compute = list(
                     {
                         **{"<missing>": 0},
-                        **self.ebm_model.bins_[interaction_index][-1],
+                        **self.ebm_model.bins_[term_interaction][-1],
                     }.keys()
                 )
-                x_plot[index] = self.ebm_model.bins_[interaction_index][-1]
+                plot_values[index] = self.ebm_model.bins_[term_interaction][-1]
 
-            compute_data = (
-                pd.DataFrame([x_compute])
-                .T.rename(
-                    columns={
-                        0: f"{row_label}_compute_values_{index}",
-                    }
-                )
-                .T
+            compute_data = pd.DataFrame([x_compute]).T.rename(
+                columns={
+                    0: f"{row_label}_compute_values_{index}",
+                }
             )
+            bin_lens[index] = len(compute_data)
             compute_data.T.to_excel(
                 self.writer,
                 sheet_name=self.tab_name,
@@ -974,14 +965,10 @@ class VariablesDataWorksheet(Worksheet):
         y_compute = np.array(
             [row[:-1] for row in self.ebm_model.term_scores_[feature_index][:-1]]
         ).reshape(-1)
-        compute_data = (
-            pd.DataFrame([y_compute])
-            .T.rename(
-                columns={
-                    0: f"{row_label}_compute_contribution",
-                }
-            )
-            .T
+        compute_data = pd.DataFrame([y_compute]).T.rename(
+            columns={
+                0: f"{row_label}_compute_contribution",
+            }
         )
         compute_data.T.to_excel(
             self.writer,
@@ -998,16 +985,15 @@ class VariablesDataWorksheet(Worksheet):
                 "compute_values_row_0": start_row,
                 "compute_values_row_1": start_row + 1,
                 "compute_contributions_row": start_row + 2,
-                "plot_values_0": x_plot[0],
-                "plot_values_1": x_plot[1],
-                "feature_name_0": interaction_names[0],
-                "feature_name_1": interaction_names[1],
-                "compute_contributions": np.array(
+                "plot_values": plot_values,
+                "term_interaction_names": term_interaction_names,
+                "plot_contributions": np.array(
                     [
                         row[1:-1]
                         for row in self.ebm_model.term_scores_[feature_index][1:-1]
                     ]
                 ),
+                "bin_lengths": bin_lens,
             }
         )
 
@@ -1114,12 +1100,12 @@ class ShapePlotsWorksheet(Worksheet):
                         "plot_distribution_length"
                     ]
         else:
-            plot_values_0 = self.data_reference[feature_index]["plot_values_0"]
-            plot_values_1 = self.data_reference[feature_index]["plot_values_1"]
-            feature_name_0 = self.data_reference[feature_index]["feature_name_0"]
-            feature_name_1 = self.data_reference[feature_index]["feature_name_1"]
-            compute_contributions = self.data_reference[feature_index][
-                "compute_contributions"
+            plot_values = self.data_reference[feature_index]["plot_values"]
+            term_interaction_names = self.data_reference[feature_index][
+                "term_interaction_names"
+            ]
+            plot_contributions = self.data_reference[feature_index][
+                "plot_contributions"
             ]
 
         if feature_type == "continuous":
@@ -1258,13 +1244,13 @@ class ShapePlotsWorksheet(Worksheet):
         else:
             imgdata = BytesIO()
             heatmap = sns.heatmap(
-                compute_contributions.T,
-                xticklabels=plot_values_0,
-                yticklabels=plot_values_1,
+                plot_contributions.T,
+                xticklabels=plot_values[0],
+                yticklabels=plot_values[1],
                 cmap="RdBu_r",
             )
-            heatmap.set_xlabel(feature_name_0)
-            heatmap.set_ylabel(feature_name_1)
+            heatmap.set_xlabel(term_interaction_names[0])
+            heatmap.set_ylabel(term_interaction_names[1])
             heatmap.invert_yaxis()
             plt.locator_params(
                 nbins=options.tabs.Variables.interaction.max_bins
@@ -1316,6 +1302,274 @@ class ShapePlotsWorksheet(Worksheet):
 
         log.debug(f"Generated plots for variable {feature_name}…")
         return next_start_row
+    
+
+class EvaluationWorksheet(Worksheet):
+
+    """A class to build the Evaluation sheet."""
+
+    def register_formats(self):
+        """Register the formats required for this worksheet."""
+        titlebar_colors = Format(
+            {
+                "bg_color": options.tabs.Evaluation.titlebar.bg_color,
+                "color": options.tabs.Evaluation.titlebar.fg_color,
+            }
+        )
+        Formats.centered = BasicFormats.align_center.register(self.workbook)
+
+        Formats.evaluation_titlebar_bg = titlebar_colors.register(self.workbook)
+        Formats.evaluation_titlebar_title = (
+            titlebar_colors
+            + BasicFormats.align_left
+            + BasicFormats.valign_center
+            + BasicFormats.font_28
+            + BasicFormats.no_bold
+            + BasicFormats.indent_1
+        ).register(self.workbook)
+
+        Formats.links = (
+            BasicFormats.no_underline + BasicFormats.align_center + BasicFormats.bold
+        ).register(self.workbook)
+
+        Formats.centered_2digits = (
+            BasicFormats.align_center + BasicFormats.number_two_digits
+        ).register(self.workbook)
+
+        Formats.bold = (
+            BasicFormats.bold + BasicFormats.align_center + BasicFormats.number_two_digits
+        ).register(self.workbook)
+
+        white_color = Format(
+            {
+                "color": options.tabs.Evaluation.titlebar.fg_color,
+            }
+        )
+        Formats.white = white_color.register(self.workbook)
+
+    def provide_data(self, *args, **kwargs):
+        """Provide data specific to this worksheet."""
+        self.variables = kwargs.get("variables", None)
+        self.ebm_model = kwargs.get("ebm_model", None)
+        self.data_reference = kwargs.get("data_reference", None)
+        self.default_evaluation = kwargs.get("default_evaluation", None)
+
+    def sheet_creation_handler(self):
+        """Create sheet layout elements."""
+        self.__title_bar()
+        self.__table()
+        self.__prediction()
+        self.__summation()
+        #self.__waterfall()
+
+    def __title_bar(self):
+        self.worksheet.set_row(
+            1,
+            options.tabs.Evaluation.titlebar.row1_height,
+            cell_format=Formats.evaluation_titlebar_bg,
+        )
+        self.worksheet.set_row(
+            2,
+            options.tabs.Evaluation.titlebar.row2_height,
+            cell_format=Formats.evaluation_titlebar_bg,
+        )
+
+        self.worksheet.merge_range("B2:D3", "")
+        self.worksheet.merge_range("A2:A3", "")
+
+        self.worksheet.write_string(
+            "B2",
+            options.tabs.Evaluation.titlebar.main_title,
+            Formats.evaluation_titlebar_title,
+        )
+
+    def __table(self):
+        display_variables = self.variables.reset_index(drop=False)[
+            ["#", "Variable", "Description", "Type"]
+        ]
+        display_variables["Value"] = ""
+        display_variables["Score"] = ""
+
+        # Add EBM intercept to the table
+        display_variables = pd.concat(
+            [
+                display_variables,
+                pd.DataFrame(
+                    {
+                        "#": [""],
+                        "Variable": ["Baseline score"],
+                        "Description": [
+                            "Baseline value for the score, should all contributions be zero."  # noqa: E501
+                        ],
+                        "Type": ["constant"],
+                        "Value": [""],
+                        "Score": [self.ebm_model.intercept_[0]],
+                    }
+                ),
+            ],
+            axis=0,
+            ignore_index=True,
+        )
+
+        header = [{"header": c} for c in display_variables.columns]
+        # header[-1]["total_function"] = "sum"
+        self.worksheet.add_table(
+            xl_range_abs(4, 1, 4 + len(display_variables) + 2, 6),
+            {
+                "autofilter": 0,
+                "header_row": 1,
+                "columns": header,
+                "data": display_variables.values.tolist(),
+                "style": options.tabs.Evaluation.table.style,
+                # "total_row": True,  # for summation ("scoring")
+            },
+        )
+
+        for index, row in enumerate(range(5, 5 + len(display_variables) - 1)):
+            link_reference = f"internal:VariablePlot{index}"
+            self.worksheet.write_url(row, 1, link_reference, Formats.links, str(index))
+
+        self.worksheet.ignore_errors(
+            {"number_stored_as_text": xl_range_abs(5, 1, 5 + len(display_variables), 1)}
+        )
+
+    def __prediction(self):
+        model_data_tab = options.tabs.VariablesData.tab.label
+        for _, var in self.variables.iterrows():
+            feature_index = var["#"]
+            feature_name = var.name
+            feature_type = var.Type
+            row_within_table = 5 + feature_index
+            if feature_type != "interaction":
+                row_values = (
+                    self.data_reference[feature_index]["compute_values_row"] + 1
+                )
+                row_contributions = (
+                    self.data_reference[feature_index]["compute_contributions_row"] + 1
+                )
+                if self.default_evaluation is not None:
+                    default_evaluation_value = self.default_evaluation[feature_name]
+                    if isinstance(default_evaluation_value, str):
+                        self.worksheet.write_string(
+                            row_within_table, 5, default_evaluation_value
+                        )
+                    else:
+                        self.worksheet.write_number(
+                            row_within_table, 5, default_evaluation_value
+                    )
+
+                self.worksheet.write_formula(
+                    row_within_table,
+                    7,
+                    "=IF(ISBLANK({}),".format(xl_rowcol_to_cell(row_within_table, 5))
+                    + '"<missing>",'
+                    + "IFERROR({},".format(xl_rowcol_to_cell(row_within_table, 5))
+                    + '"<missing>"))',
+                    Formats.white,
+                )
+
+                if self.ebm_model.feature_types_in_[feature_index] == "continuous":
+                    formula = (
+                        "=HLOOKUP("
+                        # Lookup value
+                        + "{}, ".format(xl_rowcol_to_cell(row_within_table, 7))
+                        # Excel rows for values & contributions
+                        + f"'{model_data_tab}'!{row_values}:{row_contributions}, "
+                        # Move to second row from the table to get the contribution value
+                        + "2, "
+                        # Approximate search (we don't look up the exact value)
+                        + "TRUE"
+                        + ")"
+                    )
+                elif self.ebm_model.feature_types_in_[feature_index] == "nominal":
+                    formula = (
+                        "=IFERROR(HLOOKUP("
+                        # Lookup value
+                        + "{}, ".format(xl_rowcol_to_cell(row_within_table, 7))
+                        # Excel rows for values & contributions
+                        + f"'{model_data_tab}'!{row_values}:{row_contributions}, "
+                        # Move to second row from the table to get the contribution value
+                        + "2, "
+                        # exact search
+                        + "FALSE"
+                        + "),0)"
+                    )
+            else:
+                term_feature = self.ebm_model.term_features_[feature_index]
+                self.worksheet.write_string(row_within_table, 5, "-")
+                row_contributions = (
+                    self.data_reference[feature_index]["compute_contributions_row"] + 1
+                )
+                row_value_0 = (
+                    self.data_reference[feature_index]["compute_values_row_0"] + 1
+                )
+                row_value_1 = (
+                    self.data_reference[feature_index]["compute_values_row_1"] + 1
+                )
+                row_feature_0 = term_feature[0] + 5
+                row_feature_1 = term_feature[1] + 5
+                bins_len = self.data_reference[feature_index]["bin_lengths"][1]
+                formula = (
+                    "=INDEX("
+                    + f"'{model_data_tab}'!{row_contributions}:{row_contributions}, "
+                    + f"{bins_len}*(MATCH("
+                    + "{},".format(xl_rowcol_to_cell(row_feature_0, 7))
+                    + f"'{model_data_tab}'!{row_value_0}:{row_value_0},1)-2)"
+                    + "+MATCH("
+                    + "{},".format(xl_rowcol_to_cell(row_feature_1, 7))
+                    + f"'{model_data_tab}'!{row_value_1}:{row_value_1},1)"
+                    + ")"
+                )
+            self.worksheet.write_formula(row_within_table, 6, formula)
+
+    def __summation(self):
+        # Model score (actual summation made via table total row)
+        self.worksheet.write_string(5 + len(self.variables) + 1, 2, "Model score", Formats.bold)
+        self.worksheet.write_string(
+            5 + len(self.variables) + 1,
+            3,
+            "Model score: sum of baseline + variables scores",
+            Formats.bold,
+        )
+        self.worksheet.write_formula(
+            5 + len(self.variables) + 1,
+            6,
+            "=SUM(G6:G{})".format(5 + len(self.variables) + 1),
+            Formats.bold,
+            )
+
+        # Model probability
+        if options.tabs.Evaluation.display_probability:
+            self.worksheet.write_string(
+                5 + len(self.variables) + 2, 2, "Model probability", Formats.bold
+            )
+            self.worksheet.write_string(
+                5 + len(self.variables) + 2,
+                3,
+                "Output probability (sigmoid applied to score)",
+                Formats.bold,
+            )
+            model_score_cell = xl_rowcol_to_cell(5 + len(self.variables) + 1, 6)
+            self.worksheet.write_formula(
+                5 + len(self.variables) + 2,
+                6,
+                f"=EXP({model_score_cell})/(1+EXP({model_score_cell}))",
+                Formats.bold,
+            )
+
+    def sheet_columns(self):
+        """Declare columns settings for the worksheet."""
+        return [
+            (0, 0, 3),
+            (1, 1, 3, Formats.centered),
+            (2, 2, 32, Formats.centered),
+            (3, 3, 51, Formats.centered),
+            (4, 4, 12, Formats.centered),
+            (5, 5, 15, Formats.centered),
+            (6, 6, 15, Formats.centered_2digits),
+            (7, 7, 2.3),
+        ]
+
 
 class ExportableEBMModel:
 
@@ -1366,7 +1620,7 @@ class ExportableEBMModel:
         self.workbook: Optional[Workbook] = None
         self.variables: Optional[pd.DataFrame] = None
         self.model_description: str = ""
-        #self.default_evaluation: Optional[Dict[str, Any]] = None
+        self.default_evaluation: Optional[Dict[str, Any]] = None
 
         # Other initializations
         self.__extract_variables()
@@ -1395,13 +1649,12 @@ class ExportableEBMModel:
 
         # Evaluation worksheet: TODO
         if options.tabs.Evaluation.enable:
-            self.sheet_evaluation = evaluation.generate_evaluation(self.excel_writer)
+            self.sheet_evaluation = generate_evaluation(self.excel_writer)
             self.sheet_evaluation.provide_data(
                 variables=self.variables,
                 ebm_model=self.ebm_model,
                 data_reference=self.data_reference,
                 default_evaluation=self.default_evaluation,
-                group_parameters=self.group_parameters,
             )
             self.sheet_evaluation.create_worksheet()
             log.info("Created Evaluation tab…")
@@ -1411,6 +1664,23 @@ class ExportableEBMModel:
     def register_model_description(self, model_description: str):
         """Register a model description for the Overview tab."""
         self.model_description = model_description
+        
+    def register_variables(self, data):
+        """Enrich variables data."""
+        if data:
+            if isinstance(data, dict):
+                data = pd.DataFrame([data]).T
+                data.columns = ["Description"]
+            self.variables = self.variables.merge(
+                right=data, how="left", left_index=True, right_index=True
+            )
+            self.variables["Description"] = self.variables["Description"].fillna("")
+        else:
+            self.variables["Description"] = ""
+        
+    def register_default_evaluation(self, data):
+        """Enrich evaluation case with default values."""
+        self.default_evaluation = data
 
     def save(self):
         """Export the model report into the Excel workbook."""
@@ -1491,7 +1761,22 @@ def generate_variables(writer: pd.io.excel._xlsxwriter.XlsxWriter):
         default_zoom=options.tabs.Variables.sheet.zoom,
     )
 
-def UNTESTED_to_excel_exportable(ebm, file, model_description=None):
+def generate_evaluation(writer: pd.io.excel._xlsxwriter.XlsxWriter):
+    """Generate the Evaluation worksheet."""
+    return EvaluationWorksheet(
+        writer,
+        tab_name=options.tabs.Evaluation.tab.label,
+        tab_color=options.tabs.Evaluation.tab.color,
+        default_zoom=options.tabs.Evaluation.sheet.zoom,
+    )
+
+def UNTESTED_to_excel_exportable(
+    ebm,
+    file,
+    model_description=None,
+    variables_description=None,
+    default_evaluation=None,
+):
     """Generates an Excel representation of the EBM model.
 
     Args:
@@ -1506,6 +1791,9 @@ def UNTESTED_to_excel_exportable(ebm, file, model_description=None):
 
     if model_description:
         workbook.register_model_description(model_description)
+    if default_evaluation:
+        workbook.register_default_evaluation(default_evaluation)
+    workbook.register_variables(variables_description)
 
     workbook.generate()
 
