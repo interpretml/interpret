@@ -20,7 +20,6 @@ from sklearn.base import (
     is_classifier,
     is_regressor,
 )  # type: ignore
-from sklearn.exceptions import DataConversionWarning
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 
@@ -541,18 +540,6 @@ class EBMModel(BaseEstimator):
 
         # TODO: check the other inputs for common mistakes here
 
-        if (_y := np.array(y)).ndim == 2 and _y.shape[1] == 1:
-            # TODO: clean_dimensions will remove the dimensions if size 1.
-            # Probably this should be moved. Is hot-fix for sklearn compliance.
-            warn(
-                (
-                    "A column-vector y was passed when a 1d array was"
-                    " expected. Please change the shape of y to "
-                    "(n_samples,), for example using ravel()."
-                ),
-                DataConversionWarning,
-                stacklevel=0,
-            )
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             msg = "y must be 1 dimensional"
