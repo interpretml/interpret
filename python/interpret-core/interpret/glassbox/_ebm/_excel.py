@@ -1,17 +1,17 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+from io import BytesIO
 from typing import Any, Dict, Optional
+
+import dotsi
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 from xlsxwriter.utility import xl_range_abs, xl_rowcol_to_cell
 from xlsxwriter.workbook import Workbook
-import pandas as pd
-import numpy as np
-import dotsi
-import seaborn as sns
-import matplotlib.pyplot as plt
-from io import BytesIO
-
-import logging
 
 DEBUGFORMATTER = "%(filename)s:%(name)s:%(funcName)s:%(lineno)d: %(message)s"
 """Debug file formatter."""
@@ -112,9 +112,7 @@ _global_config = {
             "tab": {"color": "#0077B6", "label": "Shape Plots ➡"},
             "sheet": {"zoom": 100},
             "toc_label": "Shape Plots",
-            "toc_description": (
-                "Shape plots of the variables."
-            ),
+            "toc_description": ("Shape plots of the variables."),
         },
         # Evaluation tab: ability to evaluate model on one point
         "Evaluation": {
@@ -145,6 +143,7 @@ _global_config = {
 
 options = dotsi.fy(_global_config)
 
+
 class Format:
 
     """
@@ -171,6 +170,7 @@ class Format:
         log.debug("Registering format with attributes")
         log.debug(self.desc)
         return workbook.add_format(self.desc)
+
 
 BasicFormats = dotsi.fy(
     {
@@ -205,6 +205,7 @@ BasicFormats = dotsi.fy(
 )
 
 Formats = dotsi.fy({})
+
 
 class Worksheet:
 
@@ -309,6 +310,7 @@ class Worksheet:
         """Implement any behavior at workbook save time."""
         pass
 
+
 class OverviewWorksheet(Worksheet):
 
     """A class to build the Overview sheet."""
@@ -366,9 +368,9 @@ class OverviewWorksheet(Worksheet):
         ).register(self.workbook)
 
         # Table of contents
-        Formats.overview_toc_title = Format(
-            options.tabs.Overview.toc.title
-        ).register(self.workbook)
+        Formats.overview_toc_title = Format(options.tabs.Overview.toc.title).register(
+            self.workbook
+        )
         Formats.overview_toc_category_label = Format(
             options.tabs.Overview.toc.category.label
         ).register(self.workbook)
@@ -531,7 +533,8 @@ class OverviewWorksheet(Worksheet):
             (6, 6, 3),
             (7, 7, 2.3),
         ]
-    
+
+
 class VariablesWorksheet(Worksheet):
 
     """A class to build the Variables sheets."""
@@ -720,7 +723,8 @@ class VariablesWorksheet(Worksheet):
             (5, 5, 10, Formats.centered),
             (6, 8, 8, Formats.round_centered),
         ]
-    
+
+
 class VariablesDataWorksheet(Worksheet):
 
     """A class to build the hidden sheet storing Features data."""
@@ -745,7 +749,7 @@ class VariablesDataWorksheet(Worksheet):
         feature_name = var.name
         feature_type = var.Type
         row_label = f"{feature_index}_{feature_name}"
-        
+
         if feature_type == "continuous":
             # Continuous
             x_compute = np.concatenate(
@@ -755,7 +759,7 @@ class VariablesDataWorksheet(Worksheet):
                 ]
             )
             y_compute = self.ebm_model.term_scores_[feature_index][:-1]
-            
+
             x_plot = [self.ebm_model.feature_bounds_[feature_index][0]]
             y_plot = [y_compute[1]]
             y_prev = y_compute[1]
@@ -788,14 +792,10 @@ class VariablesDataWorksheet(Worksheet):
                 header=False,
                 na_rep="<missing>",
             )
-            
+
             if options.tabs.Variables.charts.display_distribution:
-                distribution_x = self.ebm_model.bins_[
-                    feature_index
-                ][0]
-                distribution_y = self.ebm_model.bin_weights_[
-                    feature_index
-                ][1:-1]
+                distribution_x = self.ebm_model.bins_[feature_index][0]
+                distribution_y = self.ebm_model.bin_weights_[feature_index][1:-1]
                 d_x_plot = [
                     self.ebm_model.feature_bounds_[feature_index][0],
                     self.ebm_model.feature_bounds_[feature_index][0],
@@ -812,7 +812,7 @@ class VariablesDataWorksheet(Worksheet):
                 d_x_plot.extend(
                     [
                         self.ebm_model.feature_bounds_[feature_index][1],
-                        self.ebm_model.feature_bounds_[feature_index][1]
+                        self.ebm_model.feature_bounds_[feature_index][1],
                     ]
                 )
                 d_y_plot.extend([d_y_prev, 0])
@@ -845,7 +845,6 @@ class VariablesDataWorksheet(Worksheet):
                     )
                     .T
                 )
-        # TODO: add interaction features
 
         compute_data = (
             pd.DataFrame([x_compute, y_compute])
@@ -900,7 +899,7 @@ class VariablesDataWorksheet(Worksheet):
                 else None,
             }
         )
-    
+
     def __generate_interaction_data(self, start_row, var):
         feature_index = var["#"]
         feature_name = var.name
@@ -1000,7 +999,8 @@ class VariablesDataWorksheet(Worksheet):
     def sheet_columns(self):
         """Declare columns settings for the worksheet."""
         return [(0, 0, 70)]
-    
+
+
 class ShapePlotsWorksheet(Worksheet):
 
     """A class to build shape plots of each variable."""
@@ -1109,9 +1109,7 @@ class ShapePlotsWorksheet(Worksheet):
             ]
 
         if feature_type == "continuous":
-            chart = self.workbook.add_chart(
-                {"type": "scatter", "subtype": "straight"}
-            )
+            chart = self.workbook.add_chart({"type": "scatter", "subtype": "straight"})
             chart.add_series(
                 {
                     "name": feature_name,
@@ -1252,9 +1250,7 @@ class ShapePlotsWorksheet(Worksheet):
             heatmap.set_xlabel(term_interaction_names[0])
             heatmap.set_ylabel(term_interaction_names[1])
             heatmap.invert_yaxis()
-            plt.locator_params(
-                nbins=options.tabs.Variables.interaction.max_bins
-            )
+            plt.locator_params(nbins=options.tabs.Variables.interaction.max_bins)
             fig = heatmap.get_figure()
             plt.close(fig)
             fig.savefig(imgdata, format="png", bbox_inches="tight")
@@ -1302,7 +1298,7 @@ class ShapePlotsWorksheet(Worksheet):
 
         log.debug(f"Generated plots for variable {feature_name}…")
         return next_start_row
-    
+
 
 class EvaluationWorksheet(Worksheet):
 
@@ -1337,7 +1333,9 @@ class EvaluationWorksheet(Worksheet):
         ).register(self.workbook)
 
         Formats.bold = (
-            BasicFormats.bold + BasicFormats.align_center + BasicFormats.number_two_digits
+            BasicFormats.bold
+            + BasicFormats.align_center
+            + BasicFormats.number_two_digits
         ).register(self.workbook)
 
         white_color = Format(
@@ -1360,7 +1358,7 @@ class EvaluationWorksheet(Worksheet):
         self.__table()
         self.__prediction()
         self.__summation()
-        #self.__waterfall()
+        self.__waterfall()
 
     def __title_bar(self):
         self.worksheet.set_row(
@@ -1412,7 +1410,6 @@ class EvaluationWorksheet(Worksheet):
         )
 
         header = [{"header": c} for c in display_variables.columns]
-        # header[-1]["total_function"] = "sum"
         self.worksheet.add_table(
             xl_range_abs(4, 1, 4 + len(display_variables) + 2, 6),
             {
@@ -1421,7 +1418,6 @@ class EvaluationWorksheet(Worksheet):
                 "columns": header,
                 "data": display_variables.values.tolist(),
                 "style": options.tabs.Evaluation.table.style,
-                # "total_row": True,  # for summation ("scoring")
             },
         )
 
@@ -1456,7 +1452,7 @@ class EvaluationWorksheet(Worksheet):
                     else:
                         self.worksheet.write_number(
                             row_within_table, 5, default_evaluation_value
-                    )
+                        )
 
                 self.worksheet.write_formula(
                     row_within_table,
@@ -1468,7 +1464,7 @@ class EvaluationWorksheet(Worksheet):
                     Formats.white,
                 )
 
-                if self.ebm_model.feature_types_in_[feature_index] == "continuous":
+                if feature_type == "continuous":
                     formula = (
                         "=HLOOKUP("
                         # Lookup value
@@ -1481,7 +1477,7 @@ class EvaluationWorksheet(Worksheet):
                         + "TRUE"
                         + ")"
                     )
-                elif self.ebm_model.feature_types_in_[feature_index] == "nominal":
+                else:
                     formula = (
                         "=IFERROR(HLOOKUP("
                         # Lookup value
@@ -1500,10 +1496,10 @@ class EvaluationWorksheet(Worksheet):
                 row_contributions = (
                     self.data_reference[feature_index]["compute_contributions_row"] + 1
                 )
-                row_value_0 = (
+                row_values_0 = (
                     self.data_reference[feature_index]["compute_values_row_0"] + 1
                 )
-                row_value_1 = (
+                row_values_1 = (
                     self.data_reference[feature_index]["compute_values_row_1"] + 1
                 )
                 row_feature_0 = term_feature[0] + 5
@@ -1514,48 +1510,356 @@ class EvaluationWorksheet(Worksheet):
                     + f"'{model_data_tab}'!{row_contributions}:{row_contributions}, "
                     + f"{bins_len}*(MATCH("
                     + "{},".format(xl_rowcol_to_cell(row_feature_0, 7))
-                    + f"'{model_data_tab}'!{row_value_0}:{row_value_0},1)-2)"
+                    + f"'{model_data_tab}'!{row_values_0}:{row_values_0},1)-2)"
                     + "+MATCH("
                     + "{},".format(xl_rowcol_to_cell(row_feature_1, 7))
-                    + f"'{model_data_tab}'!{row_value_1}:{row_value_1},1)"
+                    + f"'{model_data_tab}'!{row_values_1}:{row_values_1},1)"
                     + ")"
                 )
             self.worksheet.write_formula(row_within_table, 6, formula)
 
     def __summation(self):
         # Model score (actual summation made via table total row)
-        self.worksheet.write_string(5 + len(self.variables) + 1, 2, "Model score", Formats.bold)
+        model_scroe_row = len(self.variables) + 6
+        self.worksheet.write_string(model_scroe_row, 2, "Model score", Formats.bold)
         self.worksheet.write_string(
-            5 + len(self.variables) + 1,
+            model_scroe_row,
             3,
             "Model score: sum of baseline + variables scores",
             Formats.bold,
         )
         self.worksheet.write_formula(
-            5 + len(self.variables) + 1,
+            model_scroe_row,
             6,
-            "=SUM(G6:G{})".format(5 + len(self.variables) + 1),
+            "=SUM({})".format(xl_range_abs(5, 6, model_scroe_row - 1, 6)),
             Formats.bold,
-            )
+        )
 
         # Model probability
         if options.tabs.Evaluation.display_probability:
             self.worksheet.write_string(
-                5 + len(self.variables) + 2, 2, "Model probability", Formats.bold
+                model_scroe_row + 1, 2, "Model probability", Formats.bold
             )
             self.worksheet.write_string(
-                5 + len(self.variables) + 2,
+                model_scroe_row + 1,
                 3,
                 "Output probability (sigmoid applied to score)",
                 Formats.bold,
             )
-            model_score_cell = xl_rowcol_to_cell(5 + len(self.variables) + 1, 6)
+            model_score_cell = xl_rowcol_to_cell(model_scroe_row, 6)
             self.worksheet.write_formula(
-                5 + len(self.variables) + 2,
+                model_scroe_row + 1,
                 6,
                 f"=EXP({model_score_cell})/(1+EXP({model_score_cell}))",
                 Formats.bold,
             )
+
+    def __waterfall(self):
+        model_scroe_row = len(self.variables) + 6
+        baseline_row = model_scroe_row + 7
+        score_row = 2 * len(self.variables) + 14
+
+        self.worksheet.write_string(baseline_row, 2, "Baseline score", Formats.white)
+        self.worksheet.write_string(score_row, 2, "Model score", Formats.white)
+        self.worksheet.write_number(score_row + 1, 2, 1, Formats.white)
+        self.worksheet.write_number(
+            score_row + 2,
+            2,
+            len(self.variables) + 2,
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            baseline_row,
+            3,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row - 1, 6)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            baseline_row,
+            4,
+            "={}".format(xl_rowcol_to_cell(baseline_row, 3)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            score_row + 1,
+            3,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row - 1, 6)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            score_row + 2,
+            3,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row - 1, 6)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            score_row + 1,
+            4,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row, 6)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            score_row + 2,
+            4,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row, 6)),
+            Formats.white,
+        )
+        self.worksheet.write_formula(
+            baseline_row,
+            9,
+            "={}".format(xl_rowcol_to_cell(model_scroe_row - 1, 6)),
+            Formats.white,
+        )
+
+        # Columns for waterfall
+        for feature_index in self.variables["#"]:
+            feature_row = baseline_row + feature_index + 1
+            self.worksheet.write_formula(
+                feature_row,
+                2,
+                (
+                    "={}".format(xl_rowcol_to_cell(5 + feature_index, 2))
+                    + '&" = "&'
+                    + "{}".format(xl_rowcol_to_cell(5 + feature_index, 5))
+                ),
+                Formats.white,
+            )
+            self.worksheet.write_formula(
+                feature_row,
+                3,
+                "={}".format(xl_rowcol_to_cell(5 + feature_index, 6)),
+                Formats.white,
+            )
+            # Cumulative column
+            self.worksheet.write_formula(
+                feature_row,
+                4,
+                "=SUM({})".format(xl_range_abs(baseline_row, 3, feature_row, 3)),
+                Formats.white,
+            )
+            # Hidden column
+            self.worksheet.write_formula(
+                feature_row,
+                5,
+                (
+                    "=IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 4))
+                    + "<0,0,"
+                    + "IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 3))
+                    + ">=0,"
+                    + "{},".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "{}))".format(xl_rowcol_to_cell(feature_row, 4))
+                ),
+                Formats.white,
+            )
+            # Display column
+            self.worksheet.write_formula(
+                feature_row,
+                6,
+                (
+                    "=IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 4))
+                    + "<0,0,"
+                    + "IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 3))
+                    + ">=0,"
+                    + "{},".format(xl_rowcol_to_cell(feature_row, 3))
+                    + "-{}))".format(xl_rowcol_to_cell(feature_row, 3))
+                ),
+                Formats.white,
+            )
+            # Inverse negative column
+            self.worksheet.write_formula(
+                feature_row,
+                7,
+                (
+                    "=IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 4))
+                    + "<0,{},".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "0)"
+                ),
+                Formats.white,
+            )
+            # Inverse positive column
+            self.worksheet.write_formula(
+                feature_row,
+                8,
+                (
+                    "=IF({}".format(xl_rowcol_to_cell(feature_row - 1, 4))
+                    + "*{}".format(xl_rowcol_to_cell(feature_row, 4))
+                    + "<0,{},".format(xl_rowcol_to_cell(feature_row, 4))
+                    + "0)"
+                ),
+                Formats.white,
+            )
+
+        column_chart = self.workbook.add_chart({"type": "column", "subtype": "stacked"})
+        categories = (
+            "='"
+            + options.tabs.Evaluation.tab.label
+            + "'!"
+            + "{}".format(xl_range_abs(baseline_row, 2, score_row, 2))
+        )
+        column_chart.add_series(
+            {
+                "categories": categories,
+                "values": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(baseline_row, 5, score_row, 5))
+                ),
+                "fill": {"none": True},
+            }
+        )
+        for col_index in [6, 7, 8]:
+            column_chart.add_series(
+                {
+                    "categories": categories,
+                    "values": (
+                        "='"
+                        + options.tabs.Evaluation.tab.label
+                        + "'!"
+                        + "{}".format(
+                            xl_range_abs(baseline_row, col_index, score_row, col_index)
+                        )
+                    ),
+                    "fill": {"color": options.tabs.Evaluation.waterfall.default_color},
+                }
+            )
+        column_chart.add_series(
+            {
+                "categories": categories,
+                "values": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(baseline_row, 9, score_row, 9))
+                ),
+                "fill": {
+                    "color": options.tabs.Evaluation.waterfall.intercept_and_final_color
+                },
+            }
+        )
+        scatter_chart = self.workbook.add_chart({"type": "scatter"})
+        scatter_chart.add_series(
+            {
+                "categories": categories,
+                "values": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(baseline_row, 4, score_row, 4))
+                ),
+                "marker": {"type": "none"},
+                "x_error_bars": {
+                    "type": "fixed",
+                    "value": 1,
+                    "end_style": 0,
+                    "direction": "plus",
+                    "line": {"color": "#D9D9D9"},
+                },
+            }
+        )
+        scatter_chart.add_series(
+            {
+                "categories": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(score_row + 1, 2, score_row + 2, 2))
+                ),
+                "values": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(score_row + 1, 3, score_row + 2, 3))
+                ),
+                "marker": {"type": "none"},
+                "line": {
+                    "color": options.tabs.Evaluation.waterfall.intercept_and_final_color,
+                    "dash_type": "long_dash",
+                    "width": 2,
+                    "transparency": 80,
+                },
+                "data_labels": {
+                    "value": True,
+                    "custom": [{"value": "Baseline score"}, {"delete": True}],
+                    "font": {
+                        "color": options.tabs.Evaluation.waterfall.intercept_and_final_color
+                    },
+                    "position": "below",
+                },
+            }
+        )
+        scatter_chart.add_series(
+            {
+                "categories": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(score_row + 1, 2, score_row + 2, 2))
+                ),
+                "values": (
+                    "='"
+                    + options.tabs.Evaluation.tab.label
+                    + "'!"
+                    + "{}".format(xl_range_abs(score_row + 1, 4, score_row + 2, 4))
+                ),
+                "marker": {"type": "none"},
+                "line": {
+                    "color": options.tabs.Evaluation.waterfall.intercept_and_final_color,
+                    "dash_type": "long_dash",
+                    "width": 1.5,
+                },
+                "data_labels": {
+                    "value": True,
+                    "custom": [{"delete": True}, {"value": "Model score"}],
+                    "font": {
+                        "color": options.tabs.Evaluation.waterfall.intercept_and_final_color
+                    },
+                    "position": "above",
+                },
+            }
+        )
+        column_chart.combine(scatter_chart)
+        column_chart.set_legend({"none": True})
+        column_chart.set_y_axis(
+            {
+                "major_gridlines": {"visible": True, "line": {"color": "#F2F2F2"}},
+                "line": {"none": True},
+                "num_font": {"color": "#595959"},
+            }
+        )
+        column_chart.set_x_axis(
+            {
+                "line": {"color": "#BFBFBF", "width": 2},
+                "major_tick_mark": "none",
+                "num_font": {
+                    "color": "#595959",
+                    "size": 8,
+                },
+                "label_position": "low",
+            }
+        )
+        column_chart.set_title(
+            {
+                "name": "Prediction Waterfall",
+                "name_font": {
+                    "name": "Calibri",
+                    "color": "#595959",
+                    "size": 14,
+                    "bold": False,
+                },
+            }
+        )
+        position_shift = 4 if options.tabs.Evaluation.display_probability else 5
+        self.worksheet.insert_chart(
+            "B{}".format(baseline_row - position_shift),
+            column_chart,
+            {"x_scale": 2, "y_scale": 2},
+        )
 
     def sheet_columns(self):
         """Declare columns settings for the worksheet."""
@@ -1624,7 +1928,7 @@ class ExportableEBMModel:
 
         # Other initializations
         self.__extract_variables()
-    
+
     def generate(self):
         """Generate the Excel spreadsheet."""
         self.__initialize_excel_writer()
@@ -1647,7 +1951,7 @@ class ExportableEBMModel:
         self.data_reference = self.sheets_variables.data_reference
         log.info("Created Variables tab…")
 
-        # Evaluation worksheet: TODO
+        # Evaluation worksheet
         if options.tabs.Evaluation.enable:
             self.sheet_evaluation = generate_evaluation(self.excel_writer)
             self.sheet_evaluation.provide_data(
@@ -1664,7 +1968,7 @@ class ExportableEBMModel:
     def register_model_description(self, model_description: str):
         """Register a model description for the Overview tab."""
         self.model_description = model_description
-        
+
     def register_variables(self, data):
         """Enrich variables data."""
         if data:
@@ -1677,7 +1981,7 @@ class ExportableEBMModel:
             self.variables["Description"] = self.variables["Description"].fillna("")
         else:
             self.variables["Description"] = ""
-        
+
     def register_default_evaluation(self, data):
         """Enrich evaluation case with default values."""
         self.default_evaluation = data
@@ -1743,6 +2047,7 @@ class ExportableEBMModel:
 
         log.debug("Initialized Excel workbook writer…")
 
+
 def generate_overview(writer: pd.io.excel._xlsxwriter.XlsxWriter):
     """Generate the overview worksheet."""
     return OverviewWorksheet(
@@ -1751,6 +2056,7 @@ def generate_overview(writer: pd.io.excel._xlsxwriter.XlsxWriter):
         tab_color=options.tabs.Overview.tab.color,
         default_zoom=options.tabs.Overview.sheet.zoom,
     )
+
 
 def generate_variables(writer: pd.io.excel._xlsxwriter.XlsxWriter):
     """Generate the variables worksheets."""
@@ -1761,6 +2067,7 @@ def generate_variables(writer: pd.io.excel._xlsxwriter.XlsxWriter):
         default_zoom=options.tabs.Variables.sheet.zoom,
     )
 
+
 def generate_evaluation(writer: pd.io.excel._xlsxwriter.XlsxWriter):
     """Generate the Evaluation worksheet."""
     return EvaluationWorksheet(
@@ -1769,6 +2076,7 @@ def generate_evaluation(writer: pd.io.excel._xlsxwriter.XlsxWriter):
         tab_color=options.tabs.Evaluation.tab.color,
         default_zoom=options.tabs.Evaluation.sheet.zoom,
     )
+
 
 def UNTESTED_to_excel_exportable(
     ebm,
