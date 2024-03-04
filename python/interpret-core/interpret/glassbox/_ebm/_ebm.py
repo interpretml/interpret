@@ -110,7 +110,7 @@ class EBMExplanation(FeatureValueExplanation):
             name: User-defined name of explanation.
             selector: A dataframe whose indices correspond to explanation entries.
         """
-        super(EBMExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -168,9 +168,7 @@ class EBMExplanation(FeatureValueExplanation):
 
         # Per term global explanation
         if self.explanation_type == "global":
-            title = "Term: {0} ({1})".format(
-                self.feature_names[key], self.feature_types[key]
-            )
+            title = f"Term: {self.feature_names[key]} ({self.feature_types[key]})"
 
             if self.feature_types[key] == "continuous":
                 xtitle = self.feature_names[key]
@@ -193,23 +191,23 @@ class EBMExplanation(FeatureValueExplanation):
             ):
                 figure = super().visualize(key, title)
                 figure._interpret_help_text = (
-                    "The contribution (score) of the term {0} to predictions "
-                    "made by the model.".format(self.feature_names[key])
+                    f"The contribution (score) of the term {self.feature_names[key]}"
+                    " to predictions made by the model."
                 )
             else:  # pragma: no cover
                 raise Exception(
-                    "Not supported configuration: {0}, {1}".format(
-                        self.explanation_type, self.feature_types[key]
-                    )
+                    "Not supported configuration:"
+                    f" {self.explainer_type}, {self.feature_types[key]}"
                 )
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
-                "{0} to predictions made by the model. For classification, "
-                "scores are on a log scale (logits). For regression, scores are on the same "
-                "scale as the outcome being predicted (e.g., dollars when predicting cost). "
+                f"{self.feature_names[key]} to predictions made by the model."
+                "For classification, scores are on a log scale (logits)."
+                "For regression, scores are on the same scale as the outcome being predicted"
+                " (e.g., dollars when predicting cost). "
                 "Each graph is centered vertically such that average prediction on the train "
-                "set is 0.".format(self.feature_names[key])
+                "set is 0."
             )
 
             return figure
@@ -253,7 +251,7 @@ def is_private(estimator):
 def _clean_exclude(exclude, feature_map):
     ret = set()
     for term in exclude:
-        if isinstance(term, int) or isinstance(term, float) or isinstance(term, str):
+        if isinstance(term, (int, float, str)):
             term = (term,)
 
         cleaned = []
@@ -784,7 +782,7 @@ class EBMModel(BaseEstimator):
             if interactions is None:
                 break
 
-            if isinstance(interactions, int) or isinstance(interactions, float):
+            if isinstance(interactions, (int, float)):
                 if interactions == 0:
                     break
 
@@ -1573,7 +1571,7 @@ class EBMModel(BaseEstimator):
 
             intercept = self.intercept_
             if classes is None or len(classes) <= 2:
-                if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
+                if isinstance(intercept, (np.ndarray, list)):
                     intercept = intercept[0]
 
             n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
@@ -2346,7 +2344,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
-        super(ExplainableBoostingClassifier, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -2646,7 +2644,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
-        super(ExplainableBoostingRegressor, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -2867,7 +2865,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
         ] = None,
     ):
-        super(DPExplainableBoostingClassifier, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -3134,7 +3132,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         privacy_target_min: Optional[float] = None,
         privacy_target_max: Optional[float] = None,
     ):
-        super(DPExplainableBoostingRegressor, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
