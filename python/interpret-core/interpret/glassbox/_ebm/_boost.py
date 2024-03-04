@@ -24,7 +24,7 @@ def boost(
     min_hessian,
     max_leaves,
     greediness,
-    refresh_period,
+    cyclic_progress,
     smoothing_rounds,
     nominal_smoothing,
     max_rounds,
@@ -37,8 +37,6 @@ def boost(
     objective,
     experimental_params=None,
 ):
-    # TODO: expose cyclic_progress to the boost caller and remove refresh_period
-    cyclic_progress = True
     try:
         step_idx = 0
         with Booster(
@@ -60,6 +58,9 @@ def boost(
             circular_idx = 0
 
             max_steps = max_rounds * len(term_features)
+
+            # if greediness is set to +inf then set it to the max rounds.
+            greediness = min(greediness, max_rounds)
             greedy_steps = int(np.ceil(greediness * len(term_features)))
             if greedy_steps <= 0:
                 # if there are no greedy steps, then force progress on cyclic rounds

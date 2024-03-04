@@ -294,7 +294,7 @@ class EBMModel(BaseEstimator):
         # Boosting
         learning_rate,
         greediness,
-        refresh_rate,
+        cyclic_progress,
         smoothing_rounds,
         interaction_smoothing_rounds,
         max_rounds,
@@ -336,7 +336,7 @@ class EBMModel(BaseEstimator):
         self.learning_rate = learning_rate
         if not is_private(self):
             self.greediness = greediness
-            self.refresh_rate = refresh_rate
+            self.cyclic_progress = cyclic_progress
             self.smoothing_rounds = smoothing_rounds
             self.interaction_smoothing_rounds = interaction_smoothing_rounds
         self.max_rounds = max_rounds
@@ -362,13 +362,6 @@ class EBMModel(BaseEstimator):
             self.privacy_bounds = privacy_bounds
             self.privacy_target_min = privacy_target_min
             self.privacy_target_max = privacy_target_max
-
-            if random_state is not None:
-                warn(
-                    f"Privacy violation: using a fixed random_state of {random_state} "
-                    "will cause deterministic noise additions. This capability is only "
-                    "for debugging/testing. Set random_state to None to remove this warning."
-                )
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
@@ -450,22 +443,17 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if not is_private(self):
-            if self.greediness < 0.0:
+            if isnan(self.greediness):
+                msg = "greediness cannot be NaN"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif self.greediness < 0.0:
                 msg = "greediness cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif 1.0 < self.greediness:
-                msg = "greediness must be a percentage between 0.0 and 1.0 inclusive"
-                _log.error(msg)
-                raise ValueError(msg)
 
-            refresh_rate = float(self.refresh_rate)
-            if np.isnan(refresh_rate):
-                msg = "refresh_rate cannot be NaN"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif refresh_rate < 0.0:
-                msg = "refresh_rate cannot be negative"
+            if self.cyclic_progress is not True and self.cyclic_progress is not False:
+                msg = "cyclic_progress must be True or False"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -631,6 +619,13 @@ class EBMModel(BaseEstimator):
 
         # Privacy calculations
         if is_differential_privacy:
+            if self.random_state is not None:
+                warn(
+                    f"Privacy violation: using a fixed random_state of {self.random_state} "
+                    "will cause deterministic noise additions. This capability is only "
+                    "for debugging/testing. Set random_state to None to remove this warning."
+                )
+
             validate_eps_delta(self.epsilon, self.delta)
 
             if n_classes < 0:
@@ -841,7 +836,7 @@ class EBMModel(BaseEstimator):
             )
             inner_bags = 0
             greediness = 0.0
-            refresh_rate = 0.0
+            cyclic_progress = True
             smoothing_rounds = 0
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
@@ -855,7 +850,7 @@ class EBMModel(BaseEstimator):
             term_boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
             greediness = self.greediness
-            refresh_rate = self.refresh_rate
+            cyclic_progress = self.cyclic_progress
             smoothing_rounds = self.smoothing_rounds
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
@@ -876,15 +871,6 @@ class EBMModel(BaseEstimator):
             feature_names_in,
             feature_types_in,
         )
-
-        if refresh_rate == 0.0:
-            refresh_period = Native.FLOAT64_TO_INT64_MAX
-        else:
-            refresh_period = n_features_in / refresh_rate
-            if refresh_period < Native.FLOAT64_TO_INT64_MAX:
-                refresh_period = int(ceil(refresh_period))
-            else:
-                refresh_period = Native.FLOAT64_TO_INT64_MAX
 
         parallel_args = []
         for idx in range(self.outer_bags):
@@ -918,7 +904,7 @@ class EBMModel(BaseEstimator):
                     min_hessian,
                     self.max_leaves,
                     greediness,
-                    refresh_period,
+                    cyclic_progress,
                     smoothing_rounds,
                     nominal_smoothing,
                     self.max_rounds,
@@ -1163,7 +1149,7 @@ class EBMModel(BaseEstimator):
                         min_hessian,
                         self.max_leaves,
                         greediness,
-                        refresh_period,
+                        cyclic_progress,
                         interaction_smoothing_rounds,
                         nominal_smoothing,
                         self.max_rounds,
@@ -2372,13 +2358,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=0.5
-        Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
-    refresh_rate : float, default=0.0
-        How frequently the gain is recalculated on potential term updates during greedy
-        rounds. eg: 2.0 refreshes the gain calculations twice per greedy round. 0.5 
-        will recalculate the gains every 2 full greedy rounds, and 0.0 will turn 
-        this functionality off.
+    greediness : float, default=1.5
+        The proportion of greedy boosting steps relative to cyclic boosting steps.
+        A value of 0 disables greedy boosting, effectively turning it off.
+    cyclic_progress : bool, default=True
+        Indicates whether terms should be boosted concurrently with the recalculation
+        of their gains. When set to True, both processes occur simultaneously, which
+        typically leads to a reduction in overall fitting time.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2520,8 +2506,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 0.5,
-        refresh_rate=0.0,
+        greediness: Optional[float] = 1.5,
+        cyclic_progress: bool = True,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -2548,7 +2534,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             inner_bags=inner_bags,
             learning_rate=learning_rate,
             greediness=greediness,
-            refresh_rate=refresh_rate,
+            cyclic_progress=cyclic_progress,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
@@ -2667,13 +2653,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=0.5
-        Percentage of rounds where boosting is greedy instead of round-robin. Greedy rounds are intermixed with cyclic rounds.
-    refresh_rate : float, default=0.0
-        How frequently the gain is recalculated on potential term updates during greedy
-        rounds. eg: 2.0 refreshes the gain calculations twice per greedy round. 0.5 
-        will recalculate the gains every 2 full greedy rounds, and 0.0 will turn 
-        this functionality off.
+    greediness : float, default=1.5
+        The proportion of greedy boosting steps relative to cyclic boosting steps.
+        A value of 0 disables greedy boosting, effectively turning it off.
+    cyclic_progress : bool, default=True
+        Indicates whether terms should be boosted concurrently with the recalculation
+        of their gains. When set to True, both processes occur simultaneously, which
+        typically leads to a reduction in overall fitting time.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2815,8 +2801,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 0.5,
-        refresh_rate=0.0,
+        greediness: Optional[float] = 1.5,
+        cyclic_progress: bool = True,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -2843,7 +2829,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=inner_bags,
             learning_rate=learning_rate,
             greediness=greediness,
-            refresh_rate=refresh_rate,
+            cyclic_progress=cyclic_progress,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
             max_rounds=max_rounds,
@@ -3064,7 +3050,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
-            refresh_rate=0.0,
+            cyclic_progress=True,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
@@ -3331,7 +3317,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
-            refresh_rate=0.0,
+            cyclic_progress=True,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
