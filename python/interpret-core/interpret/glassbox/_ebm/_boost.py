@@ -64,7 +64,8 @@ def boost(
             greedy_steps = int(np.ceil(greediness * len(term_features)))
             if greedy_steps <= 0:
                 # if there are no greedy steps, then force progress on cyclic rounds
-                cyclic_progress = True
+                cyclic_progress = 1.0
+            cyclic_state = cyclic_progress
 
             state_idx = 0
 
@@ -88,8 +89,8 @@ def boost(
                         term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
                     
                     make_progress = False
-                    if cyclic_progress or 0 < smoothing_rounds:
-                        # if cyclic_progress is False we do not make progress
+                    if 1.0 <= cyclic_state or 0 < smoothing_rounds:
+                        # if cyclic_state is above 1.0 we make progress
                         step_idx += 1
                         make_progress = True
                 else:
@@ -189,12 +190,14 @@ def boost(
 
                 state_idx = state_idx + 1
                 if len(term_features) <= state_idx:
-                    state_idx = -greedy_steps
                     if 0 < smoothing_rounds:
+                        state_idx = 0  # all smoothing rounds are cyclic rounds
                         smoothing_rounds -= 1
-                        # all smoothing rounds are cyclic rounds
-                        state_idx = 0
-
+                    else:
+                        state_idx = -greedy_steps
+                        if 1.0 <= cyclic_state:
+                            cyclic_state -= 1.0
+                        cyclic_state += cyclic_progress
             if 0 < len(circular):
                 model_update = booster.get_best_model()
             else:
