@@ -452,8 +452,16 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            if self.cyclic_progress is not True and self.cyclic_progress is not False:
-                msg = "cyclic_progress must be True or False"
+            if isnan(self.cyclic_progress):
+                msg = "cyclic_progress cannot be NaN"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif self.cyclic_progress < 0.0:
+                msg = "cyclic_progress cannot be negative"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif 1.0 < self.cyclic_progress:
+                msg = "cyclic_progress cannot be above 1.0"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -836,7 +844,7 @@ class EBMModel(BaseEstimator):
             )
             inner_bags = 0
             greediness = 0.0
-            cyclic_progress = True
+            cyclic_progress = 1.0
             smoothing_rounds = 0
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
@@ -2361,10 +2369,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     greediness : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool, default=True
-        Indicates whether terms should be boosted concurrently with the recalculation
-        of their gains. When set to True, both processes occur simultaneously, which
-        typically leads to a reduction in overall fitting time.
+    cyclic_progress : float, default=1.0
+        This parameter specifies the proportion of the boosting cycles that will 
+        actively contribute to improving the model's performance. It is expressed 
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
+        the cycles are expected to make forward progress. If forward progress is 
+        not achieved during a cycle, that cycle will not be wasted; instead, 
+        it will be used to update internal gain calculations related to how effective 
+        each feature is in predicting the target variable. Setting this parameter 
+        to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2507,7 +2520,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greediness: Optional[float] = 1.5,
-        cyclic_progress: bool = True,
+        cyclic_progress: float = 1.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -2656,10 +2669,15 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     greediness : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool, default=True
-        Indicates whether terms should be boosted concurrently with the recalculation
-        of their gains. When set to True, both processes occur simultaneously, which
-        typically leads to a reduction in overall fitting time.
+    cyclic_progress : float, default=1.0
+        This parameter specifies the proportion of the boosting cycles that will 
+        actively contribute to improving the model's performance. It is expressed 
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
+        the cycles are expected to make forward progress. If forward progress is 
+        not achieved during a cycle, that cycle will not be wasted; instead, 
+        it will be used to update internal gain calculations related to how effective 
+        each feature is in predicting the target variable. Setting this parameter 
+        to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
@@ -2802,7 +2820,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greediness: Optional[float] = 1.5,
-        cyclic_progress: bool = True,
+        cyclic_progress: float = 1.0,
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -3050,7 +3068,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
-            cyclic_progress=True,
+            cyclic_progress=1.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
@@ -3317,7 +3335,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=0,
             learning_rate=learning_rate,
             greediness=0.0,
-            cyclic_progress=True,
+            cyclic_progress=1.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
