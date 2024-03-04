@@ -288,24 +288,26 @@ class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
     # Explainer
-    feature_names: Sequence[str] | None
-    feature_types: Sequence[str | None] | None
+    feature_names: Optional[Sequence[str]]
+    feature_types: Optional[Sequence[Optional[str]]]
     # Preprocessor
     max_bins: NonNegativeInt
     max_interaction_bins: NonNegativeInt
     # Stages
-    interactions: (
-        Annotated[int, Field(strict=True, ge=0)] |
-        Annotated[float, Field(gt=0.0, lt=1.0)] |
-        list[tuple | Sequence[int | str]] |
-        None
-    )
-    exclude: Literal["mains"] | list[Sequence[int | str] | str | int] | None
+    interactions: Optional[Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(gt=0.0, lt=1.0)],
+        List[Union[tuple, Sequence[Union[int, str]]]],
+    ]]
+    exclude: Optional[Union[
+        Literal["mains"],
+        List[Union[Sequence[Union[int, str]], str, int]],
+    ]]
     # Ensemble
-    validation_size: (
-        Annotated[int, Field(strict=True, ge=0)] |
-        Annotated[float, Field(ge=0.0, lt=1.0)]
-    )
+    validation_size: Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(ge=0.0, lt=1.0)],
+    ]
     outer_bags: Annotated[int, Field(ge=1)]
     inner_bags: NonNegativeInt
     # Boosting
@@ -321,10 +323,10 @@ class EBMModel(BaseEstimator):
     min_samples_leaf: NonNegativeInt
     min_hessian: NonNegativeFloat
     max_leaves: PositiveInt
-    objective: str | None
+    objective: Optional[str]
     # Overall
     n_jobs: int
-    random_state: int | None
+    random_state: Optional[int]
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
@@ -2301,7 +2303,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
-    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM classifier."""
@@ -2602,7 +2604,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM regressor."""
@@ -2829,7 +2831,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     intercept_: np.ndarray  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
-    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM classifier."""
@@ -3094,7 +3096,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations: ClassVar[list[str]] = ["global", "local"]
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM regressor."""
