@@ -312,8 +312,8 @@ class EBMModel(BaseEstimator):
     inner_bags: NonNegativeInt
     # Boosting
     learning_rate: PositiveFloat
-    greediness: Annotated[float, Field(ge=0.0, le=1.0)]
-    refresh_rate: NonNegativeFloat
+    greediness: NonNegativeFloat
+    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)]
     smoothing_rounds: NonNegativeInt
     interaction_smoothing_rounds: NonNegativeInt
     max_rounds: NonNegativeInt
@@ -325,7 +325,7 @@ class EBMModel(BaseEstimator):
     max_leaves: PositiveInt
     objective: Optional[str]
     # Overall
-    n_jobs: int
+    n_jobs: Optional[int]
     random_state: Optional[int]
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
