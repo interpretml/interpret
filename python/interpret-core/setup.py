@@ -240,7 +240,7 @@ https://github.com/interpretml/interpret
         "numpy>=1.11.1",
         "scipy>=0.18.1",
         "pandas>=0.19.2",
-        "scikit-learn>=0.24",
+        "scikit-learn>=0.18.1",
         "joblib>=0.11",
     ],
     extras_require={
@@ -268,6 +268,7 @@ https://github.com/interpretml/interpret
         ],
         # Testing
         "testing": [
+            "scikit-learn>=1.0.0",
             "pytest>=4.3.0",
             "pytest-runner>=4.4",
             "pytest-xdist>=1.29",
