@@ -37,8 +37,10 @@ def boost(
     objective,
     experimental_params=None,
 ):
+    # TODO: expose cyclic_progress to the boost caller and remove refresh_period
+    cyclic_progress = True
     try:
-        step_idx = 0  # needed if len(term_features) == 0
+        step_idx = 0
         with Booster(
             dataset,
             bag,
@@ -57,7 +59,11 @@ def boost(
             )
             circular_idx = 0
 
+            max_steps = max_rounds * len(term_features)
             greedy_steps = int(np.ceil(greediness * len(term_features)))
+            if greedy_steps <= 0:
+                # if there are no greedy steps, then force progress on cyclic rounds
+                cyclic_progress = True
 
             state_idx = 0
 
@@ -65,50 +71,33 @@ def boost(
             native = Native.get_native_singleton()
             nominals = native.extract_nominals(dataset)
 
-            for step_idx in range(max_rounds * len(term_features)):
-                gainkey = None
+            while step_idx < max_steps:
                 term_boost_flags_local = term_boost_flags
                 if 0 <= state_idx:
                     # cyclic
                     if 0 == state_idx:
                         # starting a fresh cyclic round. Clear the priority queue
+                        bestkey = None
                         heap = []
-                        # add 1 to avoid counting the first step after a cyclic round
-                        refresh_remain = refresh_period + 1
                     term_idx = state_idx
 
                     contains_nominals = any(nominals[i] for i in term_features[term_idx])
                     if 0 < smoothing_rounds and (nominal_smoothing or not contains_nominals):
                         # modify some of our parameters temporarily
                         term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
+                    
+                    make_progress = False
+                    if cyclic_progress or 0 < smoothing_rounds:
+                        # if cyclic_progress is False we do not make progress
+                        step_idx += 1
+                        make_progress = True
                 else:
-                    # greedy 
-                    refresh_remain -= 1
-                    if refresh_remain == 0:
-                        # we've reached the point where we need to refresh
-                        refresh_remain = refresh_period
-                        heap = []
-                        for refresh_idx in range(len(term_features)):
-                            avg_gain = booster.generate_term_update(
-                                rng,
-                                term_idx=refresh_idx,
-                                term_boost_flags=term_boost_flags_local,
-                                learning_rate=learning_rate,
-                                min_samples_leaf=min_samples_leaf,
-                                min_hessian=min_hessian,
-                                max_leaves=max_leaves,
-                            )
-                            newgainkey = (-avg_gain, native.generate_seed(rng), refresh_idx)
-                            if gainkey is None or newgainkey < gainkey:
-                                gainkey = newgainkey
-                                cached_update = booster.get_term_update()
-                            heapq.heappush(heap, newgainkey)
-
-                    # select something from our
-                    # queue and overwrite the term_idx we'll work on
+                    # greedy
+                    make_progress = True
+                    step_idx += 1
                     _, _, term_idx = heapq.heappop(heap)
 
-                if gainkey is None:
+                if bestkey is None or 0 <= state_idx:
                     avg_gain = booster.generate_term_update(
                         rng,
                         term_idx=term_idx,
@@ -119,7 +108,13 @@ def boost(
                         max_leaves=max_leaves,
                     )
                     gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
+                    if not make_progress:
+                        if bestkey is None or gainkey < bestkey:
+                            bestkey = gainkey
+                            cached_update = booster.get_term_update()
                 else:
+                    gainkey = bestkey
+                    bestkey = None
                     assert term_idx == gainkey[2] # heap and cached must agree
                     booster.set_term_update(term_idx, cached_update)
 
@@ -158,37 +153,38 @@ def boost(
                     noisy_update_tensor = -noisy_update_tensor
                     booster.set_term_update(term_idx, noisy_update_tensor)
 
-                cur_metric = booster.apply_term_update()
-                # if early_stopping_tolerance is negative then keep accepting
-                # model updates as they get worse past the minimum. We might
-                # want to boost past the lowest because averaging the outer bags
-                # improves the model, so boosting past the minimum can yield
-                # a better overall model after averaging
+                if make_progress:
+                    cur_metric = booster.apply_term_update()
+                    # if early_stopping_tolerance is negative then keep accepting
+                    # model updates as they get worse past the minimum. We might
+                    # want to boost past the lowest because averaging the outer bags
+                    # improves the model, so boosting past the minimum can yield
+                    # a better overall model after averaging
 
-                modified_tolerance = (
-                    min(abs(min_metric), abs(min_prev_metric))
-                    * early_stopping_tolerance
-                )
-                if np.isnan(modified_tolerance) or np.isinf(modified_tolerance):
-                    modified_tolerance = 0.0
+                    modified_tolerance = (
+                        min(abs(min_metric), abs(min_prev_metric))
+                        * early_stopping_tolerance
+                    )
+                    if np.isnan(modified_tolerance) or np.isinf(modified_tolerance):
+                        modified_tolerance = 0.0
 
-                if cur_metric <= min_metric - min(0.0, modified_tolerance):
-                    # TODO : change the C API to allow us to "commit" the current
-                    # model into the best model instead of having the C layer
-                    # decide that base on what it returned us
-                    pass
-                min_metric = min(cur_metric, min_metric)
+                    if cur_metric <= min_metric - min(0.0, modified_tolerance):
+                        # TODO : change the C API to allow us to "commit" the current
+                        # model into the best model instead of having the C layer
+                        # decide that base on what it returned us
+                        pass
+                    min_metric = min(cur_metric, min_metric)
 
-                if 0 < len(circular) and smoothing_rounds <= 0:
-                    # during smoothing, do not use early stopping because smoothing
-                    # is using random cuts, which means gain is highly variable
-                    toss = circular[circular_idx]
-                    circular[circular_idx] = cur_metric
-                    circular_idx = (circular_idx + 1) % len(circular)
-                    min_prev_metric = min(toss, min_prev_metric)
+                    if 0 < len(circular) and smoothing_rounds <= 0:
+                        # during smoothing, do not use early stopping because smoothing
+                        # is using random cuts, which means gain is highly variable
+                        toss = circular[circular_idx]
+                        circular[circular_idx] = cur_metric
+                        circular_idx = (circular_idx + 1) % len(circular)
+                        min_prev_metric = min(toss, min_prev_metric)
 
-                    if min_prev_metric - modified_tolerance <= circular.min():
-                        break
+                        if min_prev_metric - modified_tolerance <= circular.min():
+                            break
 
                 state_idx = state_idx + 1
                 if len(term_features) <= state_idx:
