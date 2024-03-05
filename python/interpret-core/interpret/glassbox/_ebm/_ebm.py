@@ -288,45 +288,45 @@ class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
     # Explainer
-    feature_names: Optional[Sequence[str]]
-    feature_types: Optional[Sequence[Optional[str]]]
+    feature_names: Optional[Sequence[str]] = None
+    feature_types: Optional[Sequence[Optional[str]]] = None
     # Preprocessor
-    max_bins: NonNegativeInt
-    max_interaction_bins: NonNegativeInt
+    max_bins: NonNegativeInt = 1024
+    max_interaction_bins: NonNegativeInt = 32
     # Stages
     interactions: Optional[Union[
         Annotated[int, Field(strict=True, ge=0)],
         Annotated[float, Field(gt=0.0, lt=1.0)],
         List[Union[tuple, Sequence[Union[int, str]]]],
-    ]]
+    ]] = 0.95
     exclude: Optional[Union[
         Literal["mains"],
         List[Union[Sequence[Union[int, str]], str, int]],
-    ]]
+    ]] = None
     # Ensemble
     validation_size: Union[
         Annotated[int, Field(strict=True, ge=0)],
         Annotated[float, Field(ge=0.0, lt=1.0)],
-    ]
-    outer_bags: Annotated[int, Field(ge=1)]
-    inner_bags: NonNegativeInt
+    ] = 0.15
+    outer_bags: Annotated[int, Field(ge=1)] = 14
+    inner_bags: NonNegativeInt = 0
     # Boosting
-    learning_rate: PositiveFloat
-    greediness: NonNegativeFloat
-    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)]
-    smoothing_rounds: NonNegativeInt
-    interaction_smoothing_rounds: NonNegativeInt
-    max_rounds: NonNegativeInt
-    early_stopping_rounds: NonNegativeInt
-    early_stopping_tolerance: float
+    learning_rate: PositiveFloat = 0.01
+    greediness: NonNegativeFloat = 1.5
+    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)] = 1.0
+    smoothing_rounds: NonNegativeInt = 200
+    interaction_smoothing_rounds: NonNegativeInt = 50
+    max_rounds: NonNegativeInt = 25000
+    early_stopping_rounds: NonNegativeInt = 50
+    early_stopping_tolerance: float = 0.0
     # Trees
-    min_samples_leaf: NonNegativeInt
-    min_hessian: NonNegativeFloat
-    max_leaves: PositiveInt
-    objective: Optional[str]
+    min_samples_leaf: NonNegativeInt = 2
+    min_hessian: NonNegativeFloat = 1e-4
+    max_leaves: PositiveInt = 3
+    objective: Optional[str] = None
     # Overall
-    n_jobs: Optional[int]
-    random_state: Optional[int]
+    n_jobs: Optional[int] = -2
+    random_state: Optional[int] = 42
 
     def validate(self):
         """
@@ -335,7 +335,7 @@ class EBMModel(BaseEstimator):
         This function uses `pydantic` to validate all attributes against their
         type hints. If possible it converts arguments to the type hint.
         """
-        valid = TypeAdapter(self.__class__).validate_python(self)
+        valid = TypeAdapter(self.__class__).validate_python(self.get_params())
 
         if self.validation_size <= 0 and self.outer_bags > 1:
             warn(
@@ -345,7 +345,7 @@ class EBMModel(BaseEstimator):
                 ),
                 stacklevel=0,  # TODO: check
             )
-        self.set_params(valid.get_params())
+        self.set_params(**valid.get_params())
 
     def _determine_objective(self) -> Tuple[Literal["regression", "classification"], str]:
         native = Native.get_native_singleton()
@@ -2325,69 +2325,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
     """ Public facing EBM classifier."""
 
-    # TODO: use Literal for the string types once everything is python 3.8
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 1024,
-        max_interaction_bins: int = 32,
-        # Stages
-        interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
-        # Boosting
-        learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
-        # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
-        max_leaves: int = 3,
-        objective: str = "log_loss",
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
-    ):
-        super().__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=max_interaction_bins,
-            interactions=interactions,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=inner_bags,
-            learning_rate=learning_rate,
-            greediness=greediness,
-            cyclic_progress=cyclic_progress,
-            smoothing_rounds=smoothing_rounds,
-            interaction_smoothing_rounds=interaction_smoothing_rounds,
-            max_rounds=max_rounds,
-            early_stopping_rounds=early_stopping_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
-            min_hessian=min_hessian,
-            max_leaves=max_leaves,
-            objective=objective,
-            n_jobs=n_jobs,
-            random_state=random_state,
-        )
+    def __post_init__(self):
+        """Set objective for subclass."""
+        if self.objective is None:
+            self.objective = "log_loss"
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -2619,68 +2560,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
     """ Public facing EBM regressor."""
 
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 1024,
-        max_interaction_bins: int = 32,
-        # Stages
-        interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
-        # Boosting
-        learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
-        # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
-        max_leaves: int = 3,
-        objective: str = "rmse",
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
-    ):
-        super().__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=max_interaction_bins,
-            interactions=interactions,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=inner_bags,
-            learning_rate=learning_rate,
-            greediness=greediness,
-            cyclic_progress=cyclic_progress,
-            smoothing_rounds=smoothing_rounds,
-            interaction_smoothing_rounds=interaction_smoothing_rounds,
-            max_rounds=max_rounds,
-            early_stopping_rounds=early_stopping_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
-            min_hessian=min_hessian,
-            max_leaves=max_leaves,
-            objective=objective,
-            n_jobs=n_jobs,
-            random_state=random_state,
-        )
+    def __post_init__(self):
+        """Set objective for subclass."""
+        if self.objective is None:
+            self.objective = "rmse"
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
