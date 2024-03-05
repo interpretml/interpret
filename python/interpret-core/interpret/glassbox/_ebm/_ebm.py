@@ -515,7 +515,7 @@ class EBMModel(BaseEstimator):
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
-            elif 2 < n_classes:  # pragma: no cover
+            elif n_classes > 2:  # pragma: no cover
                 raise ValueError(
                     "Multiclass not supported for Differentially Private EBMs."
                 )
@@ -619,7 +619,7 @@ class EBMModel(BaseEstimator):
                     y,
                     self.validation_size,
                     bagged_rng,
-                    0 <= n_classes and not is_differential_privacy,
+                    n_classes >= 0 and not is_differential_privacy,
                 )
             else:
                 bag = bags[idx]
@@ -633,7 +633,7 @@ class EBMModel(BaseEstimator):
                     msg = f"y has {len(y)} samples and bags has {len(bag)} samples"
                     _log.error(msg)
                     raise ValueError(msg)
-                if (127 < bag).any() or (bag < -128).any():
+                if (bag > 127).any() or (bag < -128).any():
                     msg = "A value in bags is outside the valid range -128 to 127"
                     _log.error(msg)
                     raise ValueError(msg)
@@ -650,7 +650,7 @@ class EBMModel(BaseEstimator):
                 else:
                     bag_weights.append(sample_weight.sum())
             else:
-                keep = 0 < bag
+                keep = bag > 0
                 if sample_weight is None:
                     bag_weights.append(bag[keep].sum())
                 else:
@@ -660,7 +660,7 @@ class EBMModel(BaseEstimator):
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if 0 <= n_classes else max_target - min_target
+            domain_size = 1 if n_classes >= 0 else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta - bin_delta
@@ -734,7 +734,7 @@ class EBMModel(BaseEstimator):
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = early_stopping_rounds
             bag = internal_bags[idx]
-            if bag is None or (0 <= bag).all():
+            if bag is None or (bag >= 0).all():
                 # if there are no validation samples, turn off early stopping
                 # because the validation metric cannot improve each round
                 early_stopping_rounds_local = 0
@@ -808,7 +808,7 @@ class EBMModel(BaseEstimator):
 
                 if interactions < 1.0:
                     interactions = int(ceil(n_features_in * interactions))
-                if 2 < n_classes:
+                if n_classes > 2:
                     warn(
                         "Detected multiclass problem. Forcing interactions to 0. "
                         "Multiclass interactions only have local explanations. "
@@ -958,7 +958,7 @@ class EBMModel(BaseEstimator):
                         uniquifier.add(sorted_tuple)
                         boost_groups.append(feature_idxs)
 
-                if 2 < max_dimensions:
+                if max_dimensions > 2:
                     warn(
                         "Interactions with 3 or more terms are not graphed in "
                         "global explanations. Local explanations are still "
@@ -968,7 +968,7 @@ class EBMModel(BaseEstimator):
             parallel_args = []
             for idx in range(self.outer_bags):
                 early_stopping_rounds_local = early_stopping_rounds
-                if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
+                if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
                     early_stopping_rounds_local = 0
@@ -1086,7 +1086,7 @@ class EBMModel(BaseEstimator):
             self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
-        if 0 <= n_classes:
+        if n_classes >= 0:
             self.classes_ = classes  # required by scikit-learn
         else:
             # we do not use these currently, but they indicate the domain for DP and
@@ -1414,7 +1414,7 @@ class EBMModel(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                if hasattr(self, "classes_") and 2 < len(self.classes_):
+                if hasattr(self, "classes_") and len(self.classes_) > 2:
                     warn(
                         f"Dropping term {term_names[term_idx]} from explanation "
                         "since we can't graph multinomial interactions."
@@ -1590,9 +1590,8 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if classes is None or len(classes) <= 2:
-                if isinstance(intercept, (np.ndarray, list)):
-                    intercept = intercept[0]
+            if classes is None or len(classes) <= 2 and isinstance(intercept, (np.ndarray, list)):
+                intercept = intercept[0]
 
             n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
@@ -1746,7 +1745,7 @@ class EBMModel(BaseEstimator):
             if len(self.classes_) == 1:
                 # monoclassification is always monotonized
                 return
-            elif 2 < len(self.classes_):
+            elif len(self.classes_) > 2:
                 msg = "monotonize not supported for multiclass"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -1760,7 +1759,7 @@ class EBMModel(BaseEstimator):
         )
 
         features = self.term_features_[term]
-        if 2 <= len(features):
+        if len(features) >= 2:
             msg = "monotonize only works on univariate feature terms"
             _log.error(msg)
             raise ValueError(msg)
@@ -1777,7 +1776,7 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough < 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -1802,7 +1801,7 @@ class EBMModel(BaseEstimator):
 
         self.term_scores_[term][1:-1] = y
 
-        if 0.0 < passthrough:
+        if passthrough > 0.0:
             mean = np.average(self.term_scores_[term], weights=all_weights)
             self.term_scores_[term] -= mean
             self.intercept_ += mean
@@ -2005,7 +2004,7 @@ class EBMModel(BaseEstimator):
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2055,7 +2054,7 @@ class EBMModel(BaseEstimator):
     def _ovrize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2105,7 +2104,7 @@ class EBMModel(BaseEstimator):
     def _binarize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2199,13 +2198,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
@@ -2435,7 +2434,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
+            return self.classes_[(scores > 0).astype(np.int8)]
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]
@@ -2492,13 +2491,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
@@ -2949,7 +2948,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
+            return self.classes_[(scores > 0).astype(np.int8)]
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]
