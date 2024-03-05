@@ -7,6 +7,7 @@ import logging
 import operator
 import os
 from copy import deepcopy
+from dataclasses import dataclass
 from itertools import combinations, count
 from math import ceil, isnan
 from typing import (
@@ -23,8 +24,7 @@ from typing import (
 from warnings import warn
 
 import numpy as np
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt
-from pydantic.dataclasses import dataclass
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, TypeAdapter
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -345,7 +345,7 @@ class EBMModel(BaseEstimator):
         Returns:
             Itself.
         """
-        self.__pydantic_validator__.validate_python(self.get_params())
+        TypeAdapter(self.__class__).validate_python(self)
 
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
@@ -2370,13 +2370,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
-            epsilon=None,
-            delta=None,
-            composition=None,
-            bin_budget_frac=None,
-            privacy_bounds=None,
-            privacy_target_min=None,
-            privacy_target_max=None,
         )
 
     def predict_proba(self, X, init_score=None):
@@ -2670,13 +2663,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
-            epsilon=None,
-            delta=None,
-            composition=None,
-            bin_budget_frac=None,
-            privacy_bounds=None,
-            privacy_target_min=None,
-            privacy_target_max=None,
         )
 
     def predict(self, X, init_score=None):
