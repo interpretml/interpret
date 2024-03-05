@@ -328,6 +328,25 @@ class EBMModel(BaseEstimator):
     n_jobs: Optional[int]
     random_state: Optional[int]
 
+    def validate(self):
+        """
+        Validate the parameters and update convertible types.
+
+        This function uses `pydantic` to validate all attributes against their
+        type hints. If possible it converts arguments to the type hint.
+        """
+        valid = TypeAdapter(self.__class__).validate_python(self)
+
+        if self.validation_size <= 0 and self.outer_bags > 1:
+            warn(
+                (
+                    "If validation_size is 0, the outer_bags have no purpose."
+                    "Set outer_bags=1 to remove this warning."
+                ),
+                stacklevel=0,  # TODO: check
+            )
+        self.set_params(valid.get_params())
+
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
@@ -345,7 +364,7 @@ class EBMModel(BaseEstimator):
         Returns:
             Itself.
         """
-        TypeAdapter(self.__class__).validate_python(self)
+        self.validate()
 
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
@@ -362,11 +381,6 @@ class EBMModel(BaseEstimator):
             msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
             _log.error(msg)
             raise ValueError(msg)
-
-        if self.validation_size <= 0 and 1 < self.outer_bags:
-            warn(
-                "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
-            )
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
