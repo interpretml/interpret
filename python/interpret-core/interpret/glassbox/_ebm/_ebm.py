@@ -347,6 +347,42 @@ class EBMModel(BaseEstimator):
             )
         self.set_params(valid.get_params())
 
+    def _determine_objective(self) -> Tuple[Literal["regression", "classification"], str]:
+        native = Native.get_native_singleton()
+        objective = self.objective
+        task = None
+        if objective is not None:
+            if len(objective.strip()) == 0:
+                objective = None
+            else:
+                # "classification" or "regression"
+                task = native.determine_task(objective)
+
+        if is_classifier(self):
+            if task is None:
+                task = "classification"
+            elif task != "classification":
+                msg = f"classifier cannot have objective {self.objective}"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        if is_regressor(self):
+            if task is None:
+                task = "regression"
+            elif task != "regression":
+                msg = f"regressor cannot have objective {self.objective}"
+                _log.error(msg)
+                raise ValueError(msg)
+        if task not in ("regression", "classification"):
+            msg = f"Unrecognized objective {self.objective}"
+            _log.error(msg)
+            raise ValueError(msg)
+        if task == "classification" and objective is None:
+            objective = "log_loss"
+        if task == "regression" and objective is None:
+            objective = "rmse"
+        return task, objective
+
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
@@ -393,31 +429,7 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         native = Native.get_native_singleton()
-
-        objective = self.objective
-        task = None
-        if objective is not None:
-            if len(objective.strip()) == 0:
-                objective = None
-            else:
-                # "classification" or "regression"
-                task = native.determine_task(objective)
-
-        if is_classifier(self):
-            if task is None:
-                task = "classification"
-            elif task != "classification":
-                msg = f"classifier cannot have objective {self.objective}"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if is_regressor(self):
-            if task is None:
-                task = "regression"
-            elif task != "regression":
-                msg = f"regressor cannot have objective {self.objective}"
-                _log.error(msg)
-                raise ValueError(msg)
+        task, objective = self._determine_objective()
 
         if task == "classification":
             y = typify_classification(y)
@@ -426,19 +438,11 @@ class EBMModel(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            if objective is None:
-                objective = "log_loss"
         elif task == "regression":
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = Native.Task_Regression
-            if objective is None:
-                objective = "rmse"
-        else:
-            msg = f"Unrecognized objective {self.objective}"
-            _log.error(msg)
-            raise ValueError(msg)
 
         n_scores = Native.get_count_scores_c(n_classes)
 
