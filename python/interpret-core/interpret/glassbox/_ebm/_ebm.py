@@ -283,7 +283,7 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
-@dataclass(repr=False)
+@dataclass(repr=False, kw_only=True)
 class EBMModel(BaseEstimator):
     """Base class for all EBMs"""
 
