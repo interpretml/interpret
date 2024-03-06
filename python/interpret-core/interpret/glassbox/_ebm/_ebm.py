@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, count
 from math import ceil, isnan
 from typing import (
+    Any,
     ClassVar,
     Dict,
     List,
@@ -84,6 +85,24 @@ from ._utils import (
 )
 
 _log = logging.getLogger(__name__)
+
+
+def _create_rngs(base_rng, n_rngs: int):
+    native = Native.get_native_singleton()
+    used_seeds = set()
+    rngs = []
+    for _ in range(n_rngs):
+        while True:
+            bagged_rng = native.branch_rng(base_rng)
+            check_seed = native.generate_seed(bagged_rng)
+            # We do not want identical bags. branch_rng is pretty good at avoiding
+            # collisions, but it is not a cryptographic RNG, so it is possible.
+            # Check with a 32-bit seed if we have a collision and regenerate if so.
+            if check_seed not in used_seeds:
+                break
+        used_seeds.add(check_seed)
+        rngs.append(bagged_rng)
+    return rngs
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -624,29 +643,14 @@ class EBMModel(BaseEstimator):
 
         # branch so we have no correlation to the binning rng that uses the same seed
         rng = native.branch_rng(native.create_rng(seed))
-        used_seeds = set()
-        rngs = []
-        internal_bags = []
-        for idx in range(self.outer_bags):
-            while True:
-                bagged_rng = native.branch_rng(rng)
-                check_seed = native.generate_seed(bagged_rng)
-                # We do not want identical bags. branch_rng is pretty good at avoiding
-                # collisions, but it is not a cryptographic RNG, so it is possible.
-                # Check with a 32-bit seed if we have a collision and regenerate if so.
-                if check_seed not in used_seeds:
-                    break
-            used_seeds.add(check_seed)
-
-            if bags is None:
-                bag = make_bag(
-                    y,
-                    self.validation_size,
-                    bagged_rng,
-                    n_classes >= 0 and not is_differential_privacy,
-                )
-            else:
-                bag = bags[idx]
+        rngs = _create_rngs(rng, n_rngs=self.outer_bags)
+        if bags is None:
+            stratified = n_classes >= 0
+            internal_bags = [make_bag(y, self.validation_size, bagged_rng, stratified)
+                             for bagged_rng in rngs]
+        else:
+            internal_bags = []
+            for bag in bags:
                 if not isinstance(bag, np.ndarray):
                     bag = np.array(bag)
                 if bag.ndim != 1:
@@ -662,9 +666,7 @@ class EBMModel(BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
                 bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
-
-            rngs.append(bagged_rng)
-            internal_bags.append(bag)
+                internal_bags.append(bag)
 
         bag_weights = []
         for bag in internal_bags:
