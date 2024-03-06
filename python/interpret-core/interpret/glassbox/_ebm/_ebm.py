@@ -7,7 +7,7 @@ import logging
 import operator
 import os
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations, count
 from math import ceil, isnan
 from typing import (
@@ -285,7 +285,7 @@ def _clean_exclude(exclude, feature_map):
 
 @dataclass(repr=False, kw_only=True)
 class EBMModel(BaseEstimator):
-    """Base class for all EBMs"""
+    """Base class for all EBMs."""
 
     # Explainer
     feature_names: Optional[Sequence[str]] = None
@@ -327,6 +327,30 @@ class EBMModel(BaseEstimator):
     # Overall
     n_jobs: Optional[int] = -2
     random_state: Optional[int] = 42
+
+    # additional attributes set by fit
+    n_features_in_: int = field(init=False)
+    term_names_: List[str] = field(init=False)
+    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]] = field(init=False)  # np.float64, 1D[cut]
+    feature_names_in_: List[str] = field(init=False)
+    feature_types_in_: List[str] = field(init=False)
+    feature_bounds_: np.ndarray = field(init=False)  # np.float64, 2D[feature, min_max]
+    term_features_: List[Tuple[int, ...]] = field(init=False)
+    bin_weights_: List[np.ndarray] = field(init=False)  # np.float64, [bin0...]
+    bagged_scores_: List[np.ndarray] = field(init=False)  # np.float64, [bag, bin0..., ?class]
+    term_scores_: List[np.ndarray] = field(init=False)  # np.float64, [bin0..., ?class]
+    standard_deviations_: List[np.ndarray] = field(init=False)  # np.float64, [bin0..., ?class]
+    link_: str = field(init=False)
+    link_param_: float = field(init=False)
+    bag_weights_: np.ndarray = field(init=False)  # np.float64, 1D[bag]
+    breakpoint_iteration_: np.ndarray = field(init=False)  # np.int64, 2D[stage, bag]
+
+    histogram_edges_: List[Union[None, np.ndarray]] = field(init=False)  # np.float64, 1D[hist_edge]
+    histogram_weights_: List[np.ndarray] = field(init=False)  # np.float64, 1D[hist_bin]
+    unique_val_counts_: np.ndarray = field(init=False)  # np.int64, 1D[feature]
+
+    intercept_: np.ndarray = field(init=False)  # np.float64, 1D[class]
+    bagged_intercept_: np.ndarray = field(init=False)  # np.float64, 1D[bag], or 2D[bag, class]
 
     def validate(self):
         """
@@ -2147,6 +2171,7 @@ class EBMModel(BaseEstimator):
         }
 
 
+@dataclass(repr=False)
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
 
@@ -2295,40 +2320,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Bagged intercept of the model. Binary classification is shape ``(n_outer_bags,)``, and multiclass is shape ``(n_outer_bags, n_classes)``.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    objective: Literal["log_loss"] = "log_loss"
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
-
-    classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
-    intercept_: np.ndarray  # np.float64, 1D[class]
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
+    classes_: np.ndarray = field(init=False)  # np.int64, np.bool_, or np.unicode_, 1D[class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
     available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM classifier."""
-
-    def __post_init__(self):
-        """Set objective for subclass."""
-        if self.objective is None:
-            self.objective = "log_loss"
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -2381,6 +2381,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             return self.classes_[np.argmax(scores, axis=1)]
 
 
+@dataclass(repr=False)
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """An Explainable Boosting Regressor
 
@@ -2529,41 +2530,16 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The maximum value found in 'y'.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0...]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0...]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0...]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    objective: Literal["rmse"] = "rmse"
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
-
-    intercept_: float
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
-    min_target_: float
-    max_target_: float
+    min_target_: float = field(init=False)
+    max_target_: float = field(init=False)
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM regressor."""
-
-    def __post_init__(self):
-        """Set objective for subclass."""
-        if self.objective is None:
-            self.objective = "rmse"
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
