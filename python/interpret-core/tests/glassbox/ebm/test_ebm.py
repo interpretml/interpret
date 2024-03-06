@@ -46,6 +46,14 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 
 
+# arguments for faster fitting time to reduce test time
+# we want to test the interface, not get good results
+_fast_kwds = {
+    "outer_bags": 1,
+    "max_rounds": 100,
+}
+
+
 def valid_ebm(ebm):
     assert ebm.term_features_[0] == (0,)
 
@@ -59,9 +67,8 @@ def test_binarize_1term():
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(interactions=0)
+    clf = ExplainableBoostingClassifier(interactions=0, **_fast_kwds)
     clf.fit(X_train, y_train)
 
     # an EBM with only one term should remain identical if we use passthrough
@@ -82,9 +89,8 @@ def test_vlogit_2class():
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(interactions=10)
+    clf = ExplainableBoostingClassifier(interactions=10, **_fast_kwds)
     clf.fit(X_train, y_train)
 
     # slightly unbalance the EBM so that it is not centered anymore through editing
@@ -120,7 +126,7 @@ def test_binarize():
     X_test = data["test"]["X"]
     y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(interactions=0)
+    clf = ExplainableBoostingClassifier(interactions=0, **_fast_kwds)
     clf.fit(X_train, y_train)
 
     # slightly unbalance the EBM so that it is not centered anymore through editing
@@ -136,7 +142,7 @@ def test_binarize():
 
     logloss_binary = log_loss(y_test, probas)
     ratio = logloss_binary / logloss_multinomial
-    assert 0.9 < ratio and ratio < 1.9
+    assert 0.9 < ratio < 1.9
 
     logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
 
@@ -146,8 +152,9 @@ def test_binarize():
 
     logloss_original = log_loss(y_test, original.predict_proba(X_test))
 
+    # FIXME: ratio2 is unused
     ratio2 = logloss_original / logloss_multinomial
-    assert 0.75 < ratio and ratio < 1.75
+    assert 0.75 < ratio < 1.75
 
 
 def test_monotonize():
@@ -155,7 +162,7 @@ def test_monotonize():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     clf.fit(X, y)
 
     intercept = clf.intercept_
@@ -182,7 +189,7 @@ def test_ebm_remove_features():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
+    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)], **_fast_kwds)
     clf.fit(X, y)
     clf.remove_features(["A", 2])
 
@@ -210,7 +217,7 @@ def test_ebm_sweep():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)])
+    clf = ExplainableBoostingRegressor(interactions=[(1, 2), (1, 3)], **_fast_kwds)
     clf.fit(X, y)
 
     clf.term_scores_[0].fill(0)  # set 'A' to zero
@@ -256,7 +263,7 @@ def test_copy():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     clf.fit(X, y)
 
     ebm_copy = clf.copy()
@@ -265,7 +272,7 @@ def test_copy():
     valid_ebm(ebm_copy)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_unknown_multiclass_category():
     data = iris_classification()
     X_train = data["train"]["X"]
@@ -284,7 +291,7 @@ def test_unknown_multiclass_category():
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
 
-    clf = ExplainableBoostingClassifier(interactions=0)
+    clf = ExplainableBoostingClassifier(interactions=0, **_fast_kwds)
     clf.fit(X_train, y_train)
 
     # Term contributions for categorical feature should always be 0 in test
@@ -292,12 +299,12 @@ def test_unknown_multiclass_category():
     assert np.all(clf.explain_local(X_test).data(0)["scores"][-1] == 0)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_unknown_binary_category():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
 
     ebm = ExplainableBoostingClassifier(
-        names, types, interactions=[[0, -1], [1, 2], [-1, 3]]
+        names, types, interactions=[[0, -1], [1, 2], [-1, 3]], **_fast_kwds
     )
     ebm.fit(X, y)
 
@@ -319,8 +326,8 @@ def test_unknown_binary_category():
     assert np.array_equal(orig, unseen)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_synthetic_multiclass():
     data = synthetic_multiclass()
     X_train = data["train"]["X"]
@@ -328,7 +335,7 @@ def test_ebm_synthetic_multiclass():
     X_test = data["test"]["X"]
     y_test = data["test"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, outer_bags=2)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X_train, y_train)
 
     prob_scores = clf.predict_proba(X_train)
@@ -350,19 +357,19 @@ def test_ebm_synthetic_multiclass():
     assert len(fig.data) == 3  # Number of classes
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_ebm_synthetic_multiclass_pairwise():
     data = synthetic_multiclass()
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, outer_bags=2)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X, y)
     clf.predict_proba(X)
     valid_ebm(clf)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_ebm_synthetic_pairwise():
     a = np.random.randint(low=0, high=50, size=1000)
     b = np.random.randint(low=0, high=20, size=1000)
@@ -406,14 +413,15 @@ def test_ebm_tripple():
 
         # iris is multiclass, but for now pretend this is a regression problem
         clf = ExplainableBoostingRegressor(
-            interactions=[(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 1)]
+            interactions=[(0, 1, 2), (0, 1, 3), (1, 2, 3), (0, 1)],
+            **_fast_kwds,
         )
         clf.fit(X_train, y_train)
         clf.predict(X_test)
         valid_ebm(clf)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_prefit_ebm():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -432,7 +440,7 @@ def test_ebm_synthetic_regression():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X, y)
     clf.predict(X)
 
@@ -444,7 +452,7 @@ def test_ebm_synthetic_classification():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingClassifier(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X, y)
     prob_scores = clf.predict_proba(X)
 
@@ -464,7 +472,7 @@ def test_ebm_missing():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Missing values detected.*")
 
-        clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+        clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0, **_fast_kwds)
         clf.fit(X, y)
         clf.predict(X)
 
@@ -479,7 +487,7 @@ def test_ebm_only_missing():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Missing values detected.*")
 
-        clf = ExplainableBoostingClassifier(n_jobs=1)
+        clf = ExplainableBoostingClassifier(n_jobs=1, **_fast_kwds)
         clf.fit(X, y)
         clf.predict(X)
         clf.explain_global()
@@ -490,7 +498,7 @@ def test_ebm_synthetic_singleclass_classification():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
     y[:] = 0
 
-    clf = ExplainableBoostingClassifier(names, types)
+    clf = ExplainableBoostingClassifier(names, types, **_fast_kwds)
     clf.fit(X, y)
 
     assert clf.link_ == "monoclassification"
@@ -520,8 +528,8 @@ def test_ebm_synthetic_singleclass_classification():
     assert explanations.shape[1] == len(clf.term_features_)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_uniform():
     # TODO: expand this test to use the other feature types available
     #       and evaluate using an feature value outside of the training range
@@ -552,8 +560,8 @@ def test_ebm_uniform():
     smoke_test_explanations(global_exp, local_exp, 6000)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_uniform_multiclass():
     data = iris_classification()
     X_train = data["train"]["X"]
@@ -576,8 +584,8 @@ def test_ebm_uniform_multiclass():
     smoke_test_explanations(global_exp, local_exp, 6001)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
 
@@ -609,7 +617,7 @@ def test_eval_terms_regression():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor()
+    clf = ExplainableBoostingRegressor(**_fast_kwds)
     clf.fit(X, y)
 
     explanations = clf.eval_terms(X)
@@ -627,7 +635,7 @@ def test_eval_terms_binary():
     X = data["train"]["X"]
     y = data["train"]["y"]
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     clf.fit(X, y)
 
     explanations = clf.eval_terms(X)
@@ -644,7 +652,7 @@ def test_eval_terms_multiclass():
     X = data["train"]["X"]
     y = data["train"]["y"]
 
-    clf = ExplainableBoostingClassifier(interactions=0)
+    clf = ExplainableBoostingClassifier(interactions=0, **_fast_kwds)
     clf.fit(X, y)
 
     explanations = clf.eval_terms(X)
@@ -659,11 +667,11 @@ def test_eval_terms_multiclass():
 def test_ebm_sample_weight():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
 
-    ebm = ExplainableBoostingClassifier(names, types)
+    ebm = ExplainableBoostingClassifier(names, types, **_fast_kwds)
     ebm.fit(X, y)
 
     weights = np.full(len(y), 128.0)
-    weighted = ExplainableBoostingClassifier(names, types)
+    weighted = ExplainableBoostingClassifier(names, types, **_fast_kwds)
     weighted.fit(X, y, sample_weight=weights)
 
     # if all the weights are identical the models should be identical
@@ -671,14 +679,14 @@ def test_ebm_sample_weight():
 
     # change a single weight
     weights[0] = 1.1
-    changed = ExplainableBoostingClassifier(names, types)
+    changed = ExplainableBoostingClassifier(names, types, **_fast_kwds)
     changed.fit(X, y, sample_weight=weights)
 
     assert not np.array_equal(ebm.predict_proba(X), changed.predict_proba(X))
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_iris():
     data = iris_classification()
     X_train = data["train"]["X"]
@@ -698,8 +706,8 @@ def test_ebm_iris():
     smoke_test_explanations(global_exp, local_exp, 6001)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_ebm_sparse():
     """Validate running EBM on scipy sparse data"""
     from sklearn.datasets import make_multilabel_classification  # type: ignore
@@ -720,7 +728,7 @@ def test_ebm_sparse():
     smoke_test_explanations(global_exp, local_exp, 6002)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_zero_validation():
     data = synthetic_classification()
     X = data["full"]["X"]
@@ -729,12 +737,17 @@ def test_zero_validation():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "If validation_size is 0*")
 
-        clf = ExplainableBoostingClassifier(n_jobs=1, interactions=2, validation_size=0)
+        clf = ExplainableBoostingClassifier(
+            n_jobs=1,
+            interactions=2,
+            validation_size=0,
+            **_fast_kwds,
+        )
         clf.fit(X, y)
 
 
-@pytest.mark.visual
-@pytest.mark.slow
+@pytest.mark.visual()
+@pytest.mark.slow()
 def test_dp_ebm_binary():
     from sklearn.metrics import roc_auc_score  # type: ignore
 
@@ -804,7 +817,7 @@ def test_dp_ebm_external_privacy_bounds():
         valid_ebm(clf)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_ebm_calibrated_classifier_cv():
     """Tests if unsigned integers can be handled when
     using CalibratedClassifierCV.
@@ -829,7 +842,7 @@ def test_ebm_calibrated_classifier_cv():
 
     y = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1], dtype=np.uint8)
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     calib = CalibratedClassifierCV(clf)
     calib.fit(X, y)
 
@@ -849,7 +862,7 @@ def test_ebm_unknown_value_at_predict():
 
     y = np.array([0, 1, 1, 1, 1], dtype=np.uint8)
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     clf.fit(X, y)
     clf.predict(X_test)
 
@@ -906,15 +919,7 @@ def test_bags():
     assert np.allclose(pred0, pred1)
 
 
-# arguments for faster fitting time to reduce test time
-# we want to test the interface, not get good results
-_fast_kwds = {
-    "outer_bags": 1,
-    "max_rounds": 100,
-}
-
-
-@pytest.fixture
+@pytest.fixture()
 def skip_sklearn() -> set:
     """Test which we do not adhere to."""
     ec = estimator_checks
@@ -1018,7 +1023,7 @@ def test_json_multiclass():
     feature_types = ["continuous"] * X.shape[1]
     feature_types[0] = "nominal"
     clf = ExplainableBoostingClassifier(
-        max_bins=10, feature_types=feature_types, interactions=0
+        max_bins=10, feature_types=feature_types, interactions=0, **_fast_kwds
     )
     clf.fit(X, y)
 
@@ -1040,6 +1045,7 @@ def test_json_regression():
         max_interaction_bins=4,
         feature_types=feature_types,
         interactions=[(1, 2), (2, 3)],
+        **_fast_kwds,
     )
     clf.fit(X, y)
 
@@ -1089,7 +1095,7 @@ def test_to_json():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingClassifier()
+    clf = ExplainableBoostingClassifier(**_fast_kwds)
     clf.fit(X, y)
 
     with warnings.catch_warnings():
@@ -1108,7 +1114,8 @@ def test_exclude_explicit():
     y = data["full"]["y"]
 
     clf = ExplainableBoostingRegressor(
-        interactions=[(1, 2), (2, 3)], exclude=[(3, 2), "B", (2,)]
+        interactions=[(1, 2), (2, 3)], exclude=[(3, 2), "B", (2,)],
+        **_fast_kwds,
     )
     clf.fit(X, y)
     clf.predict(X)
@@ -1128,7 +1135,7 @@ def test_exclude_implicit():
     y = data["full"]["y"]
 
     clf = ExplainableBoostingRegressor(
-        interactions=99999999, exclude=[(3, "C"), 1, (2,)]
+        interactions=99999999, exclude=[(3, "C"), 1, (2,)], **_fast_kwds,
     )
     clf.fit(X, y)
     clf.predict(X)
@@ -1147,7 +1154,7 @@ def test_exclude_complete_feature():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(interactions=[], exclude=[0, 1])
+    clf = ExplainableBoostingRegressor(interactions=[], exclude=[0, 1], **_fast_kwds)
     clf.fit(X, y)
     clf.predict(X)
 
@@ -1162,7 +1169,7 @@ def test_exclude_all():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(interactions=[], exclude="mains")
+    clf = ExplainableBoostingRegressor(interactions=[], exclude="mains", **_fast_kwds)
     clf.fit(X, y)
     clf.predict(X)
 
@@ -1174,7 +1181,7 @@ def test_ebm_remove_terms():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X, y)
     assert clf.term_names_ == ["A", "B", "C", "D"]
     clf.remove_terms(["A", "C"])
@@ -1193,7 +1200,7 @@ def test_ebm_scale():
     X = data["full"]["X"]
     y = data["full"]["y"]
 
-    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0, **_fast_kwds)
     clf.fit(X, y)
     assert clf.term_names_ == ["A", "B", "C", "D"]
 
