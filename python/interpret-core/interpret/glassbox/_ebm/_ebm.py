@@ -388,7 +388,9 @@ class EBMModel(BaseEstimator):
                 ),
                 stacklevel=0,  # TODO: check
             )
-        self.set_params(**valid.get_params())
+        for key, val in valid.get_params().items():
+            if getattr(self, key) != val:
+                setattr(self, key, val)
 
     def _determine_objective(self) -> Tuple[Literal["regression", "classification"], str]:
         native = Native.get_native_singleton()
