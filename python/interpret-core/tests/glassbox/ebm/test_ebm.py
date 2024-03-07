@@ -19,7 +19,6 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split  # type: ignore
 from sklearn.utils import estimator_checks
-from sklearn.utils.estimator_checks import check_estimator  # type: ignore
 
 from interpret.glassbox import (
     ExplainableBoostingClassifier,
@@ -790,7 +789,7 @@ def test_dp_ebm_synthetic_regression():
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", "Possible privacy violation.*")
 
-        clf = DPExplainableBoostingRegressor()
+        clf = DPExplainableBoostingRegressor(**_fast_kwds)
         clf.fit(X, y, w)
         clf.predict(X)
 
@@ -809,7 +808,8 @@ def test_dp_ebm_external_privacy_bounds():
         warnings.filterwarnings("ignore", "Possible privacy violation*")
 
         clf = DPExplainableBoostingRegressor(
-            privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3
+            privacy_bounds=privacy_bounds, privacy_target_min=-3, privacy_target_max=3,
+            **_fast_kwds,
         )
         clf.fit(X, y)
         clf.predict(X)
@@ -1066,7 +1066,7 @@ def test_json_dp_classification():
         warnings.filterwarnings("ignore", "Possible privacy violation*")
         warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
-        clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types)
+        clf = DPExplainableBoostingClassifier(max_bins=10, feature_types=feature_types, **_fast_kwds)
         clf.fit(X, y)
         clf.term_scores_[0][0] = np.nan
         clf.term_scores_[0][1] = np.inf
@@ -1085,7 +1085,7 @@ def test_json_dp_regression():
         warnings.filterwarnings("ignore", "Possible privacy violation*")
         warnings.filterwarnings("ignore", "JSON formats are in beta.*")
 
-        clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types)
+        clf = DPExplainableBoostingRegressor(max_bins=5, feature_types=feature_types, **_fast_kwds)
         clf.fit(X, y)
         clf.to_jsonable(detail="all")
 
