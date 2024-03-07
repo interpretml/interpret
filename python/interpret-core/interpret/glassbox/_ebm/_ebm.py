@@ -477,6 +477,30 @@ class EBMModel(BaseEstimator):
             )
         return binning_result
 
+    def _has_interactions(self, n_classes: int) -> bool:
+        if self.interactions is None:
+            return False
+
+        if isinstance(self.interactions, (int, float)):
+            if self.interactions == 0:
+                return False
+
+            if n_classes > 2:
+                warn(
+                    "Detected multiclass problem. Forcing interactions to 0. "
+                    "Multiclass interactions only have local explanations. "
+                    "They are not currently displayed in the global explanation "
+                    "visualizations. Set interactions=0 to disable this warning. "
+                    "If you still want multiclass interactions, this API accepts "
+                    "a list, and the measure_interactions function can be used to "
+                    "detect them.",
+                    stacklevel=2,
+                )
+                return False
+        elif len(self.interactions) == 0:  # interactions must be a list of the interactions
+            return False
+        return True
+
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
@@ -776,33 +800,12 @@ class EBMModel(BaseEstimator):
             # retrieve our rng state since this was used outside of our process
             rngs.append(bagged_rng)
 
-        while True:  # this isn't for looping. Just for break statements to exit
-            if interactions is None:
-                break
-
-            if isinstance(interactions, (int, float)):
-                if interactions == 0:
-                    break
-
-                if interactions < 1.0:
-                    interactions = int(ceil(n_features_in * interactions))
-                if n_classes > 2:
-                    warn(
-                        "Detected multiclass problem. Forcing interactions to 0. "
-                        "Multiclass interactions only have local explanations. "
-                        "They are not currently displayed in the global explanation "
-                        "visualizations. Set interactions=0 to disable this warning. "
-                        "If you still want multiclass interactions, this API accepts "
-                        "a list, and the measure_interactions function can be used to "
-                        "detect them."
-                    )
-                    break
-
-                # at this point interactions will be a positive, nonzero integer
-            else:
-                # interactions must be a list of the interactions
-                if len(interactions) == 0:
-                    break
+        if self._has_interactions(n_classes):
+            interactions = (
+                int(ceil(n_features_in * self.interactions))
+                if isinstance(self.interactions, float)
+                else self.interactions
+            )
 
             initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
@@ -999,8 +1002,6 @@ class EBMModel(BaseEstimator):
                 rngs[idx] = results[idx][3]
 
             term_features.extend(boost_groups)
-
-            break  # do not loop!
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
