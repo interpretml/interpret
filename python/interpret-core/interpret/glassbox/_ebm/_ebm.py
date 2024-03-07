@@ -429,6 +429,54 @@ class EBMModel(BaseEstimator):
             objective = "rmse"
         return task, objective
 
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
+        """Bins for non-private EBMS."""
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # that we don't need to have the count when boosting or for interaction
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
+        # a boosting restriction.
+        min_samples_bin = 1
+
+        # TODO: bump this up to something like 10 again, but ONLY after we've standardized
+        #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
+        #       categorical to continuous soft transitions.
+        min_unique_continuous = 0
+
+        bin_levels = [self.max_bins, self.max_interaction_bins]
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
+        binning_result = construct_bins(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=bin_levels,
+            binning="quantile",
+            min_samples_bin=min_samples_bin,
+            min_unique_continuous=min_unique_continuous,
+            seed=seed,
+            epsilon=None,
+            delta=None,
+            composition=None,
+            privacy_bounds=None,
+        )
+        missing_val_counts = binning_result[6]
+
+        if np.count_nonzero(missing_val_counts):
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]"
+            )
+        return binning_result
+
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
@@ -451,13 +499,6 @@ class EBMModel(BaseEstimator):
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
-        # that we don't need to have the count when boosting or for interaction
-        # detection. Benchmarking indicates switching these would decrease the accuracy
-        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
-        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
-        # a boosting restriction.
-        min_samples_bin = 1
 
         if bags is not None and len(bags) != self.outer_bags:
             msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
@@ -521,113 +562,19 @@ class EBMModel(BaseEstimator):
             len(y),
         )
 
-        # Privacy calculations
-        if is_differential_privacy:
-            if self.random_state is not None:
-                warn(
-                    f"Privacy violation: using a fixed random_state of {self.random_state} "
-                    "will cause deterministic noise additions. This capability is only "
-                    "for debugging/testing. Set random_state to None to remove this warning."
-                )
-
-            validate_eps_delta(self.epsilon, self.delta)
-
-            if n_classes < 0:
-                is_privacy_warning = False
-                is_clipping = False
-
-                if self.privacy_target_min is None or isnan(self.privacy_target_min):
-                    is_privacy_warning = True
-                else:
-                    is_clipping = True
-                    min_target = float(self.privacy_target_min)
-
-                if self.privacy_target_max is None or isnan(self.privacy_target_max):
-                    is_privacy_warning = True
-                else:
-                    is_clipping = True
-                    max_target = float(self.privacy_target_max)
-
-                # In theory privacy_target_min and privacy_target_max are not needed
-                # in our interface since the caller could clip 'y' themselves, but
-                # having it here is a check that the clipping was not overlooked.
-                if is_privacy_warning:
-                    warn(
-                        "Possible privacy violation: assuming min/max values for "
-                        "target are public info. Pass in privacy_target_min and "
-                        "privacy_target_max with known public values to avoid "
-                        "this warning."
-                    )
-
-                if is_clipping:
-                    y = np.clip(y, min_target, max_target)
-            elif n_classes > 2:  # pragma: no cover
-                raise ValueError(
-                    "Multiclass not supported for Differentially Private EBMs."
-                )
-
-            # Split epsilon, delta budget for binning and learning
-            bin_eps = self.epsilon * self.bin_budget_frac
-            bin_delta = self.delta / 2
-            composition = self.composition
-            privacy_bounds = self.privacy_bounds
-            binning = "private"
-            # TODO: should we make this something higher?
-            min_unique_continuous = 3
-
-            bin_levels = [self.max_bins]
-        else:
-            bin_eps = None
-            bin_delta = None
-            composition = None
-            privacy_bounds = None
-            binning = "quantile"
-            # TODO: bump this up to something like 10 again, but ONLY after we've standardized
-            #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
-            #       categorical to continuous soft transitions.
-            min_unique_continuous = 0
-
-            bin_levels = [self.max_bins, self.max_interaction_bins]
-
         seed = normalize_seed(self.random_state)
 
-        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
-        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
-        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
-        # so it can be replicated without creating an EBM
-        binning_result = construct_bins(
-            X=X,
-            y=y,
-            sample_weight=sample_weight,
-            feature_names_given=self.feature_names,
-            feature_types_given=self.feature_types,
-            max_bins_leveled=bin_levels,
-            binning=binning,
-            min_samples_bin=min_samples_bin,
-            min_unique_continuous=min_unique_continuous,
-            seed=seed,
-            epsilon=bin_eps,
-            delta=bin_delta,
-            composition=composition,
-            privacy_bounds=privacy_bounds,
-        )
-        feature_names_in = binning_result[0]
-        feature_types_in = binning_result[1]
-        bins = binning_result[2]
-        main_bin_weights = binning_result[3]
-        feature_bounds = binning_result[4]
-        histogram_weights = binning_result[5]
-        missing_val_counts = binning_result[6]
-        unique_val_counts = binning_result[7]
-        noise_scale_binning = binning_result[8]
-
-        if np.count_nonzero(missing_val_counts):
-            warn(
-                "Missing values detected. Our visualizations do not currently display missing values. "
-                "To retain the glassbox nature of the model you need to either set the missing values "
-                "to an extreme value like -1000 that will be visible on the graphs, or manually "
-                "examine the missing value score in ebm.term_scores_[term_index][0]"
-            )
+        (
+            feature_names_in,
+            feature_types_in,
+            bins,
+            main_bin_weights,
+            feature_bounds,
+            histogram_weights,
+            missing_val_counts,
+            unique_val_counts,
+            noise_scale_binning,
+        ) = self._construct_bins(X, y, sample_weight=sample_weight, n_classes=n_classes, seed=seed)
 
         n_features_in = len(bins)
 
@@ -691,7 +638,9 @@ class EBMModel(BaseEstimator):
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
             domain_size = 1 if n_classes >= 0 else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
+            bin_eps = self.epsilon * self.bin_budget_frac
             training_eps = self.epsilon - bin_eps
+            bin_delta = self.delta / 2
             training_delta = self.delta - bin_delta
             if self.composition == "classic":
                 noise_scale_boosting = calc_classic_noise_multi(
@@ -2614,6 +2563,95 @@ class DPEBMModel(EBMModel):
     # additional attributes set by fit
     noise_scale_binning_: float = field(init=False)
     noise_scale_boosting_: float = field(init=False)
+
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
+        """Bins for private EBMS."""
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # that we don't need to have the count when boosting or for interaction
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
+        # a boosting restriction.
+        min_samples_bin = 1
+
+        # Privacy calculations
+        if self.random_state is not None:
+            warn(
+                f"Privacy violation: using a fixed random_state of {self.random_state} "
+                "will cause deterministic noise additions. This capability is only "
+                "for debugging/testing. Set random_state to None to remove this warning.",
+                stacklevel=1,
+            )
+
+        validate_eps_delta(self.epsilon, self.delta)
+
+        if n_classes < 0:
+            is_privacy_warning = False
+            is_clipping = False
+
+            if self.privacy_target_min is None or isnan(self.privacy_target_min):
+                is_privacy_warning = True
+            else:
+                is_clipping = True
+                min_target = float(self.privacy_target_min)
+
+            if self.privacy_target_max is None or isnan(self.privacy_target_max):
+                is_privacy_warning = True
+            else:
+                is_clipping = True
+                max_target = float(self.privacy_target_max)
+
+            # In theory privacy_target_min and privacy_target_max are not needed
+            # in our interface since the caller could clip 'y' themselves, but
+            # having it here is a check that the clipping was not overlooked.
+            if is_privacy_warning:
+                warn(
+                    "Possible privacy violation: assuming min/max values for "
+                    "target are public info. Pass in privacy_target_min and "
+                    "privacy_target_max with known public values to avoid "
+                    "this warning.",
+                    stacklevel=1,
+                )
+
+            if is_clipping:
+                y = np.clip(y, min_target, max_target)
+        elif n_classes > 2:  # pragma: no cover
+            raise ValueError(
+                "Multiclass not supported for Differentially Private EBMs."
+            )
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
+        binning_result = construct_bins(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=[self.max_bins],
+            binning="private",
+            min_samples_bin=min_samples_bin,
+            min_unique_continuous=3,  # TODO: should we make this something higher?
+            seed=seed,
+            # Split epsilon, delta budget for binning and learning
+            epsilon=self.epsilon * self.bin_budget_frac,
+            delta=self.delta / 2,
+            composition=self.composition,
+            privacy_bounds=self.privacy_bounds,
+        )
+        missing_val_counts = binning_result[6]
+
+        if np.count_nonzero(missing_val_counts):
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]",
+                stacklevel=1
+            )
+        return binning_result
 
 
 class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
