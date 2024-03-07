@@ -2561,7 +2561,61 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         return inv_link(scores, self.link_, self.link_param_)
 
 
-class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+@dataclass(repr=False)
+class DPEBMModel(EBMModel):
+
+    # BEGIN: overwriting default values
+    # Preprocessor
+    max_bins: int = 32
+    max_interaction_bins: None = None
+
+    # Stages
+    interactions: None = None
+    # Ensemble
+    validation_size: Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(ge=0.0, lt=1.0)],
+    ] = 0
+    outer_bags: Annotated[int, Field(ge=1)] = 1
+    inner_bags: None = None
+    # Boosting
+    greediness: None = None
+    cyclic_progress: None = None
+    smoothing_rounds: None = None
+    interaction_smoothing_rounds: None = None
+    max_rounds: NonNegativeInt = 300
+    early_stopping_rounds: None = None
+    early_stopping_tolerance: None = None
+    # Trees
+    min_samples_leaf: None = None
+    min_hessian: None = None
+
+    # Overall
+    random_state: Optional[int] = None
+
+    # privacy arguments
+    epsilon: PositiveFloat = 1.0
+    delta: PositiveFloat = 1e-5
+    composition: Literal["gdp", "classic"] = "gdp"
+    bin_budget_frac: float = 0.1
+    privacy_bounds: Optional[Union[
+        Mapping[Union[int, str], Tuple[float, float]],
+        Annotated[Any, np.ndarray],
+    ]] = None
+    privacy_target_min: Optional[float] = None
+    privacy_target_max: Optional[float] = None
+
+    # dropping hints for non-existent values
+    histogram_edges_: None = field(init=False)
+    histogram_weights_: None = field(init=False)
+    unique_val_counts_: None = field(init=False)
+
+    # additional attributes set by fit
+    noise_scale_binning_: float = field(init=False)
+    noise_scale_boosting_: float = field(init=False)
+
+
+class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
     """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
@@ -2674,97 +2728,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         The noise scale during boosting.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin]
-    term_scores_: List[np.ndarray]  # np.float64, [bin]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
-
-    noise_scale_binning_: float
-    noise_scale_boosting_: float
+    objective: Literal["log_loss"] = "log_loss"
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
-    intercept_: np.ndarray  # np.float64, 1D[class]
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
     available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM classifier."""
-
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 32,
-        # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
-        outer_bags: int = 1,
-        # Boosting
-        learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
-        # Trees
-        max_leaves: int = 3,
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
-        # Differential Privacy
-        epsilon: float = 1.0,
-        delta: float = 1e-5,
-        composition: str = "gdp",
-        bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
-        ] = None,
-    ):
-        super().__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=None,
-            interactions=0,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=0,
-            learning_rate=learning_rate,
-            greediness=0.0,
-            cyclic_progress=1.0,
-            smoothing_rounds=0,
-            interaction_smoothing_rounds=0,
-            max_rounds=max_rounds,
-            early_stopping_rounds=0,
-            early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
-            min_hessian=0.0,
-            max_leaves=max_leaves,
-            objective="log_loss",
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=epsilon,
-            delta=delta,
-            composition=composition,
-            bin_budget_frac=bin_budget_frac,
-            privacy_bounds=privacy_bounds,
-            privacy_target_min=None,
-            privacy_target_max=None,
-        )
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -2817,7 +2788,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             return self.classes_[np.argmax(scores, axis=1)]
 
 
-class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+class DPExplainableBoostingRegressor(DPEBMModel, RegressorMixin, ExplainerMixin):
     """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
@@ -2936,102 +2907,16 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     noise_scale_boosting\\_ : float
         The noise scale during boosting.
     """
+    objective: Literal["rmse"] = "rmse"
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
-
-    noise_scale_binning_: float
-    noise_scale_boosting_: float
-
-    intercept_: float
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
-    min_target_: float
-    max_target_: float
+    min_target_: float = field(init=False)
+    max_target_: float = field(init=False)
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
     available_explanations: ClassVar[List[str]] = ["global", "local"]
     explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM regressor."""
-
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 32,
-        # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
-        outer_bags: int = 1,
-        # Boosting
-        learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
-        # Trees
-        max_leaves: int = 3,
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
-        # Differential Privacy
-        epsilon: float = 1.0,
-        delta: float = 1e-5,
-        composition: str = "gdp",
-        bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
-        ] = None,
-        privacy_target_min: Optional[float] = None,
-        privacy_target_max: Optional[float] = None,
-    ):
-        super().__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=None,
-            interactions=0,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=0,
-            learning_rate=learning_rate,
-            greediness=0.0,
-            cyclic_progress=1.0,
-            smoothing_rounds=0,
-            interaction_smoothing_rounds=0,
-            max_rounds=max_rounds,
-            early_stopping_rounds=0,
-            early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
-            min_hessian=0.0,
-            max_leaves=max_leaves,
-            objective="rmse",
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=epsilon,
-            delta=delta,
-            composition=composition,
-            bin_budget_frac=bin_budget_frac,
-            privacy_bounds=privacy_bounds,
-            privacy_target_min=privacy_target_min,
-            privacy_target_max=privacy_target_max,
-        )
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
