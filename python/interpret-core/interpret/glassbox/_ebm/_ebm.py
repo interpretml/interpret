@@ -501,6 +501,11 @@ class EBMModel(BaseEstimator):
             return False
         return True
 
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        """Mock method for privacy subclasses."""
+        del term_features, sample_weight, domain_size
+        return None, None, Native.TermBoostFlags_Default
+
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
 
@@ -658,66 +663,10 @@ class EBMModel(BaseEstimator):
                 del keep
         bag_weights = np.array(bag_weights, np.float64)
 
-        if is_differential_privacy:
-            # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if n_classes >= 0 else max_target - min_target
-            max_weight = 1 if sample_weight is None else np.max(sample_weight)
-            bin_eps = self.epsilon * self.bin_budget_frac
-            training_eps = self.epsilon - bin_eps
-            bin_delta = self.delta / 2
-            training_delta = self.delta - bin_delta
-            if self.composition == "classic":
-                noise_scale_boosting = calc_classic_noise_multi(
-                    total_queries=self.max_rounds
-                    * len(term_features)
-                    * self.outer_bags,
-                    target_epsilon=training_eps,
-                    delta=training_delta,
-                    sensitivity=domain_size * self.learning_rate * max_weight,
-                )
-            elif self.composition == "gdp":
-                noise_scale_boosting = calc_gdp_noise_multi(
-                    total_queries=self.max_rounds
-                    * len(term_features)
-                    * self.outer_bags,
-                    target_epsilon=training_eps,
-                    delta=training_delta,
-                )
-                # Alg Line 17
-                noise_scale_boosting *= domain_size * self.learning_rate * max_weight
-            else:
-                raise NotImplementedError(
-                    f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
-                )
-
-            bin_data_weights = main_bin_weights
-            term_boost_flags = (
-                Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
-            )
-            inner_bags = 0
-            greediness = 0.0
-            cyclic_progress = 1.0
-            smoothing_rounds = 0
-            interaction_smoothing_rounds = 0
-            early_stopping_rounds = 0
-            early_stopping_tolerance = 0
-            min_samples_leaf = 0
-            min_hessian = 0.0
-            interactions = 0
-        else:
-            noise_scale_boosting = None
-            bin_data_weights = None
-            term_boost_flags = Native.TermBoostFlags_Default
-            inner_bags = self.inner_bags
-            greediness = self.greediness
-            cyclic_progress = self.cyclic_progress
-            smoothing_rounds = self.smoothing_rounds
-            interaction_smoothing_rounds = self.interaction_smoothing_rounds
-            early_stopping_rounds = self.early_stopping_rounds
-            early_stopping_tolerance = self.early_stopping_tolerance
-            min_samples_leaf = self.min_samples_leaf
-            min_hessian = self.min_hessian
-            interactions = self.interactions
+        domain_size = 1 if n_classes >= 0 else max_target - min_target
+        (
+            noise_scale_boosting, bin_data_weights, term_boost_flags
+        ) = self._privacy_parameters(term_features, main_bin_weights, sample_weight, domain_size)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -734,7 +683,7 @@ class EBMModel(BaseEstimator):
 
         parallel_args = []
         for idx in range(self.outer_bags):
-            early_stopping_rounds_local = early_stopping_rounds
+            early_stopping_rounds_local = self.early_stopping_rounds
             bag = internal_bags[idx]
             if bag is None or (bag >= 0).all():
                 # if there are no validation samples, turn off early stopping
@@ -757,19 +706,19 @@ class EBMModel(BaseEstimator):
                     bag,
                     init_score_local,
                     term_features,
-                    inner_bags,
+                    self.inner_bags,
                     term_boost_flags,
                     self.learning_rate,
-                    min_samples_leaf,
-                    min_hessian,
+                    self.min_samples_leaf,
+                    self.min_hessian,
                     self.max_leaves,
-                    greediness,
-                    cyclic_progress,
-                    smoothing_rounds,
+                    self.greediness,
+                    self.cyclic_progress,
+                    self.smoothing_rounds,
                     nominal_smoothing,
                     self.max_rounds,
                     early_stopping_rounds_local,
-                    early_stopping_tolerance,
+                    self.early_stopping_tolerance,
                     noise_scale_boosting,
                     bin_data_weights,
                     rngs[idx],
@@ -854,8 +803,8 @@ class EBMModel(BaseEstimator):
                             exclude,
                             Native.CalcInteractionFlags_Default,
                             max_cardinality,
-                            min_samples_leaf,
-                            min_hessian,
+                            self.min_samples_leaf,
+                            self.min_hessian,
                             (
                                 Native.CreateInteractionFlags_DifferentialPrivacy
                                 if is_differential_privacy
@@ -948,7 +897,7 @@ class EBMModel(BaseEstimator):
 
             parallel_args = []
             for idx in range(self.outer_bags):
-                early_stopping_rounds_local = early_stopping_rounds
+                early_stopping_rounds_local = self.early_stopping_rounds
                 if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
@@ -960,19 +909,19 @@ class EBMModel(BaseEstimator):
                         internal_bags[idx],
                         scores_bags[idx],
                         boost_groups,
-                        inner_bags,
+                        self.inner_bags,
                         term_boost_flags,
                         self.learning_rate,
-                        min_samples_leaf,
-                        min_hessian,
+                        self.min_samples_leaf,
+                        self.min_hessian,
                         self.max_leaves,
-                        greediness,
-                        cyclic_progress,
-                        interaction_smoothing_rounds,
+                        self.greediness,
+                        self.cyclic_progress,
+                        self.interaction_smoothing_rounds,
                         nominal_smoothing,
                         self.max_rounds,
                         early_stopping_rounds_local,
-                        early_stopping_tolerance,
+                        self.early_stopping_tolerance,
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
@@ -2521,25 +2470,25 @@ class DPEBMModel(EBMModel):
     max_interaction_bins: None = None
 
     # Stages
-    interactions: None = None
+    interactions: Literal[0] = 0
     # Ensemble
     validation_size: Union[
         Annotated[int, Field(strict=True, ge=0)],
         Annotated[float, Field(ge=0.0, lt=1.0)],
     ] = 0
     outer_bags: Annotated[int, Field(ge=1)] = 1
-    inner_bags: None = None
+    inner_bags: Literal[0] = 0
     # Boosting
-    greediness: None = None
-    cyclic_progress: None = None
-    smoothing_rounds: None = None
-    interaction_smoothing_rounds: None = None
+    greediness: Literal[0] = 0
+    cyclic_progress: Literal[1.0] = 1.0
+    smoothing_rounds: Literal[0] = 0
+    interaction_smoothing_rounds: Literal[0] = 0
     max_rounds: NonNegativeInt = 300
-    early_stopping_rounds: None = None
-    early_stopping_tolerance: None = None
+    early_stopping_rounds: Literal[0] = 0
+    early_stopping_tolerance: Literal[0] = 0
     # Trees
-    min_samples_leaf: None = None
-    min_hessian: None = None
+    min_samples_leaf: Literal[0] = 0
+    min_hessian: Literal[0] = 0
 
     # Overall
     random_state: Optional[int] = None
@@ -2653,6 +2602,42 @@ class DPEBMModel(EBMModel):
                 stacklevel=1
             )
         return binning_result
+
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+        max_weight = 1 if sample_weight is None else np.max(sample_weight)
+        bin_eps = self.epsilon * self.bin_budget_frac
+        training_eps = self.epsilon - bin_eps
+        bin_delta = self.delta / 2
+        training_delta = self.delta - bin_delta
+        if self.composition == "classic":
+            noise_scale_boosting = calc_classic_noise_multi(
+                total_queries=self.max_rounds
+                * len(term_features)
+                * self.outer_bags,
+                target_epsilon=training_eps,
+                delta=training_delta,
+                sensitivity=domain_size * self.learning_rate * max_weight,
+            )
+        elif self.composition == "gdp":
+            noise_scale_boosting = calc_gdp_noise_multi(
+                total_queries=self.max_rounds
+                * len(term_features)
+                * self.outer_bags,
+                target_epsilon=training_eps,
+                delta=training_delta,
+            )
+            # Alg Line 17
+            noise_scale_boosting *= domain_size * self.learning_rate * max_weight
+        else:
+            raise NotImplementedError(
+                f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
+            )
+
+        term_boost_flags = (
+            Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
+        )
+        return noise_scale_boosting, main_bin_weights, term_boost_flags
 
 
 class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
