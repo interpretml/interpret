@@ -1518,7 +1518,7 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if classes is None or len(classes) <= 2 and isinstance(intercept, (np.ndarray, list)):
+            if (classes is None or len(classes) <= 2) and isinstance(intercept, (np.ndarray, list)):
                 intercept = intercept[0]
 
             n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
