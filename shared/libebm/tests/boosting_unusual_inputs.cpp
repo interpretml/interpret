@@ -500,6 +500,7 @@ TEST_CASE("mono-classification") {
          k_minSamplesLeafDefault,
          k_minHessianDefault,
          &k_leavesMaxDefault[0],
+         nullptr,
          &avgGain);
    CHECK(Error_None == error);
    CHECK(0 == avgGain);

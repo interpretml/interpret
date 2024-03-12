@@ -243,7 +243,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pTreeNode,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* const pTreeNodeScratchSpace,
       const size_t cSamplesLeafMin,
-      const double hessianMin) {
+      const double hessianMin,
+      const MonotoneDirection direction) {
 
    LOG_N(Trace_Verbose,
          "Entered FindBestSplitGain: "
@@ -251,12 +252,14 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          "pBoosterShell=%p, "
          "pTreeNode=%p, "
          "pTreeNodeScratchSpace=%p, "
-         "hessianMin=%le",
+         "hessianMin=%le, "
+         "direction=%" MonotoneDirectionPrintf,
          static_cast<void*>(pRng),
          static_cast<const void*>(pBoosterShell),
          static_cast<void*>(pTreeNode),
          static_cast<void*>(pTreeNodeScratchSpace),
-         hessianMin);
+         hessianMin,
+         direction);
 
    if(!pTreeNode->BEFORE_IsSplittable()) {
 #ifndef NDEBUG
@@ -324,15 +327,13 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       FloatMain sumHessiansLeft = binLeft.GetWeight() + pBinCur->GetWeight();
       FloatMain sumHessiansRight = binParent.GetWeight() - sumHessiansLeft;
 
-      bool bLegal;
-      if(bHessian) {
-         bLegal = true;
-      } else {
+      if(!bHessian) {
          if(UNLIKELY(sumHessiansRight < hessianMin)) {
             // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
             goto done; 
          }
       }
+      bool bLegal = true;
 
       binLeft.SetWeight(sumHessiansLeft);
 
@@ -363,6 +364,23 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             }
          }
 
+         if(MONOTONE_NONE != direction) {
+            const FloatCalc updateRight = ComputeSinglePartitionUpdate(
+                  static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
+            const FloatCalc updateLeft = ComputeSinglePartitionUpdate(
+                  static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
+            if(MonotoneDirection{0} < direction) {
+               if(updateRight < updateLeft) {
+                  bLegal = false;
+               }
+            } else {
+               EBM_ASSERT(direction < MonotoneDirection{0});
+               if(updateLeft < updateRight) {
+                  bLegal = false;
+               }
+            }
+         }
+
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
          // (but only do this after we've determined the best node splitting score for classification, and the
          // NewtonRaphsonStep for gain
@@ -383,15 +401,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       } while(cScores != iScore);
       EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
-      if(binLeft.GetCountSamples() < cSamplesLeafMin) {
+      if(!bLegal || binLeft.GetCountSamples() < cSamplesLeafMin) {
          goto next;
       }
 
-      if(bHessian) {
-         if(!bLegal) {
-            goto next;
-         }
-      } else {
+      if(!bHessian) {
          if(UNLIKELY(sumHessiansLeft < hessianMin)) {
             goto next;
          }
@@ -590,6 +604,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          const size_t cSamplesLeafMin,
          const double hessianMin,
          const size_t cSplitsMax,
+         const MonotoneDirection direction,
          const size_t cSamplesTotal,
          const FloatMain weightTotal,
          double* const pTotalGain) {
@@ -625,8 +640,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       auto* pTreeNodeScratchSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
 
-      int retFind = FindBestSplitGain<bHessian, cCompilerScores>(
-            pRng, pBoosterShell, flags, pRootTreeNode, pTreeNodeScratchSpace, cSamplesLeafMin, hessianMin);
+      int retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
+            pBoosterShell,
+            flags,
+            pRootTreeNode,
+            pTreeNodeScratchSpace,
+            cSamplesLeafMin,
+            hessianMin,
+            direction);
       size_t cSplitsRemaining = cSplitsMax;
       FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
@@ -692,7 +713,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pLeftChild,
                      pTreeNodeScratchSpace, 
                      cSamplesLeafMin, 
-                     hessianMin);
+                     hessianMin,
+                     direction);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -713,7 +735,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pRightChild,
                      pTreeNodeScratchSpace, 
                      cSamplesLeafMin, 
-                     hessianMin);
+                     hessianMin,
+                     direction);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -757,6 +780,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t cSamplesLeafMin,
       const double hessianMin,
       const size_t cSplitsMax,
+      const MonotoneDirection direction,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
       double* const pTotalGain) {
@@ -778,6 +802,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
                cSamplesLeafMin,
                hessianMin,
                cSplitsMax,
+               direction,
                cSamplesTotal,
                weightTotal,
                pTotalGain);
@@ -791,6 +816,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
                cSamplesLeafMin,
                hessianMin,
                cSplitsMax,
+               direction,
                cSamplesTotal,
                weightTotal,
                pTotalGain);
@@ -804,6 +830,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
                cSamplesLeafMin,
                hessianMin,
                cSplitsMax,
+               direction,
                cSamplesTotal,
                weightTotal,
                pTotalGain);
@@ -818,6 +845,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
                cSamplesLeafMin,
                hessianMin,
                cSplitsMax,
+               direction,
                cSamplesTotal,
                weightTotal,
                pTotalGain);
@@ -831,6 +859,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
                cSamplesLeafMin,
                hessianMin,
                cSplitsMax,
+               direction,
                cSamplesTotal,
                weightTotal,
                pTotalGain);

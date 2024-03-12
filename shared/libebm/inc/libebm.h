@@ -92,6 +92,8 @@ typedef int32_t TraceEbm;
 #define TraceEbmPrintf PRId32
 typedef int32_t BoolEbm;
 #define BoolEbmPrintf PRId32
+typedef int32_t MonotoneDirection;
+#define MonotoneDirectionPrintf PRId32
 typedef int32_t ErrorEbm;
 #define ErrorEbmPrintf PRId32
 typedef int32_t LinkFlags;
@@ -132,6 +134,7 @@ typedef struct _InteractionHandle {
 } * InteractionHandle;
 
 #define BOOL_CAST(val)                     (STATIC_CAST(BoolEbm, (val)))
+#define MONOTONE_CAST(val)                 (STATIC_CAST(MonotoneDirection, (val)))
 #define ERROR_CAST(val)                    (STATIC_CAST(ErrorEbm, (val)))
 #define LINK_FLAGS_CAST(val)               (STATIC_CAST(LinkFlags, (val)))
 #define CREATE_BOOSTER_FLAGS_CAST(val)     (STATIC_CAST(CreateBoosterFlags, (val)))
@@ -171,6 +174,10 @@ typedef struct _InteractionHandle {
 
 #define EBM_FALSE (BOOL_CAST(0))
 #define EBM_TRUE  (BOOL_CAST(1))
+
+#define MONOTONE_INCREASING (MONOTONE_CAST(1))
+#define MONOTONE_NONE       (MONOTONE_CAST(0))
+#define MONOTONE_DECREASING (MONOTONE_CAST(-1))
 
 #define MINIMIZE_METRIC EBM_FALSE
 #define MAXIMIZE_METRIC EBM_TRUE
@@ -414,6 +421,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       IntEbm minSamplesLeaf,
       double minHessian,
       const IntEbm* leavesMax,
+      const MonotoneDirection* direction,
       double* avgGainOut);
 // GetTermUpdateSplits must be called before calls to GetTermUpdate/SetTermUpdate
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(

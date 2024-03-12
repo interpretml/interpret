@@ -548,6 +548,7 @@ jobs:
 
 - job: clang_format
   dependsOn: [testC, testS, testB]
+  condition: always()
   pool:
     vmImage: ${{ variables.ubuntu_bld }}
   steps:
@@ -563,6 +564,7 @@ jobs:
 
 - job: format_black
   dependsOn: [testC, testS, testB]
+  condition: always()
   pool:
     vmImage: ${{ variables.ubuntu_bld }}
   steps:

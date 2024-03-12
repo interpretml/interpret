@@ -65,6 +65,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t cSamplesLeafMin,
       const double hessianMin,
       const size_t cSplitsMax,
+      const MonotoneDirection direction,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
       double* const pTotalGain);
@@ -152,6 +153,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const size_t cSamplesLeafMin,
       const double hessianMin,
       const IntEbm countLeavesMax,
+      const MonotoneDirection direction,
       double* const pTotalGain) {
    ErrorEbm error;
 
@@ -177,6 +179,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          cSamplesLeafMin,
          hessianMin,
          cSplitsMax,
+         direction,
          pBoosterCore->GetTrainingSet()->GetCountSamples(),
          weightTotal,
          pTotalGain);
@@ -452,6 +455,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       IntEbm minSamplesLeaf,
       double minHessian,
       const IntEbm* leavesMax,
+      const MonotoneDirection* direction,
       double* avgGainOut) {
    ErrorEbm error;
 
@@ -467,6 +471,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          "minSamplesLeaf=%" IntEbmPrintf ", "
          "minHessian=%le, "
          "leavesMax=%p, "
+         "direction=%p, "
          "avgGainOut=%p",
          rng,
          static_cast<void*>(boosterHandle),
@@ -476,6 +481,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          minSamplesLeaf,
          minHessian,
          static_cast<const void*>(leavesMax),
+         static_cast<const void*>(direction),
          static_cast<void*>(avgGainOut));
 
    if(LIKELY(nullptr != avgGainOut)) {
@@ -590,6 +596,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t{0};
+   MonotoneDirection significantDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
    if(nullptr == leavesMax) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
@@ -603,6 +610,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          do {
             const FeatureBoosting* const pFeature = pTermFeature->m_pFeature;
             const size_t cBins = pFeature->GetCountBins();
+            MonotoneDirection featureDirection = MONOTONE_NONE;
+            if(nullptr != direction) {
+               featureDirection = *direction;
+               ++direction;
+            }
             if(size_t{1} < cBins) {
                // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero
                EBM_ASSERT(2 <= cTensorBins);
@@ -610,6 +622,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
+               significantDirection |= featureDirection;
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbm countLeavesMax = *pLeavesMax;
                if(countLeavesMax <= IntEbm{1}) {
@@ -694,7 +707,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
-      if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
+      if(IntEbm{0} == lastDimensionLeavesMax || 1 != cRealDimensions && MONOTONE_NONE != significantDirection) {
          // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
          // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
          // but then collapse them afterwards into a single bin, but that's more work.
@@ -835,6 +848,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      cSamplesLeafMin,
                      minHessian,
                      lastDimensionLeavesMax,
+                     significantDirection,
                      &gain);
                if(Error_None != error) {
                   return error;
