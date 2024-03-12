@@ -329,7 +329,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
          "GetTermUpdateSplits: "
          "boosterHandle=%p, "
          "indexDimension=%" IntEbmPrintf ", "
-         "countSplitsInOut=%p"
+         "countSplitsInOut=%p, "
          "splitsOut=%p",
          static_cast<void*>(boosterHandle),
          indexDimension,

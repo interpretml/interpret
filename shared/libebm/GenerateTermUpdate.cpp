@@ -605,6 +605,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             const size_t cBins = pFeature->GetCountBins();
             if(size_t{1} < cBins) {
                // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero
+               EBM_ASSERT(2 <= cTensorBins);
                EBM_ASSERT(size_t{2} <= cRealDimensions || IntEbm{0} == lastDimensionLeavesMax);
 
                iDimensionImportant = iDimensionInit;
@@ -626,6 +627,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          EBM_ASSERT(size_t{2} <= cSignificantBinCount);
       }
    }
+
+   EBM_ASSERT(1 <= cTensorBins);
+   EBM_ASSERT(2 <= cTensorBins || IntEbm{0} == lastDimensionLeavesMax);
 
    pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
    pBoosterShell->GetTermUpdate()->Reset();
@@ -690,8 +694,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
-      EBM_ASSERT(1 <= cTensorBins);
-
       if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
          // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
          // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
@@ -730,7 +732,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             int cPack;
-            if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
+            if(1 == cTensorBins) {
                // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
                // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
                // but then collapse them afterwards into a single bin, but that's more work.
@@ -800,7 +802,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          //       which is more complicated.  It will be nicer if we end up eliminated inner bagging
          //       or use subsampling each boost step to avoid having multiple inner bags
 
-         if(UNLIKELY(IntEbm{0} == lastDimensionLeavesMax)) {
+         if(1 == cTensorBins) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
             BoostZeroDimensional(pBoosterShell, flags);
          } else {
