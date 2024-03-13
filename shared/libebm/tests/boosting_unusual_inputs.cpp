@@ -643,7 +643,6 @@ TEST_CASE("Zero validation samples, boosting, binary") {
       CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
       CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 0), test.GetBestTermScore(0, {1}, 0));
 
-
       CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 1), test.GetBestTermScore(0, {0}, 1));
       CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 1), test.GetBestTermScore(0, {1}, 1));
    }

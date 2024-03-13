@@ -557,13 +557,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   FloatCalc updateScore;
                   if(bUpdateWithHessian) {
-                     updateScore = ComputeSinglePartitionUpdate(
-                           static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                           static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
+                     updateScore =
+                           ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                                 static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
                   } else {
-                     updateScore = ComputeSinglePartitionUpdate(
-                           static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                           static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
+                     updateScore =
+                           ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                                 static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
                   }
                   *pUpdateScore = static_cast<FloatScore>(updateScore);
                   ++pUpdateScore;

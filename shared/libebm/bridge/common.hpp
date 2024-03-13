@@ -562,7 +562,9 @@ struct internal_is_twos_complement {
    static constexpr bool value =
          static_cast<UT>(std::numeric_limits<ST>::max()) == static_cast<UT>(std::numeric_limits<ST>::lowest()) - UT{1};
 };
-template<typename T> struct is_twos_complement { static constexpr bool value = internal_is_twos_complement<T>::value; };
+template<typename T> struct is_twos_complement {
+   static constexpr bool value = internal_is_twos_complement<T>::value;
+};
 
 static_assert(is_twos_complement<int8_t>::value, "compiler not twos complement");
 static_assert(is_twos_complement<int16_t>::value, "compiler not twos complement");

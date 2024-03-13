@@ -155,7 +155,7 @@ bool IsApproxEqual(const double val, const double expected, const double percent
 
 // EBM/interpret specific stuff below here!!
 
-//#define EXPAND_BINARY_LOGITS
+// #define EXPAND_BINARY_LOGITS
 
 inline constexpr static size_t GetCountScores(const TaskEbm cClasses) {
 #ifdef EXPAND_BINARY_LOGITS

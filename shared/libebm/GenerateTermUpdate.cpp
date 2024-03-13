@@ -193,11 +193,10 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
 //   where to split.  For dimensions higher than 2, we might want to copy the tensor to a new tensor AFTER binning that
 //   keeps only the gradients and then
 //    go back to our original tensor after splits to determine the hessian
-static ErrorEbm BoostMultiDimensional(
-      BoosterShell* const pBoosterShell, 
+static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       const TermBoostFlags flags,
-      const size_t iTerm, 
-      const size_t cSamplesLeafMin, 
+      const size_t iTerm,
+      const size_t cSamplesLeafMin,
       const double hessianMin,
       double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
@@ -521,7 +520,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          Trace_Verbose,
          "Entered GenerateTermUpdate");
 
-   if(flags & ~(TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums | TermBoostFlags_RandomSplits)) {
+   if(flags &
+         ~(TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
+               TermBoostFlags_RandomSplits)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 

@@ -36,12 +36,12 @@ static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");
 static_assert(COUNT_BITS(uint32_t) == 32, "automated test with compiler");
 static_assert(COUNT_BITS(uint64_t) == 64, "automated test with compiler");
 
-//#define INCLUDE_TESTS_IN_RELEASE
-//#define ENABLE_TRANSPOSE
-//#define ENABLE_TEST_LOG_SUM_ERRORS
-//#define ENABLE_TEST_EXP_SUM_ERRORS
-//#define ENABLE_TEST_SOFTMAX_SUM_ERRORS
-//#define ENABLE_PRINTF
+// #define INCLUDE_TESTS_IN_RELEASE
+// #define ENABLE_TRANSPOSE
+// #define ENABLE_TEST_LOG_SUM_ERRORS
+// #define ENABLE_TEST_EXP_SUM_ERRORS
+// #define ENABLE_TEST_SOFTMAX_SUM_ERRORS
+// #define ENABLE_PRINTF
 
 #if !defined(NDEBUG) || defined(INCLUDE_TESTS_IN_RELEASE)
 

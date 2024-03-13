@@ -320,7 +320,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       cSamplesRight -= cSamplesChange;
       if(UNLIKELY(cSamplesRight < cSamplesLeafMin)) {
          // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
-         goto done; 
+         goto done;
       }
       binLeft.SetCountSamples(binLeft.GetCountSamples() + cSamplesChange);
 
@@ -330,7 +330,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       if(!bHessian) {
          if(UNLIKELY(sumHessiansRight < hessianMin)) {
             // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
-            goto done; 
+            goto done;
          }
       }
       bool bLegal = true;
@@ -384,16 +384,16 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
          // (but only do this after we've determined the best node splitting score for classification, and the
          // NewtonRaphsonStep for gain
-         const FloatCalc gainRight = CalcPartialGain(
-               static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
+         const FloatCalc gainRight =
+               CalcPartialGain(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
          EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
          // (but only do this after we've determined the best node splitting score for classification, and the
          // NewtonRaphsonStep for gain
-         const FloatCalc gainLeft = CalcPartialGain(
-               static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
+         const FloatCalc gainLeft =
+               CalcPartialGain(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
          EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;
 
@@ -498,8 +498,8 @@ done:;
             sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
          }
       }
-      const FloatCalc gain1 = CalcPartialGain(
-            static_cast<FloatCalc>(sumGradientsParent), static_cast<FloatCalc>(sumHessiansOverwrite));
+      const FloatCalc gain1 =
+            CalcPartialGain(static_cast<FloatCalc>(sumGradientsParent), static_cast<FloatCalc>(sumHessiansOverwrite));
       EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       bestGain -= gain1;
 
@@ -640,14 +640,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       auto* pTreeNodeScratchSpace = IndexTreeNode(pRootTreeNode, cBytesPerTreeNode);
 
-      int retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
-            pBoosterShell,
-            flags,
-            pRootTreeNode,
-            pTreeNodeScratchSpace,
-            cSamplesLeafMin,
-            hessianMin,
-            direction);
+      int retFind = FindBestSplitGain<bHessian, cCompilerScores>(
+            pRng, pBoosterShell, flags, pRootTreeNode, pTreeNodeScratchSpace, cSamplesLeafMin, hessianMin, direction);
       size_t cSplitsRemaining = cSplitsMax;
       FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
@@ -711,8 +705,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pBoosterShell,
                      flags,
                      pLeftChild,
-                     pTreeNodeScratchSpace, 
-                     cSamplesLeafMin, 
+                     pTreeNodeScratchSpace,
+                     cSamplesLeafMin,
                      hessianMin,
                      direction);
                // if FindBestSplitGain returned -1 to indicate an
@@ -733,8 +727,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      pBoosterShell,
                      flags,
                      pRightChild,
-                     pTreeNodeScratchSpace, 
-                     cSamplesLeafMin, 
+                     pTreeNodeScratchSpace,
+                     cSamplesLeafMin,
                      hessianMin,
                      direction);
                // if FindBestSplitGain returned -1 to indicate an

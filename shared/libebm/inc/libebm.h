@@ -127,11 +127,11 @@ typedef int64_t TaskEbm;
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
-} * BoosterHandle;
+}* BoosterHandle;
 
 typedef struct _InteractionHandle {
    uint32_t handleVerification; // should be 21773 if ok. Do not use size_t since that requires an additional header.
-} * InteractionHandle;
+}* InteractionHandle;
 
 #define BOOL_CAST(val)                     (STATIC_CAST(BoolEbm, (val)))
 #define MONOTONE_CAST(val)                 (STATIC_CAST(MonotoneDirection, (val)))
@@ -225,9 +225,9 @@ typedef struct _InteractionHandle {
 #define CreateInteractionFlags_DisableApprox       (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
 #define CreateInteractionFlags_BinaryAsMulticlass  (CREATE_INTERACTION_FLAGS_CAST(0x00000004))
 
-#define CalcInteractionFlags_Default         (CALC_INTERACTION_FLAGS_CAST(0x00000000))
-#define CalcInteractionFlags_DisableNewton   (CALC_INTERACTION_FLAGS_CAST(0x00000001))
-#define CalcInteractionFlags_Pure            (CALC_INTERACTION_FLAGS_CAST(0x00000002))
+#define CalcInteractionFlags_Default       (CALC_INTERACTION_FLAGS_CAST(0x00000000))
+#define CalcInteractionFlags_DisableNewton (CALC_INTERACTION_FLAGS_CAST(0x00000001))
+#define CalcInteractionFlags_Pure          (CALC_INTERACTION_FLAGS_CAST(0x00000002))
 
 #define AccelerationFlags_NONE      (ACCELERATION_CAST(0x00000000))
 #define AccelerationFlags_Nvidia    (ACCELERATION_CAST(0x00000001))
