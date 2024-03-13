@@ -248,7 +248,9 @@ class EBMExplanation(FeatureValueExplanation):
             )
 
             return figure
-        # FIXME
+
+        msg = f"Unknown explanation type {self.explanation_type}, use 'global' or 'local'"
+        raise ValueError(msg)
 
 
 def is_private(estimator):
