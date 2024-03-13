@@ -500,6 +500,7 @@ TEST_CASE("mono-classification") {
          k_minSamplesLeafDefault,
          k_minHessianDefault,
          &k_leavesMaxDefault[0],
+         nullptr,
          &avgGain);
    CHECK(Error_None == error);
    CHECK(0 == avgGain);
@@ -641,7 +642,6 @@ TEST_CASE("Zero validation samples, boosting, binary") {
 
       CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
       CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 0), test.GetBestTermScore(0, {1}, 0));
-
 
       CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 1), test.GetBestTermScore(0, {0}, 1));
       CHECK_APPROX(test.GetCurrentTermScore(0, {1}, 1), test.GetBestTermScore(0, {1}, 1));

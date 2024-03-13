@@ -662,23 +662,23 @@ extern void TensorTotalsBuild(const bool bHessian,
 //
 //       if(pInnerTermUpdate->SetCountSplits(0, 1)) {
 //          free(aDynamicBins);
-//#ifndef NDEBUG
+// #ifndef NDEBUG
 //          free(aDebugCopyBins);
-//#endif // NDEBUG
+// #endif // NDEBUG
 //          return true;
 //       }
 //       if(pInnerTermUpdate->SetCountSplits(1, 1)) {
 //          free(aDynamicBins);
-//#ifndef NDEBUG
+// #ifndef NDEBUG
 //          free(aDebugCopyBins);
-//#endif // NDEBUG
+// #endif // NDEBUG
 //          return true;
 //       }
 //       if(pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4)) {
 //          free(aDynamicBins);
-//#ifndef NDEBUG
+// #ifndef NDEBUG
 //          free(aDebugCopyBins);
-//#endif // NDEBUG
+// #endif // NDEBUG
 //          return true;
 //       }
 //
@@ -925,15 +925,15 @@ extern void TensorTotalsBuild(const bool bHessian,
 //       free(aDynamicBins);
 //    } else {
 //       DO: handle this better
-//#ifndef NDEBUG
+// #ifndef NDEBUG
 //       EBM_ASSERT(false); // we only support pairs currently
 //       free(aDebugCopyBins);
-//#endif // NDEBUG
+// #endif // NDEBUG
 //       return true;
 //    }
-//#ifndef NDEBUG
+// #ifndef NDEBUG
 //    free(aDebugCopyBins);
-//#endif // NDEBUG
+// #endif // NDEBUG
 //    return false;
 // }
 

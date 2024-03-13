@@ -95,7 +95,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
    // our TensorTotalsSum needs to be templated as dynamic if we want to have something other than 2 dimensions
-   EBM_ASSERT(2 == cRealDimensions); 
+   EBM_ASSERT(2 == cRealDimensions);
 
    FloatCalc bestGain = k_illegalGainFloat;
    size_t iBin = 0;

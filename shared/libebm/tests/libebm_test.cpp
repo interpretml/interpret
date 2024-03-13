@@ -575,6 +575,7 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
          minSamplesLeaf,
          minHessian,
          0 == leavesMax.size() ? nullptr : &leavesMax[0],
+         nullptr,
          &gainAvg);
    if(Error_None != error) {
       throw TestException(error, "GenerateTermUpdate");

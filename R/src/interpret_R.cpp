@@ -830,6 +830,7 @@ SEXP GenerateTermUpdate_R(
       0,
       hessianMin,
       aLeavesMax,
+      nullptr,
       &avgGain
    );
    if(Error_None != err) {

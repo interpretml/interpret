@@ -1216,6 +1216,8 @@ class Native:
             ct.c_double,
             # int64_t * leavesMax
             ct.c_void_p,
+            # MonotoneDirection * direction
+            ct.c_void_p,
             # double * avgGainOut
             ct.POINTER(ct.c_double),
         ]
@@ -1497,6 +1499,7 @@ class Booster(AbstractContextManager):
         min_samples_leaf,
         min_hessian,
         max_leaves,
+        monotone_constraints,
     ):
         """Generates a boosting step update per feature
             by growing a shallow decision tree.
@@ -1508,6 +1511,7 @@ class Booster(AbstractContextManager):
             min_samples_leaf: Min observations required to split.
             min_hessian: Min hessian required to split.
             max_leaves: Max leaf nodes on feature step.
+            monotone_constraints: monotone constraints (1=increasing, 0=none, -1=decreasing)
 
         Returns:
             gain for the generated boosting step.
@@ -1523,6 +1527,10 @@ class Booster(AbstractContextManager):
         n_features = len(self.term_features[term_idx])
         max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
+        if monotone_constraints is not None:
+            if len(monotone_constraints) != n_features:
+                raise ValueError(f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}.")
+
         return_code = native._unsafe.GenerateTermUpdate(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
             self._booster_handle,
@@ -1532,6 +1540,7 @@ class Booster(AbstractContextManager):
             min_samples_leaf,
             min_hessian,
             Native._make_pointer(max_leaves_arr, np.int64),
+            Native._make_pointer(monotone_constraints, np.int32, 1, True),
             ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover

@@ -922,21 +922,20 @@ def test_bags():
 @pytest.fixture()
 def skip_sklearn() -> set:
     """Test which we do not adhere to."""
-    ec = estimator_checks
     return {
-        ec.check_sample_weights_invariance,  # EBMs do not support sample weight=0
+        "check_sample_weights_invariance",  # EBMs do not support sample weight=0
         # EBM allows fitting to zero features. Is this meaningful?
-        ec.check_estimators_empty_data_messages,
+        "check_estimators_empty_data_messages",
         # test is bad, trained on floats, EBM predicts string labels
         # test fails as 1.0 != "1.0", maybe test should be fixed upstream?
-        ec.check_classifiers_one_label,
-        ec.check_classifiers_one_label_sample_weights,  # EBMs do not accept sample weight of 0
-        ec.check_fit1d,  # EBMs accept 1d X for single feature
-        ec.check_fit2d_predict1d,  # EBMs accept 1d for predict
+        "check_classifiers_one_label",
+        "check_classifiers_one_label_sample_weights",  # EBMs do not accept sample weight of 0
+        "check_fit1d",  # EBMs accept 1d X for single feature
+        "check_fit2d_predict1d",  # EBMs accept 1d for predict
         # EBM is more permissive and convert any y values to str
-        ec.check_classifiers_regression_target,
-        ec.check_supervised_y_2d,  # EBM deliberately support `y.shape = (nsamples, 1)`
-        ec.check_requires_y_none,  # error message differs
+        "check_classifiers_regression_target",
+        "check_supervised_y_2d",  # EBM deliberately support `y.shape = (nsamples, 1)`
+        "check_requires_y_none",  # error message differs
     }
 
 
@@ -947,7 +946,7 @@ def skip_sklearn() -> set:
     # DPExplainableBoostingRegressor(**_fast_kwds),
 ])
 def test_sklearn_estimator(estimator, check, skip_sklearn):
-    if check.func in skip_sklearn:
+    if check.func.__name__ in skip_sklearn:
         pytest.skip("Deliberate deviation from scikit-learn.")
     with warnings.catch_warnings():
         warnings.filterwarnings(

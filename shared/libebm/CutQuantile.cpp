@@ -31,8 +31,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-//#define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
-//#define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
+// #define LOG_SUPERVERBOSE_DISCRETIZATION_ORDERED
+// #define LOG_SUPERVERBOSE_DISCRETIZATION_UNORDERED
 
 // TODO: increase the k_cutExploreDistance, and also increase our testing length to compensate
 static constexpr size_t k_cutExploreDistance = 20;

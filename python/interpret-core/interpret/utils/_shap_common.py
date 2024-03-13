@@ -14,6 +14,8 @@ from ..utils._unify_data import unify_data
 
 
 def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
+    import shap
+
     if name is None:
         name = gen_name_from_class(explainer)
 
@@ -57,7 +59,11 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
             y = y.astype(np.float64, copy=False)
 
     if is_treeshap and n_classes == 2:
-        all_shap_values = explainer.shap_.shap_values(X, **kwargs)[1]
+        all_shap_values = explainer.shap_.shap_values(X, **kwargs)
+        if shap.__version__ >= "0.45.0":
+            all_shap_values = all_shap_values[...,1]
+        else:
+            all_shap_values = all_shap_values[1]
         expected_value = explainer.shap_.expected_value[1]
     else:
         all_shap_values = explainer.shap_.shap_values(X, **kwargs)
