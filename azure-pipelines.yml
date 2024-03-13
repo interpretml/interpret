@@ -4,8 +4,10 @@
 # TODO: add ESLint once it's added to the "Secure Development Tools". TSLint is depricated.
 
 variables:
+# https://github.com/actions/runner-images/tree/main
+# TODO: change ARM to use: macOS-13-arm64, and add tests that work on native m1 silicon
 - name: python_bld_ver
-  value: 3.8
+  value: 3.9
 - name: ubuntu_bld
   value: ubuntu-20.04
 - name: mac_bld
