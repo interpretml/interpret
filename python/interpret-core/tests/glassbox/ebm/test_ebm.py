@@ -78,9 +78,9 @@ def test_binarize_1term():
 
     original_pred = clf.predict_proba(X_test)
     clf._ovrize(1.0)
-    assert np.allclose(original_pred, clf.predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, clf.predict_proba(X_test))
     clf._multinomialize(1.0)
-    assert np.allclose(original_pred, clf.predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, clf.predict_proba(X_test))
 
 
 def test_vlogit_2class():
@@ -108,14 +108,14 @@ def test_vlogit_2class():
     mod.intercept_ = np.array([-mod.intercept_[0], mod.intercept_[0]], np.float64)
     mod.link_ = "vlogit"
 
-    assert np.allclose(original_pred, mod.predict_proba(X_test))
-    assert np.allclose(original_pred, mod._binarize(0.75)[1].predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod.predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod._binarize(0.75)[1].predict_proba(X_test))
     mod._multinomialize(0.625)
-    assert np.allclose(original_pred, mod.predict_proba(X_test))
-    assert np.allclose(original_pred, mod._binarize(0.5)[1].predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod.predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod._binarize(0.5)[1].predict_proba(X_test))
     mod._ovrize(0.125)
-    assert np.allclose(original_pred, mod.predict_proba(X_test))
-    assert np.allclose(original_pred, mod._binarize(0.25)[1].predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod.predict_proba(X_test))
+    np.testing.assert_allclose(original_pred, mod._binarize(0.25)[1].predict_proba(X_test))
 
 
 def test_binarize():
@@ -622,11 +622,11 @@ def test_eval_terms_regression():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf.predict(X), scores)
+    np.testing.assert_allclose(clf.predict(X), scores)
 
     # for RMSE with identity link, the scores are the predictions
     predictions = inv_link(scores, clf.link_, clf.link_param_)
-    assert np.allclose(clf.predict(X), predictions)
+    np.testing.assert_allclose(clf.predict(X), predictions)
 
 
 def test_eval_terms_binary():
@@ -640,10 +640,10 @@ def test_eval_terms_binary():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf._predict_score(X), scores)
+    np.testing.assert_allclose(clf._predict_score(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
-    assert np.allclose(clf.predict_proba(X), probabilities)
+    np.testing.assert_allclose(clf.predict_proba(X), probabilities)
 
 
 def test_eval_terms_multiclass():
@@ -657,10 +657,10 @@ def test_eval_terms_multiclass():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf._predict_score(X), scores)
+    np.testing.assert_allclose(clf._predict_score(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
-    assert np.allclose(clf.predict_proba(X), probabilities)
+    np.testing.assert_allclose(clf.predict_proba(X), probabilities)
 
 
 def test_ebm_sample_weight():
@@ -904,19 +904,10 @@ def test_bags():
     clf.fit(X0, y0, sample_weight=sample_weight0, init_score=init_score0)
     pred0 = clf.predict(X0)
 
-    clf = ExplainableBoostingRegressor(
-        max_bins=n_samples + 2,
-        max_interaction_bins=n_samples + 2,
-        max_rounds=100,
-        outer_bags=1,
-        validation_size=0,
-        smoothing_rounds=0,
-        interaction_smoothing_rounds=0,
-    )
     clf.fit(X, y, sample_weight=sample_weight, bags=bags, init_score=init_score)
     pred1 = clf.predict(X0)
 
-    assert np.allclose(pred0, pred1)
+    np.testing.assert_allclose(pred0, pred1)
 
 
 @pytest.fixture()
