@@ -626,7 +626,7 @@ class EBMModel(BaseEstimator):
         rng = native.branch_rng(native.create_rng(seed))
         rngs = _create_rngs(rng, n_rngs=self.outer_bags)
         if bags is None:
-            stratified = n_classes >= 0
+            stratified = n_classes >= 0 and not is_differential_privacy
             internal_bags = [make_bag(y, self.validation_size, bagged_rng, stratified)
                              for bagged_rng in rngs]
         else:
