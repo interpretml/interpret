@@ -371,7 +371,7 @@ class EBMModel(BaseEstimator):
     histogram_weights_: List[np.ndarray] = field(init=False)  # np.float64, 1D[hist_bin]
     unique_val_counts_: np.ndarray = field(init=False)  # np.int64, 1D[feature]
 
-    intercept_: np.ndarray = field(init=False)  # np.float64, 1D[class]
+    intercept_: Union[float, np.ndarray] = field(init=False)  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray = field(init=False)  # np.float64, 1D[bag], or 2D[bag, class]
 
     def validate(self):
@@ -2438,6 +2438,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
     objective: Literal["rmse"] = "rmse"
 
+    intercept_: float = field(init=False)
     min_target_: float = field(init=False)
     max_target_: float = field(init=False)
 
