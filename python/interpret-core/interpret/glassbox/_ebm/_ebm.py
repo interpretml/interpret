@@ -2226,7 +2226,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Bagged intercept of the model. Binary classification is shape ``(n_outer_bags,)``, and multiclass is shape ``(n_outer_bags, n_classes)``.
     """
 
-    objective: Literal["log_loss"] = "log_loss"
+    objective: str = "log_loss"
 
     classes_: np.ndarray = field(init=False)  # np.int64, np.bool_, or np.unicode_, 1D[class]
 
@@ -2436,7 +2436,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The maximum value found in 'y'.
     """
 
-    objective: Literal["rmse"] = "rmse"
+    objective: str = "rmse"
 
     intercept_: float = field(init=False)
     min_target_: float = field(init=False)
