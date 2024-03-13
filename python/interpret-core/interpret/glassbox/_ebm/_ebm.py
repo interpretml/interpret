@@ -1674,7 +1674,7 @@ class EBMModel(BaseEstimator):
         if hasattr(self, "classes_"):
             if len(self.classes_) == 1:
                 # monoclassification is always monotonized
-                return  # FIXME
+                return self
             elif len(self.classes_) > 2:
                 msg = "monotonize not supported for multiclass"
                 _log.error(msg)
