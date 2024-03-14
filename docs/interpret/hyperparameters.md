@@ -69,14 +69,14 @@ hyperparameters: [0.0, 0.25, 0.5, 1.0]
 guidance: cyclic_progress is a good candidate for hyperparameter tuning as the best value is dataset dependent.
 
 ## smoothing_rounds
-default: 200
+default: 0
 
 hyperparameters: [0, 100, 200, 300, 400, 1000, 3000]
 
 guidance: The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
 
 ## interaction_smoothing_rounds
-default: 50
+default: 0
 
 hyperparameters: [0, 50, 100, 500]
 

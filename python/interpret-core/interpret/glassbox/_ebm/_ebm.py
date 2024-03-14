@@ -304,6 +304,7 @@ class EBMModel(BaseEstimator):
         min_samples_leaf,
         min_hessian,
         max_leaves,
+        monotone_constraints,
         objective,
         # Overall
         n_jobs,
@@ -348,6 +349,8 @@ class EBMModel(BaseEstimator):
             self.min_hessian = min_hessian
 
         self.max_leaves = max_leaves
+        if not is_private(self):
+            self.monotone_constraints = monotone_constraints
         self.objective = objective
 
         self.n_jobs = n_jobs
@@ -852,6 +855,7 @@ class EBMModel(BaseEstimator):
             min_samples_leaf = 0
             min_hessian = 0.0
             interactions = 0
+            monotone_constraints = None
         else:
             noise_scale_boosting = None
             bin_data_weights = None
@@ -866,6 +870,28 @@ class EBMModel(BaseEstimator):
             min_samples_leaf = self.min_samples_leaf
             min_hessian = self.min_hessian
             interactions = self.interactions
+            monotone_constraints = self.monotone_constraints
+
+        exclude_features = set()
+        if monotone_constraints is not None:
+            if len(monotone_constraints) != n_features_in:
+                msg = f"There are {n_features_in} features, so monotone_constraints must have the same length, but it is instead {len(monotone_constraints)}."
+                _log.error(msg)
+                raise ValueError(msg)
+
+            exclude_features = set(i for i, v in enumerate(monotone_constraints) if v != 0)
+
+        if len(exclude_features) != 0 and smoothing_rounds != 0:
+            # TODO: we can enabled monotone constraints with smoothing in C++
+            msg = "If there are any monotone_constraints, then smoothing_rounds must be 0."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if len(exclude_features) != 0 and interaction_smoothing_rounds != 0:
+            # TODO: we can enabled monotone constraints with smoothing in C++
+            msg = "If there are any monotone_constraints, then interaction_smoothing_rounds must be 0."
+            _log.error(msg)
+            raise ValueError(msg)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -911,6 +937,7 @@ class EBMModel(BaseEstimator):
                     min_samples_leaf,
                     min_hessian,
                     self.max_leaves,
+                    monotone_constraints,
                     greediness,
                     cyclic_progress,
                     smoothing_rounds,
@@ -1032,6 +1059,7 @@ class EBMModel(BaseEstimator):
                             scores_bags[idx],
                             combinations(range(n_features_in), 2),
                             exclude,
+                            exclude_features,
                             Native.CalcInteractionFlags_Default,
                             max_cardinality,
                             min_samples_leaf,
@@ -1156,6 +1184,7 @@ class EBMModel(BaseEstimator):
                         min_samples_leaf,
                         min_hessian,
                         self.max_leaves,
+                        monotone_constraints,
                         greediness,
                         cyclic_progress,
                         interaction_smoothing_rounds,
@@ -2378,9 +2407,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective 
         each feature is in predicting the target variable. Setting this parameter 
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2395,6 +2424,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    monotone_constraints: list of int, default=None
+
+        A list that defines the monotonic relationship between each feature and the target.
+        This list must be the same length as the number of features. Each element in the list
+        should be one of the following values:
+
+            - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
+            - +1: The partial response of the corresponding feature should be monotonically increasing with respect to the target.
+            - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
     objective : str, default="log_loss"
         The objective to optimize.
     n_jobs : int, default=-2
@@ -2521,8 +2559,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greediness: Optional[float] = 1.5,
         cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        smoothing_rounds: Optional[int] = 0,
+        interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,
@@ -2530,6 +2568,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
         max_leaves: int = 3,
+        monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall
         n_jobs: Optional[int] = -2,
@@ -2556,6 +2595,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
             max_leaves=max_leaves,
+            monotone_constraints=monotone_constraints,
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
@@ -2678,9 +2718,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective 
         each feature is in predicting the target variable. Setting this parameter 
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2695,6 +2735,15 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Minimum hessian required to consider a potential split valid.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
+    monotone_constraints: list of int, default=None
+
+        A list that defines the monotonic relationship between each feature and the target.
+        This list must be the same length as the number of features. Each element in the list
+        should be one of the following values:
+
+            - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
+            - +1: The partial response of the corresponding feature should be monotonically increasing with respect to the target.
+            - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
     objective : str, default="rmse"
         The objective to optimize. Options include: "rmse",
         "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
@@ -2821,8 +2870,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greediness: Optional[float] = 1.5,
         cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        smoothing_rounds: Optional[int] = 0,
+        interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,
@@ -2830,6 +2879,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
         max_leaves: int = 3,
+        monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
         # Overall
         n_jobs: Optional[int] = -2,
@@ -2856,6 +2906,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
             max_leaves=max_leaves,
+            monotone_constraints=monotone_constraints,
             objective=objective,
             n_jobs=n_jobs,
             random_state=random_state,
@@ -3077,6 +3128,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             min_samples_leaf=0,
             min_hessian=0.0,
             max_leaves=max_leaves,
+            monotone_constraints=None,
             objective="log_loss",
             n_jobs=n_jobs,
             random_state=random_state,
@@ -3344,6 +3396,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             min_samples_leaf=0,
             min_hessian=0.0,
             max_leaves=max_leaves,
+            monotone_constraints=None,
             objective="rmse",
             n_jobs=n_jobs,
             random_state=random_state,

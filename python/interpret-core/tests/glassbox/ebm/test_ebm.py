@@ -136,7 +136,7 @@ def test_binarize():
 
     logloss_binary = log_loss(y_test, probas)
     ratio = logloss_binary / logloss_multinomial
-    assert 0.9 < ratio and ratio < 1.9
+    assert 0.8 < ratio and ratio < 1.9
 
     logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
 

@@ -23,6 +23,7 @@ def boost(
     min_samples_leaf,
     min_hessian,
     max_leaves,
+    monotone_constraints,
     greediness,
     cyclic_progress,
     smoothing_rounds,
@@ -37,9 +38,6 @@ def boost(
     objective,
     experimental_params=None,
 ):
-    # TODO: expose monotone_constraints to our caller instead of making it here
-    monotone_constraints = np.full(Native.get_native_singleton().extract_dataset_header(dataset)[1], 0, dtype=np.int32)
-
     try:
         step_idx = 0
         with Booster(
