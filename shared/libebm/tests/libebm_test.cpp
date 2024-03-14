@@ -561,7 +561,8 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
       const double learningRate,
       const IntEbm minSamplesLeaf,
       const double minHessian,
-      const std::vector<IntEbm> leavesMax) {
+      const std::vector<IntEbm> leavesMax,
+      const std::vector<MonotoneDirection> monotonicity) {
    ErrorEbm error;
 
    double gainAvg = std::numeric_limits<double>::quiet_NaN();
@@ -575,7 +576,7 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
          minSamplesLeaf,
          minHessian,
          0 == leavesMax.size() ? nullptr : &leavesMax[0],
-         nullptr,
+         0 == monotonicity.size() ? nullptr : &monotonicity[0],
          &gainAvg);
    if(Error_None != error) {
       throw TestException(error, "GenerateTermUpdate");
