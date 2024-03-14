@@ -455,7 +455,11 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            if isnan(self.cyclic_progress):
+            if self.cyclic_progress is True:
+                cyclic_progress = 1.0
+            elif self.cyclic_progress is False:
+                cyclic_progress = 0.0
+            elif isnan(self.cyclic_progress):
                 msg = "cyclic_progress cannot be NaN"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -467,6 +471,8 @@ class EBMModel(BaseEstimator):
                 msg = "cyclic_progress cannot be above 1.0"
                 _log.error(msg)
                 raise ValueError(msg)
+            else:
+                cyclic_progress = float(self.cyclic_progress)
 
             if (
                 not isinstance(self.smoothing_rounds, int)
@@ -862,7 +868,6 @@ class EBMModel(BaseEstimator):
             term_boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
-            cyclic_progress = self.cyclic_progress
             smoothing_rounds = self.smoothing_rounds
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
@@ -2400,10 +2405,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     greedy_ratio : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : float, default=1.0
+    cyclic_progress : bool or float, default=True
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
         the cycles are expected to make forward progress. If forward progress is
         not achieved during a cycle, that cycle will not be wasted; instead,
         it will be used to update internal gain calculations related to how effective
@@ -2560,7 +2565,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
+        cyclic_progress: Union[bool, float, int] = True,
         smoothing_rounds: Optional[int] = 0,
         interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 25000,
@@ -2711,10 +2716,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     greedy_ratio : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : float, default=1.0
+    cyclic_progress : bool or float, default=True
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
         the cycles are expected to make forward progress. If forward progress is
         not achieved during a cycle, that cycle will not be wasted; instead,
         it will be used to update internal gain calculations related to how effective
@@ -2871,7 +2876,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
+        cyclic_progress: Union[bool, float, int] = True,
         smoothing_rounds: Optional[int] = 0,
         interaction_smoothing_rounds: Optional[int] = 0,
         max_rounds: Optional[int] = 25000,
@@ -3121,7 +3126,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             inner_bags=0,
             learning_rate=learning_rate,
             greedy_ratio=0.0,
-            cyclic_progress=1.0,
+            cyclic_progress=True,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
@@ -3389,7 +3394,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             inner_bags=0,
             learning_rate=learning_rate,
             greedy_ratio=0.0,
-            cyclic_progress=1.0,
+            cyclic_progress=True,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
             max_rounds=max_rounds,
