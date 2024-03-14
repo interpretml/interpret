@@ -93,13 +93,14 @@ def convert_categorical_to_continuous(categories):
     if len(clusters) == 0:
         return np.empty(0, np.float64), [[0], [], non_float_idxs], np.nan, np.nan
 
-    cluster_bounds = sorted((min(cluster_list), max(cluster_list))
-                            for cluster_list in clusters.values())
+    cluster_bounds = sorted(
+        (min(cluster_list), max(cluster_list)) for cluster_list in clusters.values()
+    )
 
     # TODO: move everything below here into C++ to ensure cross language compatibility
     cuts = []
     _, low = cluster_bounds[0]
-    for (high, next_low) in cluster_bounds[1:]:
+    for high, next_low in cluster_bounds[1:]:
         if low < high:
             # if they are equal or if low is higher then we can't separate one cluster
             # from another, so we keep joining them until we can get clean separations
@@ -304,7 +305,7 @@ def deduplicate_bins(bins):
             if highest_key != key:
                 highest_key = key
                 highest_idx = level_idx
-        del bin_levels[highest_idx + 1:]
+        del bin_levels[highest_idx + 1 :]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover
@@ -365,9 +366,7 @@ def make_bag(y, test_size, rng, is_stratified):
 
     if test_size >= 1:
         if test_size % 1:
-            raise Exception(
-                "If test_size >= 1, test_size should be a whole number."
-            )
+            raise Exception("If test_size >= 1, test_size should be a whole number.")
         n_test_samples = test_size
     else:
         n_test_samples = ceil(n_samples * test_size)
@@ -389,6 +388,4 @@ def make_bag(y, test_size, rng, is_stratified):
             rng, n_classes, n_train_samples, n_test_samples, y
         )
     else:
-        return native.sample_without_replacement(
-            rng, n_train_samples, n_test_samples
-        )
+        return native.sample_without_replacement(rng, n_train_samples, n_test_samples)

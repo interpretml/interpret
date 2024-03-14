@@ -388,12 +388,12 @@ class EBMModel(BaseEstimator):
         max_cardinality = 1048576
         nominal_smoothing = True
         # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
-        # that we don't need to have the count when boosting or for interaction 
+        # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
         # slightly, but it might be worth the speedup. Unfortunately, with outer bags
-        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as 
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
         # a boosting restriction.
-        min_samples_bin=1
+        min_samples_bin = 1
 
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
             msg = "outer_bags must be an integer"
@@ -879,7 +879,9 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            exclude_features = set(i for i, v in enumerate(monotone_constraints) if v != 0)
+            exclude_features = set(
+                i for i, v in enumerate(monotone_constraints) if v != 0
+            )
 
         if len(exclude_features) != 0 and smoothing_rounds != 0:
             # TODO: we can enabled monotone constraints with smoothing in C++
@@ -2399,13 +2401,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
@@ -2710,13 +2712,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=0
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.

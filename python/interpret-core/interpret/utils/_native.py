@@ -1529,7 +1529,9 @@ class Booster(AbstractContextManager):
 
         if monotone_constraints is not None:
             if len(monotone_constraints) != n_features:
-                raise ValueError(f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}.")
+                raise ValueError(
+                    f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
+                )
 
         return_code = native._unsafe.GenerateTermUpdate(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
@@ -1848,7 +1850,12 @@ class InteractionDetector(AbstractContextManager):
         _log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
-        self, feature_idxs, calc_interaction_flags, max_cardinality, min_samples_leaf, min_hessian
+        self,
+        feature_idxs,
+        calc_interaction_flags,
+        max_cardinality,
+        min_samples_leaf,
+        min_hessian,
     ):
         """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")

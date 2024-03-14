@@ -40,7 +40,7 @@ def test_conversion_cut_intervals():
     # cuts -> intervals -> cuts
     for cuts, intervals in [
         ([1, 2], [(float("-inf"), 1.0), (1.0, 2.0), (2.0, float("inf"))]),
-        ([], [(float("-inf"), float("inf"))])
+        ([], [(float("-inf"), float("inf"))]),
     ]:
         to_interval = convert_to_intervals(cuts)
         assert to_interval == intervals
@@ -68,7 +68,6 @@ def test_convert_categorical_to_continuous_none():
     assert mapping == [[0], [], [1, 2, 3]]
     assert np.isnan(old_min)
     assert np.isnan(old_max)
-
 
 
 def test_convert_categorical_to_continuous_single():

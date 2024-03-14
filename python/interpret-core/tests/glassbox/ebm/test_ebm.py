@@ -934,12 +934,14 @@ def skip_sklearn() -> set:
     }
 
 
-@estimator_checks.parametrize_with_checks([
-    ExplainableBoostingClassifier(**_fast_kwds),
-    ExplainableBoostingRegressor(**_fast_kwds),
-    # DPExplainableBoostingClassifier(**_fast_kwds),
-    # DPExplainableBoostingRegressor(**_fast_kwds),
-])
+@estimator_checks.parametrize_with_checks(
+    [
+        ExplainableBoostingClassifier(**_fast_kwds),
+        ExplainableBoostingRegressor(**_fast_kwds),
+        # DPExplainableBoostingClassifier(**_fast_kwds),
+        # DPExplainableBoostingRegressor(**_fast_kwds),
+    ]
+)
 def test_sklearn_estimator(estimator, check, skip_sklearn):
     if check.func.__name__ in skip_sklearn:
         pytest.skip("Deliberate deviation from scikit-learn.")

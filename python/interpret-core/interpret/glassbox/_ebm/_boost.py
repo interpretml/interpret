@@ -84,11 +84,15 @@ def boost(
                         heap = []
                     term_idx = state_idx
 
-                    contains_nominals = any(nominals[i] for i in term_features[term_idx])
-                    if 0 < smoothing_rounds and (nominal_smoothing or not contains_nominals):
+                    contains_nominals = any(
+                        nominals[i] for i in term_features[term_idx]
+                    )
+                    if 0 < smoothing_rounds and (
+                        nominal_smoothing or not contains_nominals
+                    ):
                         # modify some of our parameters temporarily
                         term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
-                    
+
                     make_progress = False
                     if 1.0 <= cyclic_state or 0 < smoothing_rounds:
                         # if cyclic_state is above 1.0 we make progress
@@ -103,7 +107,10 @@ def boost(
                 if bestkey is None or 0 <= state_idx:
                     term_monotone = None
                     if monotone_constraints is not None:
-                        term_monotone = np.array([monotone_constraints[i] for i in term_features[term_idx]], dtype=np.int32)
+                        term_monotone = np.array(
+                            [monotone_constraints[i] for i in term_features[term_idx]],
+                            dtype=np.int32,
+                        )
 
                     avg_gain = booster.generate_term_update(
                         rng,
@@ -123,7 +130,7 @@ def boost(
                 else:
                     gainkey = bestkey
                     bestkey = None
-                    assert term_idx == gainkey[2] # heap and cached must agree
+                    assert term_idx == gainkey[2]  # heap and cached must agree
                     booster.set_term_update(term_idx, cached_update)
 
                 heapq.heappush(heap, gainkey)
@@ -143,9 +150,7 @@ def boost(
                     )
 
                     # Loop through all random splits and add noise before updating
-                    for f, s, noise in zip(
-                        splits_iter[:-1], splits_iter[1:], noises
-                    ):
+                    for f, s, noise in zip(splits_iter[:-1], splits_iter[1:], noises):
                         noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
 
                         # Native code will be returning sums of residuals in slices, not averages.
