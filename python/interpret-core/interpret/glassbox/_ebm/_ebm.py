@@ -293,7 +293,7 @@ class EBMModel(BaseEstimator):
         inner_bags,
         # Boosting
         learning_rate,
-        greediness,
+        greedy_ratio,
         cyclic_progress,
         smoothing_rounds,
         interaction_smoothing_rounds,
@@ -336,7 +336,7 @@ class EBMModel(BaseEstimator):
 
         self.learning_rate = learning_rate
         if not is_private(self):
-            self.greediness = greediness
+            self.greedy_ratio = greedy_ratio
             self.cyclic_progress = cyclic_progress
             self.smoothing_rounds = smoothing_rounds
             self.interaction_smoothing_rounds = interaction_smoothing_rounds
@@ -446,12 +446,12 @@ class EBMModel(BaseEstimator):
             raise ValueError(msg)
 
         if not is_private(self):
-            if isnan(self.greediness):
-                msg = "greediness cannot be NaN"
+            if isnan(self.greedy_ratio):
+                msg = "greedy_ratio cannot be NaN"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.greediness < 0.0:
-                msg = "greediness cannot be negative"
+            elif self.greedy_ratio < 0.0:
+                msg = "greedy_ratio cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
 
@@ -846,7 +846,7 @@ class EBMModel(BaseEstimator):
                 Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
             )
             inner_bags = 0
-            greediness = 0.0
+            greedy_ratio = 0.0
             cyclic_progress = 1.0
             smoothing_rounds = 0
             interaction_smoothing_rounds = 0
@@ -861,7 +861,7 @@ class EBMModel(BaseEstimator):
             bin_data_weights = None
             term_boost_flags = Native.TermBoostFlags_Default
             inner_bags = self.inner_bags
-            greediness = self.greediness
+            greedy_ratio = self.greedy_ratio
             cyclic_progress = self.cyclic_progress
             smoothing_rounds = self.smoothing_rounds
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
@@ -940,7 +940,7 @@ class EBMModel(BaseEstimator):
                     min_hessian,
                     self.max_leaves,
                     monotone_constraints,
-                    greediness,
+                    greedy_ratio,
                     cyclic_progress,
                     smoothing_rounds,
                     nominal_smoothing,
@@ -1187,7 +1187,7 @@ class EBMModel(BaseEstimator):
                         min_hessian,
                         self.max_leaves,
                         monotone_constraints,
-                        greediness,
+                        greedy_ratio,
                         cyclic_progress,
                         interaction_smoothing_rounds,
                         nominal_smoothing,
@@ -2397,7 +2397,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=1.5
+    greedy_ratio : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
@@ -2559,7 +2559,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
+        greedy_ratio: Optional[float] = 1.5,
         cyclic_progress: float = 1.0,
         smoothing_rounds: Optional[int] = 0,
         interaction_smoothing_rounds: Optional[int] = 0,
@@ -2587,7 +2587,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=inner_bags,
             learning_rate=learning_rate,
-            greediness=greediness,
+            greedy_ratio=greedy_ratio,
             cyclic_progress=cyclic_progress,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
@@ -2708,7 +2708,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greediness : float, default=1.5
+    greedy_ratio : float, default=1.5
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
@@ -2870,7 +2870,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
+        greedy_ratio: Optional[float] = 1.5,
         cyclic_progress: float = 1.0,
         smoothing_rounds: Optional[int] = 0,
         interaction_smoothing_rounds: Optional[int] = 0,
@@ -2898,7 +2898,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=inner_bags,
             learning_rate=learning_rate,
-            greediness=greediness,
+            greedy_ratio=greedy_ratio,
             cyclic_progress=cyclic_progress,
             smoothing_rounds=smoothing_rounds,
             interaction_smoothing_rounds=interaction_smoothing_rounds,
@@ -3120,7 +3120,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             outer_bags=outer_bags,
             inner_bags=0,
             learning_rate=learning_rate,
-            greediness=0.0,
+            greedy_ratio=0.0,
             cyclic_progress=1.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,
@@ -3388,7 +3388,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             outer_bags=outer_bags,
             inner_bags=0,
             learning_rate=learning_rate,
-            greediness=0.0,
+            greedy_ratio=0.0,
             cyclic_progress=1.0,
             smoothing_rounds=0,
             interaction_smoothing_rounds=0,

@@ -24,7 +24,7 @@ def boost(
     min_hessian,
     max_leaves,
     monotone_constraints,
-    greediness,
+    greedy_ratio,
     cyclic_progress,
     smoothing_rounds,
     nominal_smoothing,
@@ -60,9 +60,9 @@ def boost(
 
             max_steps = max_rounds * len(term_features)
 
-            # if greediness is set to +inf then set it to the max rounds.
-            greediness = min(greediness, max_rounds)
-            greedy_steps = int(np.ceil(greediness * len(term_features)))
+            # if greedy_ratio is set to +inf then set it to the max rounds.
+            greedy_ratio = min(greedy_ratio, max_rounds)
+            greedy_steps = int(np.ceil(greedy_ratio * len(term_features)))
             if greedy_steps <= 0:
                 # if there are no greedy steps, then force progress on cyclic rounds
                 cyclic_progress = 1.0

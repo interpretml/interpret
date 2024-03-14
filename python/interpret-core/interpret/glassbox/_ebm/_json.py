@@ -163,8 +163,8 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "learning_rate"):
             params["learning_rate"] = ebm.learning_rate
 
-        if hasattr(ebm, "greediness"):
-            params["greediness"] = ebm.greediness
+        if hasattr(ebm, "greedy_ratio"):
+            params["greedy_ratio"] = ebm.greedy_ratio
 
         if hasattr(ebm, "smoothing_rounds"):
             params["smoothing_rounds"] = ebm.smoothing_rounds
