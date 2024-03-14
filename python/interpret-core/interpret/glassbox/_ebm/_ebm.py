@@ -7,12 +7,25 @@ import logging
 import operator
 import os
 from copy import deepcopy
+from dataclasses import dataclass, field
 from itertools import combinations, count
 from math import ceil, isnan
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 from warnings import warn
 
 import numpy as np
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, TypeAdapter
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -22,6 +35,7 @@ from sklearn.base import (
 )  # type: ignore
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted  # type: ignore
+from typing_extensions import Annotated
 
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -55,7 +69,6 @@ from ...utils._unify_data import unify_data
 from ._bin import (
     ebm_eval_terms,
     ebm_predict_scores,
-    eval_terms,
     make_bin_weights,
 )
 from ._boost import boost
@@ -72,6 +85,24 @@ from ._utils import (
 )
 
 _log = logging.getLogger(__name__)
+
+
+def _create_rngs(base_rng, n_rngs: int):
+    native = Native.get_native_singleton()
+    used_seeds = set()
+    rngs = []
+    for _ in range(n_rngs):
+        while True:
+            bagged_rng = native.branch_rng(base_rng)
+            check_seed = native.generate_seed(bagged_rng)
+            # We do not want identical bags. branch_rng is pretty good at avoiding
+            # collisions, but it is not a cryptographic RNG, so it is possible.
+            # Check with a 32-bit seed if we have a collision and regenerate if so.
+            if check_seed not in used_seeds:
+                break
+        used_seeds.add(check_seed)
+        rngs.append(bagged_rng)
+    return rngs
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -98,7 +129,7 @@ class EBMExplanation(FeatureValueExplanation):
             name: User-defined name of explanation.
             selector: A dataframe whose indices correspond to explanation entries.
         """
-        super(EBMExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -156,9 +187,7 @@ class EBMExplanation(FeatureValueExplanation):
 
         # Per term global explanation
         if self.explanation_type == "global":
-            title = "Term: {0} ({1})".format(
-                self.feature_names[key], self.feature_types[key]
-            )
+            title = f"Term: {self.feature_names[key]} ({self.feature_types[key]})"
 
             if self.feature_types[key] == "continuous":
                 xtitle = self.feature_names[key]
@@ -181,23 +210,23 @@ class EBMExplanation(FeatureValueExplanation):
             ):
                 figure = super().visualize(key, title)
                 figure._interpret_help_text = (
-                    "The contribution (score) of the term {0} to predictions "
-                    "made by the model.".format(self.feature_names[key])
+                    f"The contribution (score) of the term {self.feature_names[key]}"
+                    " to predictions made by the model."
                 )
             else:  # pragma: no cover
                 raise Exception(
-                    "Not supported configuration: {0}, {1}".format(
-                        self.explanation_type, self.feature_types[key]
-                    )
+                    "Not supported configuration:"
+                    f" {self.explainer_type}, {self.feature_types[key]}"
                 )
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
-                "{0} to predictions made by the model. For classification, "
-                "scores are on a log scale (logits). For regression, scores are on the same "
-                "scale as the outcome being predicted (e.g., dollars when predicting cost). "
+                f"{self.feature_names[key]} to predictions made by the model."
+                "For classification, scores are on a log scale (logits)."
+                "For regression, scores are on the same scale as the outcome being predicted"
+                " (e.g., dollars when predicting cost). "
                 "Each graph is centered vertically such that average prediction on the train "
-                "set is 0.".format(self.feature_names[key])
+                "set is 0."
             )
 
             return figure
@@ -220,6 +249,9 @@ class EBMExplanation(FeatureValueExplanation):
 
             return figure
 
+        msg = f"Unknown explanation type {self.explanation_type}, use 'global' or 'local'"
+        raise ValueError(msg)
+
 
 def is_private(estimator):
     """Return True if the given estimator is a differentially private EBM estimator
@@ -241,7 +273,7 @@ def is_private(estimator):
 def _clean_exclude(exclude, feature_map):
     ret = set()
     for term in exclude:
-        if isinstance(term, int) or isinstance(term, float) or isinstance(term, str):
+        if isinstance(term, (int, float, str)):
             term = (term,)
 
         cleaned = []
@@ -273,281 +305,98 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
+@dataclass(repr=False)
 class EBMModel(BaseEstimator):
-    """Base class for all EBMs"""
+    """Base class for all EBMs."""
 
-    def __init__(
-        self,
-        # Explainer
-        feature_names,
-        feature_types,
-        # Preprocessor
-        max_bins,
-        max_interaction_bins,
-        # Stages
-        interactions,
-        exclude,
-        # Ensemble
-        validation_size,
-        outer_bags,
-        inner_bags,
-        # Boosting
-        learning_rate,
-        greediness,
-        cyclic_progress,
-        smoothing_rounds,
-        interaction_smoothing_rounds,
-        max_rounds,
-        early_stopping_rounds,
-        early_stopping_tolerance,
-        # Trees
-        min_samples_leaf,
-        min_hessian,
-        max_leaves,
-        objective,
-        # Overall
-        n_jobs,
-        random_state,
-        # Differential Privacy
-        epsilon,
-        delta,
-        composition,
-        bin_budget_frac,
-        privacy_bounds,
-        privacy_target_min,
-        privacy_target_max,
-    ):
-        self.feature_names = feature_names
-        self.feature_types = feature_types
+    # Explainer
+    feature_names: Optional[Sequence[str]] = None
+    feature_types: Optional[Sequence[Optional[str]]] = None
+    # Preprocessor
+    max_bins: NonNegativeInt = 1024
+    max_interaction_bins: NonNegativeInt = 32
+    # Stages
+    interactions: Optional[Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(gt=0.0, lt=1.0)],
+        List[Union[tuple, Sequence[Union[int, str]]]],
+    ]] = 0.95
+    exclude: Optional[Union[
+        Literal["mains"],
+        List[Union[Sequence[Union[int, str]], str, int]],
+    ]] = None
+    # Ensemble
+    validation_size: Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(ge=0.0, lt=1.0)],
+    ] = 0.15
+    outer_bags: Annotated[int, Field(ge=1)] = 14
+    inner_bags: NonNegativeInt = 0
+    # Boosting
+    learning_rate: PositiveFloat = 0.01
+    greediness: NonNegativeFloat = 1.5
+    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)] = 1.0
+    smoothing_rounds: NonNegativeInt = 200
+    interaction_smoothing_rounds: NonNegativeInt = 50
+    max_rounds: NonNegativeInt = 25000
+    early_stopping_rounds: NonNegativeInt = 50
+    early_stopping_tolerance: float = 0.0
+    # Trees
+    min_samples_leaf: NonNegativeInt = 2
+    min_hessian: NonNegativeFloat = 1e-4
+    max_leaves: PositiveInt = 3
+    objective: Optional[str] = None
+    # Overall
+    n_jobs: Optional[int] = -2
+    random_state: Optional[int] = 42
 
-        self.max_bins = max_bins
-        if not is_private(self):
-            self.max_interaction_bins = max_interaction_bins
+    # additional attributes set by fit
+    n_features_in_: int = field(init=False)
+    term_names_: List[str] = field(init=False)
+    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]] = field(init=False)  # np.float64, 1D[cut]
+    feature_names_in_: List[str] = field(init=False)
+    feature_types_in_: List[str] = field(init=False)
+    feature_bounds_: np.ndarray = field(init=False)  # np.float64, 2D[feature, min_max]
+    term_features_: List[Tuple[int, ...]] = field(init=False)
+    bin_weights_: List[np.ndarray] = field(init=False)  # np.float64, [bin0...]
+    bagged_scores_: List[np.ndarray] = field(init=False)  # np.float64, [bag, bin0..., ?class]
+    term_scores_: List[np.ndarray] = field(init=False)  # np.float64, [bin0..., ?class]
+    standard_deviations_: List[np.ndarray] = field(init=False)  # np.float64, [bin0..., ?class]
+    link_: str = field(init=False)
+    link_param_: float = field(init=False)
+    bag_weights_: np.ndarray = field(init=False)  # np.float64, 1D[bag]
+    breakpoint_iteration_: np.ndarray = field(init=False)  # np.int64, 2D[stage, bag]
 
-        if not is_private(self):
-            self.interactions = interactions
-        self.exclude = exclude
+    histogram_edges_: List[Union[None, np.ndarray]] = field(init=False)  # np.float64, 1D[hist_edge]
+    histogram_weights_: List[np.ndarray] = field(init=False)  # np.float64, 1D[hist_bin]
+    unique_val_counts_: np.ndarray = field(init=False)  # np.int64, 1D[feature]
 
-        self.validation_size = validation_size
-        self.outer_bags = outer_bags
-        if not is_private(self):
-            self.inner_bags = inner_bags
+    intercept_: Union[float, np.ndarray] = field(init=False)  # np.float64, 1D[class]
+    bagged_intercept_: np.ndarray = field(init=False)  # np.float64, 1D[bag], or 2D[bag, class]
 
-        self.learning_rate = learning_rate
-        if not is_private(self):
-            self.greediness = greediness
-            self.cyclic_progress = cyclic_progress
-            self.smoothing_rounds = smoothing_rounds
-            self.interaction_smoothing_rounds = interaction_smoothing_rounds
-        self.max_rounds = max_rounds
-        if not is_private(self):
-            self.early_stopping_rounds = early_stopping_rounds
-            self.early_stopping_tolerance = early_stopping_tolerance
-
-            self.min_samples_leaf = min_samples_leaf
-            self.min_hessian = min_hessian
-
-        self.max_leaves = max_leaves
-        self.objective = objective
-
-        self.n_jobs = n_jobs
-        self.random_state = random_state
-
-        if is_private(self):
-            # Arguments for differential privacy
-            self.epsilon = epsilon
-            self.delta = delta
-            self.composition = composition
-            self.bin_budget_frac = bin_budget_frac
-            self.privacy_bounds = privacy_bounds
-            self.privacy_target_min = privacy_target_min
-            self.privacy_target_max = privacy_target_max
-
-    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
-        """Fits model to provided samples.
-
-        Args:
-            X: Numpy array for training samples.
-            y: Numpy array as training labels.
-            sample_weight: Optional array of weights per sample. Should be same length as X and y.
-            bags: Optional bag definitions. The first dimension should have length equal to the number of outer_bags.
-                The second dimension should have length equal to the number of samples. The contents should be
-                +1 for training, -1 for validation, and 0 if not included in the bag. Numbers other than 1 indicate
-                how many times to include the sample in the training or validation sets.
-            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
-                If samples scores it should be the same length as X.
-
-        Returns:
-            Itself.
+    def validate(self):
         """
+        Validate the parameters and update convertible types.
 
-        # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
-        max_cardinality = 1048576
-        nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
-        # that we don't need to have the count when boosting or for interaction 
-        # detection. Benchmarking indicates switching these would decrease the accuracy
-        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
-        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as 
-        # a boosting restriction.
-        min_samples_bin=1
+        This function uses `pydantic` to validate all attributes against their
+        type hints. If possible it converts arguments to the type hint.
+        """
+        valid = TypeAdapter(self.__class__).validate_python(self.get_params())
 
-        if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
-            msg = "outer_bags must be an integer"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.outer_bags < 1:
-            msg = "outer_bags must be 1 or greater. Did you mean to set: outer_bags=1, validation_size=0?"
-            _log.error(msg)
-            raise ValueError(msg)
+        if self.validation_size <= 0 and self.outer_bags > 1:
+            warn(
+                (
+                    "If validation_size is 0, the outer_bags have no purpose."
+                    "Set outer_bags=1 to remove this warning."
+                ),
+                stacklevel=0,  # TODO: check
+            )
+        for key, val in valid.get_params().items():
+            if getattr(self, key) != val:
+                setattr(self, key, val)
 
-        if bags is not None:
-            if len(bags) != self.outer_bags:
-                msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.validation_size, int) and not isinstance(
-            self.validation_size, float
-        ):
-            msg = "validation_size must be an integer or float"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.validation_size <= 0:
-            if self.validation_size < 0:
-                msg = "validation_size cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif 1 < self.outer_bags:
-                warn(
-                    "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
-                )
-        elif 1 <= self.validation_size:
-            # validation_size equal to 1 or more is an exact number specification, so it must be an integer
-            if (
-                not isinstance(self.validation_size, int)
-                and not self.validation_size.is_integer()
-            ):
-                msg = "If 1 <= validation_size, it is an exact count of samples, and must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.max_rounds, int) and not self.max_rounds.is_integer():
-            msg = "max_rounds must be an integer"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.max_rounds < 0:
-            # max_rounds == 0 means no boosting. This can be useful to just perform discretization
-            msg = "max_rounds cannot be negative"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if not is_private(self):
-            if isnan(self.greediness):
-                msg = "greediness cannot be NaN"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.greediness < 0.0:
-                msg = "greediness cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if isnan(self.cyclic_progress):
-                msg = "cyclic_progress cannot be NaN"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.cyclic_progress < 0.0:
-                msg = "cyclic_progress cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif 1.0 < self.cyclic_progress:
-                msg = "cyclic_progress cannot be above 1.0"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.smoothing_rounds, int)
-                and not self.smoothing_rounds.is_integer()
-            ):
-                msg = "smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.smoothing_rounds < 0:
-                msg = "smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.interaction_smoothing_rounds, int)
-                and not self.interaction_smoothing_rounds.is_integer()
-            ):
-                msg = "interaction_smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.interaction_smoothing_rounds < 0:
-                msg = "interaction_smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.inner_bags, int)
-                and not self.inner_bags.is_integer()
-            ):
-                msg = "inner_bags must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.inner_bags < 0:
-                # inner_bags == 0 turns off inner bagging
-                msg = "inner_bags cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.early_stopping_rounds, int)
-                and not self.early_stopping_rounds.is_integer()
-            ):
-                msg = "early_stopping_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            elif self.early_stopping_rounds < 0:
-                # early_stopping_rounds == 0 means turn off early_stopping
-                # early_stopping_rounds == 1 means check after the first round, etc
-                msg = "early_stopping_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if not isinstance(self.early_stopping_tolerance, int) and not isinstance(
-                self.early_stopping_tolerance, float
-            ):
-                msg = "early_stopping_tolerance must be a float"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        if not isinstance(self.learning_rate, int) and not isinstance(
-            self.learning_rate, float
-        ):
-            msg = "learning_rate must be a float"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif self.learning_rate <= 0:
-            msg = "learning_rate must be a positive number"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        # TODO: check the other inputs for common mistakes here
-
-        y = clean_dimensions(y, "y")
-        if y.ndim != 1:
-            msg = "y must be 1 dimensional"
-            _log.error(msg)
-            raise ValueError(msg)
-        if len(y) == 0:
-            msg = "y cannot have 0 samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
+    def _determine_objective(self) -> Tuple[Literal["regression", "classification"], str]:
         native = Native.get_native_singleton()
-
         objective = self.objective
         task = None
         if objective is not None:
@@ -572,6 +421,133 @@ class EBMModel(BaseEstimator):
                 msg = f"regressor cannot have objective {self.objective}"
                 _log.error(msg)
                 raise ValueError(msg)
+        if task not in ("regression", "classification"):
+            msg = f"Unrecognized objective {self.objective}"
+            _log.error(msg)
+            raise ValueError(msg)
+        if task == "classification" and objective is None:
+            objective = "log_loss"
+        if task == "regression" and objective is None:
+            objective = "rmse"
+        return task, objective
+
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
+        """Bins for non-private EBMS."""
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # that we don't need to have the count when boosting or for interaction
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
+        # a boosting restriction.
+        min_samples_bin = 1
+
+        # TODO: bump this up to something like 10 again, but ONLY after we've standardized
+        #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
+        #       categorical to continuous soft transitions.
+        min_unique_continuous = 0
+
+        bin_levels = [self.max_bins, self.max_interaction_bins]
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
+        binning_result = construct_bins(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=bin_levels,
+            binning="quantile",
+            min_samples_bin=min_samples_bin,
+            min_unique_continuous=min_unique_continuous,
+            seed=seed,
+            epsilon=None,
+            delta=None,
+            composition=None,
+            privacy_bounds=None,
+        )
+        missing_val_counts = binning_result[6]
+
+        if np.count_nonzero(missing_val_counts):
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]"
+            )
+        return binning_result
+
+    def _has_interactions(self, n_classes: int) -> bool:
+        if self.interactions is None:
+            return False
+
+        if isinstance(self.interactions, (int, float)):
+            if self.interactions == 0:
+                return False
+
+            if n_classes > 2:
+                warn(
+                    "Detected multiclass problem. Forcing interactions to 0. "
+                    "Multiclass interactions only have local explanations. "
+                    "They are not currently displayed in the global explanation "
+                    "visualizations. Set interactions=0 to disable this warning. "
+                    "If you still want multiclass interactions, this API accepts "
+                    "a list, and the measure_interactions function can be used to "
+                    "detect them.",
+                    stacklevel=2,
+                )
+                return False
+        elif len(self.interactions) == 0:  # interactions must be a list of the interactions
+            return False
+        return True
+
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        """Mock method for privacy subclasses."""
+        del term_features, sample_weight, domain_size
+        return None, None, Native.TermBoostFlags_Default
+
+    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
+        """Fits model to provided samples.
+
+        Args:
+            X: Numpy array for training samples.
+            y: Numpy array as training labels.
+            sample_weight: Optional array of weights per sample. Should be same length as X and y.
+            bags: Optional bag definitions. The first dimension should have length equal to the number of outer_bags.
+                The second dimension should have length equal to the number of samples. The contents should be
+                +1 for training, -1 for validation, and 0 if not included in the bag. Numbers other than 1 indicate
+                how many times to include the sample in the training or validation sets.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
+
+        Returns:
+            Itself.
+        """
+        self.validate()
+
+        # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
+        max_cardinality = 1048576
+        nominal_smoothing = True
+
+        if bags is not None and len(bags) != self.outer_bags:
+            msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            msg = "y must be 1 dimensional"
+            _log.error(msg)
+            raise ValueError(msg)
+        if len(y) == 0:
+            msg = "y cannot have 0 samples"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        native = Native.get_native_singleton()
+        task, objective = self._determine_objective()
 
         if task == "classification":
             y = typify_classification(y)
@@ -580,19 +556,11 @@ class EBMModel(BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
-            if objective is None:
-                objective = "log_loss"
         elif task == "regression":
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
             n_classes = Native.Task_Regression
-            if objective is None:
-                objective = "rmse"
-        else:
-            msg = f"Unrecognized objective {self.objective}"
-            _log.error(msg)
-            raise ValueError(msg)
 
         n_scores = Native.get_count_scores_c(n_classes)
 
@@ -625,113 +593,19 @@ class EBMModel(BaseEstimator):
             len(y),
         )
 
-        # Privacy calculations
-        if is_differential_privacy:
-            if self.random_state is not None:
-                warn(
-                    f"Privacy violation: using a fixed random_state of {self.random_state} "
-                    "will cause deterministic noise additions. This capability is only "
-                    "for debugging/testing. Set random_state to None to remove this warning."
-                )
-
-            validate_eps_delta(self.epsilon, self.delta)
-
-            if n_classes < 0:
-                is_privacy_warning = False
-                is_clipping = False
-
-                if self.privacy_target_min is None or isnan(self.privacy_target_min):
-                    is_privacy_warning = True
-                else:
-                    is_clipping = True
-                    min_target = float(self.privacy_target_min)
-
-                if self.privacy_target_max is None or isnan(self.privacy_target_max):
-                    is_privacy_warning = True
-                else:
-                    is_clipping = True
-                    max_target = float(self.privacy_target_max)
-
-                # In theory privacy_target_min and privacy_target_max are not needed
-                # in our interface since the caller could clip 'y' themselves, but
-                # having it here is a check that the clipping was not overlooked.
-                if is_privacy_warning:
-                    warn(
-                        "Possible privacy violation: assuming min/max values for "
-                        "target are public info. Pass in privacy_target_min and "
-                        "privacy_target_max with known public values to avoid "
-                        "this warning."
-                    )
-
-                if is_clipping:
-                    y = np.clip(y, min_target, max_target)
-            elif 2 < n_classes:  # pragma: no cover
-                raise ValueError(
-                    "Multiclass not supported for Differentially Private EBMs."
-                )
-
-            # Split epsilon, delta budget for binning and learning
-            bin_eps = self.epsilon * self.bin_budget_frac
-            bin_delta = self.delta / 2
-            composition = self.composition
-            privacy_bounds = self.privacy_bounds
-            binning = "private"
-            # TODO: should we make this something higher?
-            min_unique_continuous = 3
-
-            bin_levels = [self.max_bins]
-        else:
-            bin_eps = None
-            bin_delta = None
-            composition = None
-            privacy_bounds = None
-            binning = "quantile"
-            # TODO: bump this up to something like 10 again, but ONLY after we've standardized
-            #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
-            #       categorical to continuous soft transitions.
-            min_unique_continuous = 0
-
-            bin_levels = [self.max_bins, self.max_interaction_bins]
-
         seed = normalize_seed(self.random_state)
 
-        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
-        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
-        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
-        # so it can be replicated without creating an EBM
-        binning_result = construct_bins(
-            X=X,
-            y=y,
-            sample_weight=sample_weight,
-            feature_names_given=self.feature_names,
-            feature_types_given=self.feature_types,
-            max_bins_leveled=bin_levels,
-            binning=binning,
-            min_samples_bin=min_samples_bin,
-            min_unique_continuous=min_unique_continuous,
-            seed=seed,
-            epsilon=bin_eps,
-            delta=bin_delta,
-            composition=composition,
-            privacy_bounds=privacy_bounds,
-        )
-        feature_names_in = binning_result[0]
-        feature_types_in = binning_result[1]
-        bins = binning_result[2]
-        main_bin_weights = binning_result[3]
-        feature_bounds = binning_result[4]
-        histogram_weights = binning_result[5]
-        missing_val_counts = binning_result[6]
-        unique_val_counts = binning_result[7]
-        noise_scale_binning = binning_result[8]
-
-        if np.count_nonzero(missing_val_counts):
-            warn(
-                "Missing values detected. Our visualizations do not currently display missing values. "
-                "To retain the glassbox nature of the model you need to either set the missing values "
-                "to an extreme value like -1000 that will be visible on the graphs, or manually "
-                "examine the missing value score in ebm.term_scores_[term_index][0]"
-            )
+        (
+            feature_names_in,
+            feature_types_in,
+            bins,
+            main_bin_weights,
+            feature_bounds,
+            histogram_weights,
+            missing_val_counts,
+            unique_val_counts,
+            noise_scale_binning,
+        ) = self._construct_bins(X, y, sample_weight=sample_weight, n_classes=n_classes, seed=seed)
 
         n_features_in = len(bins)
 
@@ -750,29 +624,14 @@ class EBMModel(BaseEstimator):
 
         # branch so we have no correlation to the binning rng that uses the same seed
         rng = native.branch_rng(native.create_rng(seed))
-        used_seeds = set()
-        rngs = []
-        internal_bags = []
-        for idx in range(self.outer_bags):
-            while True:
-                bagged_rng = native.branch_rng(rng)
-                check_seed = native.generate_seed(bagged_rng)
-                # We do not want identical bags. branch_rng is pretty good at avoiding
-                # collisions, but it is not a cryptographic RNG, so it is possible.
-                # Check with a 32-bit seed if we have a collision and regenerate if so.
-                if check_seed not in used_seeds:
-                    break
-            used_seeds.add(check_seed)
-
-            if bags is None:
-                bag = make_bag(
-                    y,
-                    self.validation_size,
-                    bagged_rng,
-                    0 <= n_classes and not is_differential_privacy,
-                )
-            else:
-                bag = bags[idx]
+        rngs = _create_rngs(rng, n_rngs=self.outer_bags)
+        if bags is None:
+            stratified = n_classes >= 0 and not is_differential_privacy
+            internal_bags = [make_bag(y, self.validation_size, bagged_rng, stratified)
+                             for bagged_rng in rngs]
+        else:
+            internal_bags = []
+            for bag in bags:
                 if not isinstance(bag, np.ndarray):
                     bag = np.array(bag)
                 if bag.ndim != 1:
@@ -783,14 +642,12 @@ class EBMModel(BaseEstimator):
                     msg = f"y has {len(y)} samples and bags has {len(bag)} samples"
                     _log.error(msg)
                     raise ValueError(msg)
-                if (127 < bag).any() or (bag < -128).any():
+                if (bag > 127).any() or (bag < -128).any():
                     msg = "A value in bags is outside the valid range -128 to 127"
                     _log.error(msg)
                     raise ValueError(msg)
                 bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
-
-            rngs.append(bagged_rng)
-            internal_bags.append(bag)
+                internal_bags.append(bag)
 
         bag_weights = []
         for bag in internal_bags:
@@ -800,7 +657,7 @@ class EBMModel(BaseEstimator):
                 else:
                     bag_weights.append(sample_weight.sum())
             else:
-                keep = 0 < bag
+                keep = bag > 0
                 if sample_weight is None:
                     bag_weights.append(bag[keep].sum())
                 else:
@@ -808,64 +665,10 @@ class EBMModel(BaseEstimator):
                 del keep
         bag_weights = np.array(bag_weights, np.float64)
 
-        if is_differential_privacy:
-            # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if 0 <= n_classes else max_target - min_target
-            max_weight = 1 if sample_weight is None else np.max(sample_weight)
-            training_eps = self.epsilon - bin_eps
-            training_delta = self.delta - bin_delta
-            if self.composition == "classic":
-                noise_scale_boosting = calc_classic_noise_multi(
-                    total_queries=self.max_rounds
-                    * len(term_features)
-                    * self.outer_bags,
-                    target_epsilon=training_eps,
-                    delta=training_delta,
-                    sensitivity=domain_size * self.learning_rate * max_weight,
-                )
-            elif self.composition == "gdp":
-                noise_scale_boosting = calc_gdp_noise_multi(
-                    total_queries=self.max_rounds
-                    * len(term_features)
-                    * self.outer_bags,
-                    target_epsilon=training_eps,
-                    delta=training_delta,
-                )
-                # Alg Line 17
-                noise_scale_boosting *= domain_size * self.learning_rate * max_weight
-            else:
-                raise NotImplementedError(
-                    f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
-                )
-
-            bin_data_weights = main_bin_weights
-            term_boost_flags = (
-                Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
-            )
-            inner_bags = 0
-            greediness = 0.0
-            cyclic_progress = 1.0
-            smoothing_rounds = 0
-            interaction_smoothing_rounds = 0
-            early_stopping_rounds = 0
-            early_stopping_tolerance = 0
-            min_samples_leaf = 0
-            min_hessian = 0.0
-            interactions = 0
-        else:
-            noise_scale_boosting = None
-            bin_data_weights = None
-            term_boost_flags = Native.TermBoostFlags_Default
-            inner_bags = self.inner_bags
-            greediness = self.greediness
-            cyclic_progress = self.cyclic_progress
-            smoothing_rounds = self.smoothing_rounds
-            interaction_smoothing_rounds = self.interaction_smoothing_rounds
-            early_stopping_rounds = self.early_stopping_rounds
-            early_stopping_tolerance = self.early_stopping_tolerance
-            min_samples_leaf = self.min_samples_leaf
-            min_hessian = self.min_hessian
-            interactions = self.interactions
+        domain_size = 1 if n_classes >= 0 else max_target - min_target
+        (
+            noise_scale_boosting, bin_data_weights, term_boost_flags
+        ) = self._privacy_parameters(term_features, main_bin_weights, sample_weight, domain_size)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -882,9 +685,9 @@ class EBMModel(BaseEstimator):
 
         parallel_args = []
         for idx in range(self.outer_bags):
-            early_stopping_rounds_local = early_stopping_rounds
+            early_stopping_rounds_local = self.early_stopping_rounds
             bag = internal_bags[idx]
-            if bag is None or (0 <= bag).all():
+            if bag is None or (bag >= 0).all():
                 # if there are no validation samples, turn off early stopping
                 # because the validation metric cannot improve each round
                 early_stopping_rounds_local = 0
@@ -905,19 +708,19 @@ class EBMModel(BaseEstimator):
                     bag,
                     init_score_local,
                     term_features,
-                    inner_bags,
+                    self.inner_bags,
                     term_boost_flags,
                     self.learning_rate,
-                    min_samples_leaf,
-                    min_hessian,
+                    self.min_samples_leaf,
+                    self.min_hessian,
                     self.max_leaves,
-                    greediness,
-                    cyclic_progress,
-                    smoothing_rounds,
+                    self.greediness,
+                    self.cyclic_progress,
+                    self.smoothing_rounds,
                     nominal_smoothing,
                     self.max_rounds,
                     early_stopping_rounds_local,
-                    early_stopping_tolerance,
+                    self.early_stopping_tolerance,
                     noise_scale_boosting,
                     bin_data_weights,
                     rngs[idx],
@@ -948,44 +751,12 @@ class EBMModel(BaseEstimator):
             # retrieve our rng state since this was used outside of our process
             rngs.append(bagged_rng)
 
-        while True:  # this isn't for looping. Just for break statements to exit
-            if interactions is None:
-                break
-
-            if isinstance(interactions, int) or isinstance(interactions, float):
-                if interactions <= 0:
-                    if interactions == 0:
-                        break
-                    msg = "interactions cannot be negative"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                if interactions < 1.0:
-                    interactions = int(ceil(n_features_in * interactions))
-                elif isinstance(interactions, float):
-                    if not interactions.is_integer():
-                        msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    interactions = int(interactions)
-
-                if 2 < n_classes:
-                    warn(
-                        "Detected multiclass problem. Forcing interactions to 0. "
-                        "Multiclass interactions only have local explanations. "
-                        "They are not currently displayed in the global explanation "
-                        "visualizations. Set interactions=0 to disable this warning. "
-                        "If you still want multiclass interactions, this API accepts "
-                        "a list, and the measure_interactions function can be used to "
-                        "detect them."
-                    )
-                    break
-
-                # at this point interactions will be a positive, nonzero integer
-            else:
-                # interactions must be a list of the interactions
-                if len(interactions) == 0:
-                    break
+        if self._has_interactions(n_classes):
+            interactions = (
+                int(ceil(n_features_in * self.interactions))
+                if isinstance(self.interactions, float)
+                else self.interactions
+            )
 
             initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
@@ -1034,8 +805,8 @@ class EBMModel(BaseEstimator):
                             exclude,
                             Native.CalcInteractionFlags_Default,
                             max_cardinality,
-                            min_samples_leaf,
-                            min_hessian,
+                            self.min_samples_leaf,
+                            self.min_hessian,
                             (
                                 Native.CreateInteractionFlags_DifferentialPrivacy
                                 if is_differential_privacy
@@ -1090,12 +861,6 @@ class EBMModel(BaseEstimator):
                 for features in interactions:
                     feature_idxs = []
                     for feature in features:
-                        if isinstance(feature, float):
-                            if not feature.is_integer():
-                                msg = f"interaction feature index {feature} is not an integer."
-                                _log.error(msg)
-                                raise ValueError(msg)
-                            feature = int(feature)
 
                         if isinstance(feature, int):
                             if feature < 0:
@@ -1116,10 +881,6 @@ class EBMModel(BaseEstimator):
                                 msg = f'interaction feature "{feature}" not in the list of feature names.'
                                 _log.error(msg)
                                 raise ValueError(msg)
-                        else:
-                            msg = f'interaction feature "{feature}" has unsupported type {type(feature)}.'
-                            _log.error(msg)
-                            raise ValueError(msg)
                         feature_idxs.append(feature_idx)
                     feature_idxs = tuple(feature_idxs)
 
@@ -1129,7 +890,7 @@ class EBMModel(BaseEstimator):
                         uniquifier.add(sorted_tuple)
                         boost_groups.append(feature_idxs)
 
-                if 2 < max_dimensions:
+                if max_dimensions > 2:
                     warn(
                         "Interactions with 3 or more terms are not graphed in "
                         "global explanations. Local explanations are still "
@@ -1138,8 +899,8 @@ class EBMModel(BaseEstimator):
 
             parallel_args = []
             for idx in range(self.outer_bags):
-                early_stopping_rounds_local = early_stopping_rounds
-                if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
+                early_stopping_rounds_local = self.early_stopping_rounds
+                if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
                     early_stopping_rounds_local = 0
@@ -1150,19 +911,19 @@ class EBMModel(BaseEstimator):
                         internal_bags[idx],
                         scores_bags[idx],
                         boost_groups,
-                        inner_bags,
+                        self.inner_bags,
                         term_boost_flags,
                         self.learning_rate,
-                        min_samples_leaf,
-                        min_hessian,
+                        self.min_samples_leaf,
+                        self.min_hessian,
                         self.max_leaves,
-                        greediness,
-                        cyclic_progress,
-                        interaction_smoothing_rounds,
+                        self.greediness,
+                        self.cyclic_progress,
+                        self.interaction_smoothing_rounds,
                         nominal_smoothing,
                         self.max_rounds,
                         early_stopping_rounds_local,
-                        early_stopping_tolerance,
+                        self.early_stopping_tolerance,
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
@@ -1192,8 +953,6 @@ class EBMModel(BaseEstimator):
                 rngs[idx] = results[idx][3]
 
             term_features.extend(boost_groups)
-
-            break  # do not loop!
 
         breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
 
@@ -1257,7 +1016,7 @@ class EBMModel(BaseEstimator):
             self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
-        if 0 <= n_classes:
+        if n_classes >= 0:
             self.classes_ = classes  # required by scikit-learn
         else:
             # we do not use these currently, but they indicate the domain for DP and
@@ -1585,7 +1344,7 @@ class EBMModel(BaseEstimator):
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                if hasattr(self, "classes_") and 2 < len(self.classes_):
+                if hasattr(self, "classes_") and len(self.classes_) > 2:
                     warn(
                         f"Dropping term {term_names[term_idx]} from explanation "
                         "since we can't graph multinomial interactions."
@@ -1761,9 +1520,8 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if classes is None or len(classes) <= 2:
-                if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
-                    intercept = intercept[0]
+            if (classes is None or len(classes) <= 2) and isinstance(intercept, (np.ndarray, list)):
+                intercept = intercept[0]
 
             n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
@@ -1916,8 +1674,8 @@ class EBMModel(BaseEstimator):
         if hasattr(self, "classes_"):
             if len(self.classes_) == 1:
                 # monoclassification is always monotonized
-                return
-            elif 2 < len(self.classes_):
+                return self
+            elif len(self.classes_) > 2:
                 msg = "monotonize not supported for multiclass"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -1931,7 +1689,7 @@ class EBMModel(BaseEstimator):
         )
 
         features = self.term_features_[term]
-        if 2 <= len(features):
+        if len(features) >= 2:
             msg = "monotonize only works on univariate feature terms"
             _log.error(msg)
             raise ValueError(msg)
@@ -1948,7 +1706,7 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough < 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -1973,7 +1731,7 @@ class EBMModel(BaseEstimator):
 
         self.term_scores_[term][1:-1] = y
 
-        if 0.0 < passthrough:
+        if passthrough > 0.0:
             mean = np.average(self.term_scores_[term], weights=all_weights)
             self.term_scores_[term] -= mean
             self.intercept_ += mean
@@ -2176,7 +1934,7 @@ class EBMModel(BaseEstimator):
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2226,7 +1984,7 @@ class EBMModel(BaseEstimator):
     def _ovrize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2276,7 +2034,7 @@ class EBMModel(BaseEstimator):
     def _binarize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if not 0.0 <= passthrough <= 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2319,6 +2077,7 @@ class EBMModel(BaseEstimator):
         }
 
 
+@dataclass(repr=False)
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
 
@@ -2370,13 +2129,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
@@ -2467,106 +2226,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Bagged intercept of the model. Binary classification is shape ``(n_outer_bags,)``, and multiclass is shape ``(n_outer_bags, n_classes)``.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    objective: str = "log_loss"
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
-
-    classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
-    intercept_: np.ndarray  # np.float64, 1D[class]
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
+    classes_: np.ndarray = field(init=False)  # np.int64, np.bool_, or np.unicode_, 1D[class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM classifier."""
-
-    # TODO: use Literal for the string types once everything is python 3.8
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 1024,
-        max_interaction_bins: int = 32,
-        # Stages
-        interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
-        # Boosting
-        learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
-        # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
-        max_leaves: int = 3,
-        objective: str = "log_loss",
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
-    ):
-        super(ExplainableBoostingClassifier, self).__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=max_interaction_bins,
-            interactions=interactions,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=inner_bags,
-            learning_rate=learning_rate,
-            greediness=greediness,
-            cyclic_progress=cyclic_progress,
-            smoothing_rounds=smoothing_rounds,
-            interaction_smoothing_rounds=interaction_smoothing_rounds,
-            max_rounds=max_rounds,
-            early_stopping_rounds=early_stopping_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
-            min_hessian=min_hessian,
-            max_leaves=max_leaves,
-            objective=objective,
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=None,
-            delta=None,
-            composition=None,
-            bin_budget_frac=None,
-            privacy_bounds=None,
-            privacy_target_min=None,
-            privacy_target_max=None,
-        )
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -2613,12 +2281,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
+            return self.classes_[(scores > 0).astype(np.int8)]
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]
 
 
+@dataclass(repr=False)
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     """An Explainable Boosting Regressor
 
@@ -2670,13 +2339,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
     cyclic_progress : float, default=1.0
-        This parameter specifies the proportion of the boosting cycles that will 
-        actively contribute to improving the model's performance. It is expressed 
-        as a float between 0 and 1, with the default set to 1.0, meaning 100% of 
-        the cycles are expected to make forward progress. If forward progress is 
-        not achieved during a cycle, that cycle will not be wasted; instead, 
-        it will be used to update internal gain calculations related to how effective 
-        each feature is in predicting the target variable. Setting this parameter 
+        This parameter specifies the proportion of the boosting cycles that will
+        actively contribute to improving the model's performance. It is expressed
+        as a float between 0 and 1, with the default set to 1.0, meaning 100% of
+        the cycles are expected to make forward progress. If forward progress is
+        not achieved during a cycle, that cycle will not be wasted; instead,
+        it will be used to update internal gain calculations related to how effective
+        each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
@@ -2767,106 +2436,17 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The maximum value found in 'y'.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0...]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0...]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0...]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    objective: str = "rmse"
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
-
-    intercept_: float
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
-    min_target_: float
-    max_target_: float
+    intercept_: float = field(init=False)
+    min_target_: float = field(init=False)
+    max_target_: float = field(init=False)
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing EBM regressor."""
-
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 1024,
-        max_interaction_bins: int = 32,
-        # Stages
-        interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
-        # Boosting
-        learning_rate: float = 0.01,
-        greediness: Optional[float] = 1.5,
-        cyclic_progress: float = 1.0,
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
-        # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
-        max_leaves: int = 3,
-        objective: str = "rmse",
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
-    ):
-        super(ExplainableBoostingRegressor, self).__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=max_interaction_bins,
-            interactions=interactions,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=inner_bags,
-            learning_rate=learning_rate,
-            greediness=greediness,
-            cyclic_progress=cyclic_progress,
-            smoothing_rounds=smoothing_rounds,
-            interaction_smoothing_rounds=interaction_smoothing_rounds,
-            max_rounds=max_rounds,
-            early_stopping_rounds=early_stopping_rounds,
-            early_stopping_tolerance=early_stopping_tolerance,
-            min_samples_leaf=min_samples_leaf,
-            min_hessian=min_hessian,
-            max_leaves=max_leaves,
-            objective=objective,
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=None,
-            delta=None,
-            composition=None,
-            bin_budget_frac=None,
-            privacy_bounds=None,
-            privacy_target_min=None,
-            privacy_target_max=None,
-        )
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -2884,7 +2464,186 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         return inv_link(scores, self.link_, self.link_param_)
 
 
-class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+@dataclass(repr=False)
+class DPEBMModel(EBMModel):
+
+    # BEGIN: overwriting default values
+    # Preprocessor
+    max_bins: int = 32
+    max_interaction_bins: None = None
+
+    # Stages
+    interactions: Literal[0] = 0
+    # Ensemble
+    validation_size: Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(ge=0.0, lt=1.0)],
+    ] = 0
+    outer_bags: Annotated[int, Field(ge=1)] = 1
+    inner_bags: Literal[0] = 0
+    # Boosting
+    greediness: Literal[0] = 0
+    cyclic_progress: Literal[1.0] = 1.0
+    smoothing_rounds: Literal[0] = 0
+    interaction_smoothing_rounds: Literal[0] = 0
+    max_rounds: NonNegativeInt = 300
+    early_stopping_rounds: Literal[0] = 0
+    early_stopping_tolerance: Literal[0] = 0
+    # Trees
+    min_samples_leaf: Literal[0] = 0
+    min_hessian: Literal[0] = 0
+
+    # Overall
+    random_state: Optional[int] = None
+
+    # privacy arguments
+    epsilon: PositiveFloat = 1.0
+    delta: PositiveFloat = 1e-5
+    composition: Literal["gdp", "classic"] = "gdp"
+    bin_budget_frac: float = 0.1
+    privacy_bounds: Optional[Union[
+        Mapping[Union[int, str], Tuple[float, float]],
+        Annotated[Any, np.ndarray],
+    ]] = None
+    privacy_target_min: Optional[float] = None
+    privacy_target_max: Optional[float] = None
+
+    # dropping hints for non-existent values
+    histogram_edges_: None = field(init=False)
+    histogram_weights_: None = field(init=False)
+    unique_val_counts_: None = field(init=False)
+
+    # additional attributes set by fit
+    noise_scale_binning_: float = field(init=False)
+    noise_scale_boosting_: float = field(init=False)
+
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
+        """Bins for private EBMS."""
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # that we don't need to have the count when boosting or for interaction
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
+        # a boosting restriction.
+        min_samples_bin = 1
+
+        # Privacy calculations
+        if self.random_state is not None:
+            warn(
+                f"Privacy violation: using a fixed random_state of {self.random_state} "
+                "will cause deterministic noise additions. This capability is only "
+                "for debugging/testing. Set random_state to None to remove this warning.",
+                stacklevel=1,
+            )
+
+        validate_eps_delta(self.epsilon, self.delta)
+
+        if n_classes < 0:
+            is_privacy_warning = False
+            is_clipping = False
+
+            if self.privacy_target_min is None or isnan(self.privacy_target_min):
+                is_privacy_warning = True
+            else:
+                is_clipping = True
+                min_target = float(self.privacy_target_min)
+
+            if self.privacy_target_max is None or isnan(self.privacy_target_max):
+                is_privacy_warning = True
+            else:
+                is_clipping = True
+                max_target = float(self.privacy_target_max)
+
+            # In theory privacy_target_min and privacy_target_max are not needed
+            # in our interface since the caller could clip 'y' themselves, but
+            # having it here is a check that the clipping was not overlooked.
+            if is_privacy_warning:
+                warn(
+                    "Possible privacy violation: assuming min/max values for "
+                    "target are public info. Pass in privacy_target_min and "
+                    "privacy_target_max with known public values to avoid "
+                    "this warning.",
+                    stacklevel=1,
+                )
+
+            if is_clipping:
+                y = np.clip(y, min_target, max_target)
+        elif n_classes > 2:  # pragma: no cover
+            raise ValueError(
+                "Multiclass not supported for Differentially Private EBMs."
+            )
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
+        binning_result = construct_bins(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=[self.max_bins],
+            binning="private",
+            min_samples_bin=min_samples_bin,
+            min_unique_continuous=3,  # TODO: should we make this something higher?
+            seed=seed,
+            # Split epsilon, delta budget for binning and learning
+            epsilon=self.epsilon * self.bin_budget_frac,
+            delta=self.delta / 2,
+            composition=self.composition,
+            privacy_bounds=self.privacy_bounds,
+        )
+        missing_val_counts = binning_result[6]
+
+        if np.count_nonzero(missing_val_counts):
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]",
+                stacklevel=1
+            )
+        return binning_result
+
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        # [DP] Calculate how much noise will be applied to each iteration of the algorithm
+        max_weight = 1 if sample_weight is None else np.max(sample_weight)
+        bin_eps = self.epsilon * self.bin_budget_frac
+        training_eps = self.epsilon - bin_eps
+        bin_delta = self.delta / 2
+        training_delta = self.delta - bin_delta
+        if self.composition == "classic":
+            noise_scale_boosting = calc_classic_noise_multi(
+                total_queries=self.max_rounds
+                * len(term_features)
+                * self.outer_bags,
+                target_epsilon=training_eps,
+                delta=training_delta,
+                sensitivity=domain_size * self.learning_rate * max_weight,
+            )
+        elif self.composition == "gdp":
+            noise_scale_boosting = calc_gdp_noise_multi(
+                total_queries=self.max_rounds
+                * len(term_features)
+                * self.outer_bags,
+                target_epsilon=training_eps,
+                delta=training_delta,
+            )
+            # Alg Line 17
+            noise_scale_boosting *= domain_size * self.learning_rate * max_weight
+        else:
+            raise NotImplementedError(
+                f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
+            )
+
+        term_boost_flags = (
+            Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
+        )
+        return noise_scale_boosting, main_bin_weights, term_boost_flags
+
+
+class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
     """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
@@ -2997,97 +2756,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         The noise scale during boosting.
     """
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin]
-    term_scores_: List[np.ndarray]  # np.float64, [bin]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
-
-    noise_scale_binning_: float
-    noise_scale_boosting_: float
+    objective: Literal["log_loss"] = "log_loss"
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
-    intercept_: np.ndarray  # np.float64, 1D[class]
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM classifier."""
-
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 32,
-        # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
-        outer_bags: int = 1,
-        # Boosting
-        learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
-        # Trees
-        max_leaves: int = 3,
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
-        # Differential Privacy
-        epsilon: float = 1.0,
-        delta: float = 1e-5,
-        composition: str = "gdp",
-        bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
-        ] = None,
-    ):
-        super(DPExplainableBoostingClassifier, self).__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=None,
-            interactions=0,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=0,
-            learning_rate=learning_rate,
-            greediness=0.0,
-            cyclic_progress=1.0,
-            smoothing_rounds=0,
-            interaction_smoothing_rounds=0,
-            max_rounds=max_rounds,
-            early_stopping_rounds=0,
-            early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
-            min_hessian=0.0,
-            max_leaves=max_leaves,
-            objective="log_loss",
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=epsilon,
-            delta=delta,
-            composition=composition,
-            bin_budget_frac=bin_budget_frac,
-            privacy_bounds=privacy_bounds,
-            privacy_target_min=None,
-            privacy_target_max=None,
-        )
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -3134,13 +2810,13 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
+            return self.classes_[(scores > 0).astype(np.int8)]
         else:
             # multiclass
             return self.classes_[np.argmax(scores, axis=1)]
 
 
-class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+class DPExplainableBoostingRegressor(DPEBMModel, RegressorMixin, ExplainerMixin):
     """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
@@ -3259,102 +2935,16 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     noise_scale_boosting\\_ : float
         The noise scale during boosting.
     """
+    objective: Literal["rmse"] = "rmse"
 
-    n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    link_: str
-    link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
-
-    noise_scale_binning_: float
-    noise_scale_boosting_: float
-
-    intercept_: float
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
-    min_target_: float
-    max_target_: float
+    min_target_: float = field(init=False)
+    max_target_: float = field(init=False)
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
+    available_explanations: ClassVar[List[str]] = ["global", "local"]
+    explainer_type: ClassVar[str] = "model"
 
     """ Public facing DPEBM regressor."""
-
-    def __init__(
-        self,
-        # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
-        # Preprocessor
-        max_bins: int = 32,
-        # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
-        # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
-        outer_bags: int = 1,
-        # Boosting
-        learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
-        # Trees
-        max_leaves: int = 3,
-        # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
-        # Differential Privacy
-        epsilon: float = 1.0,
-        delta: float = 1e-5,
-        composition: str = "gdp",
-        bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
-        ] = None,
-        privacy_target_min: Optional[float] = None,
-        privacy_target_max: Optional[float] = None,
-    ):
-        super(DPExplainableBoostingRegressor, self).__init__(
-            feature_names=feature_names,
-            feature_types=feature_types,
-            max_bins=max_bins,
-            max_interaction_bins=None,
-            interactions=0,
-            exclude=exclude,
-            validation_size=validation_size,
-            outer_bags=outer_bags,
-            inner_bags=0,
-            learning_rate=learning_rate,
-            greediness=0.0,
-            cyclic_progress=1.0,
-            smoothing_rounds=0,
-            interaction_smoothing_rounds=0,
-            max_rounds=max_rounds,
-            early_stopping_rounds=0,
-            early_stopping_tolerance=0.0,
-            min_samples_leaf=0,
-            min_hessian=0.0,
-            max_leaves=max_leaves,
-            objective="rmse",
-            n_jobs=n_jobs,
-            random_state=random_state,
-            epsilon=epsilon,
-            delta=delta,
-            composition=composition,
-            bin_budget_frac=bin_budget_frac,
-            privacy_bounds=privacy_bounds,
-            privacy_target_min=privacy_target_min,
-            privacy_target_max=privacy_target_max,
-        )
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
