@@ -121,9 +121,9 @@ def _to_json_inner(ebm, detail="all"):
             j["bag_weights"] = jsonify_lists(bag_weights.tolist())
 
     if 3 <= level:
-        breakpoint_iteration = getattr(ebm, "breakpoint_iteration_", None)
-        if breakpoint_iteration is not None:
-            j["breakpoint_iteration"] = breakpoint_iteration.tolist()
+        best_iteration = getattr(ebm, "best_iteration_", None)
+        if best_iteration is not None:
+            j["best_iteration"] = best_iteration.tolist()
 
     if 3 <= level:
         j["implementation"] = "python"
@@ -485,13 +485,13 @@ def UNTESTED_from_jsonable(ebm, jsonable):
     noise_scale_binning = jsonable.get("noise_scale_binning", None)
     noise_scale_boosting = jsonable.get("noise_scale_boosting", None)
     bag_weights = jsonable["bag_weights"]
-    breakpoint_iteration = jsonable["breakpoint_iteration"]
+    best_iteration = jsonable["best_iteration"]
 
     intercept = np.array(intercept, np.float64)
     if bagged_intercept is not None:
         bagged_intercept = np.array(bagged_intercept, np.float64)
     bag_weights = np.array(bag_weights, np.float64)
-    breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+    best_iteration = np.array(best_iteration, np.int64)
 
     if jsonable["implementation"] == "python":
         # TODO: load python parameters
@@ -615,5 +615,5 @@ def UNTESTED_from_jsonable(ebm, jsonable):
     ebm.link_ = link
     ebm.link_param_ = link_param
     ebm.bag_weights_ = bag_weights
-    ebm.breakpoint_iteration_ = breakpoint_iteration
+    ebm.best_iteration_ = best_iteration
     ebm.has_fitted_ = True

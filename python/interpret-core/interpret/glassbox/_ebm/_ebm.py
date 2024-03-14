@@ -966,13 +966,13 @@ class EBMModel(BaseEstimator):
         del parallel_args  # parallel_args holds references to dataset, so must be deleted
         del dataset
 
-        breakpoint_iteration = [[]]
+        best_iteration = [[]]
         models = []
         rngs = []
-        for exception, model, bag_breakpoint_iteration, bagged_rng in results:
+        for exception, model, bag_best_iteration, bagged_rng in results:
             if exception is not None:
                 raise exception
-            breakpoint_iteration[-1].append(bag_breakpoint_iteration)
+            best_iteration[-1].append(bag_best_iteration)
             models.append(model)
             # retrieve our rng state since this was used outside of our process
             rngs.append(bagged_rng)
@@ -1214,11 +1214,11 @@ class EBMModel(BaseEstimator):
             del dataset
             del scores_bags
 
-            breakpoint_iteration.append([])
+            best_iteration.append([])
             for idx in range(self.outer_bags):
                 if results[idx][0] is not None:
                     raise results[idx][0]
-                breakpoint_iteration[-1].append(results[idx][2])
+                best_iteration[-1].append(results[idx][2])
                 models[idx].extend(results[idx][1])
                 rngs[idx] = results[idx][3]
 
@@ -1226,7 +1226,7 @@ class EBMModel(BaseEstimator):
 
             break  # do not loop!
 
-        breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+        best_iteration = np.array(best_iteration, np.int64)
 
         remove_unused_higher_bins(term_features, bins)
         deduplicate_bins(bins)
@@ -1315,7 +1315,7 @@ class EBMModel(BaseEstimator):
         self.link_ = link
         self.link_param_ = link_param
         self.bag_weights_ = bag_weights
-        self.breakpoint_iteration_ = breakpoint_iteration
+        self.best_iteration_ = best_iteration
         self.has_fitted_ = True
 
         return self
@@ -2497,10 +2497,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
-        The number of boosting rounds performed within each stage until either early stopping, or the max_rounds was reached.
-        Normally, the count of main effects boosting rounds will be in breakpoint_iteration_[0],
-        and the count of interaction boosting rounds will be in breakpoint_iteration_[1].
+    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+        The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
+        Normally, the count of main effects boosting iterations will be in best_iteration_[0],
+        and the count of interaction boosting iterations will be in best_iteration_[1].
     intercept\\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
         Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``.
     bagged_intercept\\_ : array of float with shape ``(n_outer_bags, n_classes)`` or ``(n_outer_bags,)``
@@ -2521,7 +2521,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
     histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
@@ -2804,10 +2804,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Float value that can be used by the link function. The primary use is for the power link.
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
-        The number of boosting rounds performed within each stage until either early stopping, or the max_rounds was reached.
-        Normally, the count of main effects boosting rounds will be in breakpoint_iteration_[0],
-        and the count of interaction boosting rounds will be in breakpoint_iteration_[1].
+    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+        The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
+        Normally, the count of main effects boosting iterations will be in best_iteration_[0],
+        and the count of interaction boosting iterations will be in best_iteration_[1].
     intercept\\_ : float
         Intercept of the model.
     bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
@@ -2832,7 +2832,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
     histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
@@ -3037,9 +3037,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
-        The number of boosting rounds performed within each stage. Normally, the count of main effects
-        boosting rounds will be in breakpoint_iteration_[0].
+    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+        The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
+        Normally, the count of main effects boosting iterations will be in best_iteration_[0].
     intercept\\_ : array of float with shape ``(1,)``
         Intercept of the model.
     bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
@@ -3064,7 +3064,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     noise_scale_binning_: float
     noise_scale_boosting_: float
@@ -3297,9 +3297,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Float value that can be used by the link function. The primary use is for the power link.
     bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    breakpoint_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
-        The number of boosting rounds performed within each stage. Normally, the count of main effects
-        boosting rounds will be in breakpoint_iteration_[0].
+    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+        The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
+        Normally, the count of main effects boosting iterations will be in best_iteration_[0].
     intercept\\_ : float
         Intercept of the model.
     bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
@@ -3328,7 +3328,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    breakpoint_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
     noise_scale_binning_: float
     noise_scale_boosting_: float
