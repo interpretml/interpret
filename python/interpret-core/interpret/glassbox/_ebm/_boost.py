@@ -185,13 +185,13 @@ def boost(
                         # TODO : change the C API to allow us to "commit" the current
                         # model into the best model instead of having the C layer
                         # decide that base on what it returned us
-                        
+
                         # TODO: step_idx gets turned reported publically as best_iteration
                         # although for now it is actually the number of boosting steps
                         # that were executed instead of how many were accepted until we
                         # stopped progressing once the best model was selected. For now
                         # we do not have that information, but once we move the decision
-                        # point as to what the best model was from C++ to python we can 
+                        # point as to what the best model was from C++ to python we can
                         # change our reporting to be the best instead of the number of
                         # steps we took before stopping.
                         pass

@@ -11,7 +11,6 @@ chapters:
     - file: python/api/LinearRegression
     - file: python/api/ClassificationTree
     - file: python/api/RegressionTree
-    - file: python/api/DecisionListClassifier
     - file: python/api/merge_ebms
   - file: python/api/interpret-blackbox
     sections:
@@ -60,7 +59,6 @@ chapters:
     - file: ebm
     - file: lr
     - file: dt
-    - file: dr
   - file: blackbox
     sections:
     - file: shap
