@@ -2414,9 +2414,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=0
+    smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=0
+    interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2566,8 +2566,8 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
         cyclic_progress: Union[bool, float, int] = True,
-        smoothing_rounds: Optional[int] = 0,
-        interaction_smoothing_rounds: Optional[int] = 0,
+        smoothing_rounds: Optional[int] = 200,
+        interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,
@@ -2725,9 +2725,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=0
+    smoothing_rounds : int, default=200
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=0
+    interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2877,8 +2877,8 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
         cyclic_progress: Union[bool, float, int] = True,
-        smoothing_rounds: Optional[int] = 0,
-        interaction_smoothing_rounds: Optional[int] = 0,
+        smoothing_rounds: Optional[int] = 200,
+        interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
         early_stopping_tolerance: Optional[float] = 0.0,

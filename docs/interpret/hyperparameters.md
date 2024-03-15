@@ -54,12 +54,12 @@ hyperparameters: [0.02, 0.01, 0.005, 0.0025]
 
 guidance: A smaller learning_rate promotes finer model adjustments during fitting, but may require more iterations. Generally, we believe a smaller learning_rate should improve the model, but sometimes hyperparameter tuning seems to be needed to select the best value.
 
-## greediness
+## greedy_ratio
 default: 1.5
 
 hyperparameters: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 4.0]
 
-guidance: greediness is a good candidate for hyperparameter tuning as the best value is dataset dependent.
+guidance: greedy_ratio is a good candidate for hyperparameter tuning as the best value is dataset dependent.
 
 ## cyclic_progress
 default: 1.0
@@ -69,14 +69,14 @@ hyperparameters: [0.0, 0.25, 0.5, 1.0]
 guidance: cyclic_progress is a good candidate for hyperparameter tuning as the best value is dataset dependent.
 
 ## smoothing_rounds
-default: 0
+default: 200
 
 hyperparameters: [0, 50, 100, 200, 500, 1000, 2000, 4000]
 
 guidance: The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
 
 ## interaction_smoothing_rounds
-default: 0
+default: 50
 
 hyperparameters: [0, 50, 100, 500]
 
