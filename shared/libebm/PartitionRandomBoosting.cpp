@@ -39,6 +39,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
          const Term* const pTerm,
          const TermBoostFlags flags,
          const IntEbm* const aLeavesMax,
+         const MonotoneDirection significantDirection,
          double* const pTotalGain) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -63,6 +64,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
+      EBM_ASSERT(MONOTONE_NONE == significantDirection || 1 == pTerm->GetCountRealDimensions());
 
       Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
@@ -538,39 +540,90 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
       } else {
+         bool bSucceed = true;
+         bool bFirst = true;
+
          const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
          do {
-            const auto cSamples = pCollapsedBin2->GetCountSamples();
-            if(UNLIKELY(0 == cSamples)) {
-               // TODO: this section can probably be eliminated since ComputeSinglePartitionUpdate now checks
-               // for zero in the denominator, but I'm leaving it here to see how the removal of the
-               // GetCountSamples property works in the future in combination with the check on hessians
-
-               // normally, we'd eliminate regions where the number of items was zero before putting down a split
-               // but for random splits we can't know beforehand if there will be zero splits, so we need to check
-               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                  *pUpdateScore = 0;
-                  ++pUpdateScore;
+            auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+               FloatCalc updateScore;
+               if(bUpdateWithHessian) {
+                  updateScore =
+                        ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
+               } else {
+                  updateScore =
+                        ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
                }
-            } else {
-               auto* const pGradientPair = pCollapsedBin2->GetGradientPairs();
-               for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                  FloatCalc updateScore;
-                  if(bUpdateWithHessian) {
-                     updateScore =
-                           ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
-                  } else {
-                     updateScore =
-                           ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
+               if(MONOTONE_NONE != significantDirection) {
+                  EBM_ASSERT(1 == pTerm->GetCountRealDimensions());
+                  if(!bFirst) {
+                     const FloatCalc updatePrev = static_cast<FloatCalc>(*(pUpdateScore - cScores));
+                     if(MonotoneDirection{0} < significantDirection) {
+                        if(updateScore < updatePrev) {
+                           bSucceed = false;
+                           break;
+                        }
+                     } else {
+                        EBM_ASSERT(significantDirection < MonotoneDirection{0});
+                        if(updatePrev < updateScore) {
+                           bSucceed = false;
+                           break;
+                        }
+                     }
                   }
-                  *pUpdateScore = static_cast<FloatScore>(updateScore);
-                  ++pUpdateScore;
                }
+               *pUpdateScore = static_cast<FloatScore>(updateScore);
+               ++pUpdateScore;
             }
+            bFirst = false;
             pCollapsedBin2 = IndexBin(pCollapsedBin2, cBytesPerBin);
          } while(pCollapsedBinEnd != pCollapsedBin2);
+
+         if(!bSucceed) {
+            // we failed a requirement, so we need to collapse all bins into one with no splits
+            gain = 0;
+
+            size_t cRealDimensions = pTerm->GetCountRealDimensions();
+            for(size_t iDimension = 0; iDimension < cRealDimensions; ++iDimension) {
+#ifndef NDEBUG
+               const ErrorEbm errorDebug =
+#endif // NDEBUG
+               pInnerTermUpdate->SetCountSlices(iDimension, 1);
+               // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split
+               // array at all
+               EBM_ASSERT(Error_None == errorDebug);
+            }
+
+            // combine all histogram bins into the 0th bin
+            auto* pCollapsedBin3 = aCollapsedBins;
+            goto skip_first; // do not need to add the first bin to itself
+            do {
+               aCollapsedBins->Add(cScores, *pCollapsedBin3);
+            skip_first:
+               pCollapsedBin3 = IndexBin(pCollapsedBin3, cBytesPerBin);
+            } while(pCollapsedBinEnd != pCollapsedBin3);
+
+            pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+            // handle the single bin that we collapsed everything into
+            auto* const pGradientPair = aCollapsedBins->GetGradientPairs();
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+               FloatCalc updateScore;
+               if(bUpdateWithHessian) {
+                  updateScore =
+                        ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
+               } else {
+                  updateScore =
+                        ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                              static_cast<FloatCalc>(aCollapsedBins->GetWeight()));
+               }
+               *pUpdateScore = static_cast<FloatScore>(updateScore);
+               ++pUpdateScore;
+            }
+         }
       }
 
       free(pBuffer);
@@ -588,14 +641,15 @@ template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTar
          const Term* const pTerm,
          const TermBoostFlags flags,
          const IntEbm* const aLeavesMax,
+         const MonotoneDirection significantDirection,
          double* const pTotalGain) {
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       if(cPossibleScores == pBoosterCore->GetCountScores()) {
          return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       } else {
          return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       }
    }
 };
@@ -609,9 +663,10 @@ template<bool bHessian> class PartitionRandomBoostingTarget<bHessian, k_cCompile
          const Term* const pTerm,
          const TermBoostFlags flags,
          const IntEbm* const aLeavesMax,
+         const MonotoneDirection significantDirection,
          double* const pTotalGain) {
       return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(
-            pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+            pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
    }
 };
 
@@ -620,6 +675,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       const Term* const pTerm,
       const TermBoostFlags flags,
       const IntEbm* const aLeavesMax,
+      const MonotoneDirection significantDirection,
       double* const pTotalGain) {
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
@@ -629,19 +685,19 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       if(size_t{1} != cRuntimeScores) {
          // muticlass
          return PartitionRandomBoostingTarget<true, k_cCompilerScoresStart>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<true, k_oneScore>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       }
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          return PartitionRandomBoostingInternal<false, k_dynamicScores>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<false, k_oneScore>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
       }
    }
 }

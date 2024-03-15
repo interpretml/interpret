@@ -89,6 +89,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       const Term* const pTerm,
       const TermBoostFlags flags,
       const IntEbm* const aLeavesMax,
+      const MonotoneDirection significantDirection,
       double* const pTotalGain);
 
 static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBoostFlags flags) {
@@ -416,6 +417,7 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
       const size_t iTerm,
       const TermBoostFlags flags,
       const IntEbm* const aLeavesMax,
+      const MonotoneDirection significantDirection,
       double* const pTotalGain) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -427,7 +429,7 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   error = PartitionRandomBoosting(pRng, pBoosterShell, pTerm, flags, aLeavesMax, pTotalGain);
+   error = PartitionRandomBoosting(pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
    if(Error_None != error) {
       LOG_0(Trace_Verbose, "Exited BoostRandom with Error code");
       return error;
@@ -827,7 +829,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-               error = BoostRandom(pRng, pBoosterShell, iTerm, flags, leavesMax, &gain);
+               error = BoostRandom(pRng, pBoosterShell, iTerm, flags, leavesMax, significantDirection, &gain);
                if(Error_None != error) {
                   return error;
                }

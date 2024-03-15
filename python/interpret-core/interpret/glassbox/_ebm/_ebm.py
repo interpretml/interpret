@@ -888,18 +888,6 @@ class EBMModel(BaseEstimator):
                 i for i, v in enumerate(monotone_constraints) if v != 0
             )
 
-        if len(exclude_features) != 0 and smoothing_rounds != 0:
-            # TODO: we can enabled monotone constraints with smoothing in C++
-            msg = "If there are any monotone_constraints, then smoothing_rounds must be 0."
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if len(exclude_features) != 0 and interaction_smoothing_rounds != 0:
-            # TODO: we can enabled monotone constraints with smoothing in C++
-            msg = "If there are any monotone_constraints, then interaction_smoothing_rounds must be 0."
-            _log.error(msg)
-            raise ValueError(msg)
-
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         dataset = bin_native_by_dimension(
