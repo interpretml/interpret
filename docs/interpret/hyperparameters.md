@@ -67,7 +67,7 @@ guidance: greedy_ratio is a good candidate for hyperparameter tuning as the best
 ## cyclic_progress
 default: 1.0
 
-hyperparameters: [0.0, 0.25, 0.5, 1.0]
+hyperparameters: [0.0, 0.5, 1.0]
 
 guidance: cyclic_progress is a good candidate for hyperparameter tuning as the best value is dataset dependent.
 

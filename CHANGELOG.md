@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2024-03-16
+### Added
+- Documentation on recommended hyperparameters to help users optimize their models.
+- Support for monotone_constraints during model fitting, although post-processed monotonization is still suggested/preferred.
+- The EBMModel class now includes _more_tags for better integration with the scikit-learn API, thanks to contributions from @DerWeh.
+### Changed
+- Default max_rounds parameter increased from 5,000 to 25,000, for improved model accuracy.
+- Numerous code simplifications, additional tests, and enhancements for scikit-learn compatibility, thanks to @DerWeh.
+- The greedy boosting algorithm has been updated to support variable-length greedy sections, offering more flexibility during model training.
+- Full compatibility with Python 3.12.
+- Removal of the DecisionListClassifier from our documentation, as the skope-rules package seems to no longer be actively maintained.
+### Fixed
+- The sweep function now properly returns self, correcting an oversight identified by @alvanli.
+- Default exclude parameter set to None, aligning with scikit-learn's expected defaults, fixed by @DerWeh.
+- A potential bug when converting features from categorical to continuous values has been addressed.
+- Updated to handle the new return format for TreeShap in the SHAP 0.45.0 release.
+### Breaking Changes
+- replaced the greediness \_\_init\_\_ parameter with greedy_ratio and cyclic_progress parameters for better control of the boosting process
+  (see documentation for notes on greedy_ratio and cyclic_progress)
+- replaced breakpoint_iteration_ with best_iteration_, which now contains the number of boosting steps rather than the number of boosting rounds
+
 ## [v0.5.1] - 2024-02-08
 ### Added
 - Added new init parameter: interaction_smoothing_rounds

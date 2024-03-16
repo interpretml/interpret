@@ -2421,18 +2421,18 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
-        This parameter allows you to specify monotonic constraints for each feature's 
-        relationship with the target variable during model fitting. However, it is 
-        generally recommended to apply monotonic constraints post-fit using the 
-        `monotonize` function rather than setting them during the fitting process. 
-        This recommendation is based on the observation that, during fitting, 
-        the boosting algorithm may compensate for a monotone constraint on one 
-        feature by utilizing another correlated feature, potentially obscuring 
+        This parameter allows you to specify monotonic constraints for each feature's
+        relationship with the target variable during model fitting. However, it is
+        generally recommended to apply monotonic constraints post-fit using the
+        `monotonize` function rather than setting them during the fitting process.
+        This recommendation is based on the observation that, during fitting,
+        the boosting algorithm may compensate for a monotone constraint on one
+        feature by utilizing another correlated feature, potentially obscuring
         any monotonic violations.
 
-        If you choose to define monotone constraints, `monotone_constraints` 
-        should be a list with a length equal to the number of features. 
-        Each element in the list corresponds to a feature and should take 
+        If you choose to define monotone constraints, `monotone_constraints`
+        should be a list with a length equal to the number of features.
+        Each element in the list corresponds to a feature and should take
         one of the following values:
 
             - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
@@ -2742,18 +2742,18 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
-        This parameter allows you to specify monotonic constraints for each feature's 
-        relationship with the target variable during model fitting. However, it is 
-        generally recommended to apply monotonic constraints post-fit using the 
-        `monotonize` function rather than setting them during the fitting process. 
-        This recommendation is based on the observation that, during fitting, 
-        the boosting algorithm may compensate for a monotone constraint on one 
-        feature by utilizing another correlated feature, potentially obscuring 
+        This parameter allows you to specify monotonic constraints for each feature's
+        relationship with the target variable during model fitting. However, it is
+        generally recommended to apply monotonic constraints post-fit using the
+        `monotonize` function rather than setting them during the fitting process.
+        This recommendation is based on the observation that, during fitting,
+        the boosting algorithm may compensate for a monotone constraint on one
+        feature by utilizing another correlated feature, potentially obscuring
         any monotonic violations.
 
-        If you choose to define monotone constraints, `monotone_constraints` 
-        should be a list with a length equal to the number of features. 
-        Each element in the list corresponds to a feature and should take 
+        If you choose to define monotone constraints, `monotone_constraints`
+        should be a list with a length equal to the number of features.
+        Each element in the list corresponds to a feature and should take
         one of the following values:
 
             - 0: No monotonic constraint is imposed on the corresponding feature's partial response.

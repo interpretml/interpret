@@ -33,6 +33,16 @@
   - bdist: interpret-*-py3-none-any.whl
   - bdist: interpret_core-*-py3-none-any.whl
 
+- check the docs
+  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+  - unzip the docs.zip file
+  - open one of the html files and go to the first document in the list
+  - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
+  - clone the repo: https://github.com/interpretml/docs
+  - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
+  - copy the new files into that repo
+  - commit changes to the docs repo, BUT DO NOT PUSH YET
+
 - test the bdist:
   - open anaconda console window
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
@@ -75,15 +85,6 @@ set_visualize_provider(InlineProvider())
     - R CMD check --as-cran -o ../tmp/R interpret_*.tar.gz
   - upload the R package at <PACKAGE_DOWNLOAD_DIRECTORY> to test on multiple platforms in: https://builder.r-hub.io
   - In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
-
-- check the docs
-  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
-  - unzip the docs.zip file
-  - open one of the html files and go to the first document in the list
-  - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
-  - clone the repo: https://github.com/interpretml/docs
-  - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
-  - copy the new files into that repo, BUT DO NOT PUSH YET
 
 - publish on NPM
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
