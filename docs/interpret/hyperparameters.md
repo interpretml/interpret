@@ -42,11 +42,11 @@ guidance: We suggest increasing the number of outer bags if computational resour
 ## inner_bags
 default: 0
 
+WARNING: Setting this value to 50 will typically increase the fitting time by a factor of 50x.
+
 ideal: 50 (diminishing returns beyond this point)
 
-hyperparameters: [0, 50]
-
-WARNING: Setting this value to 50 will typically increase the fitting time by a factor of 50x.
+hyperparameters: [0] OR if you can afford it [0, 50]
 
 guidance: The default inner_bags value of 0 disables inner bagging. Setting this parameter to 1 or other low values will typically make the model worse since model fitting will then only use a subset of the data. Increasing the number of inner bags to 50 can improve model accuracy at the cost of significantly longer training times. If computation time is not a constraint, we suggest trying both 0 and 50, but not other values in between.
 
