@@ -35,6 +35,8 @@ default: 14
 
 ideal: 50 (diminishing returns beyond this point)
 
+hyperparameters: [50]
+
 guidance: We suggest increasing the number of outer bags if computational resources permit, ideally up to 50 outer bags where improvements plateau.
 
 ## inner_bags
@@ -50,6 +52,7 @@ guidance: The default inner_bags value of 0 disables inner bagging. Setting this
 
 ## learning_rate
 default: 0.01
+
 hyperparameters: [0.02, 0.01, 0.005, 0.0025]
 
 guidance: A smaller learning_rate promotes finer model adjustments during fitting, but may require more iterations. Generally, we believe a smaller learning_rate should improve the model, but sometimes hyperparameter tuning seems to be needed to select the best value.
@@ -86,6 +89,8 @@ guidance: interaction_smoothing_rounds appears to have only a minor impact on mo
 default: 25000
 
 ideal: 1000000000 (early stopping should stop before this point)
+
+hyperparameters: [1000000000]
 
 guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid curtailing the early stopping mechanism. Consider increasing it if small yet consistent gains are observed in longer trainings.
 
