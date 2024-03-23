@@ -197,14 +197,16 @@ set_visualize_provider(InlineProvider())
       https://pypi.org/project/interpret/#files
 
 - test PyPI release on colab:
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Interpretable_Classification_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Interpretable_Regression_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Differentially_Private_EBMs.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Merging_EBM_Models.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/EBM_Importances.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Explaining_Blackbox_Classifiers.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Explaining_Blackbox_Regressors.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/Prototype_Selection_with_SPOTgreedy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/custom-interactions.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/differential-privacy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-classifiers.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-regressors.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/group-importances.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-classification.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression-synthetic.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/merge-ebms.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/prototype-selection.ipynb
 
 - test PyPI release locally:
   - open anaconda console window
