@@ -727,16 +727,8 @@ WARNING_POP
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
-ErrorEbm DataSetBoosting::InitBags(void* const rng,
-      const unsigned char* const pDataSetShared,
-      const BagEbm direction,
-      const BagEbm* const aBag,
-      const size_t cInnerBags,
-      const size_t cWeights) {
+ErrorEbm DataSetBoosting::InitBags(void* const rng, const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitBags");
-
-   EBM_ASSERT(nullptr != pDataSetShared);
-   EBM_ASSERT(BagEbm{-1} == direction || BagEbm{1} == direction);
 
    const size_t cIncludedSamples = m_cSamples;
    EBM_ASSERT(1 <= cIncludedSamples);
@@ -789,14 +781,6 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
       }
    }
 
-   const FloatShared* aWeightsFrom = nullptr;
-   if(size_t{0} != cWeights) {
-      aWeightsFrom = GetDataSetSharedWeight(pDataSetShared, 0);
-      EBM_ASSERT(nullptr != aWeightsFrom);
-   }
-
-   const bool isLoopValidation = direction < BagEbm{0};
-   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
 
    EBM_ASSERT(nullptr != m_aSubsets);
    EBM_ASSERT(1 <= m_cSubsets);
@@ -821,9 +805,10 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
             --cSamplesRemaining;
          } while(size_t{0} != cSamplesRemaining);
       }
+      const FloatShared* pWeightFrom = m_aOriginalWeights;
 
       double totalWeight;
-      if(nullptr == aWeightsFrom) {
+      if(nullptr == pWeightFrom) {
          totalWeight = static_cast<double>(cIncludedSamples);
          if(nullptr != aOccurrencesFrom) {
             EBM_ASSERT(size_t{0} != cInnerBags);
@@ -885,13 +870,9 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
          }
       } else {
          const uint8_t* pOccurrencesFrom = aOccurrencesFrom;
-         const BagEbm* pSampleReplication = aBag;
-         const FloatShared* pWeightFrom = aWeightsFrom;
          DataSubsetBoosting* pSubset = m_aSubsets;
          totalWeight = 0.0;
 
-         BagEbm replication = 0;
-         double weight;
          do {
             const size_t cSubsetSamples = pSubset->GetCountSamples();
             EBM_ASSERT(1 <= cSubsetSamples);
@@ -933,30 +914,14 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
             // add the weights in 2 stages to preserve precision
             double subsetWeight = 0.0;
             do {
-               if(BagEbm{0} == replication) {
-                  replication = 1;
-                  if(nullptr != pSampleReplication) {
-                     bool isItemValidation;
-                     do {
-                        do {
-                           replication = *pSampleReplication;
-                           ++pSampleReplication;
-                           ++pWeightFrom;
-                        } while(BagEbm{0} == replication);
-                        isItemValidation = replication < BagEbm{0};
-                     } while(isLoopValidation != isItemValidation);
-                     --pWeightFrom;
-                  }
+               const double weight = static_cast<double>(*pWeightFrom);
+               ++pWeightFrom;
 
-                  weight = static_cast<double>(*pWeightFrom);
-                  ++pWeightFrom;
-
-                  // these were checked when creating the shared dataset
-                  EBM_ASSERT(!std::isnan(weight));
-                  EBM_ASSERT(!std::isinf(weight));
-                  EBM_ASSERT(static_cast<double>(std::numeric_limits<float>::min()) <= weight);
-                  EBM_ASSERT(weight <= static_cast<double>(std::numeric_limits<float>::max()));
-               }
+               // these were checked when creating the shared dataset
+               EBM_ASSERT(!std::isnan(weight));
+               EBM_ASSERT(!std::isinf(weight));
+               EBM_ASSERT(static_cast<double>(std::numeric_limits<float>::min()) <= weight);
+               EBM_ASSERT(weight <= static_cast<double>(std::numeric_limits<float>::max()));
 
                double result = weight;
                if(nullptr != pOccurrencesFrom) {
@@ -980,15 +945,12 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
                   *reinterpret_cast<FloatSmall*>(pWeightTo) = static_cast<FloatSmall>(result);
                }
                pWeightTo = IndexByte(pWeightTo, pSubset->m_pObjective->m_cFloatBytes);
-
-               replication -= direction;
             } while(pWeightsToEnd != pWeightTo);
 
             totalWeight += subsetWeight;
 
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
-         EBM_ASSERT(0 == replication);
 
          EBM_ASSERT(!std::isnan(totalWeight));
          EBM_ASSERT(std::numeric_limits<double>::min() <= totalWeight);
@@ -1008,13 +970,12 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng,
 
    if(nullptr != aOccurrencesFrom) {
       EBM_ASSERT(size_t{0} != cInnerBags);
+      free(aOccurrencesFrom);
       if(nullptr != rng) {
          RandomDeterministic* pRng = reinterpret_cast<RandomDeterministic*>(rng);
          pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers
       }
    }
-
-   free(aOccurrencesFrom);
 
    LOG_0(Trace_Info, "Exited DataSetBoosting::InitBags");
    return Error_None;
@@ -1196,7 +1157,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
          }
       }
 
-      error = InitBags(rng, pDataSetShared, direction, aBag, cInnerBags, cWeights);
+      error = InitBags(rng, cInnerBags);
       if(Error_None != error) {
          return error;
       }

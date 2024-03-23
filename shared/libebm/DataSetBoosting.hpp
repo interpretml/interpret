@@ -162,12 +162,7 @@ struct DataSetBoosting final {
 
    ErrorEbm CopyWeights(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 
-   ErrorEbm InitBags(void* const rng,
-         const unsigned char* const pDataSetShared,
-         const BagEbm direction,
-         const BagEbm* const aBag,
-         const size_t cInnerBags,
-         const size_t cWeights);
+   ErrorEbm InitBags(void* const rng, const size_t cInnerBags);
 
    size_t m_cSamples;
    size_t m_cSubsets;
