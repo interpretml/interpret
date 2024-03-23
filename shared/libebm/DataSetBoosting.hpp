@@ -107,6 +107,7 @@ struct DataSetBoosting final {
       m_cSubsets = 0;
       m_aSubsets = nullptr;
       m_aBagWeightTotals = nullptr;
+      m_aOriginalWeights = nullptr;
    }
 
    ErrorEbm InitDataSetBoosting(const bool bAllocateGradients,
@@ -159,6 +160,8 @@ struct DataSetBoosting final {
          const Term* const* const apTerms,
          const IntEbm* const aiTermFeatures);
 
+   ErrorEbm CopyWeights(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
+
    ErrorEbm InitBags(void* const rng,
          const unsigned char* const pDataSetShared,
          const BagEbm direction,
@@ -170,6 +173,7 @@ struct DataSetBoosting final {
    size_t m_cSubsets;
    DataSubsetBoosting* m_aSubsets;
    double* m_aBagWeightTotals;
+   FloatShared* m_aOriginalWeights;
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");

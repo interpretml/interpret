@@ -654,6 +654,78 @@ WARNING_POP
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
+ErrorEbm DataSetBoosting::CopyWeights(const unsigned char* const pDataSetShared,
+      const BagEbm direction,
+      const BagEbm* const aBag) {
+   LOG_0(Trace_Info, "Entered DataSetBoosting::CopyWeights");
+
+   EBM_ASSERT(nullptr != pDataSetShared);
+   EBM_ASSERT(BagEbm{-1} == direction || BagEbm{1} == direction);
+   EBM_ASSERT(1 <= m_cSamples);
+
+   const FloatShared* pWeightFrom = GetDataSetSharedWeight(pDataSetShared, 0);
+   EBM_ASSERT(nullptr != pWeightFrom);
+
+   const bool isLoopValidation = direction < BagEbm{0};
+   EBM_ASSERT(nullptr != aBag || !isLoopValidation); // if aBag is nullptr then we have no validation samples
+
+   const BagEbm* pSampleReplication = aBag;
+
+   BagEbm replication = 0;
+   FloatShared weight;
+   if(IsMultiplyError(sizeof(FloatShared), m_cSamples)) {
+      LOG_0(Trace_Warning,
+            "WARNING DataSetBoosting::CopyWeights IsMultiplyError(sizeof(FloatShared), m_cSamples)");
+      return Error_OutOfMemory;
+   }
+   FloatShared* pWeightTo = reinterpret_cast<FloatShared*>(malloc(sizeof(FloatShared) * m_cSamples));
+   if(nullptr == pWeightTo) {
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::CopyWeights nullptr == pWeightTo");
+      return Error_OutOfMemory;
+   }
+   m_aOriginalWeights = pWeightTo;
+
+   const FloatShared* const pWeightsToEnd = &pWeightTo[m_cSamples];
+   do {
+      if(BagEbm{0} == replication) {
+         replication = 1;
+         if(nullptr != pSampleReplication) {
+            bool isItemValidation;
+            do {
+               do {
+                  replication = *pSampleReplication;
+                  ++pSampleReplication;
+                  ++pWeightFrom;
+               } while(BagEbm{0} == replication);
+               isItemValidation = replication < BagEbm{0};
+            } while(isLoopValidation != isItemValidation);
+            --pWeightFrom;
+         }
+
+         weight = *pWeightFrom;
+         ++pWeightFrom;
+
+         // these were checked when creating the shared dataset
+         EBM_ASSERT(!std::isnan(weight));
+         EBM_ASSERT(!std::isinf(weight));
+         EBM_ASSERT(FloatShared{0} < weight);
+      }
+
+      *pWeightTo = weight;
+      ++pWeightTo;
+
+      replication -= direction;
+   } while(pWeightsToEnd != pWeightTo);
+   EBM_ASSERT(0 == replication);
+
+   LOG_0(Trace_Info, "Exited DataSetBoosting::CopyWeights");
+   return Error_None;
+}
+WARNING_POP
+
+
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 ErrorEbm DataSetBoosting::InitBags(void* const rng,
       const unsigned char* const pDataSetShared,
@@ -986,6 +1058,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
    EBM_ASSERT(0 == m_cSubsets);
    EBM_ASSERT(nullptr == m_aSubsets);
    EBM_ASSERT(nullptr == m_aBagWeightTotals);
+   EBM_ASSERT(nullptr == m_aOriginalWeights);
 
    if(0 != cIncludedSamples) {
       EBM_ASSERT(1 <= cSharedSamples);
@@ -1116,6 +1189,13 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
          return error;
       }
 
+      if(size_t{0} != cWeights) {
+         error = CopyWeights(pDataSetShared, direction, aBag);
+         if(Error_None != error) {
+            return error;
+         }
+      }
+
       error = InitBags(rng, pDataSetShared, direction, aBag, cInnerBags, cWeights);
       if(Error_None != error) {
          return error;
@@ -1130,6 +1210,7 @@ void DataSetBoosting::DestructDataSetBoosting(const size_t cTerms, const size_t 
    LOG_0(Trace_Info, "Entered DataSetBoosting::DestructDataSetBoosting");
 
    free(m_aBagWeightTotals);
+   free(m_aOriginalWeights);
 
    DataSubsetBoosting* pSubset = m_aSubsets;
    if(nullptr != pSubset) {
