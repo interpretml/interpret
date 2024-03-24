@@ -145,6 +145,10 @@ struct DataSetBoosting final {
       EBM_ASSERT(nullptr != m_aBagWeightTotals);
       return m_aBagWeightTotals[iBag];
    }
+   inline const TermInnerBag* const * GetTermInnerBags() {
+      EBM_ASSERT(nullptr != m_aaTermInnerBags);
+      return m_aaTermInnerBags;
+   }
 
  private:
    ErrorEbm InitGradHess(const bool bAllocateHessians, const size_t cScores);

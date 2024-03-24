@@ -27,6 +27,8 @@ extern void ConvertAddBin(const size_t cScores,
       const bool bUInt64Src,
       const bool bDoubleSrc,
       const void* const aSrc,
+      const UIntMain* const aCounts,
+      const FloatPrecomp* const aWeights,
       const bool bUInt64Dest,
       const bool bDoubleDest,
       void* const aAddDest) {
@@ -291,28 +293,47 @@ extern void ConvertAddBin(const size_t cScores,
 
    EBM_ASSERT(0 <= iSrcHessian && 0 <= iDestHessian || iSrcHessian < 0 && iDestHessian < 0);
 
+   const UIntMain* pCounts = aCounts;
+   const FloatPrecomp* pWeights = aWeights;
+
    const unsigned char* pSrc = reinterpret_cast<const unsigned char*>(aSrc);
    const unsigned char* const pSrcEnd = pSrc + cSrcBinBytes * cBins;
    unsigned char* pAddDest = reinterpret_cast<unsigned char*>(aAddDest);
    const size_t cSrcArrayTotalBytes = cSrcArrayItemBytes * cScores;
    do {
-      if(bUInt64Src) {
+      if(nullptr != pCounts) {
+         const UIntMain src = *pCounts;
+         ++pCounts;
+         if(bUInt64Dest) {
+            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += static_cast<uint64_t>(src);
+         } else {
+            *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) += static_cast<uint32_t>(src);
+         }
+      } else if(bUInt64Src) {
          const uint64_t src = *reinterpret_cast<const uint64_t*>(pSrc + iSrcSamples);
          if(bUInt64Dest) {
-            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += src;
+            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += static_cast<uint64_t>(src);
          } else {
             *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) += static_cast<uint32_t>(src);
          }
       } else {
          const uint32_t src = *reinterpret_cast<const uint32_t*>(pSrc + iSrcSamples);
          if(bUInt64Dest) {
-            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += src;
+            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += static_cast<uint64_t>(src);
          } else {
-            *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) += src;
+            *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) += static_cast<uint32_t>(src);
          }
       }
 
-      if(bDoubleSrc) {
+      if(nullptr != pWeights) {
+         const FloatPrecomp src = *pWeights;
+         ++pWeights;
+         if(bDoubleDest) {
+            *reinterpret_cast<double*>(pAddDest + iDestWeight) += static_cast<double>(src);
+         } else {
+            *reinterpret_cast<float*>(pAddDest + iDestWeight) += static_cast<float>(src);
+         }
+      } else if(bDoubleSrc) {
          const double src = *reinterpret_cast<const double*>(pSrc + iSrcWeight);
          if(bDoubleDest) {
             *reinterpret_cast<double*>(pAddDest + iDestWeight) += static_cast<double>(src);

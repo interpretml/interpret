@@ -915,17 +915,14 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng, const size_t cInnerBags, con
       size_t iTerm = 0;
       do {
          const Term* const pTerm = apTerms[iTerm];
-         UIntMain* const aCounts = TermInnerBag::GetCounts(iTerm, iBag, m_aaTermInnerBags);
-         FloatPrecomp* const aWeights = TermInnerBag::GetWeights(iTerm, iBag, m_aaTermInnerBags);      
 
-         if(1 == pTerm->GetCountTensorBins()) {
-            if(nullptr != aCounts) {
-               aCounts[0] = cIncludedSamples;
-            }
-            if(nullptr != aWeights) {
-               aWeights[0] = totalWeight;
-            }
-         } else {
+         *TermInnerBag::GetCounts(true, iTerm, iBag, m_aaTermInnerBags) = cIncludedSamples;
+         *TermInnerBag::GetWeights(true, iTerm, iBag, m_aaTermInnerBags) = totalWeight;
+
+         if(1 != pTerm->GetCountTensorBins()) {
+            UIntMain* const aCounts = TermInnerBag::GetCounts(false, iTerm, iBag, m_aaTermInnerBags);
+            FloatPrecomp* const aWeights = TermInnerBag::GetWeights(false, iTerm, iBag, m_aaTermInnerBags);
+
             pWeightFrom = m_aOriginalWeights;
             pOccurrencesFrom = aOccurrencesFrom;
             pSubset = m_aSubsets;

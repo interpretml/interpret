@@ -34,6 +34,8 @@ extern void ConvertAddBin(const size_t cScores,
       const bool bUInt64Src,
       const bool bDoubleSrc,
       const void* const aSrc,
+      const UIntMain* const aCounts,
+      const FloatPrecomp* const aWeights,
       const bool bUInt64Dest,
       const bool bDoubleDest,
       void* const aAddDest);
@@ -380,6 +382,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
             sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
             aFastBins,
+            nullptr,
+            nullptr,
             std::is_same<UIntMain, uint64_t>::value,
             std::is_same<FloatMain, double>::value,
             aMainBins);

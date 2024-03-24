@@ -72,6 +72,8 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
          const bool,
          const bool,
          const void* const,
+         const uint64_t* const,
+         const double* const,
          const bool,
          const bool,
          void* const);
