@@ -27,8 +27,8 @@ struct InnerBag final {
    static InnerBag* AllocateInnerBags(const size_t cInnerBags);
    static void FreeInnerBags(const size_t cInnerBags, InnerBag* const aInnerBags);
 
-   const void* GetWeights() const { return m_aWeights; }
-   const uint8_t* GetCountOccurrences() const { return m_aCountOccurrences; }
+   inline const void* GetWeights() const { return m_aWeights; }
+   inline const uint8_t* GetCountOccurrences() const { return m_aCountOccurrences; }
 
  private:
    // Sampling with replacement is the more theoretically correct method of sampling, but it has the drawback that

@@ -349,6 +349,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TermInnerBag.cpp" -o "$tmp_path/TermInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/unzoned/logging.cpp" -o "$tmp_path/logging.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/unzoned/unzoned.cpp" -o "$tmp_path/unzoned.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
@@ -385,6 +386,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/InnerBag.o" \
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
+   "$tmp_path/TermInnerBag.o" \
    "$tmp_path/logging.o" \
    "$tmp_path/unzoned.o" \
    "$tmp_path/cpu_64.o" \

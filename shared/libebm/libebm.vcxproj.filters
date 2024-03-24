@@ -47,6 +47,7 @@
     <ClCompile Include="DetermineLinkFunction.cpp" />
     <ClCompile Include="ConvertAddBin.cpp" />
     <ClCompile Include="compute_accessors.cpp" />
+    <ClCompile Include="TermInnerBag.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
@@ -97,6 +98,7 @@
     <ClInclude Include="Transpose.hpp" />
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="pch.hpp" />
+    <ClInclude Include="TermInnerBag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />

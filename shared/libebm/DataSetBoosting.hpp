@@ -14,6 +14,7 @@
 #include "bridge.h" // UIntMain
 
 #include "InnerBag.hpp" // InnerBag
+#include "TermInnerBag.hpp" // TermInnerBag
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -108,6 +109,7 @@ struct DataSetBoosting final {
       m_aSubsets = nullptr;
       m_aBagWeightTotals = nullptr;
       m_aOriginalWeights = nullptr;
+      m_aaTermInnerBags = nullptr;
    }
 
    ErrorEbm InitDataSetBoosting(const bool bAllocateGradients,
@@ -162,13 +164,14 @@ struct DataSetBoosting final {
 
    ErrorEbm CopyWeights(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 
-   ErrorEbm InitBags(void* const rng, const size_t cInnerBags);
+   ErrorEbm InitBags(void* const rng, const size_t cInnerBags, const size_t cTerms, const Term* const* const apTerms);
 
    size_t m_cSamples;
    size_t m_cSubsets;
    DataSubsetBoosting* m_aSubsets;
    double* m_aBagWeightTotals;
    FloatShared* m_aOriginalWeights;
+   TermInnerBag** m_aaTermInnerBags;
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");

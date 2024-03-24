@@ -29,12 +29,12 @@ InnerBag* InnerBag::AllocateInnerBags(const size_t cInnerBags) {
 
    if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
       LOG_0(Trace_Warning,
-            "WARNING InnerBag::GenerateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
+            "WARNING InnerBag::AllocateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
       return nullptr;
    }
    InnerBag* aInnerBag = static_cast<InnerBag*>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
    if(UNLIKELY(nullptr == aInnerBag)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::GenerateInnerBags nullptr == aInnerBag");
+      LOG_0(Trace_Warning, "WARNING InnerBag::AllocateInnerBags nullptr == aInnerBag");
       return nullptr;
    }
 

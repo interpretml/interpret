@@ -23,6 +23,7 @@
     <ClInclude Include="bridge\bridge.hpp" />
     <ClInclude Include="bridge\GradientPair.hpp" />
     <ClInclude Include="bridge\bridge.h" />
+    <ClInclude Include="TermInnerBag.hpp" />
     <ClInclude Include="unzoned\logging.h" />
     <ClInclude Include="bridge\zones.h" />
     <ClInclude Include="bridge\common.hpp" />
@@ -52,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="unzoned\logging.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

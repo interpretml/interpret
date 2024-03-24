@@ -31,6 +31,7 @@ typedef uint64_t UIntMain;
 typedef double FloatMain;
 typedef double FloatCalc;
 typedef double FloatScore;
+typedef double FloatPrecomp;
 
 // TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage
 // based on the data type
