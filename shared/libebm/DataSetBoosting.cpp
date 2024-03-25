@@ -818,21 +818,6 @@ ErrorEbm DataSetBoosting::InitBags(
          size_t cSubsetSamples = pSubset->GetCountSamples();
          EBM_ASSERT(1 <= cSubsetSamples);
 
-         uint8_t* pOccurrencesTo;
-         if(nullptr != pOccurrencesFrom) {
-            EBM_ASSERT(size_t{0} != cInnerBags);
-            EBM_ASSERT(cSubsetSamples <= cIncludedSamples);
-
-            pOccurrencesTo = static_cast<uint8_t*>(AlignedAlloc(sizeof(uint8_t) * cSubsetSamples));
-            if(nullptr == pOccurrencesTo) {
-               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aCountOccurrences");
-               free(aOccurrencesFrom);
-               return Error_OutOfMemory;
-            }
-            // TODO: we might be able to get rid of this property
-            pInnerBag->m_aCountOccurrences = pOccurrencesTo;
-         }
-
          // add the weights in 2 stages to preserve precision
          double subsetWeight = 0.0;
 
@@ -869,13 +854,8 @@ ErrorEbm DataSetBoosting::InitBags(
 
                if(nullptr != pOccurrencesFrom) {
                   EBM_ASSERT(size_t{0} != cInnerBags);
-                  EBM_ASSERT(nullptr != pOccurrencesTo);
                   const uint8_t cOccurrences = *pOccurrencesFrom;
                   ++pOccurrencesFrom;
-
-                  *pOccurrencesTo = cOccurrences;
-                  ++pOccurrencesTo;
-
                   weight *= static_cast<double>(cOccurrences);
                }
 

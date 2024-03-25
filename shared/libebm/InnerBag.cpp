@@ -42,7 +42,6 @@ InnerBag* InnerBag::AllocateInnerBags(const size_t cInnerBags) {
    const InnerBag* const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
    do {
       pInnerBag->m_aWeights = nullptr;
-      pInnerBag->m_aCountOccurrences = nullptr;
       ++pInnerBag;
    } while(pInnerBagsEnd != pInnerBag);
 
@@ -61,7 +60,6 @@ void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag* const aInnerBags
       InnerBag* pInnerBag = aInnerBags;
       const InnerBag* const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
       do {
-         AlignedFree(pInnerBag->m_aCountOccurrences);
          AlignedFree(pInnerBag->m_aWeights);
          ++pInnerBag;
       } while(pInnerBagsEnd != pInnerBag);
