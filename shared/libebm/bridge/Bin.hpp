@@ -62,10 +62,7 @@ template<typename TFloat, typename TUInt> static bool IsOverflowBinSize(const bo
 template<typename TFloat, typename TUInt>
 GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores> struct Bin final : BinBase {
-   // TODO: Use the type std::nullptr_t for TUInt to indicate that the m_cSamples field should be dropped
-   //       and add a bool bWeight template parameter to indicate if weight should be kept
-
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores> struct BinData : BinBase {
    friend void ConvertAddBin(const size_t,
          const bool,
          const size_t,
@@ -80,20 +77,8 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
    template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
    template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
 
-   static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
-   static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
-   static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");
-
- private:
-   TUInt m_cSamples;
-   TFloat m_weight;
-
-   // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
-   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
-
- public:
-   Bin() = default; // preserve our POD status
-   ~Bin() = default; // preserve our POD status
+   BinData() = default; // preserve our POD status
+   ~BinData() = default; // preserve our POD status
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
@@ -107,6 +92,36 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
       return ArrayToPointer(m_aGradientPairs);
    }
    GPU_BOTH inline GradientPair<TFloat, bHessian>* GetGradientPairs() { return ArrayToPointer(m_aGradientPairs); }
+
+ private:
+   TUInt m_cSamples;
+   TFloat m_weight;
+
+   // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
+   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
+};
+static_assert(std::is_standard_layout<BinData<float, uint32_t, true, 1>>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<BinData<float, uint32_t, true, 1>>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+
+static_assert(std::is_standard_layout<BinData<double, uint64_t, false, 1>>::value,
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
+static_assert(std::is_trivial<BinData<double, uint64_t, false, 1>>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
+
+
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+struct Bin final : BinData<TFloat, TUInt, bHessian, cCompilerScores> {
+   static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
+   static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
+   static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");
+
+ public:
+   Bin() = default; // preserve our POD status
+   ~Bin() = default; // preserve our POD status
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
 
    GPU_BOTH inline const Bin<TFloat, TUInt, bHessian, 1>* Downgrade() const {
       return reinterpret_cast<const Bin<TFloat, TUInt, bHessian, 1>*>(this);
@@ -122,11 +137,12 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
-      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == this->GetGradientPairs());
       EBM_ASSERT(1 <= cScores);
 #endif // GPU_COMPILE
-      m_cSamples += other.m_cSamples;
-      m_weight += other.m_weight;
+
+      this->SetCountSamples(this->GetCountSamples() + other.GetCountSamples());
+      this->SetWeight(this->GetWeight() + other.GetWeight());
 
       size_t iScore = 0;
       do {
@@ -136,10 +152,10 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
    }
    GPU_BOTH inline void Add(
          const size_t cScores, const Bin& other, const GradientPair<TFloat, bHessian>* const aOtherGradientPairs) {
-      Add(cScores, other, aOtherGradientPairs, GetGradientPairs());
+      Add(cScores, other, aOtherGradientPairs, this->GetGradientPairs());
    }
    GPU_BOTH inline void Add(const size_t cScores, const Bin& other) {
-      Add(cScores, other, other.GetGradientPairs(), GetGradientPairs());
+      Add(cScores, other, other.GetGradientPairs(), this->GetGradientPairs());
    }
 
    GPU_BOTH inline void Subtract(const size_t cScores,
@@ -149,11 +165,12 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
-      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == this->GetGradientPairs());
       EBM_ASSERT(1 <= cScores);
 #endif // GPU_COMPILE
-      m_cSamples -= other.m_cSamples;
-      m_weight -= other.m_weight;
+
+      this->SetCountSamples(this->GetCountSamples() - other.GetCountSamples());
+      this->SetWeight(this->GetWeight() - other.GetWeight());
 
       size_t iScore = 0;
       do {
@@ -163,10 +180,10 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
    }
    GPU_BOTH inline void Subtract(
          const size_t cScores, const Bin& other, const GradientPair<TFloat, bHessian>* const aOtherGradientPairs) {
-      Subtract(cScores, other, aOtherGradientPairs, GetGradientPairs());
+      Subtract(cScores, other, aOtherGradientPairs, this->GetGradientPairs());
    }
    GPU_BOTH inline void Subtract(const size_t cScores, const Bin& other) {
-      Subtract(cScores, other, other.GetGradientPairs(), GetGradientPairs());
+      Subtract(cScores, other, other.GetGradientPairs(), this->GetGradientPairs());
    }
 
    GPU_BOTH inline void Copy(const size_t cScores,
@@ -176,12 +193,12 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
       EBM_ASSERT(cScores != cCompilerScores || aOtherGradientPairs == other.GetGradientPairs());
-      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == this->GetGradientPairs());
       EBM_ASSERT(1 <= cScores);
 #endif // GPU_COMPILE
 
-      m_cSamples = other.m_cSamples;
-      m_weight = other.m_weight;
+      this->SetCountSamples(other.GetCountSamples());
+      this->SetWeight(other.GetWeight());
 
       size_t iScore = 0;
       do {
@@ -191,23 +208,23 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
    }
    GPU_BOTH inline void Copy(
          const size_t cScores, const Bin& other, const GradientPair<TFloat, bHessian>* const aOtherGradientPairs) {
-      Copy(cScores, other, aOtherGradientPairs, GetGradientPairs());
+      Copy(cScores, other, aOtherGradientPairs, this->GetGradientPairs());
    }
    GPU_BOTH inline void Copy(const size_t cScores, const Bin& other) {
-      Copy(cScores, other, other.GetGradientPairs(), GetGradientPairs());
+      Copy(cScores, other, other.GetGradientPairs(), this->GetGradientPairs());
    }
 
    GPU_BOTH inline void Zero(const size_t cScores, GradientPair<TFloat, bHessian>* const aThisGradientPairs) {
 #ifndef GPU_COMPILE
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
-      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == this->GetGradientPairs());
 #endif // GPU_COMPILE
 
-      m_cSamples = 0;
-      m_weight = 0;
+      this->SetCountSamples(0);
+      this->SetWeight(0);
       ZeroGradientPairs(aThisGradientPairs, cScores);
    }
-   GPU_BOTH inline void Zero(const size_t cScores) { Zero(cScores, GetGradientPairs()); }
+   GPU_BOTH inline void Zero(const size_t cScores) { Zero(cScores, this->GetGradientPairs()); }
 
    GPU_BOTH inline void AssertZero(
          const size_t cScores, const GradientPair<TFloat, bHessian>* const aThisGradientPairs) const {
@@ -216,10 +233,10 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 #ifndef GPU_COMPILE
 #ifndef NDEBUG
       EBM_ASSERT(1 == cCompilerScores || cScores == cCompilerScores);
-      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == GetGradientPairs());
+      EBM_ASSERT(cScores != cCompilerScores || aThisGradientPairs == this->GetGradientPairs());
 
-      EBM_ASSERT(0 == m_cSamples);
-      EBM_ASSERT(0 == m_weight);
+      EBM_ASSERT(0 == this->GetCountSamples());
+      EBM_ASSERT(0 == this->GetWeight());
 
       EBM_ASSERT(1 <= cScores);
       size_t iScore = 0;
@@ -230,7 +247,7 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 #endif // NDEBUG
 #endif // GPU_COMPILE
    }
-   GPU_BOTH inline void AssertZero(const size_t cScores) const { AssertZero(cScores, GetGradientPairs()); }
+   GPU_BOTH inline void AssertZero(const size_t cScores) const { AssertZero(cScores, this->GetGradientPairs()); }
 };
 static_assert(std::is_standard_layout<Bin<float, uint32_t, true>>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
