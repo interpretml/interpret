@@ -58,11 +58,16 @@ static_assert(std::is_standard_layout<BinBase>::value,
 static_assert(
       std::is_trivial<BinBase>::value, "We use memcpy in several places, so disallow non-trivial types in general");
 
+
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+struct BinData;
+
 template<typename TFloat, typename TUInt> static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
 template<typename TFloat, typename TUInt>
 GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores> struct BinData : BinBase {
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+struct BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores> : BinBase {
    friend void ConvertAddBin(const size_t,
          const bool,
          const size_t,
@@ -100,19 +105,122 @@ template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
    // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
    GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
 };
-static_assert(std::is_standard_layout<BinData<float, uint32_t, true, 1>>::value,
-      "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<BinData<float, uint32_t, true, 1>>::value,
-      "We use memcpy in several places, so disallow non-trivial types in general");
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+struct BinData<TFloat, TUInt, true, false, bHessian, cCompilerScores> : BinBase {
+   friend void ConvertAddBin(const size_t,
+         const bool,
+         const size_t,
+         const bool,
+         const bool,
+         const void* const,
+         const uint64_t* const,
+         const double* const,
+         const bool,
+         const bool,
+         void* const);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
+   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
 
-static_assert(std::is_standard_layout<BinData<double, uint64_t, false, 1>>::value,
-      "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<BinData<double, uint64_t, false, 1>>::value,
-      "We use memcpy in several places, so disallow non-trivial types in general");
+   BinData() = default; // preserve our POD status
+   ~BinData() = default; // preserve our POD status
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
+
+   GPU_BOTH inline TUInt GetCountSamples() const { return m_cSamples; }
+   GPU_BOTH inline void SetCountSamples(const TUInt cSamples) { m_cSamples = cSamples; }
+
+   GPU_BOTH inline TFloat GetWeight() const { return 0; }
+   GPU_BOTH inline void SetWeight(const TFloat) {}
+
+   GPU_BOTH inline const GradientPair<TFloat, bHessian>* GetGradientPairs() const {
+      return ArrayToPointer(m_aGradientPairs);
+   }
+   GPU_BOTH inline GradientPair<TFloat, bHessian>* GetGradientPairs() { return ArrayToPointer(m_aGradientPairs); }
+
+ private:
+   TUInt m_cSamples;
+
+   // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
+   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
+};
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+struct BinData<TFloat, TUInt, false, true, bHessian, cCompilerScores> : BinBase {
+   friend void ConvertAddBin(const size_t,
+         const bool,
+         const size_t,
+         const bool,
+         const bool,
+         const void* const,
+         const uint64_t* const,
+         const double* const,
+         const bool,
+         const bool,
+         void* const);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
+   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+
+   BinData() = default; // preserve our POD status
+   ~BinData() = default; // preserve our POD status
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
+
+   GPU_BOTH inline TUInt GetCountSamples() const { return 0; }
+   GPU_BOTH inline void SetCountSamples(const TUInt) {}
+
+   GPU_BOTH inline TFloat GetWeight() const { return m_weight; }
+   GPU_BOTH inline void SetWeight(const TFloat weight) { m_weight = weight; }
+
+   GPU_BOTH inline const GradientPair<TFloat, bHessian>* GetGradientPairs() const {
+      return ArrayToPointer(m_aGradientPairs);
+   }
+   GPU_BOTH inline GradientPair<TFloat, bHessian>* GetGradientPairs() { return ArrayToPointer(m_aGradientPairs); }
+
+ private:
+   TFloat m_weight;
+
+   // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
+   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
+};
+template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
+struct BinData<TFloat, TUInt, false, false, bHessian, cCompilerScores> : BinBase {
+   friend void ConvertAddBin(const size_t,
+         const bool,
+         const size_t,
+         const bool,
+         const bool,
+         const void* const,
+         const uint64_t* const,
+         const double* const,
+         const bool,
+         const bool,
+         void* const);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
+   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+
+   BinData() = default; // preserve our POD status
+   ~BinData() = default; // preserve our POD status
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
+
+   GPU_BOTH inline TUInt GetCountSamples() const { return 0; }
+   GPU_BOTH inline void SetCountSamples(const TUInt) {}
+
+   GPU_BOTH inline TFloat GetWeight() const { return 0; }
+   GPU_BOTH inline void SetWeight(const TFloat) {}
+
+   GPU_BOTH inline const GradientPair<TFloat, bHessian>* GetGradientPairs() const {
+      return ArrayToPointer(m_aGradientPairs);
+   }
+   GPU_BOTH inline GradientPair<TFloat, bHessian>* GetGradientPairs() { return ArrayToPointer(m_aGradientPairs); }
+
+ private:
+   // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
+   GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
+};
 
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-struct Bin final : BinData<TFloat, TUInt, bHessian, cCompilerScores> {
+struct Bin final : BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores> {
    static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
    static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
    static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");
