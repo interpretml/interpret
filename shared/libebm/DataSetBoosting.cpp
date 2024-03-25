@@ -727,7 +727,8 @@ WARNING_POP
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
-ErrorEbm DataSetBoosting::InitBags(void* const rng, const size_t cInnerBags, const size_t cTerms, const Term* const* const apTerms) {
+ErrorEbm DataSetBoosting::InitBags(
+      void* const rng, const size_t cInnerBags, const size_t cTerms, const Term* const* const apTerms) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitBags");
 
    EBM_ASSERT(1 <= cTerms);
@@ -912,112 +913,118 @@ ErrorEbm DataSetBoosting::InitBags(void* const rng, const size_t cInnerBags, con
       *pBagWeightTotals = totalWeight;
       ++pBagWeightTotals;
 
-      size_t iTerm = 0;
-      do {
-         const Term* const pTerm = apTerms[iTerm];
+      if(nullptr != m_aaTermInnerBags) {
+         size_t iTerm = 0;
+         do {
+            const Term* const pTerm = apTerms[iTerm];
 
-         *TermInnerBag::GetCounts(true, iTerm, iBag, m_aaTermInnerBags) = cIncludedSamples;
-         *TermInnerBag::GetWeights(true, iTerm, iBag, m_aaTermInnerBags) = totalWeight;
+            *TermInnerBag::GetCounts(true, iTerm, iBag, m_aaTermInnerBags) = cIncludedSamples;
+            *TermInnerBag::GetWeights(true, iTerm, iBag, m_aaTermInnerBags) = totalWeight;
 
-         if(1 != pTerm->GetCountTensorBins()) {
-            UIntMain* const aCounts = TermInnerBag::GetCounts(false, iTerm, iBag, m_aaTermInnerBags);
-            FloatPrecomp* const aWeights = TermInnerBag::GetWeights(false, iTerm, iBag, m_aaTermInnerBags);
+            if(1 != pTerm->GetCountTensorBins()) {
+               UIntMain* const aCounts = TermInnerBag::GetCounts(false, iTerm, iBag, m_aaTermInnerBags);
+               FloatPrecomp* const aWeights = TermInnerBag::GetWeights(false, iTerm, iBag, m_aaTermInnerBags);
 
-            pWeightFrom = m_aOriginalWeights;
-            pOccurrencesFrom = aOccurrencesFrom;
-            pSubset = m_aSubsets;
-            do {
-               EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
-               const int cItemsPerBitPack =
-                     GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
-               EBM_ASSERT(1 <= cItemsPerBitPack);
-               ANALYSIS_ASSERT(0 != cItemsPerBitPack);
-
-               const int cBitsPerItemMax = GetCountBits(cItemsPerBitPack, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
-               EBM_ASSERT(1 <= cBitsPerItemMax);
-
-               const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
-               EBM_ASSERT(1 <= cSIMDPack);
-
-               const size_t cSubsetSamples = pSubset->GetCountSamples();
-               EBM_ASSERT(1 <= cSubsetSamples);
-               EBM_ASSERT(0 == cSubsetSamples % cSIMDPack);
-
-               const size_t cParallelSamples = cSubsetSamples / cSIMDPack;
-               EBM_ASSERT(1 <= cParallelSamples);
-
-               // this can't overflow or underflow
-               const size_t cParallelDataUnits =
-                     (cParallelSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
-               const size_t cDataUnits = cParallelDataUnits * cSIMDPack;
-
-               int cShift = static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-                     cBitsPerItemMax;
-               const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
-               size_t maskBits;
-               if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
-                  maskBits = static_cast<size_t>(MakeLowMask<UIntBig>(cBitsPerItemMax));
-               } else {
-                  EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
-                  maskBits = static_cast<size_t>(MakeLowMask<UIntSmall>(cBitsPerItemMax));
-               }
-
-               void* pTermData = pSubset->m_aaTermData[iTerm];
-               const size_t cBytes = pSubset->GetObjectiveWrapper()->m_cUIntBytes * cDataUnits;
-               const void* const pTermDataEnd = IndexByte(pTermData, cBytes);
+               pWeightFrom = m_aOriginalWeights;
+               pOccurrencesFrom = aOccurrencesFrom;
+               pSubset = m_aSubsets;
                do {
+                  EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
+                  const int cItemsPerBitPack = GetCountItemsBitPacked(
+                        pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+                  EBM_ASSERT(1 <= cItemsPerBitPack);
+                  ANALYSIS_ASSERT(0 != cItemsPerBitPack);
+
+                  const int cBitsPerItemMax =
+                        GetCountBits(cItemsPerBitPack, pSubset->GetObjectiveWrapper()->m_cUIntBytes);
+                  EBM_ASSERT(1 <= cBitsPerItemMax);
+
+                  const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+                  EBM_ASSERT(1 <= cSIMDPack);
+
+                  const size_t cSubsetSamples = pSubset->GetCountSamples();
+                  EBM_ASSERT(1 <= cSubsetSamples);
+                  EBM_ASSERT(0 == cSubsetSamples % cSIMDPack);
+
+                  const size_t cParallelSamples = cSubsetSamples / cSIMDPack;
+                  EBM_ASSERT(1 <= cParallelSamples);
+
+                  // this can't overflow or underflow
+                  const size_t cParallelDataUnits =
+                        (cParallelSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
+                  const size_t cDataUnits = cParallelDataUnits * cSIMDPack;
+
+                  int cShift =
+                        static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+                        cBitsPerItemMax;
+                  const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+
+                  size_t maskBits;
+                  if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
+                     maskBits = static_cast<size_t>(MakeLowMask<UIntBig>(cBitsPerItemMax));
+                  } else {
+                     EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
+                     maskBits = static_cast<size_t>(MakeLowMask<UIntSmall>(cBitsPerItemMax));
+                  }
+
+                  void* pTermData = pSubset->m_aaTermData[iTerm];
+                  const size_t cBytes = pSubset->GetObjectiveWrapper()->m_cUIntBytes * cDataUnits;
+                  const void* const pTermDataEnd = IndexByte(pTermData, cBytes);
                   do {
-                     size_t iPartition = 0;
                      do {
-                        size_t iTensor;
+                        size_t iPartition = 0;
+                        do {
+                           size_t iTensor;
 
-                        EBM_ASSERT(0 <= cShift);
-                        if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
-                           iTensor = maskBits &
-                                 static_cast<size_t>(*(reinterpret_cast<UIntBig*>(pTermData) + iPartition) >> cShift);
-                        } else {
-                           EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
-                           iTensor = maskBits &
-                                 static_cast<size_t>(*(reinterpret_cast<UIntSmall*>(pTermData) + iPartition) >> cShift);
-                        }
-                        EBM_ASSERT(iTensor < pTerm->GetCountTensorBins());
+                           EBM_ASSERT(0 <= cShift);
+                           if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
+                              iTensor = maskBits &
+                                    static_cast<size_t>(
+                                          *(reinterpret_cast<UIntBig*>(pTermData) + iPartition) >> cShift);
+                           } else {
+                              EBM_ASSERT(sizeof(UIntSmall) == pSubset->m_pObjective->m_cUIntBytes);
+                              iTensor = maskBits &
+                                    static_cast<size_t>(
+                                          *(reinterpret_cast<UIntSmall*>(pTermData) + iPartition) >> cShift);
+                           }
+                           EBM_ASSERT(iTensor < pTerm->GetCountTensorBins());
 
-                        double weight = double{1};
-                        if(nullptr != pWeightFrom) {
-                           weight = static_cast<double>(*pWeightFrom);
-                           ++pWeightFrom;
-                        }
+                           double weight = double{1};
+                           if(nullptr != pWeightFrom) {
+                              weight = static_cast<double>(*pWeightFrom);
+                              ++pWeightFrom;
+                           }
 
-                        uint8_t cOccurrences = 1;
-                        if(nullptr != pOccurrencesFrom) {
-                           EBM_ASSERT(size_t{0} != cInnerBags);
-                           cOccurrences = *pOccurrencesFrom;
-                           ++pOccurrencesFrom;
-                           weight *= static_cast<double>(cOccurrences);
-                        }
+                           uint8_t cOccurrences = 1;
+                           if(nullptr != pOccurrencesFrom) {
+                              EBM_ASSERT(size_t{0} != cInnerBags);
+                              cOccurrences = *pOccurrencesFrom;
+                              ++pOccurrencesFrom;
+                              weight *= static_cast<double>(cOccurrences);
+                           }
 
-                        if(nullptr != aCounts) {
-                           aCounts[iTensor] += cOccurrences;
-                        }
+                           if(nullptr != aCounts) {
+                              aCounts[iTensor] += cOccurrences;
+                           }
 
-                        if(nullptr != aWeights) {
-                           aWeights[iTensor] += weight;
-                        }
+                           if(nullptr != aWeights) {
+                              aWeights[iTensor] += weight;
+                           }
 
-                        ++iPartition;
-                     } while(cSIMDPack != iPartition);
-                     cShift -= cBitsPerItemMax;
-                  } while(0 <= cShift);
-                  cShift = cShiftReset;
+                           ++iPartition;
+                        } while(cSIMDPack != iPartition);
+                        cShift -= cBitsPerItemMax;
+                     } while(0 <= cShift);
+                     cShift = cShiftReset;
 
-                  pTermData = IndexByte(pTermData, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
-               } while(pTermDataEnd != pTermData);
-               ++pSubset;
-            } while(pSubsetsEnd != pSubset);
-         }
-         ++iTerm;
-      } while(cTerms != iTerm);
+                     pTermData = IndexByte(pTermData, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
+                  } while(pTermDataEnd != pTermData);
+                  ++pSubset;
+               } while(pSubsetsEnd != pSubset);
+            }
+            ++iTerm;
+         } while(cTerms != iTerm);
+      }
       ++iBag;
    } while(cInnerBagsAfterZero != iBag);
 
@@ -1039,6 +1046,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
       const bool bAllocateHessians,
       const bool bAllocateSampleScores,
       const bool bAllocateTargetData,
+      const bool bAllocateCachedTensors,
       void* const rng,
       const size_t cScores,
       const size_t cSubsetItemsMax,
@@ -1210,16 +1218,18 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
          }
       }
 
-      TermInnerBag** const aaTermInnerBags = TermInnerBag::AllocateTermInnerBags(cTerms);
-      if(nullptr == aaTermInnerBags) {
-         LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == aaTermInnerBags");
-         return Error_OutOfMemory;
-      }
-      m_aaTermInnerBags = aaTermInnerBags;
+      if(bAllocateCachedTensors) {
+         TermInnerBag** const aaTermInnerBags = TermInnerBag::AllocateTermInnerBags(cTerms);
+         if(nullptr == aaTermInnerBags) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == aaTermInnerBags");
+            return Error_OutOfMemory;
+         }
+         m_aaTermInnerBags = aaTermInnerBags;
 
-      error = TermInnerBag::InitTermInnerBags(cTerms, apTerms, aaTermInnerBags, cInnerBags);
-      if(Error_None != error) {
-         return error;
+         error = TermInnerBag::InitTermInnerBags(cTerms, apTerms, aaTermInnerBags, cInnerBags);
+         if(Error_None != error) {
+            return error;
+         }
       }
 
       error = InitBags(rng, cInnerBags, cTerms, apTerms);

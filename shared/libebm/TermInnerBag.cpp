@@ -96,33 +96,36 @@ ErrorEbm TermInnerBag::InitTermInnerBags(const size_t cTerms,
       TermInnerBag* pTermInnerBag = aTermInnerBag;
       const TermInnerBag* const pTermInnerBagEnd = IndexByte(aTermInnerBag, cTermInnerBagBytes);
       do {
+         pTermInnerBag->collapsedCount = 0;
+         pTermInnerBag->collapsedWeight = 0;
          pTermInnerBag->m_aCounts = nullptr;
          pTermInnerBag->m_aWeights = nullptr;
          ++pTermInnerBag;
       } while(pTermInnerBagEnd != pTermInnerBag);
 
-      pTermInnerBag = aTermInnerBag;
-      do {
-         UIntMain* aBinCounts = static_cast<UIntMain*>(AlignedAlloc(cBytesCounts));
-         if(nullptr == aBinCounts) {
-            LOG_0(Trace_Warning, "WARNING TermInnerBag::InitTermInnerBags nullptr == aBinCounts");
-            return Error_OutOfMemory;
-         }
-         pTermInnerBag->m_aCounts = aBinCounts;
+      if(size_t{1} != cBins) {
+         pTermInnerBag = aTermInnerBag;
+         do {
+            UIntMain* aBinCounts = static_cast<UIntMain*>(AlignedAlloc(cBytesCounts));
+            if(nullptr == aBinCounts) {
+               LOG_0(Trace_Warning, "WARNING TermInnerBag::InitTermInnerBags nullptr == aBinCounts");
+               return Error_OutOfMemory;
+            }
+            pTermInnerBag->m_aCounts = aBinCounts;
 
-         FloatPrecomp* aBinWeights = static_cast<FloatPrecomp*>(AlignedAlloc(cBytesWeights));
-         if(nullptr == aBinWeights) {
-            LOG_0(Trace_Warning, "WARNING TermInnerBag::InitTermInnerBags nullptr == aBinWeights");
-            return Error_OutOfMemory;
-         }
-         pTermInnerBag->m_aWeights = aBinWeights;
+            FloatPrecomp* aBinWeights = static_cast<FloatPrecomp*>(AlignedAlloc(cBytesWeights));
+            if(nullptr == aBinWeights) {
+               LOG_0(Trace_Warning, "WARNING TermInnerBag::InitTermInnerBags nullptr == aBinWeights");
+               return Error_OutOfMemory;
+            }
+            pTermInnerBag->m_aWeights = aBinWeights;
 
-         memset(aBinCounts, 0, cBytesCounts);
-         memset(aBinWeights, 0, cBytesWeights);
+            memset(aBinCounts, 0, cBytesCounts);
+            memset(aBinWeights, 0, cBytesWeights);
 
-         ++pTermInnerBag;
-      } while(pTermInnerBagEnd != pTermInnerBag);
-
+            ++pTermInnerBag;
+         } while(pTermInnerBagEnd != pTermInnerBag);
+      }
       ++paTermInnerBag;
    } while(paTermInnerBagEnd != paTermInnerBag);
 

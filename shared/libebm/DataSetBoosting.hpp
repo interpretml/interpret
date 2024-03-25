@@ -116,6 +116,7 @@ struct DataSetBoosting final {
          const bool bAllocateHessians,
          const bool bAllocateSampleScores,
          const bool bAllocateTargetData,
+         const bool bAllocateCachedTensors,
          void* const rng,
          const size_t cScores,
          const size_t cSubsetItemsMax,
