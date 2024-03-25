@@ -802,22 +802,36 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                return error;
             }
 
+            const bool bUInt64Src = sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes;
+            const bool bDoubleSrc = sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes;
+
+            ++pSubset;
+
+            const UIntMain* aCounts = nullptr;
+            const FloatPrecomp* aWeights = nullptr;
+            if(pSubsetsEnd == pSubset) {
+               // the aCounts and aWeights tensors contain the final counts and weights, so when calling
+               // ConvertAddBin we only want to call it once with these tensors since otherwise they
+               // would be added multiple times
+               aCounts = TermInnerBag::GetCounts(
+                     size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
+               aWeights = TermInnerBag::GetWeights(
+                     size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
+            }
+
             ConvertAddBin(cScores,
                   pBoosterCore->IsHessian(),
                   cTensorBins,
-                  sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes,
-                  sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes,
+                  bUInt64Src,
+                  bDoubleSrc,
                   false,
                   false,
                   aFastBins,
-                  TermInnerBag::GetCounts(
-                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags()),
-                  TermInnerBag::GetWeights(
-                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags()),
+                  aCounts,
+                  aWeights,
                   std::is_same<UIntMain, uint64_t>::value,
                   std::is_same<FloatMain, double>::value,
                   aMainBins);
-            ++pSubset;
          } while(pSubsetsEnd != pSubset);
 
          // TODO: we can exit here back to python to allow caller modification to our histograms

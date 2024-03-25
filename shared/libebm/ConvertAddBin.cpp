@@ -556,9 +556,15 @@ extern void ConvertAddBin(const size_t cScores,
          const UIntMain src = *pCounts;
          ++pCounts;
          if(bUInt64Dest) {
-            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) += static_cast<uint64_t>(src);
+            // we should only use aCounts on the last call to ConvertAddBin since it's added
+            EBM_ASSERT(0 == *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples)); 
+            // assign instead of add since this should only be called this was on the last iteration
+            *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) = static_cast<uint64_t>(src);
          } else {
-            *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) += static_cast<uint32_t>(src);
+            // we should only use aCounts on the last call to ConvertAddBin since it's added
+            EBM_ASSERT(0 == *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples));
+            // assign instead of add since this should only be called this was on the last iteration
+            *reinterpret_cast<uint32_t*>(pAddDest + iDestSamples) = static_cast<uint32_t>(src);
          }
       } else if(0 <= iSrcSamples) {
          EBM_ASSERT(0 <= iDestSamples);
@@ -585,9 +591,15 @@ extern void ConvertAddBin(const size_t cScores,
          const FloatPrecomp src = *pWeights;
          ++pWeights;
          if(bDoubleDest) {
-            *reinterpret_cast<double*>(pAddDest + iDestWeight) += static_cast<double>(src);
+            // we should only use aWeights on the last call to ConvertAddBin since it's added
+            EBM_ASSERT(0 == *reinterpret_cast<double*>(pAddDest + iDestWeight));
+            // assign instead of add since this should only be called this was on the last iteration
+            *reinterpret_cast<double*>(pAddDest + iDestWeight) = static_cast<double>(src);
          } else {
-            *reinterpret_cast<float*>(pAddDest + iDestWeight) += static_cast<float>(src);
+            // we should only use aWeights on the last call to ConvertAddBin since it's added
+            EBM_ASSERT(0 == *reinterpret_cast<float*>(pAddDest + iDestWeight));
+            // assign instead of add since this should only be called this was on the last iteration
+            *reinterpret_cast<float*>(pAddDest + iDestWeight) = static_cast<float>(src);
          }
       } else if(0 <= iSrcWeight) {
          EBM_ASSERT(0 <= iDestWeight);
