@@ -57,10 +57,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
-      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
 
       auto* const aBins = pBoosterShell->GetBoostingMainBins()
-                                ->Specialize<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>();
+                  ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
@@ -361,7 +361,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
 
       // put the histograms right after our slice array
       auto* const aCollapsedBins =
-            reinterpret_cast<Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>*>(
+            reinterpret_cast<Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*>(
                   pcItemsInNextSliceOrBytesInCurrentSlice3);
 
       aCollapsedBins->ZeroMem(cBytesCollapsedTensor3);

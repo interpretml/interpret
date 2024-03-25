@@ -233,24 +233,24 @@ template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions> clas
       static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
       struct FastTotalState {
-         Bin<FloatMain, UIntMain, bHessian, cArrayScores>* m_pDimensionalCur;
-         Bin<FloatMain, UIntMain, bHessian, cArrayScores>* m_pDimensionalWrap;
-         Bin<FloatMain, UIntMain, bHessian, cArrayScores>* m_pDimensionalFirst;
+         Bin<FloatMain, UIntMain, true, true, bHessian, cArrayScores>* m_pDimensionalCur;
+         Bin<FloatMain, UIntMain, true, true, bHessian, cArrayScores>* m_pDimensionalWrap;
+         Bin<FloatMain, UIntMain, true, true, bHessian, cArrayScores>* m_pDimensionalFirst;
          size_t m_iCur;
          size_t m_cBins;
       };
 
       LOG_0(Trace_Verbose, "Entered BuildFastTotals");
 
-      auto* pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
+      auto* pAuxiliaryBin = aAuxiliaryBinsBase->Specialize<FloatMain, UIntMain, true, true, bHessian, cArrayScores>();
 
-      auto* const aBins = aBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
+      auto* const aBins = aBinsBase->Specialize<FloatMain, UIntMain, true, true, bHessian, cArrayScores>();
 
       const size_t cRealDimensions = GET_COUNT_DIMENSIONS(cCompilerDimensions, cRuntimeRealDimensions);
       EBM_ASSERT(1 <= cRealDimensions);
 
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
+      const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
 
       FastTotalState fastTotalState[k_cDimensionsMax];
       FastTotalState* pFastTotalStateInitialize = fastTotalState;

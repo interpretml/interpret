@@ -153,12 +153,12 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(const size_t cRuntimeScores,
       const size_t cRealDimensions,
       const TensorSumDimension* const aDimensions,
       const size_t directionVector,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
-      Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>& binOut,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>& binOut,
       GradientPair<FloatMain, bHessian>* const aGradientPairsOut
 #ifndef NDEBUG
       ,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
       const BinBase* const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -182,7 +182,7 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(const size_t cRuntimeScores,
    static_assert(k_cDimensionsMax < COUNT_BITS(size_t), "reserve the highest bit for bit manipulation space");
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
-   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
 
    EBM_ASSERT(1 <= cRealDimensions); // for interactions, we just return 0 for interactions with zero features
    EBM_ASSERT(cRealDimensions <= k_cDimensionsMax);
@@ -210,7 +210,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(const size_t cRuntimeScores,
          ++iDimension;
       } while(LIKELY(cRealDimensions != iDimension));
       const auto* const pBin =
-            reinterpret_cast<const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>*>(pStartingBin);
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*>(
+                  pStartingBin);
       ASSERT_BIN_OK(cBytesPerBin, pBin, pBinsEndDebug);
       binOut.Copy(cScores, *pBin, pBin->GetGradientPairs(), aGradientPairsOut);
       return;
@@ -291,7 +292,8 @@ INLINE_ALWAYS static void TensorTotalsSumMulti(const size_t cRuntimeScores,
       } while(LIKELY(pTotalsDimensionEnd != pTotalsDimensionLoop));
 
       const auto* const pBin =
-            reinterpret_cast<const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>*>(pRawBin);
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*>(
+                  pRawBin);
 
       // TODO: for pairs and tripples and anything else that we want to make special case code for we can
       // avoid this unpredictable branch, which would be very helpful
@@ -325,12 +327,12 @@ template<bool bHessian, size_t cCompilerScores>
 INLINE_ALWAYS static void TensorTotalsSumTripple(const size_t cRuntimeScores,
       const TensorSumDimension* const aDimensions,
       const size_t directionVector,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
-      Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>& binOut,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>& binOut,
       GradientPair<FloatMain, bHessian>* const aGradientPairsOut
 #ifndef NDEBUG
       ,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
       const BinBase* const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -354,12 +356,12 @@ template<bool bHessian, size_t cCompilerScores>
 INLINE_ALWAYS static void TensorTotalsSumPair(const size_t cRuntimeScores,
       const TensorSumDimension* const aDimensions,
       const size_t directionVector,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
-      Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>& binOut,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>& binOut,
       GradientPair<FloatMain, bHessian>* const aGradientPairsOut
 #ifndef NDEBUG
       ,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
       const BinBase* const pBinsEndDebug
 #endif // NDEBUG
 ) {
@@ -388,12 +390,12 @@ INLINE_ALWAYS static void TensorTotalsSum(const size_t cRuntimeScores,
       const size_t cRuntimeRealDimensions,
       const TensorSumDimension* const aDimensions,
       const size_t directionVector,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
-      Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>& binOut,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>& binOut,
       GradientPair<FloatMain, bHessian>* const aGradientPairsOut
 #ifndef NDEBUG
       ,
-      const Bin<FloatMain, UIntMain, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aDebugCopyBins,
       const BinBase* const pBinsEndDebug
 #endif // NDEBUG
 ) {

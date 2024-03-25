@@ -46,7 +46,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
    auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>();
+                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
 
    const size_t cSamples = pParams->m_cSamples;
 
@@ -136,7 +136,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 #endif // GPU_COMPILE
 
    auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, bHessian, size_t{1}>();
+                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, size_t{1}>();
 
    const size_t cSamples = pParams->m_cSamples;
 
@@ -146,7 +146,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
 
    const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
-         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, size_t{1}));
+         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
@@ -214,7 +214,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                typename TFloat::TInt::T,
                1 != TFloat::k_cSIMDPack,
                static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-                     bHessian, size_t{1}))>(iTensorBin, cBytesPerBin);
+                     false, false, bHessian, size_t{1}))>(iTensorBin, cBytesPerBin);
 
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
@@ -288,7 +288,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
    auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>();
+                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
 
    const size_t cSamples = pParams->m_cSamples;
 
@@ -298,7 +298,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cScores * cSamples;
 
    const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
-         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores));
+         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, cScores));
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
@@ -337,7 +337,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
-         Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
+         Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
          // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
@@ -346,7 +346,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
          k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
          static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-               bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+               false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
 
          TFloat::TInt::Execute(
                [aBins, &apBins](const int i, const typename TFloat::TInt::T x) {

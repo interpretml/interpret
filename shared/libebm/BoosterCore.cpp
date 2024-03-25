@@ -185,16 +185,16 @@ static bool CheckBoosterRestrictionsInternal(const BoosterCore* const pBoosterCo
    // In BinSumsBoosting we calculate the BinSize value and put it into a SIMD pack, so it needs to fit
    size_t cBytes;
    if(sizeof(FloatBig) == pObjectiveWrapper->m_cFloatBytes) {
-      if(IsOverflowBinSize<FloatBig, TUInt>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatBig, TUInt>(false, false, bHessian, cScores)) {
          return true;
       }
-      cBytes = GetBinSize<FloatBig, TUInt>(bHessian, cScores);
+      cBytes = GetBinSize<FloatBig, TUInt>(false, false, bHessian, cScores);
    } else {
       EBM_ASSERT(sizeof(FloatSmall) == pObjectiveWrapper->m_cFloatBytes);
-      if(IsOverflowBinSize<FloatSmall, TUInt>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatSmall, TUInt>(false, false, bHessian, cScores)) {
          return true;
       }
-      cBytes = GetBinSize<FloatSmall, TUInt>(bHessian, cScores);
+      cBytes = GetBinSize<FloatSmall, TUInt>(false, false, bHessian, cScores);
    }
 
    EBM_ASSERT(1 <= cTensorBinsMax); // since cTensorBins can only be 0 if cSamples or cTerms is 0, and we checked that
@@ -727,18 +727,18 @@ ErrorEbm BoosterCore::Create(void* const rng,
                   size_t cBytesPerFastBin;
                   if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(false, false, bHessian, cScores);
                      } else {
                         EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(false, false, bHessian, cScores);
                      }
                   } else {
                      EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(false, false, bHessian, cScores);
                      } else {
                         EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(false, false, bHessian, cScores);
                      }
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
@@ -754,18 +754,18 @@ ErrorEbm BoosterCore::Create(void* const rng,
                   size_t cBytesPerFastBin;
                   if(sizeof(UIntBig) == pSubset->GetObjectiveWrapper()->m_cUIntBytes) {
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatBig, UIntBig>(false, false, bHessian, cScores);
                      } else {
                         EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntBig>(false, false, bHessian, cScores);
                      }
                   } else {
                      EBM_ASSERT(sizeof(UIntSmall) == pSubset->GetObjectiveWrapper()->m_cUIntBytes);
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
-                        cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatBig, UIntSmall>(false, false, bHessian, cScores);
                      } else {
                         EBM_ASSERT(sizeof(FloatSmall) == pSubset->GetObjectiveWrapper()->m_cFloatBytes);
-                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(bHessian, cScores);
+                        cBytesPerFastBin = GetBinSize<FloatSmall, UIntSmall>(false, false, bHessian, cScores);
                      }
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
@@ -779,12 +779,12 @@ ErrorEbm BoosterCore::Create(void* const rng,
             }
             pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cTensorBinsMax;
 
-            if(IsOverflowBinSize<FloatMain, UIntMain>(bHessian, cScores)) {
+            if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");
                return Error_OutOfMemory;
             }
 
-            const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(bHessian, cScores);
+            const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
             if(IsMultiplyError(cBytesPerMainBin, cMainBinsMax)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerMainBin, cMainBinsMax)");
                return Error_OutOfMemory;

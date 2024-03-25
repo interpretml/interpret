@@ -41,7 +41,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
    auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>();
+                             ->Specialize<typename TFloat::T,
+                                   typename TFloat::TInt::T,
+                                   true, true,
+                                   bHessian,
+                                   cArrayScores>();
 
    const size_t cSamples = pParams->m_cSamples;
 
@@ -109,7 +113,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    DimensionalData* const aDimensionalDataShifted = &aDimensionalData[1];
    const size_t cRealDimensionsMinusOne = cRealDimensions - 1;
 
-   const size_t cBytesPerBin = GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(bHessian, cScores);
+   const size_t cBytesPerBin = GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(true, true, bHessian, cScores);
 
    const typename TFloat::T* pWeight;
    if(bWeight) {
@@ -133,7 +137,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       // want my tensors to be co-located into one big chunck of memory and the indexes will all index from the
       // base pointer!  I should be able to handle even very big tensors.
 
-      Bin<typename TFloat::T, typename TFloat::TInt::T, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
+      Bin<typename TFloat::T, typename TFloat::TInt::T, true, true, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
       TFloat::Execute([aBins, &apBins](const int i) { apBins[i] = aBins; });
       size_t cBins;
       {

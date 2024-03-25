@@ -21,7 +21,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1> struct Bin;
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores = 1>
+struct Bin;
 
 struct BinBase {
    BinBase() = default; // preserve our POD status
@@ -29,13 +30,13 @@ struct BinBase {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
-   GPU_BOTH inline Bin<TFloat, TUInt, bHessian, cCompilerScores>* Specialize() {
-      return static_cast<Bin<TFloat, TUInt, bHessian, cCompilerScores>*>(this);
+   template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores = 1>
+   GPU_BOTH inline Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* Specialize() {
+      return static_cast<Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>*>(this);
    }
-   template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores = 1>
-   GPU_BOTH inline const Bin<TFloat, TUInt, bHessian, cCompilerScores>* Specialize() const {
-      return static_cast<const Bin<TFloat, TUInt, bHessian, cCompilerScores>*>(this);
+   template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores = 1>
+   GPU_BOTH inline const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* Specialize() const {
+      return static_cast<const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>*>(this);
    }
 
    GPU_BOTH inline void ZeroMem(const size_t cBytesPerBin, const size_t cBins = 1, const size_t iBin = 0) {
@@ -62,9 +63,11 @@ static_assert(
 template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
 struct BinData;
 
-template<typename TFloat, typename TUInt> static bool IsOverflowBinSize(const bool bHessian, const size_t cScores);
 template<typename TFloat, typename TUInt>
-GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores);
+static bool IsOverflowBinSize(const bool bCount, const bool bWeight, const bool bHessian, const size_t cScores);
+template<typename TFloat, typename TUInt>
+GPU_BOTH inline constexpr static size_t GetBinSize(
+      const bool bCount, const bool bWeight, const bool bHessian, const size_t cScores);
 
 template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
 struct BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores> : BinBase {
@@ -73,14 +76,17 @@ struct BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores> : BinBase {
          const size_t,
          const bool,
          const bool,
+         const bool,
+         const bool,
          const void* const,
          const uint64_t* const,
          const double* const,
          const bool,
          const bool,
          void* const);
-   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const bool, const bool, const size_t);
+   template<typename, typename>
+   GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const bool, const bool, const size_t);
 
    BinData() = default; // preserve our POD status
    ~BinData() = default; // preserve our POD status
@@ -112,14 +118,17 @@ struct BinData<TFloat, TUInt, true, false, bHessian, cCompilerScores> : BinBase 
          const size_t,
          const bool,
          const bool,
+         const bool,
+         const bool,
          const void* const,
          const uint64_t* const,
          const double* const,
          const bool,
          const bool,
          void* const);
-   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const bool, const bool, const size_t);
+   template<typename, typename>
+   GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const bool, const bool, const size_t);
 
    BinData() = default; // preserve our POD status
    ~BinData() = default; // preserve our POD status
@@ -150,14 +159,17 @@ struct BinData<TFloat, TUInt, false, true, bHessian, cCompilerScores> : BinBase 
          const size_t,
          const bool,
          const bool,
+         const bool,
+         const bool,
          const void* const,
          const uint64_t* const,
          const double* const,
          const bool,
          const bool,
          void* const);
-   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const bool, const bool, const size_t);
+   template<typename, typename>
+   GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const bool, const bool, const size_t);
 
    BinData() = default; // preserve our POD status
    ~BinData() = default; // preserve our POD status
@@ -188,14 +200,17 @@ struct BinData<TFloat, TUInt, false, false, bHessian, cCompilerScores> : BinBase
          const size_t,
          const bool,
          const bool,
+         const bool,
+         const bool,
          const void* const,
          const uint64_t* const,
          const double* const,
          const bool,
          const bool,
          void* const);
-   template<typename, typename> friend bool IsOverflowBinSize(const bool, const size_t);
-   template<typename, typename> GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const size_t);
+   template<typename, typename> friend bool IsOverflowBinSize(const bool, const bool, const bool, const size_t);
+   template<typename, typename>
+   GPU_BOTH friend inline constexpr size_t GetBinSize(const bool, const bool, const bool, const size_t);
 
    BinData() = default; // preserve our POD status
    ~BinData() = default; // preserve our POD status
@@ -219,8 +234,8 @@ struct BinData<TFloat, TUInt, false, false, bHessian, cCompilerScores> : BinBase
 };
 
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-struct Bin final : BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores> {
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+struct Bin final : BinData<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores> {
    static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
    static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
    static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");
@@ -231,11 +246,11 @@ struct Bin final : BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores>
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   GPU_BOTH inline const Bin<TFloat, TUInt, bHessian, 1>* Downgrade() const {
-      return reinterpret_cast<const Bin<TFloat, TUInt, bHessian, 1>*>(this);
+   GPU_BOTH inline const Bin<TFloat, TUInt, bCount, bWeight, bHessian, 1>* Downgrade() const {
+      return reinterpret_cast<const Bin<TFloat, TUInt, bCount, bWeight, bHessian, 1>*>(this);
    }
-   GPU_BOTH inline Bin<TFloat, TUInt, bHessian, 1>* Downgrade() {
-      return reinterpret_cast<Bin<TFloat, TUInt, bHessian, 1>*>(this);
+   GPU_BOTH inline Bin<TFloat, TUInt, bCount, bWeight, bHessian, 1>* Downgrade() {
+      return reinterpret_cast<Bin<TFloat, TUInt, bCount, bWeight, bHessian, 1>*>(this);
    }
 
    GPU_BOTH inline void Add(const size_t cScores,
@@ -357,18 +372,18 @@ struct Bin final : BinData<TFloat, TUInt, true, true, bHessian, cCompilerScores>
    }
    GPU_BOTH inline void AssertZero(const size_t cScores) const { AssertZero(cScores, this->GetGradientPairs()); }
 };
-static_assert(std::is_standard_layout<Bin<float, uint32_t, true>>::value,
+static_assert(std::is_standard_layout<Bin<float, uint32_t, true, true, true>>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<float, uint32_t, true>>::value,
+static_assert(std::is_trivial<Bin<float, uint32_t, true, true, true>>::value,
       "We use memcpy in several places, so disallow non-trivial types in general");
 
-static_assert(std::is_standard_layout<Bin<double, uint64_t, false>>::value,
+static_assert(std::is_standard_layout<Bin<double, uint64_t, false, false, false>>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(std::is_trivial<Bin<double, uint64_t, false>>::value,
+static_assert(std::is_trivial<Bin<double, uint64_t, false, false, false>>::value,
       "We use memcpy in several places, so disallow non-trivial types in general");
 
 template<typename TFloat, typename TUInt>
-inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) {
+inline static bool IsOverflowBinSize(const bool bCount, const bool bWeight, const bool bHessian, const size_t cScores) {
    const size_t cBytesPerGradientPair = GetGradientPairSize<TFloat>(bHessian);
 
    if(UNLIKELY(IsMultiplyError(cBytesPerGradientPair, cScores))) {
@@ -376,12 +391,43 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
    }
 
    size_t cBytesBinComponent;
-   if(bHessian) {
-      typedef Bin<TFloat, TUInt, true> OffsetType;
-      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+
+   if(bCount) {
+      if(bWeight) {
+         if(bHessian) {
+            typedef Bin<TFloat, TUInt, true, true, true> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         } else {
+            typedef Bin<TFloat, TUInt, true, true, false> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         }
+      } else {
+         if(bHessian) {
+            typedef Bin<TFloat, TUInt, true, false, true> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         } else {
+            typedef Bin<TFloat, TUInt, true, false, false> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         }
+      }
    } else {
-      typedef Bin<TFloat, TUInt, false> OffsetType;
-      cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+      if(bWeight) {
+         if(bHessian) {
+            typedef Bin<TFloat, TUInt, false, true, true> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         } else {
+            typedef Bin<TFloat, TUInt, false, true, false> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         }
+      } else {
+         if(bHessian) {
+            typedef Bin<TFloat, TUInt, false, false, true> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         } else {
+            typedef Bin<TFloat, TUInt, false, false, false> OffsetType;
+            cBytesBinComponent = offsetof(OffsetType, m_aGradientPairs);
+         }
+      }
    }
 
    if(UNLIKELY(IsAddError(cBytesBinComponent, cBytesPerGradientPair * cScores))) {
@@ -392,27 +438,41 @@ inline static bool IsOverflowBinSize(const bool bHessian, const size_t cScores) 
 }
 
 template<typename TFloat, typename TUInt>
-GPU_BOTH inline constexpr static size_t GetBinSize(const bool bHessian, const size_t cScores) {
-   typedef Bin<TFloat, TUInt, true> OffsetTypeHt;
-   typedef Bin<TFloat, TUInt, false> OffsetTypeHf;
+GPU_BOTH inline constexpr static size_t GetBinSize(
+      const bool bCount, const bool bWeight, const bool bHessian, const size_t cScores) {
+   typedef Bin<TFloat, TUInt, true, true, true> OffsetTypeHttt;
+   typedef Bin<TFloat, TUInt, true, true, false> OffsetTypeHttf;
+   typedef Bin<TFloat, TUInt, true, false, true> OffsetTypeHtft;
+   typedef Bin<TFloat, TUInt, true, false, false> OffsetTypeHtff;
+   typedef Bin<TFloat, TUInt, false, true, true> OffsetTypeHftt;
+   typedef Bin<TFloat, TUInt, false, true, false> OffsetTypeHftf;
+   typedef Bin<TFloat, TUInt, false, false, true> OffsetTypeHfft;
+   typedef Bin<TFloat, TUInt, false, false, false> OffsetTypeHfff;
 
    // TODO: someday try out bin sizes that are a power of two.  This would allow us to use a shift when using bins
    //       instead of using multiplications.  In that version return the number of bits to shift here to make it easy
    //       to get either the shift required for indexing OR the number of bytes (shift 1 << num_bits)
 
-   return (bHessian ? offsetof(OffsetTypeHt, m_aGradientPairs) : offsetof(OffsetTypeHf, m_aGradientPairs)) +
+   return (bCount ? bWeight ?
+                    bHessian ? offsetof(OffsetTypeHttt, m_aGradientPairs) : offsetof(OffsetTypeHttf, m_aGradientPairs) :
+                            bHessian ? offsetof(OffsetTypeHtft, m_aGradientPairs) :
+                                       offsetof(OffsetTypeHtff, m_aGradientPairs) :
+                      bWeight ?
+                    bHessian ? offsetof(OffsetTypeHftt, m_aGradientPairs) : offsetof(OffsetTypeHftf, m_aGradientPairs) :
+                      bHessian ? offsetof(OffsetTypeHfft, m_aGradientPairs) :
+                                 offsetof(OffsetTypeHfff, m_aGradientPairs)) +
          GetGradientPairSize<TFloat>(bHessian) * cScores;
 }
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-GPU_BOTH inline static Bin<TFloat, TUInt, bHessian, cCompilerScores>* IndexBin(
-      Bin<TFloat, TUInt, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+GPU_BOTH inline static Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* IndexBin(
+      Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-GPU_BOTH inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores>* IndexBin(
-      const Bin<TFloat, TUInt, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+GPU_BOTH inline static const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* IndexBin(
+      const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
    return IndexByte(aBins, iByte);
 }
 
@@ -422,21 +482,22 @@ GPU_BOTH inline static const BinBase* IndexBin(const BinBase* const aBins, const
    return IndexByte(aBins, iByte);
 }
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-GPU_BOTH inline static const Bin<TFloat, TUInt, bHessian, cCompilerScores>* NegativeIndexBin(
-      const Bin<TFloat, TUInt, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+GPU_BOTH inline static const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* NegativeIndexBin(
+      const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-GPU_BOTH inline static Bin<TFloat, TUInt, bHessian, cCompilerScores>* NegativeIndexBin(
-      Bin<TFloat, TUInt, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+GPU_BOTH inline static Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* NegativeIndexBin(
+      Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const aBins, const size_t iByte) {
    return NegativeIndexByte(aBins, iByte);
 }
 
-template<typename TFloat, typename TUInt, bool bHessian, size_t cCompilerScores>
-inline static size_t CountBins(const Bin<TFloat, TUInt, bHessian, cCompilerScores>* const pBinHigh,
-      const Bin<TFloat, TUInt, bHessian, cCompilerScores>* const pBinLow,
+template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
+inline static size_t CountBins(
+      const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const pBinHigh,
+      const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const pBinLow,
       const size_t cBytesPerBin) {
    const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);
 #ifndef GPU_COMPILE

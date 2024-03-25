@@ -76,12 +76,12 @@ static bool CheckInteractionRestrictionsInternal(
    // In BinSumsInteraction we calculate the BinSize value but keep it as a size_t, so the only requirement is
    // that the bin size is calculatable
    if(sizeof(FloatBig) == pObjectiveWrapper->m_cFloatBytes) {
-      if(IsOverflowBinSize<FloatBig, TUInt>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatBig, TUInt>(true, true, bHessian, cScores)) {
          return true;
       }
    } else {
       EBM_ASSERT(sizeof(FloatSmall) == pObjectiveWrapper->m_cFloatBytes);
-      if(IsOverflowBinSize<FloatSmall, TUInt>(bHessian, cScores)) {
+      if(IsOverflowBinSize<FloatSmall, TUInt>(true, true, bHessian, cScores)) {
          return true;
       }
    }
@@ -339,7 +339,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
             return error;
          }
 
-         if(IsOverflowBinSize<FloatMain, UIntMain>(bHessian, cScores)) {
+         if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores)) {
             LOG_0(Trace_Warning, "WARNING InteractionCore::Create IsOverflowBinSize overflow");
             return Error_OutOfMemory;
          }
