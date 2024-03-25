@@ -54,7 +54,6 @@ struct BinSumsBoostingBridge {
    size_t m_cSamples;
    const void* m_aGradientsAndHessians; // float or double
    const void* m_aWeights; // float or double
-   const uint8_t* m_pCountOccurrences;
    const void* m_aPacked; // uint64_t or uint32_t
 
    void* m_aFastBins; // Bin<...> (can't use BinBase * since this is only C here)

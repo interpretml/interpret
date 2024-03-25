@@ -629,9 +629,9 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Error_None;
    }
 
-   template<bool bHessian, bool bWeight, bool bReplication, size_t cCompilerScores, int cCompilerPack>
+   template<bool bHessian, bool bWeight, size_t cCompilerScores, int cCompilerPack>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) noexcept {
-      RemoteBinSumsBoosting<Avx2_32_Float, bHessian, bWeight, bReplication, cCompilerScores, cCompilerPack>(pParams);
+      RemoteBinSumsBoosting<Avx2_32_Float, bHessian, bWeight, cCompilerScores, cCompilerPack>(pParams);
       return Error_None;
    }
 
@@ -676,7 +676,6 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm BinSumsBoosting_Avx2_32(
    // all our memory should be aligned. It is required by SIMD for correctness or performance
    EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));
    EBM_ASSERT(IsAligned(pParams->m_aWeights));
-   EBM_ASSERT(IsAligned(pParams->m_pCountOccurrences));
    EBM_ASSERT(IsAligned(pParams->m_aPacked));
    EBM_ASSERT(IsAligned(pParams->m_aFastBins));
 

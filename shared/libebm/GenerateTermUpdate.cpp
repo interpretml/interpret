@@ -789,7 +789,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             params.m_cSamples = pSubset->GetCountSamples();
             params.m_aGradientsAndHessians = pSubset->GetGradHess();
             params.m_aWeights = pSubset->GetInnerBag(iBag)->GetWeights();
-            params.m_pCountOccurrences = pSubset->GetInnerBag(iBag)->GetCountOccurrences();
             params.m_aPacked = pSubset->GetTermData(iTerm);
             params.m_aFastBins = aFastBins;
 #ifndef NDEBUG
