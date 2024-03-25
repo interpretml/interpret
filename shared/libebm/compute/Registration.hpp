@@ -88,7 +88,7 @@ class Registration {
    }
 
  protected:
-   const bool m_zones;
+   const AccelerationFlags m_zones;
    const char* const m_sRegistrationName;
 
    static void CheckParamNames(const char* const sParamName, std::vector<const char*> usedParamNames) {

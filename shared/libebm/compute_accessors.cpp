@@ -162,7 +162,7 @@ static bool IsFMA3() {
 
 #endif // INTEL_SIMD
 
-extern ErrorEbm GetObjective(const Config* const pConfig,
+NEVER_INLINE extern ErrorEbm GetObjective(const Config* const pConfig,
       const char* sObjective,
       const AccelerationFlags acceleration,
       ObjectiveWrapper* const pCpuObjectiveWrapperOut,

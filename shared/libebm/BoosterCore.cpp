@@ -39,7 +39,7 @@ extern ErrorEbm Unbag(const size_t cSamples,
       size_t* const pcTrainingSamplesOut,
       size_t* const pcValidationSamplesOut);
 
-extern ErrorEbm GetObjective(const Config* const pConfig,
+NEVER_INLINE extern ErrorEbm GetObjective(const Config* const pConfig,
       const char* sObjective,
       const AccelerationFlags acceleration,
       ObjectiveWrapper* const pCpuObjectiveWrapperOut,

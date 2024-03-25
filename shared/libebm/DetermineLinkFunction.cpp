@@ -18,7 +18,7 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm GetObjective(const Config* const pConfig,
+NEVER_INLINE extern ErrorEbm GetObjective(const Config* const pConfig,
       const char* sObjective,
       const AccelerationFlags acceleration,
       ObjectiveWrapper* const pCpuObjectiveWrapperOut,
