@@ -46,7 +46,6 @@ struct ApplyUpdateBridge {
 };
 
 struct BinSumsBoostingBridge {
-   size_t m_cReminants;
    BoolEbm m_bHessian;
    size_t m_cScores;
 

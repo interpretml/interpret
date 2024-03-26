@@ -752,20 +752,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             int cPack;
-            size_t cReminants;
-
             if(1 == cTensorBins) {
                // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
                // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
                // but then collapse them afterwards into a single bin, but that's more work.
                cPack = k_cItemsPerBitPackNone;
-               cReminants = 0;
             } else {
                EBM_ASSERT(1 <= pTerm->GetBitsRequiredMin());
                cPack =
                      GetCountItemsBitPacked(pTerm->GetBitsRequiredMin(), pSubset->GetObjectiveWrapper()->m_cUIntBytes);
-               cReminants = pSubset->GetCountSamples() %
-                     static_cast<size_t>(cPack * pSubset->GetObjectiveWrapper()->m_cSIMDPack);
             }
 
             size_t cBytesPerFastBin;
@@ -791,7 +786,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
 
             BinSumsBoostingBridge params;
-            params.m_cReminants = cReminants;
             params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
             params.m_cScores = cScores;
             params.m_cPack = cPack;
