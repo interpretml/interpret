@@ -219,6 +219,15 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
 
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
+         // the compiler is normally pretty good about optimizing multiplications into shifts when possible
+         // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
+         // even when the multiplication has a fixed compile time constant value that is a power of 2, so
+         // we manually convert the multiplications into shifts.
+         // 
+         // We also have tried the Multiply templated function that is designed to convert multiplications
+         // into shifts, but using that templated function breaks the compiler optimization that unrolls
+         // the bitpacking loop.
+         //
          constexpr static bool bSmall = 4 == cBytesPerBin;
          constexpr static bool bMed = 8 == cBytesPerBin;
          constexpr static bool bLarge = 16 == cBytesPerBin;
@@ -280,14 +289,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
          cShift = cShiftReset;
       }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
-
-   if(bDynamic) {
-      if(bWeight) {
-         pParams->m_aWeights = pWeight;
-      }
-      pParams->m_aGradientsAndHessians = pGradientAndHessian;
-      pParams->m_aPacked = pInputData;
-   }
 }
 
 template<typename TFloat,
@@ -452,11 +453,21 @@ template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, i
          if(0 != pParams->m_cReminants) {
             BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
                   pParams, pParams->m_cReminants);
+
+            if(pParams->m_cSamples == pParams->m_cReminants) {
+               return;
+            }
+            if(bWeight) {
+               pParams->m_aWeights = IndexByte(pParams->m_aWeights, sizeof(typename TFloat::T) * pParams->m_cReminants);
+            }
+            pParams->m_aGradientsAndHessians = IndexByte(pParams->m_aGradientsAndHessians,
+                  sizeof(typename TFloat::T) * (bHessian ? size_t{2} : size_t{1}) * cCompilerScores *
+                        pParams->m_cReminants);
+            pParams->m_aPacked =
+                  IndexByte(pParams->m_aPacked, sizeof(typename TFloat::TInt::T) * TFloat::TInt::k_cSIMDPack);
          }
-         if(pParams->m_cSamples != pParams->m_cReminants) {
-            BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerPack>(
-                  pParams, pParams->m_cSamples - pParams->m_cReminants);
-         }
+         BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerPack>(
+               pParams, pParams->m_cSamples - pParams->m_cReminants);
       } else {
          BitPack<TFloat,
                bHessian,
