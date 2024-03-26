@@ -170,6 +170,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 
          TFloat::TInt::Execute(
                [&apBins, aBins, cBytesPerBin](const int i, const typename TFloat::TInt::T x) {
+                  UNUSED(cBytesPerBin);
                   apBins[i] = IndexByte(aBins, static_cast<size_t>(x) * cBytesPerBin);
                },
                iBin);
