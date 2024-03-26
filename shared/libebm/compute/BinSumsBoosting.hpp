@@ -28,7 +28,8 @@ template<typename TFloat,
       size_t cCompilerScores,
       int cCompilerPack,
       typename std::enable_if<k_cItemsPerBitPackNone == cCompilerPack, int>::type = 0>
-GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
+      BinSumsBoostingBridge* const pParams, const size_t cSamples) {
 
    // TODO: we can improve the zero dimensional scenario quite a bit because we know that all the scores added will
    // eventually be added into the same bin.  Instead of adding the gradients & hessians & weights & counts from
@@ -39,8 +40,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= pParams->m_cSamples);
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= cSamples);
+   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
@@ -48,10 +49,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
-
-   const size_t cSamples = pParams->m_cSamples;
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
 
    const typename TFloat::T* pGradientAndHessian =
          reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
@@ -127,21 +127,24 @@ template<typename TFloat,
       size_t cCompilerScores,
       int cCompilerPack,
       typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 == cCompilerScores, int>::type = 0>
-GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
+      BinSumsBoostingBridge* const pParams, const size_t cSamples) {
+
+   static constexpr bool bDynamic = k_cItemsPerBitPackDynamic == cCompilerPack;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= pParams->m_cSamples);
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= cSamples);
+   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == cSamples % size_t{(bDynamic ? 1 : cCompilerPack) * TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(size_t{1} == pParams->m_cScores);
 #endif // GPU_COMPILE
 
-   auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, size_t{1}>();
-
-   const size_t cSamples = pParams->m_cSamples;
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, size_t{1}>();
 
    const typename TFloat::T* pGradientAndHessian =
          reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
@@ -267,6 +270,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       } while(0 <= cShift);
       cShift = cShiftReset;
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+
+   if(bDynamic) {
+      if(bWeight) {
+         pParams->m_aWeights = pWeight;
+      }
+      pParams->m_aGradientsAndHessians = pGradientAndHessian;
+      pParams->m_aPacked = pInputData;
+   }
 }
 
 template<typename TFloat,
@@ -275,14 +286,15 @@ template<typename TFloat,
       size_t cCompilerScores,
       int cCompilerPack,
       typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 != cCompilerScores, int>::type = 0>
-GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
+      BinSumsBoostingBridge* const pParams, const size_t cSamples) {
 
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= pParams->m_cSamples);
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= cSamples);
+   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
@@ -290,10 +302,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
-
-   const size_t cSamples = pParams->m_cSamples;
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>();
 
    const typename TFloat::T* pGradientAndHessian =
          reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
@@ -340,7 +351,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
-         Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
+         Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>*
+               apBins[TFloat::k_cSIMDPack];
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
          // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
@@ -424,11 +436,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, int cCompilerPack>
-struct BitPack final {
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, int cCompilerPack> struct BitPack final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
       if(cCompilerPack == pParams->m_cPack) {
-         BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerPack>(pParams);
+         if(0 != pParams->m_cReminants) {
+            BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
+                  pParams, pParams->m_cReminants);
+         }
+         if(pParams->m_cSamples != pParams->m_cReminants) {
+            BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerPack>(
+                  pParams, pParams->m_cSamples - pParams->m_cReminants);
+         }
       } else {
          BitPack<TFloat,
                bHessian,
@@ -441,7 +459,8 @@ struct BitPack final {
 template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores>
 struct BitPack<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic> final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
+            pParams, pParams->m_cSamples);
    }
 };
 
@@ -453,12 +472,13 @@ template<typename TFloat,
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    if(k_cItemsPerBitPackNone == pParams->m_cPack) {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(
+            pParams, pParams->m_cSamples);
    } else {
       BitPack<TFloat,
             bHessian,
             bWeight,
-            cCompilerScores, 
+            cCompilerScores,
             GetFirstBitPack<TFloat>(k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
    }
 }
@@ -470,9 +490,11 @@ template<typename TFloat,
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    if(k_cItemsPerBitPackNone == pParams->m_cPack) {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(
+            pParams, pParams->m_cSamples);
    } else {
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
+            pParams, pParams->m_cSamples);
    }
 }
 
