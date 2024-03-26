@@ -20,7 +20,7 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 static constexpr int k_cItemsPerBitPackBoostingMin = 2;
-static constexpr int k_cItemsPerBitPackBoostingMax = 16;
+static constexpr int k_cItemsPerBitPackBoostingMax = 32;
 
 template<typename TFloat,
       bool bHessian,
@@ -196,7 +196,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
       pInputData += TFloat::TInt::k_cSIMDPack;
       int i;
       if(!bDynamic) {
-         i = 0;
+         i = cItemsPerBitPack - 1;
       }
       while(true) {
          TFloat weight;
@@ -220,7 +220,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
          }
 
          if(!bDynamic) {
-            cShift = (cItemsPerBitPack - 1 - i) * cBitsPerItemMax;
+            cShift = i * cBitsPerItemMax;
          }
 
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
@@ -286,8 +286,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
                break;
             }
          } else {
-            ++i;
-            if(cItemsPerBitPack <= i) {
+            --i;
+            if(i < 0) {
                break;
             }
          }
