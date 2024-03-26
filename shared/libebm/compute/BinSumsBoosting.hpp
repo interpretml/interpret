@@ -19,6 +19,9 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+static constexpr int k_cItemsPerBitPackBoostingMin = 2;
+static constexpr int k_cItemsPerBitPackBoostingMax = 16;
+
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
@@ -421,6 +424,27 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, int cCompilerPack>
+struct BitPack final {
+   INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
+      if(cCompilerPack == pParams->m_cPack) {
+         BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, cCompilerPack>(pParams);
+      } else {
+         BitPack<TFloat,
+               bHessian,
+               bWeight,
+               cCompilerScores,
+               GetNextBitPack<TFloat>(cCompilerPack, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
+      }
+   }
+};
+template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores>
+struct BitPack<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic> final {
+   INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
+   }
+};
+
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
@@ -429,9 +453,13 @@ template<typename TFloat,
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    if(k_cItemsPerBitPackNone == pParams->m_cPack) {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, 1, k_cItemsPerBitPackNone>(pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
    } else {
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, 1, k_cItemsPerBitPackDynamic>(pParams);
+      BitPack<TFloat,
+            bHessian,
+            bWeight,
+            cCompilerScores, 
+            GetFirstBitPack<TFloat>(k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
    }
 }
 template<typename TFloat,
