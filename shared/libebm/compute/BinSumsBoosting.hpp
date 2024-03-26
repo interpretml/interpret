@@ -197,6 +197,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    do {
+      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop in this loop
+      // which we could do by allocating an extra item to the end of each memory region and throwing away the last one.  I think
+      // this won't have any effect since these loads are predictable loads and the CPU should already have them in cache
+      // but it's worth trying.  This optimization might destroy the loop unwinding we currently have the compiler doing
+      // where it removes the cShift loop and flattens those assembly instructions.
+
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       if(!bDynamic) {
