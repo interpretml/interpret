@@ -168,13 +168,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
 #endif // GPU_COMPILE
 
    int cShift;
-   int cShiftReset;
    if(bDynamic) {
       cShift =
             static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
             cBitsPerItemMax;
-      cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
    }
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
    const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
@@ -194,11 +193,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
    do {
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
-      int i;
       if(!bDynamic) {
-         i = cItemsPerBitPack - 1;
+         cShift = cShiftReset;
       }
-      while(true) {
+      do {
          TFloat weight;
          if(bWeight) {
             weight = TFloat::Load(pWeight);
@@ -217,10 +215,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
             if(bHessian) {
                hessian *= weight;
             }
-         }
-
-         if(!bDynamic) {
-            cShift = i * cBitsPerItemMax;
          }
 
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
@@ -280,18 +274,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
                   iTensorBin,
                   gradient);
          }
-         if(bDynamic) {
-            cShift -= cBitsPerItemMax;
-            if(cShift < 0) {
-               break;
-            }
-         } else {
-            --i;
-            if(i < 0) {
-               break;
-            }
-         }
-      }
+         cShift -= cBitsPerItemMax;
+      } while(0 <= cShift);
       if(bDynamic) {
          cShift = cShiftReset;
       }
