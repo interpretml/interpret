@@ -124,7 +124,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    }
 
    while(true) {
-      size_t cTensorBytes = cBytesPerBin;
       // for SIMD we'll want scatter/gather semantics since each parallel unit must load from a different pointer:
       // otherwise we'll need to execute the scatter/gather as separate instructions in a templated loop
       // I think we can 6 dimensional 32 bin dimensions with that, and if we need more then we can use the 64
@@ -138,7 +137,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       // base pointer!  I should be able to handle even very big tensors.
 
       Bin<typename TFloat::T, typename TFloat::TInt::T, true, true, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
-      TFloat::Execute([aBins, &apBins](const int i) { apBins[i] = aBins; });
       size_t cBins;
       {
          DimensionalData* const pDimensionalData = &aDimensionalDataShifted[-1];
@@ -171,13 +169,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 #endif // NDEBUG
 
          TFloat::TInt::Execute(
-               [&apBins, cTensorBytes](const int i, const typename TFloat::TInt::T x) {
-                  apBins[i] = IndexByte(apBins[i], static_cast<size_t>(x) * cTensorBytes);
+               [&apBins, aBins, cBytesPerBin](const int i, const typename TFloat::TInt::T x) {
+                  apBins[i] = IndexByte(aBins, static_cast<size_t>(x) * cBytesPerBin);
                },
                iBin);
       }
       static constexpr bool isNotOneDimensional = 1 != cCompilerDimensions;
       if(isNotOneDimensional) {
+         size_t cTensorBytes = cBytesPerBin;
          size_t iDimension = 0;
          do {
             cTensorBytes *= cBins;
@@ -248,6 +247,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
             pBin->SetWeight(pBin->GetWeight() + typename TFloat::T{1.0});
          });
       }
+
+      // TODO: if we made a separate binary/regression version that only allowed one score, we could combine the loading
+      // of the count, weight, gradient, and hessian into a single call to Execute.
 
       size_t iScore = 0;
       do {
