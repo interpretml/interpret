@@ -421,15 +421,30 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores>
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      size_t cCompilerScores,
+      typename std::enable_if<1 == cCompilerScores, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    if(k_cItemsPerBitPackNone == pParams->m_cPack) {
       // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(
-            pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, 1, k_cItemsPerBitPackNone>(pParams);
    } else {
-      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
-            pParams);
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, 1, k_cItemsPerBitPackDynamic>(pParams);
+   }
+}
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      size_t cCompilerScores,
+      typename std::enable_if<1 != cCompilerScores, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
+   if(k_cItemsPerBitPackNone == pParams->m_cPack) {
+      // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackNone>(pParams);
+   } else {
+      BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);
    }
 }
 
