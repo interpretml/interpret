@@ -167,10 +167,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   int cShift =
-         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-         cBitsPerItemMax;
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift;
+   int cShiftReset;
+   if(bDynamic) {
+      cShift =
+            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+      cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   }
 
    const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
@@ -190,7 +194,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
    do {
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
-      do {
+      int i;
+      if(!bDynamic) {
+         i = 0;
+      }
+      while(true) {
          TFloat weight;
          if(bWeight) {
             weight = TFloat::Load(pWeight);
@@ -211,16 +219,23 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
             }
          }
 
+         if(!bDynamic) {
+            cShift = (cItemsPerBitPack - 1 - i) * cBitsPerItemMax;
+         }
+
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
-         // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
-         // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
-         // there are low numbers of shifts, which should be the case for anything with a compile time constant here
-         iTensorBin = Multiply<typename TFloat::TInt,
-               typename TFloat::TInt::T,
-               1 != TFloat::k_cSIMDPack,
-               static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-                     false, false, bHessian, size_t{1}))>(iTensorBin, cBytesPerBin);
+         constexpr static bool bSmall = 4 == cBytesPerBin;
+         constexpr static bool bMed = 8 == cBytesPerBin;
+         constexpr static bool bLarge = 16 == cBytesPerBin;
+         static_assert(bSmall || bMed || bLarge, "size must be big or small");
+         if(bSmall) {
+            iTensorBin = iTensorBin << 2;
+         } else if(bMed) {
+            iTensorBin = iTensorBin << 3;
+         } else if(bLarge) {
+            iTensorBin = iTensorBin << 4;
+         }
 
          // TODO: the ultimate version of this algorithm would:
          //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
@@ -265,10 +280,21 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(
                   iTensorBin,
                   gradient);
          }
-
-         cShift -= cBitsPerItemMax;
-      } while(0 <= cShift);
-      cShift = cShiftReset;
+         if(bDynamic) {
+            cShift -= cBitsPerItemMax;
+            if(cShift < 0) {
+               break;
+            }
+         } else {
+            ++i;
+            if(cItemsPerBitPack <= i) {
+               break;
+            }
+         }
+      }
+      if(bDynamic) {
+         cShift = cShiftReset;
+      }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 
    if(bDynamic) {
