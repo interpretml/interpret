@@ -37,18 +37,18 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    // it this way though.
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
-   const size_t cSamples = pParams->m_cSamples;
-
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
 #endif // GPU_COMPILE
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
+
+   const size_t cSamples = pParams->m_cSamples;
 
    auto* const aBins =
          reinterpret_cast<BinBase*>(pParams->m_aFastBins)
@@ -130,19 +130,23 @@ template<typename TFloat,
       typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
+   static_assert(k_cItemsPerBitPackNone != cCompilerPack,
+         "This specialization of BinSumsBoostingInternal cannot handle PackNone.");
+   static_assert(1 == cCompilerScores,
+         "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
    static constexpr bool bDynamic = k_cItemsPerBitPackDynamic == cCompilerPack;
-
-   const size_t cSamples = pParams->m_cSamples;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
-   EBM_ASSERT(0 == cSamples % size_t{(bDynamic ? 1 : cCompilerPack) * TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bDynamic ? 1 : cCompilerPack) * TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(size_t{1} == pParams->m_cScores);
 #endif // GPU_COMPILE
+
+   const size_t cSamples = pParams->m_cSamples;
 
    auto* const aBins =
          reinterpret_cast<BinBase*>(pParams->m_aFastBins)
@@ -221,7 +225,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
-         // the compiler is normally pretty good about optimizing multiplications into shifts when possible
+         // The compiler is normally pretty good about optimizing multiplications into shifts when possible
          // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
          // even when the multiplication has a fixed compile time constant value that is a power of 2, so
          // we manually convert the multiplications into shifts.
@@ -233,7 +237,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          constexpr static bool bSmall = 4 == cBytesPerBin;
          constexpr static bool bMed = 8 == cBytesPerBin;
          constexpr static bool bLarge = 16 == cBytesPerBin;
-         static_assert(bSmall || bMed || bLarge, "size must be big or small");
+         static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
          if(bSmall) {
             iTensorBin = iTensorBin << 2;
          } else if(bMed) {
@@ -301,20 +305,22 @@ template<typename TFloat,
       typename std::enable_if<k_cItemsPerBitPackNone != cCompilerPack && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
+   static_assert(k_cItemsPerBitPackNone != cCompilerPack,
+         "This specialization of BinSumsBoostingInternal cannot handle PackNone.");
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
-
-   const size_t cSamples = pParams->m_cSamples;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= cSamples);
-   EBM_ASSERT(0 == cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
 #endif // GPU_COMPILE
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
+
+   const size_t cSamples = pParams->m_cSamples;
 
    auto* const aBins =
          reinterpret_cast<BinBase*>(pParams->m_aFastBins)
