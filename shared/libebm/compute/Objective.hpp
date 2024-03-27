@@ -288,24 +288,9 @@ struct Objective : public Registrable {
                      (std::is_base_of<MulticlassMultitaskObjective, TObjective>::value || !bHessian || bDisableApprox),
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
-      // multiclass multitask is going to need some really special handling, so use dynamic scores, and skip the bit
-      // packing too
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               k_dynamicScores>(pData);
-      } else {
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               k_dynamicScores>(pData);
-      }
+      // multiclass multitask is going to need some really special handling, so use dynamic scores
+      // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
+      return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(pData);
    }
    template<typename TObjective,
          bool bValidation,
@@ -344,21 +329,12 @@ struct Objective : public Registrable {
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
          if(cCompilerScores == pData->m_cScores) {
-            if(k_cItemsPerBitPackNone == pData->m_cPack) {
-               return pObjective->OperatorApplyUpdate<TObjective,
-                     bValidation,
-                     bWeight,
-                     bHessian,
-                     bDisableApprox,
-                     cCompilerScores>(pData);
-            } else {
-               return pObjective->OperatorApplyUpdate<TObjective,
-                     bValidation,
-                     bWeight,
-                     bHessian,
-                     bDisableApprox,
-                     cCompilerScores>(pData);
-            }
+            return pObjective->OperatorApplyUpdate<TObjective,
+                  bValidation,
+                  bWeight,
+                  bHessian,
+                  bDisableApprox,
+                  cCompilerScores>(pData);
          } else {
             return CountScores < TObjective, bValidation, bWeight, bHessian, bDisableApprox,
                    k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores :
@@ -369,21 +345,12 @@ struct Objective : public Registrable {
    template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox>
    struct CountScores<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-         if(k_cItemsPerBitPackNone == pData->m_cPack) {
-            return pObjective->OperatorApplyUpdate<TObjective,
-                  bValidation,
-                  bWeight,
-                  bHessian,
-                  bDisableApprox,
-                  k_dynamicScores>(pData);
-         } else {
-            return pObjective->OperatorApplyUpdate<TObjective,
-                  bValidation,
-                  bWeight,
-                  bHessian,
-                  bDisableApprox,
-                  k_dynamicScores>(pData);
-         }
+         return pObjective->OperatorApplyUpdate<TObjective,
+               bValidation,
+               bWeight,
+               bHessian,
+               bDisableApprox,
+               k_dynamicScores>(pData);
       }
    };
 
