@@ -163,6 +163,19 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          if(bFixedSizePack) {
+            // If we have a fixed sized cCompilerPack, then we previously made it so that in this call cSamples
+            // will divide perfectly into the available bitpacks.  This allows us to guarantee that the loop
+            // below will allways execute an identical number of times.  If the compiler is aware of this,
+            // and it knows how many times the loop below will execute, then it can eliminate the loop.
+            // To do this though, we need to set cShift to a value at the top of the loop instead of allowing
+            // it to be set above to a smaller value which can change after the first loop iteration.
+            // By setting it here, the compiler knows the value of cShift on each loop iteration.
+
+            // clang and g++ are able to optimize the bit packing loop away. The Microsoft compiler
+            // seems sophisticated enough to do this too because it is doing it in the equivalent
+            // loop for BinSumsBoosting, but it seems to believe the contents of the loop below
+            // are complicated enough that it doesn't want to eliminate the loop.
+
             cShift = cShiftReset;
          }
          while(true) {

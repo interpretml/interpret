@@ -34,7 +34,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    // eventually be added into the same bin.  Instead of adding the gradients & hessians & weights & counts from
    // each sample to the bin in order, we can just add those values together for all samples in SIMD variables
    // and then add the totals into the bins. We probably want to write a completely separate function for handling
-   // it this way though.
+   // it this way though. Also, we want to separate the cCompilerScores==1 implementation since all gradients
+   // and hessians are going into the same bin we can store that in a register and just write it out at the end
+   // while for multiclass we need to write it to memory in case there are too many.
+   //
+   // For cCompilerScores==1 where we keep everything in registers we can also sum the floats in the SIMD streams
+   // separately, and only at the end call call the SIMD Sum() to add the floats accross the SIMD pack. We can't
+   // do that for multiclass without keeping 8 or whatever separate histograms (which we could do but probably
+   // isn't worth the complexity)
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
 #ifndef GPU_COMPILE
@@ -134,13 +141,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          "This specialization of BinSumsBoostingInternal cannot handle PackNone.");
    static_assert(1 == cCompilerScores,
          "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
-   static constexpr bool bDynamic = k_cItemsPerBitPackDynamic == cCompilerPack;
+   static constexpr bool bFixedSizePack =
+         k_cItemsPerBitPackNone != cCompilerPack && k_cItemsPerBitPackDynamic != cCompilerPack;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
    EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bDynamic ? 1 : cCompilerPack) * TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(size_t{1} == pParams->m_cScores);
@@ -174,7 +182,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 #endif // GPU_COMPILE
 
    int cShift;
-   if(bDynamic) {
+   if(!bFixedSizePack) {
       cShift =
             static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
             cBitsPerItemMax;
@@ -205,7 +213,25 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
-      if(!bDynamic) {
+      if(bFixedSizePack) {
+         // If we have a fixed sized cCompilerPack, then we previously made it so that in this call cSamples
+         // will divide perfectly into the available bitpacks.  This allows us to guarantee that the loop
+         // below will allways execute an identical number of times.  If the compiler is aware of this,
+         // and it knows how many times the loop below will execute, then it can eliminate the loop.
+         // To do this though, we need to set cShift to a value at the top of the loop instead of allowing
+         // it to be set above to a smaller value which can change after the first loop iteration.
+         // By setting it here, the compiler knows the value of cShift on each loop iteration.
+
+         // I've verified that on the Microsoft compiler, clang, and g++ this loop below optimizes away using the
+         // shifts below. For the binary classification Objective (InjectedApplyUpdate) I was not able
+         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler 
+         // (clang and g++ work) and I think that was due to the
+         // amount of code within the loop rather than anything that was preventing the compiler to
+         // reason about the values of the variables within each loop iteration.  For RMSE, which
+         // has less code within the loop I was able to get it to optimize away the loop, but I had to
+         // add an additional index variable and decrement it by 1 each loop, so it seems we're right on
+         // the edge of complexity where the compiler will choose to do this.
+
          cShift = cShiftReset;
       }
       do {
@@ -297,7 +323,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          }
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
-      if(bDynamic) {
+      if(!bFixedSizePack) {
          cShift = cShiftReset;
       }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);

@@ -542,6 +542,10 @@ extern void ConvertAddBin(const size_t cScores,
    EBM_ASSERT(0 <= iDestSamples);
    EBM_ASSERT(0 <= iDestWeight);
 
+   // TODO: we should move the application of aCounts and aWeights into a separate function
+   // that gets called after this function. Since we have pre-computed final counts, we only
+   // need to copy them into the final bins on the final merge, so if there are a lot of
+   // bin merges like on a GPU then all of those don't need to care about aCounts and aWeights.
    const UIntMain* pCounts = aCounts;
    const FloatPrecomp* pWeights = aWeights;
 
