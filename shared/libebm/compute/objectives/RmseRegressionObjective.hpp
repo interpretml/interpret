@@ -207,7 +207,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          }
          int i;
          if(bFixedSizePack) {
-            i = 0;
+            i = cItemsPerBitPack - 1;
             cShift = cShiftReset;
          }
          while(true) {
@@ -239,8 +239,8 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
             } else {
                cShift -= cBitsPerItemMax;
                if(bFixedSizePack) {
-                  ++i;
-                  if(cItemsPerBitPack <= i) {
+                  --i;
+                  if(i < 0) {
                      break;
                   }
                } else {
