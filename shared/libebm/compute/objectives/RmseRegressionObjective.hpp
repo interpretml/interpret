@@ -116,12 +116,15 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       static_assert(!bDisableApprox, "Approximations cannot be disabled on RMSE since there are none on RMSE");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
+      static constexpr bool bDynamicPack = k_cItemsPerBitPackDynamic == cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % size_t{TFloat::k_cSIMDPack});
+      EBM_ASSERT(bCompilerZeroDimensional ||
+            0 == pData->m_cSamples % static_cast<size_t>((bDynamicPack ? 1 : cCompilerPack) * TFloat::k_cSIMDPack));
       EBM_ASSERT(nullptr == pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
@@ -239,7 +242,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       } while(pGradientsEnd != pGradient);
 
       if(bValidation) {
-         pData->m_metricOut = static_cast<double>(Sum(metricSum));
+         pData->m_metricOut += static_cast<double>(Sum(metricSum));
       }
    }
 };

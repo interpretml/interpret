@@ -891,6 +891,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_aWeights = nullptr;
          data.m_aSampleScores = pSubset->GetSampleScores();
          data.m_aGradientsAndHessians = pSubset->GetGradHess();
+         data.m_metricOut = 0.0;
          const ErrorEbm error = pSubset->ObjectiveApplyUpdate(&data);
          if(Error_None != error) {
             return error;

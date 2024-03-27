@@ -156,6 +156,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                data.m_aWeights = nullptr;
                data.m_aSampleScores = pSubset->GetSampleScores();
                data.m_aGradientsAndHessians = pSubset->GetGradHess();
+               data.m_metricOut = 0.0;
                error = pSubset->ObjectiveApplyUpdate(&data);
                if(Error_None != error) {
                   return error;
@@ -205,6 +206,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                data.m_aWeights = pSubset->GetInnerBag(0)->GetWeights();
                data.m_aSampleScores = pSubset->GetSampleScores();
                data.m_aGradientsAndHessians = pSubset->GetGradHess();
+               data.m_metricOut = 0.0;
                error = pSubset->ObjectiveApplyUpdate(&data);
                if(Error_None != error) {
                   return error;

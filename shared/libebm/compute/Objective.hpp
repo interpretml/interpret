@@ -97,8 +97,54 @@ template<typename TObjective,
       size_t cCompilerScores,
       int cCompilerPack>
 struct BitPackObjective final {
-   GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(
+         const Objective* const pObjective, ApplyUpdateBridge* const pData) {
       if(cCompilerPack == pData->m_cPack) {
+         size_t cSamples = pData->m_cSamples;
+         const size_t cRemnants =
+               cSamples % static_cast<size_t>(cCompilerPack * TObjective::TFloatInternal::k_cSIMDPack);
+         if(0 != cRemnants) {
+            pData->m_cSamples = cRemnants;
+
+            DoneBitpacking<TObjective,
+                  bValidation,
+                  bWeight,
+                  bHessian,
+                  bDisableApprox,
+                  cCompilerScores,
+                  k_cItemsPerBitPackDynamic>(pObjective, pData);
+
+            cSamples -= cRemnants;
+            if(0 == cSamples) {
+               return;
+            }
+            pData->m_cSamples = cSamples;
+
+            if(bWeight) {
+               pData->m_aWeights =
+                     IndexByte(pData->m_aWeights, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
+            }
+            pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
+                  sizeof(typename TObjective::TFloatInternal::T) * (bHessian ? size_t{2} : size_t{1}) *
+                        cCompilerScores * cRemnants);
+            pData->m_aPacked = IndexByte(pData->m_aPacked,
+                  sizeof(typename TObjective::TFloatInternal::TInt::T) * TObjective::TFloatInternal::TInt::k_cSIMDPack);
+
+            if(!TObjective::k_bRmse) {
+               constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
+               if(bClassification) {
+                  // targets are integers
+                  pData->m_aTargets =
+                        IndexByte(pData->m_aTargets, sizeof(typename TObjective::TFloatInternal::TInt::T) * cRemnants);
+               } else {
+                  // targets are floats
+                  pData->m_aTargets = 
+                        IndexByte(pData->m_aTargets, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
+               }
+               pData->m_aSampleScores = IndexByte(pData->m_aSampleScores,
+                     sizeof(typename TObjective::TFloatInternal::T) * cCompilerScores * cRemnants);
+            }
+         }
          DoneBitpacking<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, cCompilerPack>(
                pObjective, pData);
       } else {
@@ -127,7 +173,8 @@ struct BitPackObjective<TObjective,
       cCompilerScores,
       k_cItemsPerBitPackDynamic>
       final {
-   GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(
+         const Objective* const pObjective, ApplyUpdateBridge* const pData) {
       DoneBitpacking<TObjective,
             bValidation,
             bWeight,
@@ -479,12 +526,15 @@ struct Objective : public Registrable {
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
+      static constexpr bool bDynamicPack = k_cItemsPerBitPackDynamic == cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % size_t{TFloat::k_cSIMDPack});
+      EBM_ASSERT(bCompilerZeroDimensional ||
+            0 == pData->m_cSamples % static_cast<size_t>((bDynamicPack ? 1 : cCompilerPack) * TFloat::k_cSIMDPack));
       EBM_ASSERT(nullptr != pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aTargets);
@@ -615,7 +665,7 @@ struct Objective : public Registrable {
       } while(pSampleScoresEnd != pSampleScore);
 
       if(bValidation) {
-         pData->m_metricOut = static_cast<double>(Sum(metricSum));
+         pData->m_metricOut += static_cast<double>(Sum(metricSum));
       }
    }
 

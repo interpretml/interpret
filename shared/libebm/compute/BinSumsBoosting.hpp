@@ -466,7 +466,7 @@ template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, i
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
       if(cCompilerPack == pParams->m_cPack) {
          size_t cSamples = pParams->m_cSamples;
-         const size_t cRemnants = cSamples % static_cast<size_t>(cCompilerPack * TFloat::TInt::k_cSIMDPack);
+         const size_t cRemnants = cSamples % static_cast<size_t>(cCompilerPack * TFloat::k_cSIMDPack);
          if(0 != cRemnants) {
             pParams->m_cSamples = cRemnants;
             BinSumsBoostingInternal<TFloat, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(pParams);

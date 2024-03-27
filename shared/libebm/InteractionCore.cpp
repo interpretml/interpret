@@ -556,6 +556,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_aPacked = nullptr;
             data.m_aWeights = nullptr;
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
+            data.m_metricOut = 0.0;
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
             error = pSubset->ObjectiveApplyUpdate(&data);
@@ -645,6 +646,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_aPacked = nullptr;
             data.m_aWeights = nullptr;
             data.m_aGradientsAndHessians = pSubset->GetGradHess();
+            data.m_metricOut = 0.0;
             // this is a kind of hack (a good one) where we are sending in an update of all zeros in order to
             // reuse the same code that we use for boosting in order to generate our gradients and hessians
             error = pSubset->ObjectiveApplyUpdate(&data);
