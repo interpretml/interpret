@@ -99,12 +99,7 @@ template<typename TObjective,
 struct BitPackObjective final {
    GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
       if(cCompilerPack == pData->m_cPack) {
-         DoneBitpacking<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores, cCompilerPack>(
+         DoneBitpacking<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores, cCompilerPack>(
                pObjective, pData);
       } else {
          BitPackObjective<TObjective,
@@ -133,13 +128,13 @@ struct BitPackObjective<TObjective,
       k_cItemsPerBitPackDynamic>
       final {
    GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-       DoneBitpacking<TObjective,
-             bValidation,
-             bWeight,
-             bHessian,
-             bDisableApprox,
-             cCompilerScores,
-             k_cItemsPerBitPackDynamic>(pObjective, pData);
+      DoneBitpacking<TObjective,
+            bValidation,
+            bWeight,
+            bHessian,
+            bDisableApprox,
+            cCompilerScores,
+            k_cItemsPerBitPackDynamic>(pObjective, pData);
    }
 };
 
@@ -180,7 +175,8 @@ template<typename TObjective,
       bool bHessian,
       bool bDisableApprox,
       size_t cCompilerScores,
-      typename std::enable_if<1 != cCompilerScores || bDisableApprox || AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
+      typename std::enable_if<1 != cCompilerScores || bDisableApprox ||
+                  AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
             int>::type = 0>
 GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
       const Objective* const pObjective, ApplyUpdateBridge* const pData) {
@@ -203,7 +199,6 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
             k_cItemsPerBitPackDynamic>(pObjective, pData);
    }
 }
-
 
 template<typename TObjective,
       bool bValidation,
@@ -393,12 +388,7 @@ struct Objective : public Registrable {
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
       if(k_cItemsPerBitPackNone == pData->m_cPack) {
          // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               k_dynamicScores>(pData);
+         return OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(pData);
       } else {
          return CountScores<TObjective,
                bValidation,
@@ -419,12 +409,9 @@ struct Objective : public Registrable {
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
          if(cCompilerScores == pData->m_cScores) {
-            return pObjective->OperatorApplyUpdate<TObjective,
-                  bValidation,
-                  bWeight,
-                  bHessian,
-                  bDisableApprox,
-                  cCompilerScores>(pData);
+            return pObjective
+                  ->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+                        pData);
          } else {
             return CountScores < TObjective, bValidation, bWeight, bHessian, bDisableApprox,
                    k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores :
@@ -435,12 +422,9 @@ struct Objective : public Registrable {
    template<typename TObjective, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox>
    struct CountScores<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-         return pObjective->OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               k_dynamicScores>(pData);
+         return pObjective
+               ->OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>(
+                     pData);
       }
    };
 
@@ -451,12 +435,9 @@ struct Objective : public Registrable {
          bool bDisableApprox,
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED ErrorEbm OperatorApplyUpdate(ApplyUpdateBridge* const pData) const {
-      return TObjective::TFloatInternal::template OperatorApplyUpdate<TObjective,
-            bValidation,
-            bWeight,
-            bHessian,
-            bDisableApprox,
-            cCompilerScores>(this, pData);
+      return TObjective::TFloatInternal::
+            template OperatorApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+                  this, pData);
    }
 
  protected:
