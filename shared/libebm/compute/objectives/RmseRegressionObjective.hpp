@@ -116,15 +116,15 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       static_assert(!bDisableApprox, "Approximations cannot be disabled on RMSE since there are none on RMSE");
 
       static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bDynamicPack = k_cItemsPerBitPackDynamic == cCompilerPack;
+      static constexpr bool bFixedSizePack =
+            k_cItemsPerBitPackNone != cCompilerPack && k_cItemsPerBitPackDynamic != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
       EBM_ASSERT(1 <= pData->m_cSamples);
       EBM_ASSERT(0 == pData->m_cSamples % size_t{TFloat::k_cSIMDPack});
-      EBM_ASSERT(bCompilerZeroDimensional ||
-            0 == pData->m_cSamples % static_cast<size_t>((bDynamicPack ? 1 : cCompilerPack) * TFloat::k_cSIMDPack));
+      EBM_ASSERT(0 == pData->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
       EBM_ASSERT(nullptr == pData->m_aSampleScores);
       EBM_ASSERT(1 == pData->m_cScores);
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
@@ -147,10 +147,11 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
 
       TFloat updateScore;
 
+      int cItemsPerBitPack;
       if(bCompilerZeroDimensional) {
          updateScore = aUpdateTensorScores[0];
       } else {
-         const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+         cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
          EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -163,9 +164,11 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         cShift = static_cast<int>(
-                        ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-               cBitsPerItemMax;
+         if(!bFixedSizePack) {
+            cShift = static_cast<int>(
+                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+                  cBitsPerItemMax;
+         }
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
@@ -202,6 +205,11 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
+         int i;
+         if(bFixedSizePack) {
+            i = 0;
+            cShift = cShiftReset;
+         }
          while(true) {
             if(!bCompilerZeroDimensional) {
                const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
@@ -230,15 +238,24 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
                }
             } else {
                cShift -= cBitsPerItemMax;
-               if(cShift < 0) {
-                  break;
+               if(bFixedSizePack) {
+                  ++i;
+                  if(cItemsPerBitPack <= i) {
+                     break;
+                  }
+               } else {
+                  if(cShift < 0) {
+                     break;
+                  }
                }
             }
          }
          if(bCompilerZeroDimensional) {
             break;
          }
-         cShift = cShiftReset;
+         if(!bFixedSizePack) {
+            cShift = cShiftReset;
+         }
       } while(pGradientsEnd != pGradient);
 
       if(bValidation) {
