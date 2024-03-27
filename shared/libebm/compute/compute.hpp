@@ -27,7 +27,7 @@ inline constexpr static int GetNextBitPack(const int cItemsBitPackedPrev, const 
 
 template<typename T>
 inline constexpr static int GetFirstBitPack(int cItemsPerBitPackMax, const int cItemsPerBitPackMin) noexcept {
-   return GetNextBitPack<T>(cItemsPerBitPackMax + 1, cItemsPerBitPackMin);
+   return GetNextBitPack<T>(EbmMin(cItemsPerBitPackMax, COUNT_BITS(T)) + 1, cItemsPerBitPackMin);
 }
 
 template<typename T, typename U, U multiplicator, int shiftEnd, int shift> struct MultiplierInternal final {

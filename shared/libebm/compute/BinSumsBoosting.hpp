@@ -19,8 +19,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-static constexpr int k_cItemsPerBitPackBoostingMin = 2;
-static constexpr int k_cItemsPerBitPackBoostingMax = 32;
+static constexpr int k_cItemsPerBitPackBoostingMax = 64;
+static constexpr int k_cItemsPerBitPackBoostingMin = 1;
 
 template<typename TFloat,
       bool bHessian,
