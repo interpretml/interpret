@@ -87,6 +87,62 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void DoneBitpacking(
                pData);
 }
 
+// in our current format cCompilerScores will always be 1, but just in case we change our code to allow
+// for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
+template<typename TObjective,
+      bool bValidation,
+      bool bWeight,
+      bool bHessian,
+      bool bDisableApprox,
+      size_t cCompilerScores,
+      int cCompilerPack>
+struct BitPackObjective final {
+   GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
+      if(cCompilerPack == pData->m_cPack) {
+         DoneBitpacking<TObjective,
+               bValidation,
+               bWeight,
+               bHessian,
+               bDisableApprox,
+               cCompilerScores, cCompilerPack>(
+               pObjective, pData);
+      } else {
+         BitPackObjective<TObjective,
+               bValidation,
+               bWeight,
+               bHessian,
+               bDisableApprox,
+               cCompilerScores,
+               GetNextBitPack<typename TObjective::TFloatInternal::TInt::T>(
+                     cCompilerPack, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
+      }
+   }
+};
+template<typename TObjective,
+      bool bValidation,
+      bool bWeight,
+      bool bHessian,
+      bool bDisableApprox,
+      size_t cCompilerScores>
+struct BitPackObjective<TObjective,
+      bValidation,
+      bWeight,
+      bHessian,
+      bDisableApprox,
+      cCompilerScores,
+      k_cItemsPerBitPackDynamic>
+      final {
+   GPU_DEVICE INLINE_ALWAYS static void Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
+       DoneBitpacking<TObjective,
+             bValidation,
+             bWeight,
+             bHessian,
+             bDisableApprox,
+             cCompilerScores,
+             k_cItemsPerBitPackDynamic>(pObjective, pData);
+   }
+};
+
 template<typename TObjective,
       bool bValidation,
       bool bWeight,
@@ -108,13 +164,14 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
             cCompilerScores,
             k_cItemsPerBitPackNone>(pObjective, pData);
    } else {
-      DoneBitpacking<TObjective,
+      BitPackObjective<TObjective,
             bValidation,
             bWeight,
             bHessian,
             bDisableApprox,
             cCompilerScores,
-            k_cItemsPerBitPackDynamic>(pObjective, pData);
+            GetFirstBitPack<typename TObjective::TFloatInternal::TInt::T>(
+                  TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
    }
 }
 template<typename TObjective,
@@ -386,134 +443,6 @@ struct Objective : public Registrable {
                k_dynamicScores>(pData);
       }
    };
-
-#ifdef NEVER
-   template<typename TObjective,
-         bool bValidation,
-         bool bWeight,
-         bool bHessian,
-         bool bDisableApprox,
-         size_t cCompilerScores,
-         typename std::enable_if<!(bDisableApprox || AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone),
-               int>::type = 0>
-   INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge* const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores,
-               k_cItemsPerBitPackNone>(pData);
-      } else {
-         // TODO: we're not currently getting much benefit from having a compile sized bitpack.  We benefit a little
-         //       from having compile time constants as this frees registers.  The big win that we want is to
-         //       eliminate the loop that shifts and extracts the bits and instead unroll it so that if there is
-         //       a bitpack of 6 items, the compiler makes 6 copies of the code within the loop and does not have
-         //       a loop that will cause branch mispredictions. The reason the compiler cannot unroll the loop
-         //       by default is that our first loop operates with a non-identical number of loops, so for example
-         //       if we have 6 items bitpacked, but we have 15 samples, the first loop will be loaded with the first
-         //       3 items, then all subsequent loops will be 6.  If we wanted to unroll the loop, we'd have to
-         //       call the ApplyUpdate function twice.  The first call would be with the bitpack set to
-         //       k_cItemsPerBitPackDynamic so that it can do the 3 iterations.  Then we would need to change the
-         //       code so that if the compile time bitpack wasn't k_cItemsPerBitPackDynamic then it assumed the
-         //       number of samples was divisible by the bitpack.  The we can change the code such that the compiler
-         //       can optimize away the loop
-
-         return BitPack<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores,
-               GetFirstBitPack<typename TObjective::TFloatInternal::TInt::T>(
-                     TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(this, pData);
-      }
-   }
-   template<typename TObjective,
-         bool bValidation,
-         bool bWeight,
-         bool bHessian,
-         bool bDisableApprox,
-         size_t cCompilerScores,
-         typename std::enable_if<bDisableApprox || AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
-               int>::type = 0>
-   INLINE_RELEASE_TEMPLATED ErrorEbm PackApplyUpdate(ApplyUpdateBridge* const pData) const {
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores,
-               k_cItemsPerBitPackNone>(pData);
-      } else {
-         return OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores,
-               k_cItemsPerBitPackDynamic>(pData);
-      }
-   }
-
-   // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
-   // for special casing multiclass with compile time unrolling of the compiler pack, leave cCompilerScores here
-   template<typename TObjective,
-         bool bValidation,
-         bool bWeight,
-         bool bHessian,
-         bool bDisableApprox,
-         size_t cCompilerScores,
-         int cCompilerPack>
-   struct BitPack final {
-      INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-         if(cCompilerPack == pData->m_cPack) {
-            return pObjective->OperatorApplyUpdate<TObjective,
-                  bValidation,
-                  bWeight,
-                  bHessian,
-                  bDisableApprox,
-                  cCompilerScores,
-                  cCompilerPack>(pData);
-         } else {
-            return BitPack<TObjective,
-                  bValidation,
-                  bWeight,
-                  bHessian,
-                  bDisableApprox,
-                  cCompilerScores,
-                  GetNextBitPack<typename TObjective::TFloatInternal::TInt::T>(
-                        cCompilerPack, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
-         }
-      }
-   };
-   template<typename TObjective,
-         bool bValidation,
-         bool bWeight,
-         bool bHessian,
-         bool bDisableApprox,
-         size_t cCompilerScores>
-   struct BitPack<TObjective,
-         bValidation,
-         bWeight,
-         bHessian,
-         bDisableApprox,
-         cCompilerScores,
-         k_cItemsPerBitPackDynamic>
-         final {
-      INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-         return pObjective->OperatorApplyUpdate<TObjective,
-               bValidation,
-               bWeight,
-               bHessian,
-               bDisableApprox,
-               cCompilerScores,
-               k_cItemsPerBitPackDynamic>(pData);
-      }
-   };
-#endif
 
    template<typename TObjective,
          bool bValidation,
