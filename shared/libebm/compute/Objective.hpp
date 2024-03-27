@@ -92,7 +92,10 @@ template<typename TObjective,
       bool bWeight,
       bool bHessian,
       bool bDisableApprox,
-      size_t cCompilerScores>
+      size_t cCompilerScores,
+      typename std::enable_if<!(1 != cCompilerScores || bDisableApprox ||
+                                    AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone),
+            int>::type = 0>
 GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
       const Objective* const pObjective, ApplyUpdateBridge* const pData) {
    if(k_cItemsPerBitPackNone == pData->m_cPack) {
@@ -114,6 +117,36 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
             k_cItemsPerBitPackDynamic>(pObjective, pData);
    }
 }
+template<typename TObjective,
+      bool bValidation,
+      bool bWeight,
+      bool bHessian,
+      bool bDisableApprox,
+      size_t cCompilerScores,
+      typename std::enable_if<1 != cCompilerScores || bDisableApprox || AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
+            int>::type = 0>
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
+      const Objective* const pObjective, ApplyUpdateBridge* const pData) {
+   if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      // this needs to be special cased because otherwise we would inject comparisons into the dynamic version
+      DoneBitpacking<TObjective,
+            bValidation,
+            bWeight,
+            bHessian,
+            bDisableApprox,
+            cCompilerScores,
+            k_cItemsPerBitPackNone>(pObjective, pData);
+   } else {
+      DoneBitpacking<TObjective,
+            bValidation,
+            bWeight,
+            bHessian,
+            bDisableApprox,
+            cCompilerScores,
+            k_cItemsPerBitPackDynamic>(pObjective, pData);
+   }
+}
+
 
 template<typename TObjective,
       bool bValidation,
