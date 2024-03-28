@@ -718,6 +718,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
             }
 
             size_t cBytesPerFastBinMax = 0;
+            size_t cBytesParallelBoostTrainingMax = 0;
 
             if(0 != cTrainingSamples) {
                DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
@@ -742,6 +743,20 @@ ErrorEbm BoosterCore::Create(void* const rng,
                      }
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
+
+                  if(1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
+                     if(IsMultiplyError(
+                              cBytesPerFastBin, cTensorBinsMax, pSubset->GetObjectiveWrapper()->m_cSIMDPack)) {
+                        cBytesParallelBoostTrainingMax = PARALLEL_BINS_BYTES_MAX;
+                     } else {
+                        const size_t cBytesParallelBoostTraining =
+                              cBytesPerFastBin * cTensorBinsMax * pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+
+                        cBytesParallelBoostTrainingMax =
+                              EbmMax(cBytesParallelBoostTrainingMax, cBytesParallelBoostTraining);
+                     }
+                  }
+
                   ++pSubset;
                } while(pSubsetsEnd != pSubset);
             }
@@ -777,7 +792,8 @@ ErrorEbm BoosterCore::Create(void* const rng,
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBinMax, cTensorBinsMax)");
                return Error_OutOfMemory;
             }
-            pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax * cTensorBinsMax;
+            pBoosterCore->m_cBytesFastBins =
+                  EbmMax(cBytesParallelBoostTrainingMax, cBytesPerFastBinMax * cTensorBinsMax);
 
             if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");

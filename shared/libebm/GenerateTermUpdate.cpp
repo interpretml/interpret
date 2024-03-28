@@ -783,19 +783,36 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             }
             EBM_ASSERT(!IsMultiplyError(cBytesPerFastBin, cTensorBins));
 
-            aFastBins->ZeroMem(cBytesPerFastBin, cTensorBins);
+            size_t cParallelTensorBins = cTensorBins;
+            bool bParallelBins = false;
+            const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+            if(1 != cSIMDPack) {
+               const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
+               if(cBytesParallel <= PARALLEL_BINS_BYTES_MAX) {
+                  // TODO: currently we only have optimized templated versions for single score non-collapsed tensors
+                  if(1 != cTensorBins && 1 == cScores) {
+                     // use parallel bins
+                     bParallelBins = true;
+                     cParallelTensorBins *= cSIMDPack;
+                  }
+               }
+            }
+
+            aFastBins->ZeroMem(cBytesPerFastBin, cParallelTensorBins);
 
             BinSumsBoostingBridge params;
+            params.m_bParallelBins = bParallelBins ? EBM_TRUE : EBM_FALSE;
             params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
             params.m_cScores = cScores;
             params.m_cPack = cPack;
             params.m_cSamples = pSubset->GetCountSamples();
+            params.m_cBytesFastBins = cBytesPerFastBin * cTensorBins;
             params.m_aGradientsAndHessians = pSubset->GetGradHess();
             params.m_aWeights = pSubset->GetInnerBag(iBag)->GetWeights();
             params.m_aPacked = pSubset->GetTermData(iTerm);
             params.m_aFastBins = aFastBins;
 #ifndef NDEBUG
-            params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cTensorBins);
+            params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cParallelTensorBins);
 #endif // NDEBUG
             error = pSubset->BinSumsBoosting(&params);
             if(Error_None != error) {
@@ -807,31 +824,39 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
             ++pSubset;
 
-            const UIntMain* aCounts = nullptr;
-            const FloatPrecomp* aWeights = nullptr;
-            if(pSubsetsEnd == pSubset) {
-               // the aCounts and aWeights tensors contain the final counts and weights, so when calling
-               // ConvertAddBin we only want to call it once with these tensors since otherwise they
-               // would be added multiple times
-               aCounts = TermInnerBag::GetCounts(
-                     size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
-               aWeights = TermInnerBag::GetWeights(
-                     size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
-            }
+            BinBase* pFastBins = aFastBins;
+            for(size_t i = 0; i < cSIMDPack; ++i) {
+               const UIntMain* aCounts = nullptr;
+               const FloatPrecomp* aWeights = nullptr;
+               if(pSubsetsEnd == pSubset && (!bParallelBins || i == cSIMDPack - 1)) {
+                  // the aCounts and aWeights tensors contain the final counts and weights, so when calling
+                  // ConvertAddBin we only want to call it once with these tensors since otherwise they
+                  // would be added multiple times
+                  aCounts = TermInnerBag::GetCounts(
+                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
+                  aWeights = TermInnerBag::GetWeights(
+                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
+               }
 
-            ConvertAddBin(cScores,
-                  pBoosterCore->IsHessian(),
-                  cTensorBins,
-                  bUInt64Src,
-                  bDoubleSrc,
-                  false,
-                  false,
-                  aFastBins,
-                  aCounts,
-                  aWeights,
-                  std::is_same<UIntMain, uint64_t>::value,
-                  std::is_same<FloatMain, double>::value,
-                  aMainBins);
+               ConvertAddBin(cScores,
+                     pBoosterCore->IsHessian(),
+                     cTensorBins,
+                     bUInt64Src,
+                     bDoubleSrc,
+                     false,
+                     false,
+                     pFastBins,
+                     aCounts,
+                     aWeights,
+                     std::is_same<UIntMain, uint64_t>::value,
+                     std::is_same<FloatMain, double>::value,
+                     aMainBins);
+
+               if(!bParallelBins) {
+                  break;
+               }
+               pFastBins = IndexBin(pFastBins, cBytesPerFastBin * cTensorBins);
+            }
          } while(pSubsetsEnd != pSubset);
 
          // TODO: we can exit here back to python to allow caller modification to our histograms

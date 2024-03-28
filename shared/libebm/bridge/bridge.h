@@ -25,6 +25,12 @@ typedef float FloatSmall;
 static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to contain UIntSmall");
 static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 
+
+// This is large enough that with 1024 bins using AVX512F that the entire 16 SIMD tensors can fit into memory
+// It is larger than most L1 caches, so some of it will need to go into L2, but even with a lot of threads which 
+// share the L2/L3 cache, I do not think it should exceed the full L2/L3 caches, so it shouldn't use main memory.
+#define PARALLEL_BINS_BYTES_MAX (STATIC_CAST(size_t, (131072)))
+
 struct ApplyUpdateBridge {
    size_t m_cScores;
    int m_cPack;
@@ -46,12 +52,14 @@ struct ApplyUpdateBridge {
 };
 
 struct BinSumsBoostingBridge {
+   BoolEbm m_bParallelBins;
    BoolEbm m_bHessian;
    size_t m_cScores;
 
    int m_cPack;
 
    size_t m_cSamples;
+   size_t m_cBytesFastBins;
    const void* m_aGradientsAndHessians; // float or double
    const void* m_aWeights; // float or double
    const void* m_aPacked; // uint64_t or uint32_t

@@ -23,6 +23,7 @@ static constexpr int k_cItemsPerBitPackBoostingMax = 64;
 static constexpr int k_cItemsPerBitPackBoostingMin = 1;
 
 template<typename TFloat,
+      bool bParallel,
       bool bCollapsed,
       bool bHessian,
       bool bWeight,
@@ -30,6 +31,8 @@ template<typename TFloat,
       int cCompilerPack,
       typename std::enable_if<bCollapsed, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
 
    // TODO: we can improve the zero dimensional scenario quite a bit because we know that all the scores added will
    // eventually be added into the same bin.  Instead of adding the gradients & hessians & weights & counts from
@@ -131,16 +134,202 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 }
 
 template<typename TFloat,
+      bool bParallel,
       bool bCollapsed,
       bool bHessian,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<!bCollapsed && 1 == cCompilerScores, int>::type = 0>
+      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
-   static_assert(1 == cCompilerScores,
-         "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
+   static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
+   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
+
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pParams);
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
+   EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
+   EBM_ASSERT(nullptr != pParams->m_aFastBins);
+   EBM_ASSERT(size_t{1} == pParams->m_cScores);
+#endif // GPU_COMPILE
+
+   const size_t cSamples = pParams->m_cSamples;
+
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, size_t{1}>();
+
+   const typename TFloat::T* pGradientAndHessian =
+         reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
+   const typename TFloat::T* const pGradientsAndHessiansEnd =
+         pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
+
+   static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
+         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
+
+   const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cItemsPerBitPack);
+   EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   int cShift;
+   if(!bFixedSizePack) {
+      cShift =
+            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+   }
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+
+   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+   const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
+
+   const typename TFloat::T* pWeight;
+   if(bWeight) {
+      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+   }
+
+   // The compiler is normally pretty good about optimizing multiplications into shifts when possible
+   // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
+   // even when the multiplication has a fixed compile time constant value that is a power of 2, so
+   // we manually convert the multiplications into shifts.
+   //
+   // We also have tried the Multiply templated function that is designed to convert multiplications
+   // into shifts, but using that templated function breaks the compiler optimization that unrolls
+   // the bitpacking loop.
+   //
+   constexpr static bool bSmall = 4 == cBytesPerBin;
+   constexpr static bool bMed = 8 == cBytesPerBin;
+   constexpr static bool bLarge = 16 == cBytesPerBin;
+   static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
+   constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
+   static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
+   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
+
+   const TFloat::TInt offsets =
+         TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
+
+   static constexpr ptrdiff_t k_offsetGrad =
+         Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad;
+   static constexpr ptrdiff_t k_offsetHess =
+         Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess;
+
+   typename TFloat::T* const pGrad = IndexByte(reinterpret_cast<typename TFloat::T*>(aBins), k_offsetGrad);
+   typename TFloat::T* pHess;
+   if(bHessian) {
+      pHess = IndexByte(reinterpret_cast<typename TFloat::T*>(aBins), static_cast<size_t>(k_offsetHess));
+   }
+
+   do {
+      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
+      // in this loop which we could do by allocating an extra item to the end of each memory region and throwing away
+      // the last one.  I think this won't have any effect since these loads are predictable loads and the CPU should
+      // already have them in cache but it's worth trying.  This optimization might destroy the loop unwinding we
+      // currently have the compiler doing where it removes the cShift loop and flattens those assembly instructions.
+
+      const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
+      pInputData += TFloat::TInt::k_cSIMDPack;
+      if(bFixedSizePack) {
+         // If we have a fixed sized cCompilerPack, then we previously made it so that in this call cSamples
+         // will divide perfectly into the available bitpacks.  This allows us to guarantee that the loop
+         // below will allways execute an identical number of times.  If the compiler is aware of this,
+         // and it knows how many times the loop below will execute, then it can eliminate the loop.
+         // To do this though, we need to set cShift to a value at the top of the loop instead of allowing
+         // it to be set above to a smaller value which can change after the first loop iteration.
+         // By setting it here, the compiler knows the value of cShift on each loop iteration.
+
+         // I've verified that on the Microsoft compiler, clang, and g++ this loop below optimizes away using the
+         // shifts below. For the binary classification Objective (InjectedApplyUpdate) I was not able
+         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler
+         // (clang and g++ work) and I think that was due to the
+         // amount of code within the loop rather than anything that was preventing the compiler to
+         // reason about the values of the variables within each loop iteration.  For RMSE, which
+         // has less code within the loop I was able to get it to optimize away the loop, but I had to
+         // add an additional index variable and decrement it by 1 each loop, so it seems we're right on
+         // the edge of complexity where the compiler will choose to do this.
+
+         cShift = cShiftReset;
+      }
+      do {
+         TFloat weight;
+         if(bWeight) {
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
+         }
+
+         TFloat gradient = TFloat::Load(pGradientAndHessian);
+         TFloat hessian;
+         if(bHessian) {
+            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         }
+         pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
+
+         if(bWeight) {
+            gradient *= weight;
+            if(bHessian) {
+               hessian *= weight;
+            }
+         }
+
+         const typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
+
+         // TODO: instead of loading the gradient and hessian as separate loads, it might be better to
+         // load the gradients and hessians as part as the same gather load because the CPU might
+         // be better at loading items from the same cache line, and also because it would reduce our
+         // memory by a factor of 2x since we could then handle two items in this loop sequentially
+         // The drawback is that we need to shuffle our indexes and gradient/hessians values that we get back
+
+         TFloat gradientBin = TFloat::Load<cFixedShift>(pGrad, iTensorBin);
+         TFloat hessianBin;
+         if(bHessian) {
+            hessianBin = TFloat::Load<cFixedShift>(pHess, iTensorBin);
+         }
+
+         gradientBin += gradient;
+         if(bHessian) {
+            hessianBin += hessian;
+         }
+
+         gradientBin.Store<cFixedShift>(pGrad, iTensorBin);
+         if(bHessian) {
+            hessianBin.Store<cFixedShift>(pHess, iTensorBin);
+         }
+
+         cShift -= cBitsPerItemMax;
+      } while(0 <= cShift);
+      if(!bFixedSizePack) {
+         cShift = cShiftReset;
+      }
+   } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+}
+
+template<typename TFloat,
+      bool bParallel,
+      bool bCollapsed,
+      bool bHessian,
+      bool bWeight,
+      size_t cCompilerScores,
+      int cCompilerPack,
+      typename std::enable_if<!bParallel && !bCollapsed && 1 == cCompilerScores, int>::type = 0>
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
    static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
@@ -203,11 +392,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    do {
-      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop in this loop
-      // which we could do by allocating an extra item to the end of each memory region and throwing away the last one.  I think
-      // this won't have any effect since these loads are predictable loads and the CPU should already have them in cache
-      // but it's worth trying.  This optimization might destroy the loop unwinding we currently have the compiler doing
-      // where it removes the cShift loop and flattens those assembly instructions.
+      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
+      // in this loop which we could do by allocating an extra item to the end of each memory region and throwing away
+      // the last one.  I think this won't have any effect since these loads are predictable loads and the CPU should
+      // already have them in cache but it's worth trying.  This optimization might destroy the loop unwinding we
+      // currently have the compiler doing where it removes the cShift loop and flattens those assembly instructions.
 
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
@@ -222,7 +411,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
          // I've verified that on the Microsoft compiler, clang, and g++ this loop below optimizes away using the
          // shifts below. For the binary classification Objective (InjectedApplyUpdate) I was not able
-         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler 
+         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler
          // (clang and g++ work) and I think that was due to the
          // amount of code within the loop rather than anything that was preventing the compiler to
          // reason about the values of the variables within each loop iteration.  For RMSE, which
@@ -328,6 +517,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 }
 
 template<typename TFloat,
+      bool bParallel,
       bool bCollapsed,
       bool bHessian,
       bool bWeight,
@@ -335,6 +525,8 @@ template<typename TFloat,
       int cCompilerPack,
       typename std::enable_if<!bCollapsed && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
 
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -484,7 +676,13 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores, int cCompilerPack>
+template<typename TFloat,
+      bool bParallel,
+      bool bCollapsed,
+      bool bHessian,
+      bool bWeight,
+      size_t cCompilerScores,
+      int cCompilerPack>
 struct BitPack final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
 
@@ -496,6 +694,7 @@ struct BitPack final {
          if(0 != cRemnants) {
             pParams->m_cSamples = cRemnants;
             BinSumsBoostingInternal<TFloat,
+                  bParallel,
                   bCollapsed,
                   bHessian,
                   bWeight,
@@ -515,9 +714,11 @@ struct BitPack final {
             pParams->m_aPacked =
                   IndexByte(pParams->m_aPacked, sizeof(typename TFloat::TInt::T) * TFloat::TInt::k_cSIMDPack);
          }
-         BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, cCompilerPack>(pParams);
+         BinSumsBoostingInternal<TFloat, bParallel, bCollapsed, bHessian, bWeight, cCompilerScores, cCompilerPack>(
+               pParams);
       } else {
          BitPack<TFloat,
+               bParallel,
                bCollapsed,
                bHessian,
                bWeight,
@@ -526,18 +727,26 @@ struct BitPack final {
       }
    }
 };
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
-struct BitPack<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined> final {
+template<typename TFloat, bool bParallel, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
+struct BitPack<TFloat, bParallel, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined>
+      final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
 
-      BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined>(
+      BinSumsBoostingInternal<TFloat,
+            bParallel,
+            bCollapsed,
+            bHessian,
+            bWeight,
+            cCompilerScores,
+            k_cItemsPerBitPackUndefined>(
             pParams);
    }
 };
 
 template<typename TFloat,
+      bool bParallel,
       bool bCollapsed,
       bool bHessian,
       bool bWeight,
@@ -545,6 +754,7 @@ template<typename TFloat,
       typename std::enable_if<!bCollapsed && 1 == cCompilerScores, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    BitPack<TFloat,
+         bParallel,
          bCollapsed,
          bHessian,
          bWeight,
@@ -552,42 +762,194 @@ INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* cons
          GetFirstBitPack<TFloat>(k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
 }
 template<typename TFloat,
+      bool bParallel,
       bool bCollapsed,
       bool bHessian,
       bool bWeight,
       size_t cCompilerScores,
       typename std::enable_if<bCollapsed || 1 != cCompilerScores, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
-   BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined>(
+   BinSumsBoostingInternal<TFloat,
+         bParallel,
+         bCollapsed,
+         bHessian,
+         bWeight,
+         cCompilerScores,
+         k_cItemsPerBitPackUndefined>(
          pParams);
 }
 
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
+template<typename TFloat, bool bParallel, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
 GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-   BitPackBoosting<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores>(pParams);
+   BitPackBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, cCompilerScores>(pParams);
 }
 
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
+template<typename TFloat, bool bParallel, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-   return TFloat::template OperatorBinSumsBoosting<bCollapsed, bHessian, bWeight, cCompilerScores>(pParams);
+   return TFloat::template OperatorBinSumsBoosting<bParallel, bCollapsed, bHessian, bWeight, cCompilerScores>(
+         pParams);
 }
 
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cPossibleScores>
+template<typename TFloat, bool bParallel, bool bCollapsed, bool bHessian, bool bWeight, size_t cPossibleScores>
 struct CountClassesBoosting final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
       if(cPossibleScores == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, cPossibleScores>(pParams);
+         return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, cPossibleScores>(
+               pParams);
       } else {
-         return CountClassesBoosting<TFloat, bCollapsed, bHessian, bWeight, cPossibleScores + 1>::Func(pParams);
+         return CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, cPossibleScores + 1>::Func(
+               pParams);
       }
    }
 };
-template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight>
-struct CountClassesBoosting<TFloat, bCollapsed, bHessian, bWeight, k_cCompilerScoresMax + 1> final {
+template<typename TFloat, bool bParallel, bool bCollapsed, bool bHessian, bool bWeight>
+struct CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_cCompilerScoresMax + 1> final {
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
-      return OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
+      return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
    }
 };
+
+template<typename TFloat, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(0 == PARALLEL_BINS_BYTES_MAX || !IsConvertError<typename TFloat::TInt::T>(PARALLEL_BINS_BYTES_MAX - 1), "PARALLEL_BINS_BYTES_MAX is too large");
+
+   EBM_ASSERT(k_cItemsPerBitPackUndefined != pParams->m_cPack); // excluded in caller
+   static constexpr bool bCollapsed = false;
+   EBM_ASSERT(1 == pParams->m_cScores); // excluded in caller
+   if(EBM_FALSE != pParams->m_bHessian) {
+      static constexpr bool bHessian = true;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+      } else {
+         static constexpr bool bWeight = false;
+         return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+      }
+   } else {
+      static constexpr bool bHessian = false;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+      } else {
+         static constexpr bool bWeight = false;
+         return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+      }
+   }
+}
+
+template<typename TFloat, bool bParallel, typename std::enable_if<!bParallel, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
+   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+      static constexpr bool bCollapsed = true;
+      if(EBM_FALSE != pParams->m_bHessian) {
+         static constexpr bool bHessian = true;
+         if(nullptr != pParams->m_aWeights) {
+            static constexpr bool bWeight = true;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // muticlass, but for a collapsed so don't optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         } else {
+            static constexpr bool bWeight = false;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // muticlass, but for a collapsed so don't optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         }
+      } else {
+         static constexpr bool bHessian = false;
+         if(nullptr != pParams->m_aWeights) {
+            static constexpr bool bWeight = true;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         } else {
+            static constexpr bool bWeight = false;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         }
+      }
+   } else {
+      static constexpr bool bCollapsed = false;
+      if(EBM_FALSE != pParams->m_bHessian) {
+         static constexpr bool bHessian = true;
+         if(nullptr != pParams->m_aWeights) {
+            static constexpr bool bWeight = true;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // muticlass
+               return CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_cCompilerScoresStart>::
+                     Func(pParams);
+            }
+         } else {
+            static constexpr bool bWeight = false;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // muticlass
+               return CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_cCompilerScoresStart>::
+                     Func(pParams);
+            }
+         }
+      } else {
+         static constexpr bool bHessian = false;
+         if(nullptr != pParams->m_aWeights) {
+            static constexpr bool bWeight = true;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         } else {
+            static constexpr bool bWeight = false;
+            if(size_t{1} == pParams->m_cScores) {
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
+            } else {
+               // Odd: gradient multiclass. Allow it, but do not optimize for it
+               return OperatorBinSumsBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_dynamicScores>(
+                     pParams);
+            }
+         }
+      }
+   }
+}
+
+template<typename TFloat, typename std::enable_if<1 == TFloat::k_cSIMDPack, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
+   EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
+   static constexpr bool bParallel = false;
+   return DoneParallel<TFloat, bParallel>(pParams);
+}
+
+template<typename TFloat, typename std::enable_if<1 != TFloat::k_cSIMDPack, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
+   if(pParams->m_bParallelBins) {
+      static constexpr bool bParallel = true;
+      return DoneParallel<TFloat, bParallel>(pParams);
+   } else {
+      static constexpr bool bParallel = false;
+      return DoneParallel<TFloat, bParallel>(pParams);
+   }
+}
 
 template<typename TFloat>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* const pParams) {
@@ -603,91 +965,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* 
 
    EBM_ASSERT(1 <= pParams->m_cScores);
 
-   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
-      static constexpr bool bCollapsed = true;
-      if(EBM_FALSE != pParams->m_bHessian) {
-         static constexpr bool bHessian = true;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass, but for a collapsed so don't optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass, but for a collapsed so don't optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         }
-      } else {
-         static constexpr bool bHessian = false;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         }
-      }
-   } else {
-      static constexpr bool bCollapsed = false;
-      if(EBM_FALSE != pParams->m_bHessian) {
-         static constexpr bool bHessian = true;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass
-               error =
-                     CountClassesBoosting<TFloat, bCollapsed, bHessian, bWeight, k_cCompilerScoresStart>::Func(pParams);
-            }
-         } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass
-               error =
-                     CountClassesBoosting<TFloat, bCollapsed, bHessian, bWeight, k_cCompilerScoresStart>::Func(pParams);
-            }
-         }
-      } else {
-         static constexpr bool bHessian = false;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               error = OperatorBinSumsBoosting<TFloat, bCollapsed, bHessian, bWeight, k_dynamicScores>(pParams);
-            }
-         }
-      }
-   }
+   error = CheckParallel<TFloat>(pParams);
 
    LOG_0(Trace_Verbose, "Exited BinSumsBoosting");
 
