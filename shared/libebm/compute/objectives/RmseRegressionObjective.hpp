@@ -116,7 +116,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
       static_assert(!bDisableApprox, "Approximations cannot be disabled on RMSE since there are none on RMSE");
 
-      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);

@@ -123,7 +123,7 @@ struct BitPackObjective final {
                   bHessian,
                   bDisableApprox,
                   cCompilerScores,
-                  k_cItemsPerBitPackDynamic>(pObjective, pData);
+                  k_cItemsPerBitPackUndefined>(pObjective, pData);
 
             cSamples -= cRemnants;
             if(0 == cSamples) {
@@ -192,7 +192,7 @@ struct BitPackObjective<TObjective,
       bHessian,
       bDisableApprox,
       cCompilerScores,
-      k_cItemsPerBitPackDynamic>
+      k_cItemsPerBitPackUndefined>
       final {
    GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) {
@@ -206,7 +206,7 @@ struct BitPackObjective<TObjective,
             bHessian,
             bDisableApprox,
             cCompilerScores,
-            k_cItemsPerBitPackDynamic>(pObjective, pData);
+            k_cItemsPerBitPackUndefined>(pObjective, pData);
    }
 };
 
@@ -251,7 +251,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
          bHessian,
          bDisableApprox,
          cCompilerScores,
-         k_cItemsPerBitPackDynamic>(pObjective, pData);
+         k_cItemsPerBitPackUndefined>(pObjective, pData);
 }
 
 template<typename TObjective,
@@ -571,7 +571,7 @@ struct Objective : public Registrable {
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
-      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
@@ -723,7 +723,7 @@ struct Objective : public Registrable {
    INLINE_RELEASE_TEMPLATED ErrorEbm ParentApplyUpdate(ApplyUpdateBridge* const pData) const {
       static_assert(
             IsEdgeObjective<TObjective>(), "TObjective must inherit from one of the children of the Objective class");
-      if(k_cItemsPerBitPackNone == pData->m_cPack) {
+      if(k_cItemsPerBitPackUndefined == pData->m_cPack) {
          return OptionsApplyUpdate<TObjective, true>(pData);
       } else {
          return OptionsApplyUpdate<TObjective, false>(pData);
@@ -1106,7 +1106,7 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
 
 #define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION)                                          \
    OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                                    \
-         __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, false, k_cItemsPerBitPackDynamic, k_cItemsPerBitPackDynamic)  \
+         __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, false, k_cItemsPerBitPackUndefined, k_cItemsPerBitPackUndefined)  \
    OBJECTIVE_TEMPLATE_BOILERPLATE
 
 } // namespace DEFINED_ZONE_NAME

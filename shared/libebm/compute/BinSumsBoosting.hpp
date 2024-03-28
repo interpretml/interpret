@@ -141,7 +141,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    static_assert(1 == cCompilerScores,
          "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
-   static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
+   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
@@ -500,7 +500,7 @@ struct BitPack final {
                   bHessian,
                   bWeight,
                   cCompilerScores,
-                  k_cItemsPerBitPackDynamic>(pParams);
+                  k_cItemsPerBitPackUndefined>(pParams);
 
             cSamples -= cRemnants;
             if(0 == cSamples) {
@@ -527,12 +527,12 @@ struct BitPack final {
    }
 };
 template<typename TFloat, bool bCollapsed, bool bHessian, bool bWeight, size_t cCompilerScores>
-struct BitPack<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic> final {
+struct BitPack<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined> final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
 
-      BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
+      BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined>(
             pParams);
    }
 };
@@ -558,7 +558,7 @@ template<typename TFloat,
       size_t cCompilerScores,
       typename std::enable_if<bCollapsed || 1 != cCompilerScores, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
-   BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackDynamic>(
+   BinSumsBoostingInternal<TFloat, bCollapsed, bHessian, bWeight, cCompilerScores, k_cItemsPerBitPackUndefined>(
          pParams);
 }
 
@@ -603,7 +603,7 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* 
 
    EBM_ASSERT(1 <= pParams->m_cScores);
 
-   if(k_cItemsPerBitPackNone == pParams->m_cPack) {
+   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
       static constexpr bool bCollapsed = true;
       if(EBM_FALSE != pParams->m_bHessian) {
          static constexpr bool bHessian = true;

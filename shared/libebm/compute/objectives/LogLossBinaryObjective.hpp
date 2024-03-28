@@ -75,7 +75,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
-      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);

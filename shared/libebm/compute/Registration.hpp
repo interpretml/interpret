@@ -268,8 +268,8 @@ class RegistrationPack final : public Registration {
                   "This allows us to memcpy the struct to a GPU or the network.");
 
             static_assert(1 <= TRegistrable<TFloat>::k_cItemsPerBitPackMin ||
-                        (k_cItemsPerBitPackDynamic == TRegistrable<TFloat>::k_cItemsPerBitPackMin &&
-                              k_cItemsPerBitPackDynamic == TRegistrable<TFloat>::k_cItemsPerBitPackMax),
+                        (k_cItemsPerBitPackUndefined == TRegistrable<TFloat>::k_cItemsPerBitPackMin &&
+                              k_cItemsPerBitPackUndefined == TRegistrable<TFloat>::k_cItemsPerBitPackMax),
                   "k_cItemsPerBitPackMin must be positive and can only be zero if both min and max are zero (which "
                   "means we only use dynamic)");
             static_assert(TRegistrable<TFloat>::k_cItemsPerBitPackMin <= TRegistrable<TFloat>::k_cItemsPerBitPackMax,

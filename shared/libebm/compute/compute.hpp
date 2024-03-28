@@ -21,7 +21,7 @@ inline constexpr static int GetNextBitPack(const int cItemsBitPackedPrev, const 
    // we can have bit packs of -1, but this function should never see that value
    // this function should also never see the dynamic value 0 because we should terminate the chain at that point
    return COUNT_BITS(T) / ((COUNT_BITS(T) / cItemsBitPackedPrev) + 1) < cItemsPerBitPackMin ?
-         k_cItemsPerBitPackDynamic :
+         k_cItemsPerBitPackUndefined :
          COUNT_BITS(T) / ((COUNT_BITS(T) / cItemsBitPackedPrev) + 1);
 }
 

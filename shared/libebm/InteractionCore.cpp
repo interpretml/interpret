@@ -97,7 +97,7 @@ static bool CheckInteractionRestrictionsInternal(
       // the tensor and by the cBytesPerBin value.
       //
       // Unlike in boosting, for interactions we use the objective code only to initialize, and for that
-      // we do not pass in the binned feature index, but instead pass in k_cItemsPerBitPackNone, so we do not
+      // we do not pass in the binned feature index, but instead pass in k_cItemsPerBitPackUndefined, so we do not
       // need to restrict ourselves to positive numbers and we do not care about the number of bins there.
 
       return true;
@@ -548,7 +548,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             } while(pTargetToEnd != pTargetTo);
 
             data.m_cScores = cScores;
-            data.m_cPack = k_cItemsPerBitPackNone;
+            data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
             data.m_bDisableApprox = IsDisableApprox();
             data.m_bValidation = EBM_FALSE;
@@ -638,7 +638,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
 
             EBM_ASSERT(1 == cScores);
             data.m_cScores = 1;
-            data.m_cPack = k_cItemsPerBitPackNone;
+            data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
             data.m_bDisableApprox = IsDisableApprox();
             data.m_bValidation = EBM_FALSE;

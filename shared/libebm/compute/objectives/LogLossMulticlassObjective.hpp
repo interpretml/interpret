@@ -11,8 +11,8 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          MINIMIZE_METRIC,
          Link_mlogit,
          true,
-         k_cItemsPerBitPackDynamic,
-         k_cItemsPerBitPackDynamic)
+         k_cItemsPerBitPackUndefined,
+         k_cItemsPerBitPackUndefined)
 
    inline LogLossMulticlassObjective(const Config& config) {
       if(1 == config.cOutputs) {
@@ -89,7 +89,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
-      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);

@@ -64,10 +64,9 @@ inline constexpr static size_t GetArrayScores(const size_t cScores) noexcept {
 // for loop elimination in most cases and the restoration of SIMD instructions in places where you couldn't do so with
 // variable loop iterations
 #define GET_ITEMS_PER_BIT_PACK(MACRO_compilerBitPack, MACRO_runtimeBitPack)                                            \
-   (k_cItemsPerBitPackDynamic == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
+   (k_cItemsPerBitPackUndefined == (MACRO_compilerBitPack) ? (MACRO_runtimeBitPack) : (MACRO_compilerBitPack))
 
-static constexpr int k_cItemsPerBitPackNone = -1; // this is for when there is only 1 bin
-static constexpr int k_cItemsPerBitPackDynamic = 0;
+static constexpr int k_cItemsPerBitPackUndefined = 0;
 
 inline constexpr static bool IsRegressionLink(const LinkEbm link) noexcept {
    return Link_custom_regression == link || Link_power == link || Link_identity == link || Link_log == link ||
