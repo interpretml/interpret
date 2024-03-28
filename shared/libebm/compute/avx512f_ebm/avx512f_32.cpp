@@ -55,6 +55,8 @@ struct alignas(k_cAlignment) Avx512f_32_Int final {
    static constexpr AccelerationFlags k_zone = AccelerationFlags_AVX512F;
    static constexpr int k_cSIMDShift = 4;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
+   static constexpr int k_cTypeShift = 2;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx512f_32_Int() noexcept {}
@@ -133,6 +135,8 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    static constexpr AccelerationFlags k_zone = TInt::k_zone;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
+   static constexpr int k_cTypeShift = TInt::k_cTypeShift;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx512f_32_Float() noexcept {}
@@ -220,14 +224,20 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
 
    inline void Store(T* const a) const noexcept { _mm512_store_ps(a, m_data); }
 
+   template<int cShift = k_cTypeShift>
    inline static Avx512f_32_Float Load(const T* const a, const TInt& i) noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
-      return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, sizeof(a[0])));
+      static_assert(
+            1 == cShift || 2 == cShift || 3 == cShift || 4 == cShift, "_mm512_i32gather_ps allows certain shift sizes");
+      return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, 1 << cShift));
    }
 
+   template<int cShift = k_cTypeShift>
    inline void Store(T* const a, const TInt& i) const noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
-      _mm512_i32scatter_ps(a, i.m_data, m_data, sizeof(a[0]));
+      static_assert(
+            1 == cShift || 2 == cShift || 3 == cShift || 4 == cShift, "_mm512_i32scatter_ps allows certain shift sizes");
+      _mm512_i32scatter_ps(a, i.m_data, m_data, 1 << cShift);
    }
 
    template<typename TFunc>

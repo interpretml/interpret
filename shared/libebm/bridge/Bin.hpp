@@ -236,6 +236,12 @@ struct BinData<TFloat, TUInt, false, false, bHessian, cCompilerScores> : BinBase
 
 template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinData<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores> {
+   using TGradInternal = GradientPair<TFloat, bHessian>;
+   static constexpr ptrdiff_t k_offsetGrad = offsetof(TGradInternal, m_sumGradients);
+   using THessInternal = GradientPair<TFloat, true>;
+   static constexpr ptrdiff_t k_offsetHess =
+         bHessian ? ptrdiff_t{offsetof(THessInternal, m_sumHessians)} : ptrdiff_t{-1};
+
    static_assert(std::is_floating_point<TFloat>::value, "TFloat must be a float type");
    static_assert(std::is_integral<TUInt>::value, "TUInt must be an integer type");
    static_assert(std::is_unsigned<TUInt>::value, "TUInt must be unsigned");

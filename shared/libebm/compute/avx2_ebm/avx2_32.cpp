@@ -55,6 +55,8 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
    static constexpr AccelerationFlags k_zone = AccelerationFlags_AVX2;
    static constexpr int k_cSIMDShift = 3;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
+   static constexpr int k_cTypeShift = 2;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx2_32_Int() noexcept {}
@@ -121,6 +123,8 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    static constexpr AccelerationFlags k_zone = TInt::k_zone;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
+   static constexpr int k_cTypeShift = TInt::k_cTypeShift;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Avx2_32_Float() noexcept {}
@@ -208,11 +212,15 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 
    inline void Store(T* const a) const noexcept { _mm256_store_ps(a, m_data); }
 
+   template<int cShift = k_cTypeShift>
    inline static Avx2_32_Float Load(const T* const a, const TInt& i) noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
-      return Avx2_32_Float(_mm256_i32gather_ps(a, i.m_data, sizeof(a[0])));
+      static_assert(
+            1 == cShift || 2 == cShift || 3 == cShift || 4 == cShift, "_mm256_i32gather_ps allows certain shift sizes");
+      return Avx2_32_Float(_mm256_i32gather_ps(a, i.m_data, 1 << cShift));
    }
 
+   template<int cShift = k_cTypeShift>
    inline void Store(T* const a, const TInt& i) const noexcept {
       alignas(k_cAlignment) TInt::T ints[k_cSIMDPack];
       alignas(k_cAlignment) T floats[k_cSIMDPack];
@@ -220,14 +228,19 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       i.Store(ints);
       Store(floats);
 
-      a[ints[0]] = floats[0];
-      a[ints[1]] = floats[1];
-      a[ints[2]] = floats[2];
-      a[ints[3]] = floats[3];
-      a[ints[4]] = floats[4];
-      a[ints[5]] = floats[5];
-      a[ints[6]] = floats[6];
-      a[ints[7]] = floats[7];
+      // if we shifted ints[] without converting to size_t first the compiler cannot
+      // use the built in index shifting because ints could be 32 bits and shifting
+      // right would chop off some bits, but when converted to size_t first then
+      // that isn't an issue so the compiler can optimize the shift away and incorporate
+      // it into the store assembly instruction
+      *IndexByte(a, static_cast<size_t>(ints[0]) << cShift) = floats[0];
+      *IndexByte(a, static_cast<size_t>(ints[1]) << cShift) = floats[1];
+      *IndexByte(a, static_cast<size_t>(ints[2]) << cShift) = floats[2];
+      *IndexByte(a, static_cast<size_t>(ints[3]) << cShift) = floats[3];
+      *IndexByte(a, static_cast<size_t>(ints[4]) << cShift) = floats[4];
+      *IndexByte(a, static_cast<size_t>(ints[5]) << cShift) = floats[5];
+      *IndexByte(a, static_cast<size_t>(ints[6]) << cShift) = floats[6];
+      *IndexByte(a, static_cast<size_t>(ints[7]) << cShift) = floats[7];
    }
 
    template<typename TFunc>

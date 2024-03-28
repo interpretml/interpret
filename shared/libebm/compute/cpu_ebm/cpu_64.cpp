@@ -50,6 +50,8 @@ struct Cpu_64_Int final {
    static constexpr AccelerationFlags k_zone = AccelerationFlags_NONE;
    static constexpr int k_cSIMDShift = 0;
    static constexpr int k_cSIMDPack = 1 << k_cSIMDShift;
+   static constexpr int k_cTypeShift = 3;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Cpu_64_Int() noexcept {}
@@ -94,6 +96,8 @@ struct Cpu_64_Float final {
    static constexpr AccelerationFlags k_zone = TInt::k_zone;
    static constexpr int k_cSIMDShift = TInt::k_cSIMDShift;
    static constexpr int k_cSIMDPack = TInt::k_cSIMDPack;
+   static constexpr int k_cTypeShift = TInt::k_cTypeShift;
+   static_assert(1 << k_cTypeShift == sizeof(T), "k_cTypeShift must be equivalent to the type size");
 
    ATTRIBUTE_WARNING_DISABLE_UNINITIALIZED_MEMBER
    inline Cpu_64_Float() noexcept {}
