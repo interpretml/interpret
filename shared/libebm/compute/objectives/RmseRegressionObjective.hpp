@@ -103,7 +103,8 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       UNUSED(target);
    }
 
-   template<bool bValidation,
+   template<bool bCollapsed,
+         bool bValidation,
          bool bWeight,
          bool bHessian,
          bool bDisableApprox,
@@ -115,9 +116,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
       static_assert(!bDisableApprox, "Approximations cannot be disabled on RMSE since there are none on RMSE");
 
-      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
-      static constexpr bool bFixedSizePack =
-            k_cItemsPerBitPackNone != cCompilerPack && k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
@@ -148,12 +147,11 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       TFloat updateScore;
 
       int cItemsPerBitPack;
-      if(bCompilerZeroDimensional) {
+      if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
       } else {
          cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
@@ -201,7 +199,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          // either at the start during init or the end once the rest is done.. not sure which.
 
          typename TFloat::TInt iTensorBinCombined;
-         if(!bCompilerZeroDimensional) {
+         if(!bCollapsed) {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
@@ -222,7 +220,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
             cShift = cShiftReset;
          }
          while(true) {
-            if(!bCompilerZeroDimensional) {
+            if(!bCollapsed) {
                const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
                updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
@@ -243,7 +241,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
                }
             }
 
-            if(bCompilerZeroDimensional) {
+            if(bCollapsed) {
                if(pGradientsEnd == pGradient) {
                   break;
                }
@@ -254,7 +252,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
                }
             }
          }
-         if(bCompilerZeroDimensional) {
+         if(bCollapsed) {
             break;
          }
          if(!bFixedSizePack) {

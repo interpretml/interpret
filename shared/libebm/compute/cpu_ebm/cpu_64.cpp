@@ -311,6 +311,7 @@ struct Cpu_64_Float final {
    friend inline T Sum(const Cpu_64_Float& val) noexcept { return val.m_data; }
 
    template<typename TObjective,
+         bool bCollapsed,
          bool bValidation,
          bool bWeight,
          bool bHessian,
@@ -318,7 +319,7 @@ struct Cpu_64_Float final {
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }

@@ -76,7 +76,8 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       UNUSED(target);
    }
 
-   template<bool bValidation,
+   template<bool bCollapsed,
+         bool bValidation,
          bool bWeight,
          bool bHessian,
          bool bDisableApprox,
@@ -87,10 +88,8 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
 
-      static constexpr bool bCompilerZeroDimensional = k_cItemsPerBitPackNone == cCompilerPack;
       static constexpr bool bDynamic = k_dynamicScores == cCompilerScores;
-      static constexpr bool bFixedSizePack =
-            k_cItemsPerBitPackNone != cCompilerPack && k_cItemsPerBitPackDynamic != cCompilerPack;
+      static constexpr bool bFixedSizePack = k_cItemsPerBitPackDynamic != cCompilerPack;
 
 #ifndef GPU_COMPILE
       EBM_ASSERT(nullptr != pData);
@@ -127,10 +126,9 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       const typename TFloat::TInt::T* pInputData;
       typename TFloat::TInt::T cCastScores;
 
-      if(!bCompilerZeroDimensional) {
+      if(!bCollapsed) {
          const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
-         EBM_ASSERT(k_cItemsPerBitPackNone != cItemsPerBitPack); // we require this condition to be templated
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
@@ -180,7 +178,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       }
       do {
          typename TFloat::TInt iTensorBinCombined;
-         if(!bCompilerZeroDimensional) {
+         if(!bCollapsed) {
             iTensorBinCombined = TFloat::TInt::Load(pInputData);
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
@@ -205,7 +203,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
             // either at the start during init or the end once the rest is done.. not sure which.
 
             typename TFloat::TInt iTensorBin;
-            if(!bCompilerZeroDimensional) {
+            if(!bCollapsed) {
                iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
 
                // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD
@@ -230,7 +228,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
             size_t iScore1 = 0;
             do {
                TFloat updateScore;
-               if(!bCompilerZeroDimensional) {
+               if(!bCollapsed) {
                   updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
                   iTensorBin = iTensorBin + 1;
                } else {
@@ -321,7 +319,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
             }
 
-            if(bCompilerZeroDimensional) {
+            if(bCollapsed) {
                if(pSampleScoresEnd == pSampleScore) {
                   break;
                }
@@ -332,7 +330,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                }
             }
          }
-         if(bCompilerZeroDimensional) {
+         if(bCollapsed) {
             break;
          }
          if(!bFixedSizePack) {

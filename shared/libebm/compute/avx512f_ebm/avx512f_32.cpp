@@ -678,6 +678,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    friend inline T Sum(const Avx512f_32_Float& val) noexcept { return _mm512_reduce_add_ps(val.m_data); }
 
    template<typename TObjective,
+         bool bCollapsed,
          bool bValidation,
          bool bWeight,
          bool bHessian,
@@ -685,7 +686,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }

@@ -616,6 +616,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    }
 
    template<typename TObjective,
+         bool bCollapsed,
          bool bValidation,
          bool bWeight,
          bool bHessian,
@@ -623,7 +624,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }
