@@ -295,10 +295,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          // memory by a factor of 2x since we could then handle two items in this loop sequentially
          // The drawback is that we need to shuffle our indexes and gradient/hessians values that we get back
 
-         TFloat gradientBin = TFloat::Load<cFixedShift>(pGrad, iTensorBin);
+         TFloat gradientBin = TFloat::template Load<cFixedShift>(pGrad, iTensorBin);
          TFloat hessianBin;
          if(bHessian) {
-            hessianBin = TFloat::Load<cFixedShift>(pHess, iTensorBin);
+            hessianBin = TFloat::template Load<cFixedShift>(pHess, iTensorBin);
          }
 
          gradientBin += gradient;
@@ -306,9 +306,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             hessianBin += hessian;
          }
 
-         gradientBin.Store<cFixedShift>(pGrad, iTensorBin);
+         gradientBin.template Store<cFixedShift>(pGrad, iTensorBin);
          if(bHessian) {
-            hessianBin.Store<cFixedShift>(pHess, iTensorBin);
+            hessianBin.template Store<cFixedShift>(pHess, iTensorBin);
          }
 
          cShift -= cBitsPerItemMax;
