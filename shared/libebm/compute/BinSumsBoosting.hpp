@@ -222,7 +222,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
    EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
 
-   const TFloat::TInt offsets =
+   const typename TFloat::TInt offsets =
          TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
 
    static constexpr ptrdiff_t k_offsetGrad =
