@@ -237,10 +237,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    typename TFloat::TInt iTensorBinPrev = TFloat::TInt::MakeIndexes();
-   TFloat gradientBin = TFloat::Load<cFixedShift>(pGrad, iTensorBinPrev);
+   TFloat gradientBin = TFloat::template Load<cFixedShift>(pGrad, iTensorBinPrev);
    TFloat hessianBin;
    if(bHessian) {
-      hessianBin = TFloat::Load<cFixedShift>(pHess, iTensorBinPrev);
+      hessianBin = TFloat::template Load<cFixedShift>(pHess, iTensorBinPrev);
    }
    TFloat gradient = 0;
    TFloat hessian;
@@ -350,9 +350,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       hessianBin += hessian;
    }
 
-   gradientBin.Store<cFixedShift>(pGrad, iTensorBinPrev);
+   gradientBin.template Store<cFixedShift>(pGrad, iTensorBinPrev);
    if(bHessian) {
-      hessianBin.Store<cFixedShift>(pHess, iTensorBinPrev);
+      hessianBin.template Store<cFixedShift>(pHess, iTensorBinPrev);
    }
 }
 
