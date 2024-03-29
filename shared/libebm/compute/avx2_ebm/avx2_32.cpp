@@ -212,11 +212,10 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 
    inline void Store(T* const a) const noexcept { _mm256_store_ps(a, m_data); }
 
-   template<int cShift = k_cTypeShift>
-   inline static Avx2_32_Float Load(const T* const a, const TInt& i) noexcept {
+   template<int cShift = k_cTypeShift> inline static Avx2_32_Float Load(const T* const a, const TInt& i) noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       static_assert(
-            1 == cShift || 2 == cShift || 3 == cShift || 4 == cShift, "_mm256_i32gather_ps allows certain shift sizes");
+            0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift, "_mm256_i32gather_ps allows certain shift sizes");
       return Avx2_32_Float(_mm256_i32gather_ps(a, i.m_data, 1 << cShift));
    }
 
