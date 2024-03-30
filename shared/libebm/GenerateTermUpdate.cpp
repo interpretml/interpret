@@ -789,8 +789,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             if(1 != cSIMDPack) {
                const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
                if(cBytesParallel <= PARALLEL_BINS_BYTES_MAX) {
-                  // TODO: currently we only have optimized templated versions for single score non-collapsed tensors
-                  if(1 != cTensorBins && 1 == cScores) {
+                  if(1 != cTensorBins) {
                      // use parallel bins
                      bParallelBins = true;
                      cParallelTensorBins *= cSIMDPack;
