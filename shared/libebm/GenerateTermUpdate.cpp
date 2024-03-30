@@ -789,7 +789,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             if(1 != cSIMDPack) {
                const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
                if(cBytesParallel <= PARALLEL_BINS_BYTES_MAX) {
-                  if(1 != cTensorBins) {
+                  if(1 != cTensorBins && 1 == cScores) {
                      // use parallel bins
                      bParallelBins = true;
                      cParallelTensorBins *= cSIMDPack;

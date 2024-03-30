@@ -744,7 +744,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
 
-                  if(1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
+                  if(1 == cScores && 1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
                      if(IsMultiplyError(
                               cBytesPerFastBin, cTensorBinsMax, pSubset->GetObjectiveWrapper()->m_cSIMDPack)) {
                         cBytesParallelBoostTrainingMax = PARALLEL_BINS_BYTES_MAX;
