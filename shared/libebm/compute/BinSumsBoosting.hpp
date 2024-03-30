@@ -296,6 +296,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             hessianBin += hessian;
          }
 
+         // It's slightly more efficient to put the index for the gradient
+         // and hessian in the same SIMD data pack (possibly next to eachother is best),
+         // but is only about 3% faster, so not worth writing a duplicate function here.
+         // NOTE: halving the number of histograms makes it 2x slower so keep the 
+         // original number of histograms if re-attempting this.
          gradientBin.template Store<cFixedShift>(pGrad, iTensorBinPrev);
          if(bHessian) {
             hessianBin.template Store<cFixedShift>(pHess, iTensorBinPrev);

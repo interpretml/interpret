@@ -182,9 +182,13 @@ struct Cpu_64_Float final {
 
    inline void Store(T* const a) const noexcept { *a = m_data; }
 
-   inline static Cpu_64_Float Load(const T* const a, const TInt& i) noexcept { return Cpu_64_Float(a[i.m_data]); }
+   template<int cShift = k_cTypeShift> inline static Cpu_64_Float Load(const T* const a, const TInt& i) noexcept {
+      return Cpu_64_Float(*IndexByte(a, static_cast<size_t>(i.m_data) << cShift));
+   }
 
-   inline void Store(T* const a, const TInt& i) const noexcept { a[i.m_data] = m_data; }
+   template<int cShift = k_cTypeShift> inline void Store(T* const a, const TInt& i) const noexcept {
+      *IndexByte(a, static_cast<size_t>(i.m_data) << cShift) = m_data;
+   }
 
    template<typename TFunc> friend inline Cpu_64_Float ApplyFunc(const TFunc& func, const Cpu_64_Float& val) noexcept {
       return Cpu_64_Float(func(val.m_data));
