@@ -1194,7 +1194,10 @@ struct CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_
 template<typename TFloat, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
 
-   static_assert(0 == PARALLEL_BINS_BYTES_MAX || !IsConvertError<typename TFloat::TInt::T>(PARALLEL_BINS_BYTES_MAX - 1), "PARALLEL_BINS_BYTES_MAX is too large");
+   // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
+   static_assert(0 == PARALLEL_BINS_BYTES_MAX ||
+               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(PARALLEL_BINS_BYTES_MAX - 1),
+         "PARALLEL_BINS_BYTES_MAX is too large");
 
    EBM_ASSERT(k_cItemsPerBitPackUndefined != pParams->m_cPack); // excluded in caller
    static constexpr bool bCollapsed = false;

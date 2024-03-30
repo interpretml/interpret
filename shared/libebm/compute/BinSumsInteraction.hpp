@@ -25,6 +25,12 @@ template<typename TFloat, bool bHessian, bool bWeight, size_t cCompilerScores, s
 GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractionBridge* const pParams) {
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
+   // TODO: this function can probably be optimized in a number of ways. One way would be to create
+   // specialized versions that eliminate the counts and weights when not needed.  We could
+   // probably improve BinSumsInteraction using the same techniques used in BinSumsBoosting
+   // where the function was specialized for cCompilerScore==1 and cCompilerScore!=1 and more
+   // importantly where we prefetch the gathing load as early as possible or 
+
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
