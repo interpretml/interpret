@@ -448,8 +448,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    TFloat bin1;
    TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
 
-   TFloat gradhess0 = 0;
-   TFloat gradhess1 = 0;
+   TFloat gradient = 0;
+   TFloat hessian = 0;
+
+   TFloat gradhess0;
+   TFloat gradhess1;
 
    TFloat weight;
    if(bWeight) {
@@ -488,10 +491,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       }
       do {
          if(bWeight) {
-            gradhess0 *= weight;
-            gradhess1 *= weight;
+            gradient *= weight;
+            hessian *= weight;
          }
-         TFloat::Interleaf(gradhess0, gradhess1);
+         TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
 
          typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
          iTensorBin = PermuteForInterleaf(iTensorBin);
@@ -518,8 +521,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             pWeight += TFloat::k_cSIMDPack;
          }
 
-         gradhess0 = TFloat::Load(pGradientAndHessian);
-         gradhess1 = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         gradient = TFloat::Load(pGradientAndHessian);
+         hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
          pGradientAndHessian += size_t{2} * TFloat::k_cSIMDPack;
 
          cShift -= cBitsPerItemMax;
@@ -530,11 +533,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 
    if(bWeight) {
-      gradhess0 *= weight;
-      gradhess1 *= weight;
+      gradient *= weight;
+      hessian *= weight;
    }
-   TFloat::Interleaf(gradhess0, gradhess1);
-
+   TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
 
    bin0 += gradhess0;
    bin1 += gradhess1;

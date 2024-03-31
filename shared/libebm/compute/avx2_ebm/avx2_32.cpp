@@ -299,12 +299,12 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[7]) << cShift) = floats2[3];
    }
 
-   inline static void Interleaf(Avx2_32_Float& val0, Avx2_32_Float& val1) noexcept {
+   inline static void Interleaf(
+         const Avx2_32_Float& val0, const Avx2_32_Float& val1, Avx2_32_Float& ret0, Avx2_32_Float& ret1) noexcept {
       // this function permutes the values into positions that the PermuteForInterleaf function expects
       // but for any SIMD implementation, the positions can be variable as long as they work together
-      __m256 temp = _mm256_unpacklo_ps(val0.m_data, val1.m_data);
-      val1 = Avx2_32_Float(_mm256_unpackhi_ps(val0.m_data, val1.m_data));
-      val0 = Avx2_32_Float(temp);
+      ret0 = Avx2_32_Float(_mm256_unpacklo_ps(val0.m_data, val1.m_data));
+      ret1 = Avx2_32_Float(_mm256_unpackhi_ps(val0.m_data, val1.m_data));
    }
 
    template<typename TFunc>
