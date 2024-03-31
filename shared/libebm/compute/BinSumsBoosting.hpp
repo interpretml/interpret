@@ -296,21 +296,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             hessianBin += hessian;
          }
 
-         // It's slightly more efficient to put the index for the gradient
-         // and hessian in the same SIMD data pack (possibly next to eachother is best),
-         // but is only about 3% faster, so not worth writing a duplicate function here.
-         // NOTE: halving the number of histograms makes it 2x slower so keep the 
-         // original number of histograms if re-attempting this.
          gradientBin.template Store<cFixedShift>(pGrad, iTensorBinPrev);
          if(bHessian) {
             hessianBin.template Store<cFixedShift>(pHess, iTensorBinPrev);
          }
-
-         // TODO: instead of loading the gradient and hessian as separate loads, it might be better to
-         // load the gradients and hessians as part as the same gather load because the CPU might
-         // be better at loading items from the same cache line, and also because it would reduce our
-         // memory by a factor of 2x since we could then handle two items in this loop sequentially
-         // The drawback is that we need to shuffle our indexes and gradient/hessians values that we get back
 
          // This load is a gathering load and is the main bottleneck to EBMs. We want
          // to give it as much time as possible to execute the load before using the gradientBin
@@ -453,6 +442,20 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::TInt offsets =
          TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
 
+   typename TFloat::TInt iTensorBinPrev = TFloat::TInt::MakeIndexes();
+
+   TFloat bin0;
+   TFloat bin1;
+   TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
+
+   TFloat gradhess0 = 0;
+   TFloat gradhess1 = 0;
+
+   TFloat weight;
+   if(bWeight) {
+      weight = 0;
+   }
+
    do {
       // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
       // in this loop which we could do by allocating an extra item to the end of each memory region and throwing away
@@ -484,40 +487,40 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          cShift = cShiftReset;
       }
       do {
-         TFloat weight;
+         if(bWeight) {
+            gradhess0 *= weight;
+            gradhess1 *= weight;
+         }
+         TFloat::Interleaf(gradhess0, gradhess1);
+
+         typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+
+         bin0 += gradhess0;
+         bin1 += gradhess1;
+
+         TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
+
+         // This load is a gathering load and is the main bottleneck to EBMs. We want
+         // to give it as much time as possible to execute the load before using the gradientBin
+         // or hessianBin values, which we do since the addition of the gradient
+         // to the gradientBin value above is almost an entire loop away. We would like
+         // this load to be as early as possible, but we cannot move it before the gradientBin Store
+         // operation since that operation can change the memory that we're loading here, but the
+         // optimal solution is to have as little work done between the Store and this gathering load
+         // All the other loads are predictable and should be much faster than this gathering load.
+
+         TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
+         iTensorBinPrev = iTensorBin;
+
          if(bWeight) {
             weight = TFloat::Load(pWeight);
             pWeight += TFloat::k_cSIMDPack;
          }
 
-         TFloat gradhess0 = TFloat::Load(pGradientAndHessian);
-         TFloat gradhess1 = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         gradhess0 = TFloat::Load(pGradientAndHessian);
+         gradhess1 = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
          pGradientAndHessian += size_t{2} * TFloat::k_cSIMDPack;
-
-         if(bWeight) {
-            gradhess0 *= weight;
-            gradhess1 *= weight;
-         }
-
-         TFloat::Interleaf(gradhess0, gradhess1);
-
-         typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
-
-         iTensorBin = PermuteForInterleaf(iTensorBin);
-
-         // TODO: instead of loading the gradient and hessian as separate loads, it might be better to
-         // load the gradients and hessians as part as the same gather load because the CPU might
-         // be better at loading items from the same cache line, and also because it would reduce our
-         // memory by a factor of 2x since we could then handle two items in this loop sequentially
-         // The drawback is that we need to shuffle our indexes and gradient/hessians values that we get back
-
-         TFloat bin0;
-         TFloat bin1;
-
-         TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
-         bin0 += gradhess0;
-         bin1 += gradhess1;
-         TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBin, bin0, bin1);
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
@@ -525,6 +528,18 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          cShift = cShiftReset;
       }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+
+   if(bWeight) {
+      gradhess0 *= weight;
+      gradhess1 *= weight;
+   }
+   TFloat::Interleaf(gradhess0, gradhess1);
+
+
+   bin0 += gradhess0;
+   bin1 += gradhess1;
+
+   TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
 }
 
 template<typename TFloat,
