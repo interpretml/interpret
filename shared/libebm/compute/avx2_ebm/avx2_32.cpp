@@ -237,7 +237,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       static_assert(
             0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift, "_mm256_i32gather_epi64 allows certain shift sizes");
-      const __m128i i1 = _mm256_extracti128_si256(i.m_data, 0);
+      const __m128i i1 = _mm256_castsi256_si128(i.m_data);
       // we're purposely using the 64-bit double version of this because we want to fetch the gradient 
       // and hessian together in one operation
       ret1 = Avx2_32_Float(_mm256_castpd_ps(_mm256_i32gather_pd(reinterpret_cast<const double*>(a), i1, 1 << cShift)));
