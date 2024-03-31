@@ -140,7 +140,8 @@ template<typename TFloat,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores, int>::type = 0>
+      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && (!bHessian || 8 != TFloat::TInt::k_cSIMDPack),
+            int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
@@ -362,34 +363,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 }
 
 
-/*
-This speculative version is a specialization where bHessian is true.  When there is
-a hessian instead of loading the gradients from the bins first then hessians after that we
-can use a gathering load to get the gradient and hessian for the first 1/2 of the
-samples, then get the next 1/2 of the samples.  The potential benefit is that
-the CPU might benefit from getting gradients and hessians that are located next
-to eachother.  Unfortunately this seems to introduce a data dependency issue since
-the first 1/2 of the gradients/hessians need to be loaded/modified/stored before the
-next 1/2 can be worked on. This seems slower but more investigation is required
-
-
-inline void PermuteForInterleaf(Avx2_32_Int& v0, Avx2_32_Int& v1) const noexcept {
-   // this function permutes the values into positions that the Interleaf function expects
-   // but for any SIMD implementation the positions can be variable as long as they work together
-   v0 = Avx2_32_Int(_mm256_permutevar8x32_epi32(m_data, _mm256_setr_epi32(0, 0, 1, 1, 4, 4, 5, 5)));
-   v1 = Avx2_32_Int(_mm256_permutevar8x32_epi32(m_data, _mm256_setr_epi32(2, 2, 3, 3, 6, 6, 7, 7)));
-}
-inline static Avx2_32_Int MakeAlternating() noexcept { return Avx2_32_Int(_mm256_set_epi32(1, 0, 1, 0, 1, 0, 1, 0)); }
-inline static Avx2_32_Int MakeHalfIndexes() noexcept { return Avx2_32_Int(_mm256_set_epi32(3, 3, 2, 2, 1, 1, 0, 0)); }
-
-inline static void Interleaf(Avx2_32_Float& val0, Avx2_32_Float& val1) noexcept {
-   // this function permutes the values into positions that the PermuteForInterleaf function expects
-   // but for any SIMD implementation, the positions can be variable as long as they work together
-   __m256 temp = _mm256_unpacklo_ps(val0.m_data, val1.m_data);
-   val1 = Avx2_32_Float(_mm256_unpackhi_ps(val0.m_data, val1.m_data));
-   val0 = Avx2_32_Float(temp);
-}
-
 template<typename TFloat,
       bool bParallel,
       bool bCollapsed,
@@ -397,7 +370,7 @@ template<typename TFloat,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && bHessian, int>::type = 0>
+      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && bHessian && 8 == TFloat::TInt::k_cSIMDPack, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
@@ -419,8 +392,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const typename TFloat::T* pGradientAndHessian =
          reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
-   const typename TFloat::T* const pGradientsAndHessiansEnd =
-         pGradientAndHessian + size_t{2} * cSamples;
+   const typename TFloat::T* const pGradientsAndHessiansEnd = pGradientAndHessian + size_t{2} * cSamples;
 
    static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
          GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
@@ -462,8 +434,25 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
 
+   // The compiler is normally pretty good about optimizing multiplications into shifts when possible
+   // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
+   // even when the multiplication has a fixed compile time constant value that is a power of 2, so
+   // we manually convert the multiplications into shifts.
+   //
+   // We also have tried the Multiply templated function that is designed to convert multiplications
+   // into shifts, but using that templated function breaks the compiler optimization that unrolls
+   // the bitpacking loop.
+   //
+   constexpr static bool bSmall = 4 == cBytesPerBin;
+   constexpr static bool bMed = 8 == cBytesPerBin;
+   constexpr static bool bLarge = 16 == cBytesPerBin;
+   static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
+   constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
+   static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
+   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
+
    const typename TFloat::TInt offsets =
-         TFloat::TInt::MakeHalfIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins);
+         TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
 
    do {
       // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
@@ -506,15 +495,16 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          TFloat gradhess1 = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
          pGradientAndHessian += size_t{2} * TFloat::k_cSIMDPack;
 
-         TFloat::Interleaf(gradhess0, gradhess1);
-
          if(bWeight) {
             gradhess0 *= weight;
             gradhess1 *= weight;
          }
 
-         typename TFloat::TInt iTensorBin =
-               (((iTensorBinCombined >> cShift) & maskBits) << (TFloat::k_cTypeShift + 1)) + offsets;
+         TFloat::Interleaf(gradhess0, gradhess1);
+
+         typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
+
+         iTensorBin = PermuteForInterleaf(iTensorBin);
 
          // TODO: instead of loading the gradient and hessian as separate loads, it might be better to
          // load the gradients and hessians as part as the same gather load because the CPU might
@@ -522,20 +512,13 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          // memory by a factor of 2x since we could then handle two items in this loop sequentially
          // The drawback is that we need to shuffle our indexes and gradient/hessians values that we get back
 
-         typename TFloat::TInt iTensorBin0;
-         typename TFloat::TInt iTensorBin1;
-         iTensorBin.PermuteForInterleaf(iTensorBin0, iTensorBin1);
+         TFloat bin0;
+         TFloat bin1;
 
-         iTensorBin0 = iTensorBin0 + TFloat::TInt::MakeAlternating() * sizeof(TFloat::TInt::T);
-         iTensorBin1 = iTensorBin1 + TFloat::TInt::MakeAlternating() * sizeof(TFloat::TInt::T);
-
-         TFloat bin0 = TFloat::template Load<0>(aBins, iTensorBin0);
+         TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
          bin0 += gradhess0;
-         bin0.template Store<0>(aBins, iTensorBin0);
-
-         TFloat bin1 = TFloat::template Load<0>(aBins, iTensorBin1);
          bin1 += gradhess1;
-         bin1.template Store<0>(aBins, iTensorBin1);
+         TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBin, bin0, bin1);
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
@@ -544,7 +527,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
-*/
 
 template<typename TFloat,
       bool bParallel,
