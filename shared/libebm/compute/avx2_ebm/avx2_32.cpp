@@ -106,6 +106,16 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
       return Avx2_32_Int(_mm256_and_si256(m_data, other.m_data));
    }
 
+   friend inline Avx2_32_Int PermuteForInterleaf(const Avx2_32_Int& val) noexcept {
+      // this function permutes the values into positions that the Interleaf function expects
+      // but for any SIMD implementation the positions can be variable as long as they work together
+
+      // TODO: we might be able to move this operation to where we store the packed indexes so that
+      // it doesn't need to execute in the tight loop
+
+      return Avx2_32_Int(_mm256_permutevar8x32_epi32(val.m_data, _mm256_setr_epi32(0, 1, 4, 5, 2, 3, 6, 7)));
+   }
+
  private:
    inline Avx2_32_Int(const TPack& data) noexcept : m_data(data) {}
 
@@ -219,6 +229,22 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Avx2_32_Float(_mm256_i32gather_ps(a, i.m_data, 1 << cShift));
    }
 
+   template<int cShift>
+   inline static void DoubleLoad(const T* const a,
+         const Avx2_32_Int& i,
+         Avx2_32_Float& ret1,
+         Avx2_32_Float& ret2) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
+      static_assert(
+            0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift, "_mm256_i32gather_epi64 allows certain shift sizes");
+      const __m128i i1 = _mm256_extracti128_si256(i.m_data, 0);
+      // we're purposely using the 64-bit double version of this because we want to fetch the gradient 
+      // and hessian together in one operation
+      ret1 = Avx2_32_Float(_mm256_castpd_ps(_mm256_i32gather_pd(reinterpret_cast<const double*>(a), i1, 1 << cShift)));
+      const __m128i i2 = _mm256_extracti128_si256(i.m_data, 1);
+      ret2 = Avx2_32_Float(_mm256_castpd_ps(_mm256_i32gather_pd(reinterpret_cast<const double*>(a), i2, 1 << cShift)));
+   }
+
    template<int cShift = k_cTypeShift>
    inline void Store(T* const a, const TInt& i) const noexcept {
       alignas(k_cAlignment) TInt::T ints[k_cSIMDPack];
@@ -240,6 +266,45 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       *IndexByte(a, static_cast<size_t>(ints[5]) << cShift) = floats[5];
       *IndexByte(a, static_cast<size_t>(ints[6]) << cShift) = floats[6];
       *IndexByte(a, static_cast<size_t>(ints[7]) << cShift) = floats[7];
+   }
+
+   template<int cShift>
+   inline static void DoubleStore(T* const a,
+         const TInt& i,
+         const Avx2_32_Float& val1,
+         const Avx2_32_Float& val2) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
+
+      alignas(k_cAlignment) TInt::T ints[k_cSIMDPack];
+      alignas(k_cAlignment) uint64_t floats1[k_cSIMDPack >> 1];
+      alignas(k_cAlignment) uint64_t floats2[k_cSIMDPack >> 1];
+
+      i.Store(ints);
+      val1.Store(reinterpret_cast<T*>(floats1));
+      val2.Store(reinterpret_cast<T*>(floats2));
+
+      // if we shifted ints[] without converting to size_t first the compiler cannot
+      // use the built in index shifting because ints could be 32 bits and shifting
+      // right would chop off some bits, but when converted to size_t first then
+      // that isn't an issue so the compiler can optimize the shift away and incorporate
+      // it into the store assembly instruction
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[0]) << cShift) = floats1[0];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[1]) << cShift) = floats1[1];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[2]) << cShift) = floats1[2];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[3]) << cShift) = floats1[3];
+
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[4]) << cShift) = floats2[0];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[5]) << cShift) = floats2[1];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[6]) << cShift) = floats2[2];
+      *IndexByte(reinterpret_cast<uint64_t*>(a), static_cast<size_t>(ints[7]) << cShift) = floats2[3];
+   }
+
+   inline static void Interleaf(Avx2_32_Float& val0, Avx2_32_Float& val1) noexcept {
+      // this function permutes the values into positions that the PermuteForInterleaf function expects
+      // but for any SIMD implementation, the positions can be variable as long as they work together
+      __m256 temp = _mm256_unpacklo_ps(val0.m_data, val1.m_data);
+      val1 = Avx2_32_Float(_mm256_unpackhi_ps(val0.m_data, val1.m_data));
+      val0 = Avx2_32_Float(temp);
    }
 
    template<typename TFunc>
