@@ -140,8 +140,7 @@ template<typename TFloat,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && (!bHessian || 8 != TFloat::TInt::k_cSIMDPack),
-            int>::type = 0>
+      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && !bHessian, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
@@ -370,7 +369,7 @@ template<typename TFloat,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && bHessian && 8 == TFloat::TInt::k_cSIMDPack, int>::type = 0>
+      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores && bHessian, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");

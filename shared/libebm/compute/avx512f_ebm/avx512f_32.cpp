@@ -118,6 +118,17 @@ struct alignas(k_cAlignment) Avx512f_32_Int final {
       return Avx512f_32_Int(_mm512_and_si512(m_data, other.m_data));
    }
 
+   friend inline Avx512f_32_Int PermuteForInterleaf(const Avx512f_32_Int& val) noexcept {
+      // this function permutes the values into positions that the Interleaf function expects
+      // but for any SIMD implementation the positions can be variable as long as they work together
+
+      // TODO: we might be able to move this operation to where we store the packed indexes so that
+      // it doesn't need to execute in the tight loop
+
+      return Avx512f_32_Int(_mm512_permutexvar_epi32(
+            _mm512_setr_epi32(0, 1, 4, 5, 8, 9, 12, 13, 2, 3, 6, 7, 10, 11, 14, 15), val.m_data));
+   }
+
  private:
    inline Avx512f_32_Int(const TPack& data) noexcept : m_data(data) {}
 
@@ -231,11 +242,49 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_i32gather_ps(i.m_data, a, 1 << cShift));
    }
 
+   template<int cShift>
+   inline static void DoubleLoad(
+         const T* const a, const Avx512f_32_Int& i, Avx512f_32_Float& ret1, Avx512f_32_Float& ret2) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
+      static_assert(0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift,
+            "_mm256_i32gather_epi64 allows certain shift sizes");
+      const __m256i i1 = _mm512_castsi512_si256(i.m_data);
+      // we're purposely using the 64-bit double version of this because we want to fetch the gradient
+      // and hessian together in one operation
+      ret1 = Avx512f_32_Float(
+            _mm512_castpd_ps(_mm512_i32gather_pd(i1, reinterpret_cast<const double*>(a), 1 << cShift)));
+      const __m256i i2 = _mm256_castpd_si256(_mm512_extractf64x4_pd(_mm512_castsi512_pd(i.m_data), 1));
+      ret2 = Avx512f_32_Float(
+            _mm512_castpd_ps(_mm512_i32gather_pd(i2, reinterpret_cast<const double*>(a), 1 << cShift)));
+   }
+
    template<int cShift = k_cTypeShift> inline void Store(T* const a, const TInt& i) const noexcept {
       // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
       static_assert(0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift,
             "_mm512_i32scatter_ps allows certain shift sizes");
       _mm512_i32scatter_ps(a, i.m_data, m_data, 1 << cShift);
+   }
+
+   template<int cShift>
+   inline static void DoubleStore(
+         T* const a, const TInt& i, const Avx512f_32_Float& val1, const Avx512f_32_Float& val2) noexcept {
+      // i is treated as signed, so we should only use the lower 31 bits otherwise we'll read from memory before a
+
+      static_assert(0 == cShift || 1 == cShift || 2 == cShift || 3 == cShift,
+            "_mm512_i32scatter_pd allows certain shift sizes");
+
+      const __m256i i1 = _mm512_castsi512_si256(i.m_data);
+      _mm512_i32scatter_pd(a, i1, _mm512_castps_pd(val1.m_data), 1 << cShift);
+      const __m256i i2 = _mm256_castpd_si256(_mm512_extractf64x4_pd(_mm512_castsi512_pd(i.m_data), 1));
+      _mm512_i32scatter_pd(a, i2, _mm512_castps_pd(val2.m_data), 1 << cShift);
+   }
+
+   inline static void Interleaf(Avx512f_32_Float& val0, Avx512f_32_Float& val1) noexcept {
+      // this function permutes the values into positions that the PermuteForInterleaf function expects
+      // but for any SIMD implementation, the positions can be variable as long as they work together
+      __m512 temp = _mm512_unpacklo_ps(val0.m_data, val1.m_data);
+      val1 = Avx512f_32_Float(_mm512_unpackhi_ps(val0.m_data, val1.m_data));
+      val0 = Avx512f_32_Float(temp);
    }
 
    template<typename TFunc>
