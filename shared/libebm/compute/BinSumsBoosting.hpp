@@ -29,7 +29,87 @@ template<typename TFloat,
       bool bWeight,
       size_t cCompilerScores,
       int cCompilerPack,
-      typename std::enable_if<bCollapsed, int>::type = 0>
+      typename std::enable_if<bCollapsed && 1 == cCompilerScores, int>::type = 0>
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
+
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pParams);
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
+   EBM_ASSERT(nullptr != pParams->m_aFastBins);
+   EBM_ASSERT(size_t{1} == pParams->m_cScores);
+#endif // GPU_COMPILE
+
+   const size_t cSamples = pParams->m_cSamples;
+
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, 1>();
+
+   const typename TFloat::T* pGradientAndHessian =
+         reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
+   const typename TFloat::T* const pGradientsAndHessiansEnd =
+         pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
+
+   const typename TFloat::T* pWeight;
+   if(bWeight) {
+      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+   }
+
+   TFloat gradientTotal = 0;
+   TFloat hessianTotal;
+   if(bHessian) {
+      hessianTotal = 0;
+   }
+   do {
+      TFloat weight;
+      if(bWeight) {
+         weight = TFloat::Load(pWeight);
+         pWeight += TFloat::k_cSIMDPack;
+      }
+
+      TFloat gradient = TFloat::Load(pGradientAndHessian);
+      TFloat hessian;
+      if(bHessian) {
+         hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+      }
+
+      if(bWeight) {
+         gradient *= weight;
+         if(bHessian) {
+            hessian *= weight;
+         }
+      }
+
+      gradientTotal += gradient;
+      if(bHessian) {
+         hessianTotal += hessian;
+      }
+
+      pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
+   } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+
+   auto* const pGradientPair = aBins->GetGradientPairs();
+   pGradientPair->m_sumGradients += Sum(gradientTotal);
+   if(bHessian) {
+      pGradientPair->SetHess(pGradientPair->GetHess() + Sum(hessianTotal));
+   }
+}
+
+template<typename TFloat,
+      bool bParallel,
+      bool bCollapsed,
+      bool bHessian,
+      bool bWeight,
+      size_t cCompilerScores,
+      int cCompilerPack,
+      typename std::enable_if<bCollapsed && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
