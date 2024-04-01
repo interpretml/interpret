@@ -34,18 +34,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
 
-   // TODO: we can improve the zero dimensional scenario quite a bit because we know that all the scores added will
-   // eventually be added into the same bin.  Instead of adding the gradients & hessians & weights & counts from
-   // each sample to the bin in order, we can just add those values together for all samples in SIMD variables
-   // and then add the totals into the bins. We probably want to write a completely separate function for handling
-   // it this way though. Also, we want to separate the cCompilerScores==1 implementation since all gradients
-   // and hessians are going into the same bin we can store that in a register and just write it out at the end
-   // while for multiclass we need to write it to memory in case there are too many.
-   //
-   // For cCompilerScores==1 where we keep everything in registers we can also sum the floats in the SIMD streams
-   // separately, and only at the end call call the SIMD Sum() to add the floats accross the SIMD pack. We can't
-   // do that for multiclass without keeping 8 or whatever separate histograms (which we could do but probably
-   // isn't worth the complexity)
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
 #ifndef GPU_COMPILE
@@ -225,7 +213,20 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::TInt offsets =
          TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
 
-   typename TFloat::TInt iTensorBinPrev = TFloat::TInt::MakeIndexes();
+   // We want to structure the loop below so that the load happens immediately after the store
+   // To do that we put the store at the top and the load below. But now we need to exectute a
+   // store on the first iteration, so load the values from memory here that we'll then store
+   // back on the first loop iteration
+   typename TFloat::TInt iTensorBinPrev = offsets;
+
+   static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert(!bHessian || sizeof(typename TFloat::T) ==
+               Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert((bHessian ? size_t{2} : size_t{1}) * sizeof(typename TFloat::T) ==
+               sizeof(Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>),
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
 
    TFloat bin0;
    TFloat bin1;
@@ -511,15 +512,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             iTensorBin = iTensorBin << 4;
          }
 
-         // TODO: the ultimate version of this algorithm would:
-         //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
-         //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
-         //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
-         //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
-         //      issues anymore (where you can't add a 1 to more than 16 million floats)
-         //   3) Only do the above if there aren't too many bins. If we put each sample into it's own bin
-         //      for a feature, then we should prefer using this version that keeps only 1 histogram
-
          // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can
          // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
          if(bHessian) {
@@ -565,6 +557,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 /*
 
 This code works, but seems to take about two times longer than the non-parallel version where bParallel is false
+I think this is because for multiclass we load at least 6 floats from the same location (3 gradients 3 hessians) or
+more and those are predictable loads after the first one, and the CPU is good at predicting those loads especially
+for non-gathering loads. The TFloat::Execute function creates cSIMDPack separate loads which means the CPU will
+learn that each unpredictable load is followed by 5+ predictable ones at the same assembly instruction
 
 template<typename TFloat,
       bool bParallel,
@@ -809,15 +805,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
                },
                iTensorBin);
-
-         // TODO: the ultimate version of this algorithm would:
-         //   1) Write to k_cSIMDPack histograms simutaneously to avoid collisions of indexes
-         //   2) Sum up the final histograms using SIMD operations in parallel.  If we hvae k_cSIMDPack
-         //      histograms, then we're prefectly suited to sum them, and integers and float32 values shouldn't
-         //      have issues since we stay well away from 2^32 integers, and the float values don't have addition
-         //      issues anymore (where you can't add a 1 to more than 16 million floats)
-         //   3) Only do the above if there aren't too many bins. If we put each sample into it's own bin
-         //      for a feature, then we should prefer using this version that keeps only 1 histogram
 
          TFloat weight;
          if(bWeight) {
