@@ -628,7 +628,7 @@ def test_process_continuous_obj_hard_bad():
 
 
 def test_process_continuous_str_simple():
-    vals, bad = _process_continuous(np.array(["1", "2.5"], dtype=np.unicode_), None)
+    vals, bad = _process_continuous(np.array(["1", "2.5"], dtype=np.str_), None)
     assert bad is None
     assert vals.dtype == np.float64
     assert np.array_equal(vals, np.array([1, 2.5], dtype=np.float64))
@@ -636,7 +636,7 @@ def test_process_continuous_str_simple():
 
 def test_process_continuous_str_simple_missing():
     vals, bad = _process_continuous(
-        np.array(["1", "2.5"], dtype=np.unicode_),
+        np.array(["1", "2.5"], dtype=np.str_),
         np.array([True, True, False], dtype=np.bool_),
     )
     assert bad is None
@@ -649,7 +649,7 @@ def test_process_continuous_str_simple_missing():
 
 def test_process_continuous_str_hard_bad():
     vals, bad = _process_continuous(
-        np.array(["1", "2.5", "bad"], dtype=np.unicode_),
+        np.array(["1", "2.5", "bad"], dtype=np.str_),
         np.array([True, True, True, False], dtype=np.bool_),
     )
     assert len(bad) == 4
@@ -708,7 +708,7 @@ def test_process_column_initial_obj_obj():
 
 def test_process_column_initial_alphabetical_nomissing():
     encoded, c = _process_column_initial(
-        np.array(["xyz", "abc", "xyz"], dtype=np.unicode_),
+        np.array(["xyz", "abc", "xyz"], dtype=np.str_),
         None,
         "nominal_alphabetical",
         None,
@@ -723,7 +723,7 @@ def test_process_column_initial_alphabetical_nomissing():
 
 def test_process_column_initial_alphabetical_missing():
     encoded, c = _process_column_initial(
-        np.array(["xyz", "abc", "xyz"], dtype=np.unicode_),
+        np.array(["xyz", "abc", "xyz"], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         "nominal_alphabetical",
         None,
@@ -738,7 +738,7 @@ def test_process_column_initial_alphabetical_missing():
 
 def test_process_column_initial_prevalence_nomissing():
     encoded, c = _process_column_initial(
-        np.array(["xyz", "abc", "xyz"], dtype=np.unicode_),
+        np.array(["xyz", "abc", "xyz"], dtype=np.str_),
         None,
         "nominal_prevalence",
         None,
@@ -753,7 +753,7 @@ def test_process_column_initial_prevalence_nomissing():
 
 def test_process_column_initial_prevalence_missing():
     encoded, c = _process_column_initial(
-        np.array(["xyz", "abc", "xyz"], dtype=np.unicode_),
+        np.array(["xyz", "abc", "xyz"], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         "nominal_prevalence",
         None,
@@ -768,7 +768,7 @@ def test_process_column_initial_prevalence_missing():
 
 def test_process_column_initial_float64_nomissing():
     encoded, c = _process_column_initial(
-        np.array(["11.1", "2.2", "11.1"], dtype=np.unicode_),
+        np.array(["11.1", "2.2", "11.1"], dtype=np.str_),
         None,
         "ANYTHING_ELSE",
         None,
@@ -783,7 +783,7 @@ def test_process_column_initial_float64_nomissing():
 
 def test_process_column_initial_float64_missing():
     encoded, c = _process_column_initial(
-        np.array(["11.1", "2.2", "11.1"], dtype=np.unicode_),
+        np.array(["11.1", "2.2", "11.1"], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         "ANYTHING_ELSE",
         None,
@@ -1016,7 +1016,7 @@ def test_encode_categorical_existing_obj_floats():
                 np.float16(2.2),
                 np.float32(3.3),
                 np.float64(4.4),
-                np.longfloat(5.5),
+                np.longdouble(5.5),
             ],
             dtype=np.object_,
         ),
@@ -1110,7 +1110,7 @@ def test_encode_categorical_existing_obj_obj():
 def test_encode_categorical_existing_str():
     c = {"abc": 1, "def": 2, "ghi": 3}
     encoded, bad = _encode_categorical_existing(
-        np.array(["abc", "ghi", "def", "something"], dtype=np.unicode_),
+        np.array(["abc", "ghi", "def", "something"], dtype=np.str_),
         np.array([True, True, False, True, True], dtype=np.bool_),
         c,
     )
@@ -1144,7 +1144,7 @@ def test_encode_categorical_existing_int8():
 def test_encode_categorical_existing_bool():
     c = {"False": 1, "True": 2}
     encoded, bad = _encode_categorical_existing(
-        np.array([False, True, False], dtype=np.unicode_),
+        np.array([False, True, False], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         c,
     )
@@ -1157,7 +1157,7 @@ def test_encode_categorical_existing_bool():
 def test_encode_categorical_existing_bool_true():
     c = {"True": 1}
     encoded, bad = _encode_categorical_existing(
-        np.array([False, True, False], dtype=np.unicode_),
+        np.array([False, True, False], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         c,
     )
@@ -1170,7 +1170,7 @@ def test_encode_categorical_existing_bool_true():
 def test_encode_categorical_existing_bool_false():
     c = {"False": 1}
     encoded, bad = _encode_categorical_existing(
-        np.array([False, True, False], dtype=np.unicode_),
+        np.array([False, True, False], dtype=np.str_),
         np.array([True, True, False, True], dtype=np.bool_),
         c,
     )
@@ -1794,7 +1794,7 @@ def test_unify_columns_pandas_missings_float64():
 
 
 def test_unify_columns_pandas_missings_longfloat():
-    check_pandas_float(np.longfloat, -1.1, 2.2)
+    check_pandas_float(np.longdouble, -1.1, 2.2)
 
 
 def test_unify_columns_pandas_missings_float32():

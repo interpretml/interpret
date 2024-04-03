@@ -159,7 +159,7 @@ def measure_interactions(
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
         except (TypeError, ValueError):
-            y_discard = y.astype(dtype=np.unicode_, copy=False)
+            y_discard = y.astype(dtype=np.str_, copy=False)
 
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
