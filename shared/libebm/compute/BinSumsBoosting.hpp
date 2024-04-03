@@ -231,40 +231,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
          GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
 
-   const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(1 <= cItemsPerBitPack);
-   EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
-#endif // GPU_COMPILE
-
-   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(1 <= cBitsPerItemMax);
-   EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
-#endif // GPU_COMPILE
-
-   int cShift;
-   if(!bFixedSizePack) {
-      cShift =
-            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-            cBitsPerItemMax;
-   }
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
-   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
-
-   const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(nullptr != pInputData);
-#endif // GPU_COMPILE
-
-   const typename TFloat::T* pWeight;
-   if(bWeight) {
-      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
-#ifndef GPU_COMPILE
-      EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-   }
 
    EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
 
@@ -287,6 +253,42 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const typename TFloat::TInt offsets =
          TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
+
+
+   const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cItemsPerBitPack);
+   EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+   const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
+
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift;
+   if(!bFixedSizePack) {
+      cShift =
+            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+   }
+
+   const typename TFloat::T* pWeight;
+   if(bWeight) {
+      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+   }
 
    // We want to structure the loop below so that the load happens immediately after the store
    // To do that we put the store at the top and the load below. But now we need to exectute a
@@ -478,6 +480,23 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
          GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
 
+   // The compiler is normally pretty good about optimizing multiplications into shifts when possible
+   // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
+   // even when the multiplication has a fixed compile time constant value that is a power of 2, so
+   // we manually convert the multiplications into shifts.
+   //
+   // We also have tried the Multiply templated function that is designed to convert multiplications
+   // into shifts, but using that templated function breaks the compiler optimization that unrolls
+   // the bitpacking loop.
+   //
+   constexpr static bool bSmall = 4 == cBytesPerBin;
+   constexpr static bool bMed = 8 == cBytesPerBin;
+   constexpr static bool bLarge = 16 == cBytesPerBin;
+   static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
+   constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
+   static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
+   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
+
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
    EBM_ASSERT(1 <= cItemsPerBitPack);
@@ -490,20 +509,20 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   int cShift;
-   if(!bFixedSizePack) {
-      cShift =
-            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-            cBitsPerItemMax;
-   }
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
    const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
    const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
+
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift;
+   if(!bFixedSizePack) {
+      cShift =
+            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+   }
 
    const typename TFloat::T* pWeight;
    if(bWeight) {
@@ -565,27 +584,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          }
 
          typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-
-         // The compiler is normally pretty good about optimizing multiplications into shifts when possible
-         // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
-         // even when the multiplication has a fixed compile time constant value that is a power of 2, so
-         // we manually convert the multiplications into shifts.
-         //
-         // We also have tried the Multiply templated function that is designed to convert multiplications
-         // into shifts, but using that templated function breaks the compiler optimization that unrolls
-         // the bitpacking loop.
-         //
-         constexpr static bool bSmall = 4 == cBytesPerBin;
-         constexpr static bool bMed = 8 == cBytesPerBin;
-         constexpr static bool bLarge = 16 == cBytesPerBin;
-         static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
-         if(bSmall) {
-            iTensorBin = iTensorBin << 2;
-         } else if(bMed) {
-            iTensorBin = iTensorBin << 3;
-         } else if(bLarge) {
-            iTensorBin = iTensorBin << 4;
-         }
+         iTensorBin = iTensorBin << cFixedShift;
 
          // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can
          // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
@@ -686,17 +685,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   int cShift =
-         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-         cBitsPerItemMax;
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
    const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
    const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
+
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift =
+         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+         cBitsPerItemMax;
 
    const typename TFloat::T* pWeight;
    if(bWeight) {
@@ -839,17 +838,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-   int cShift =
-         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-         cBitsPerItemMax;
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
    const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
    const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
+
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift =
+         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+         cBitsPerItemMax;
 
    const typename TFloat::T* pWeight;
    if(bWeight) {

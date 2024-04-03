@@ -103,13 +103,13 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 #endif // GPU_COMPILE
       pDimensionalData->m_cBitsPerItemMax = cBitsPerItemMax;
 
+      pDimensionalData->maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+      pDimensionalData->m_cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
       pDimensionalData->m_cShift = (static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) %
                                           static_cast<size_t>(cItemsPerBitPack)) +
                                          1) *
             cBitsPerItemMax;
-      pDimensionalData->m_cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
-      pDimensionalData->maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
       pDimensionalData->m_cBins = pParams->m_acBins[iDimensionInit];
 

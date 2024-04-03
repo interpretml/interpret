@@ -139,13 +139,6 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         if(!bFixedSizePack) {
-            cShift = static_cast<int>(
-                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-                  cBitsPerItemMax;
-         }
-         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
          pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pData->m_aPacked);
@@ -154,6 +147,13 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
 #endif // GPU_COMPILE
 
          cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
+
+         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+         if(!bFixedSizePack) {
+            cShift = static_cast<int>(
+                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+                  cBitsPerItemMax;
+         }
       }
 
       const typename TFloat::TInt::T* pTargetData =
@@ -229,6 +229,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
             do {
                TFloat updateScore;
                if(!bCollapsed) {
+                  // TODO: also try incrementing aUpdateTensorScores instead of incrementing iTensorBin
                   updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
                   iTensorBin = iTensorBin + 1;
                } else {

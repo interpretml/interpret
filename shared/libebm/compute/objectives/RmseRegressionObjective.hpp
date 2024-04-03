@@ -146,11 +146,10 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
 
       TFloat updateScore;
 
-      int cItemsPerBitPack;
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
       } else {
-         cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
+         const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
 #ifndef GPU_COMPILE
          EBM_ASSERT(1 <= cItemsPerBitPack);
          EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
@@ -162,19 +161,19 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
 #endif // GPU_COMPILE
 
-         if(!bFixedSizePack) {
-            cShift = static_cast<int>(
-                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-                  cBitsPerItemMax;
-         }
-         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
          maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
 
          pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pData->m_aPacked);
 #ifndef GPU_COMPILE
          EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
+
+         cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+         if(!bFixedSizePack) {
+            cShift = static_cast<int>(
+                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+                  cBitsPerItemMax;
+         }
       }
 
       const typename TFloat::T* pWeight;

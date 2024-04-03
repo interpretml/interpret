@@ -934,11 +934,6 @@ ErrorEbm DataSetBoosting::InitBags(
                         (cParallelSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
                   const size_t cDataUnits = cParallelDataUnits * cSIMDPack;
 
-                  int cShift =
-                        static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-                        cBitsPerItemMax;
-                  const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-
                   size_t maskBits;
                   if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
                      maskBits = static_cast<size_t>(MakeLowMask<UIntBig>(cBitsPerItemMax));
@@ -950,6 +945,12 @@ ErrorEbm DataSetBoosting::InitBags(
                   void* pTermData = pSubset->m_aaTermData[iTerm];
                   const size_t cBytes = pSubset->GetObjectiveWrapper()->m_cUIntBytes * cDataUnits;
                   const void* const pTermDataEnd = IndexByte(pTermData, cBytes);
+
+                  const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+                  int cShift =
+                        static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+                        cBitsPerItemMax;
+
                   do {
                      do {
                         size_t iPartition = 0;
