@@ -674,6 +674,9 @@ struct Objective : public Registrable {
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          if(bFixedSizePack) {
+            // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+            // the loop below. The compiler can only do that though if it can guarantee that all
+            // iterations of the loop have the name number of loops.  Setting cShift here allows this
             cShift = cShiftReset;
          }
          while(true) {

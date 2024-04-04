@@ -209,6 +209,16 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
    static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
+   static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert(!bHessian ||
+               sizeof(typename TFloat::T) ==
+                     Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert((bHessian ? size_t{2} : size_t{1}) * sizeof(typename TFloat::T) ==
+               sizeof(Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>),
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
@@ -253,7 +263,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const typename TFloat::TInt offsets =
          TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
-
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
@@ -306,20 +315,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    // We want to structure the loop below so that the load happens immediately after the store
+   // because that allows the maximum possible time for the gathering load to happen in the CPU pipeline.
    // To do that we put the store at the top and the load below. But now we need to exectute a
    // store on the first iteration, so load the values from memory here that we'll then store
    // back on the first loop iteration
    typename TFloat::TInt iTensorBinPrev = offsets;
-
-   static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-   static_assert(!bHessian || sizeof(typename TFloat::T) ==
-               Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess,
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-   static_assert((bHessian ? size_t{2} : size_t{1}) * sizeof(typename TFloat::T) ==
-               sizeof(Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>),
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-
    TFloat bin0;
    TFloat bin1;
    if(!bHessian) {
@@ -342,33 +342,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       weight = 0;
    }
    do {
-      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
-      // in this loop which we could do by allocating an extra item to the end of each memory region and throwing away
-      // the last one.  I think this won't have any effect since these loads are predictable loads and the CPU should
-      // already have them in cache but it's worth trying.  This optimization might destroy the loop unwinding we
-      // currently have the compiler doing where it removes the cShift loop and flattens those assembly instructions.
-
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       if(bFixedSizePack) {
-         // If we have a fixed sized cCompilerPack, then we previously made it so that in this call cSamples
-         // will divide perfectly into the available bitpacks.  This allows us to guarantee that the loop
-         // below will allways execute an identical number of times.  If the compiler is aware of this,
-         // and it knows how many times the loop below will execute, then it can eliminate the loop.
-         // To do this though, we need to set cShift to a value at the top of the loop instead of allowing
-         // it to be set above to a smaller value which can change after the first loop iteration.
-         // By setting it here, the compiler knows the value of cShift on each loop iteration.
-
-         // I've verified that on the Microsoft compiler, clang, and g++ this loop below optimizes away using the
-         // shifts below. For the binary classification Objective (InjectedApplyUpdate) I was not able
-         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler
-         // (clang and g++ work) and I think that was due to the
-         // amount of code within the loop rather than anything that was preventing the compiler to
-         // reason about the values of the variables within each loop iteration.  For RMSE, which
-         // has less code within the loop I was able to get it to optimize away the loop, but I had to
-         // add an additional index variable and decrement it by 1 each loop, so it seems we're right on
-         // the edge of complexity where the compiler will choose to do this.
-
+         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+         // the loop below. The compiler can only do that though if it can guarantee that all
+         // iterations of the loop have the name number of loops.  Setting cShift here allows this
          cShift = cShiftReset;
       }
       do {
@@ -383,6 +362,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          } else {
             TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
          }
+
+         if(bWeight) {
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
+         }
+
+         gradient = TFloat::Load(pGradientAndHessian);
+         if(bHessian) {
+            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         }
+         pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
 
          bin0 += gradhess0;
          if(bHessian) {
@@ -409,23 +399,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          } else {
             TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
          }
-         iTensorBinPrev = iTensorBin;
 
+         iTensorBinPrev = iTensorBin;
          iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
          if(bHessian) {
             iTensorBin = PermuteForInterleaf(iTensorBin);
          }
-
-         if(bWeight) {
-            weight = TFloat::Load(pWeight);
-            pWeight += TFloat::k_cSIMDPack;
-         }
-
-         gradient = TFloat::Load(pGradientAndHessian);
-         if(bHessian) {
-            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
-         }
-         pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
@@ -559,33 +538,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    }
 
    do {
-      // TODO: maybe, it might be useful to preload the iTensorBinCombined, weight, gradient, hessian for the next loop
-      // in this loop which we could do by allocating an extra item to the end of each memory region and throwing away
-      // the last one.  I think this won't have any effect since these loads are predictable loads and the CPU should
-      // already have them in cache but it's worth trying.  This optimization might destroy the loop unwinding we
-      // currently have the compiler doing where it removes the cShift loop and flattens those assembly instructions.
-
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       if(bFixedSizePack) {
-         // If we have a fixed sized cCompilerPack, then we previously made it so that in this call cSamples
-         // will divide perfectly into the available bitpacks.  This allows us to guarantee that the loop
-         // below will allways execute an identical number of times.  If the compiler is aware of this,
-         // and it knows how many times the loop below will execute, then it can eliminate the loop.
-         // To do this though, we need to set cShift to a value at the top of the loop instead of allowing
-         // it to be set above to a smaller value which can change after the first loop iteration.
-         // By setting it here, the compiler knows the value of cShift on each loop iteration.
-
-         // I've verified that on the Microsoft compiler, clang, and g++ this loop below optimizes away using the
-         // shifts below. For the binary classification Objective (InjectedApplyUpdate) I was not able
-         // to get the compiler to optimize the equivalent loop away with the Microsoft compiler
-         // (clang and g++ work) and I think that was due to the
-         // amount of code within the loop rather than anything that was preventing the compiler to
-         // reason about the values of the variables within each loop iteration.  For RMSE, which
-         // has less code within the loop I was able to get it to optimize away the loop, but I had to
-         // add an additional index variable and decrement it by 1 each loop, so it seems we're right on
-         // the edge of complexity where the compiler will choose to do this.
-
+         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+         // the loop below. The compiler can only do that though if it can guarantee that all
+         // iterations of the loop have the name number of loops.  Setting cShift here allows this
          cShift = cShiftReset;
       }
       do {

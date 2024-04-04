@@ -202,11 +202,9 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
             pInputData += TFloat::TInt::k_cSIMDPack;
          }
          if(bFixedSizePack) {
-            // The compiler can in theory eliminate this loop if we set cShift here since then all
-            // calls to the loop have the same number of iterations and the compiler can precompute this.
-            // The compiler seems to not optimize this away in this case because of the inner loop
-            // for cScores, but leave it here incase a future compiler chooses to do this optimization
-
+            // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+            // the loop below. The compiler can only do that though if it can guarantee that all
+            // iterations of the loop have the name number of loops.  Setting cShift here allows this
             cShift = cShiftReset;
          }
          while(true) {
