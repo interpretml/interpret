@@ -145,6 +145,7 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
+      TFloat updateScorePrev;
 
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
@@ -169,10 +170,18 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
 #endif // GPU_COMPILE
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-         if(!bFixedSizePack) {
-            cShift = static_cast<int>(
-                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+         if(bFixedSizePack) {
+            updateScorePrev = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
+            pInputData += TFloat::TInt::k_cSIMDPack;
+         } else {
+            cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
+            updateScorePrev = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
+            cShift -= cBitsPerItemMax;
+            if(cShift < 0) {
+               cShift = cShiftReset;
+               pInputData += TFloat::TInt::k_cSIMDPack;
+            }
          }
       }
 
@@ -221,7 +230,8 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          while(true) {
             if(!bCollapsed) {
                const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
+               updateScore = updateScorePrev;
+               updateScorePrev = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
             TFloat gradient = TFloat::Load(pGradient);

@@ -274,12 +274,27 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
 
+   typename TFloat::TInt iTensorBin;
    const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
    int cShift;
-   if(!bFixedSizePack) {
-      cShift =
-            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+   if(bFixedSizePack) {
+      iTensorBin = (TFloat::TInt::Load(pInputData) & maskBits) + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
+      pInputData += TFloat::TInt::k_cSIMDPack;
+   } else {
+      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
             cBitsPerItemMax;
+      iTensorBin = ((TFloat::TInt::Load(pInputData) >> cShift) & maskBits) + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
+      cShift -= cBitsPerItemMax;
+      if(cShift < 0) {
+         cShift = cShiftReset;
+         pInputData += TFloat::TInt::k_cSIMDPack;
+      }
    }
 
    const typename TFloat::T* pWeight;
@@ -369,11 +384,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
          }
 
-         typename TFloat::TInt iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
-         if(bHessian) {
-            iTensorBin = PermuteForInterleaf(iTensorBin);
-         }
-
          bin0 += gradhess0;
          if(bHessian) {
             bin1 += gradhess1;
@@ -400,6 +410,11 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
          }
          iTensorBinPrev = iTensorBin;
+
+         iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
+         if(bHessian) {
+            iTensorBin = PermuteForInterleaf(iTensorBin);
+         }
 
          if(bWeight) {
             weight = TFloat::Load(pWeight);
@@ -516,12 +531,23 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
 
+   typename TFloat::TInt iTensorBin;
    const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
    int cShift;
-   if(!bFixedSizePack) {
-      cShift =
-            static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+   if(bFixedSizePack) {
+      iTensorBin = TFloat::TInt::Load(pInputData) & maskBits;
+      iTensorBin = iTensorBin << cFixedShift;
+      pInputData += TFloat::TInt::k_cSIMDPack;
+   } else {
+      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
             cBitsPerItemMax;
+      iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+      iTensorBin = iTensorBin << cFixedShift;
+      cShift -= cBitsPerItemMax;
+      if(cShift < 0) {
+         cShift = cShiftReset;
+         pInputData += TFloat::TInt::k_cSIMDPack;
+      }
    }
 
    const typename TFloat::T* pWeight;
@@ -583,9 +609,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             }
          }
 
-         typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-         iTensorBin = iTensorBin << cFixedShift;
-
          // BEWARE: unless we generate a separate histogram for each SIMD stream and later merge them, pBin can
          // point to the same bin in multiple samples within the SIMD pack, so we need to serialize fetching sums
          if(bHessian) {
@@ -620,6 +643,10 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   iTensorBin,
                   gradient);
          }
+
+         iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+         iTensorBin = iTensorBin << cFixedShift;
+
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
       if(!bFixedSizePack) {
@@ -629,6 +656,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 }
 
 /*
+
+This code no longer works because we now prefetch the gathering loads by moving all the bit packed data one
+bitpack earlier and leave 1 bitpack at the end with zeros
 
 This code works, but seems to take about two times longer than the non-parallel version where bParallel is false
 I think this is because for multiclass we load at least 6 floats from the same location (3 gradients 3 hessians) or
@@ -845,10 +875,21 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(nullptr != pInputData);
 #endif // GPU_COMPILE
 
+   typename TFloat::TInt iTensorBin;
    const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-   int cShift =
-         static_cast<int>(((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+   int cShift;
+   cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
          cBitsPerItemMax;
+   iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+   iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+   k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+   static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+         false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+   cShift -= cBitsPerItemMax;
+   if(cShift < 0) {
+      cShift = cShiftReset;
+      pInputData += TFloat::TInt::k_cSIMDPack;
+   }
 
    const typename TFloat::T* pWeight;
    if(bWeight) {
@@ -864,16 +905,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       do {
          Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>*
                apBins[TFloat::k_cSIMDPack];
-         typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-
-         // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
-         // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
-         // there are low numbers of shifts, which should be the case for anything with a compile time constant here
-         iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
-         k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
-         static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-               false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
-
          TFloat::TInt::Execute(
                [aBins, &apBins](const int i, const typename TFloat::TInt::T x) {
                   apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
@@ -929,8 +960,17 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             }
             ++iScore;
          } while(cScores != iScore);
-
          pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
+
+         iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+
+         // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+         // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+         // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+         iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+         k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+         static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+               false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
@@ -971,10 +1011,11 @@ struct BitPack final {
             if(bWeight) {
                pParams->m_aWeights = IndexByte(pParams->m_aWeights, sizeof(typename TFloat::T) * cRemnants);
             }
+
+            const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
+
             pParams->m_aGradientsAndHessians = IndexByte(pParams->m_aGradientsAndHessians,
-                  sizeof(typename TFloat::T) * (bHessian ? size_t{2} : size_t{1}) * cCompilerScores * cRemnants);
-            pParams->m_aPacked =
-                  IndexByte(pParams->m_aPacked, sizeof(typename TFloat::TInt::T) * TFloat::TInt::k_cSIMDPack);
+                  sizeof(typename TFloat::T) * (bHessian ? size_t{2} : size_t{1}) * cScores * cRemnants);
          }
          BinSumsBoostingInternal<TFloat, bParallel, bCollapsed, bHessian, bWeight, cCompilerScores, cCompilerPack>(
                pParams);

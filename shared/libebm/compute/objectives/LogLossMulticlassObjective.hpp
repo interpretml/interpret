@@ -125,6 +125,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       typename TFloat::TInt maskBits;
       const typename TFloat::TInt::T* pInputData;
       typename TFloat::TInt::T cCastScores;
+      typename TFloat::TInt iTensorBin;
 
       if(!bCollapsed) {
          const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pData->m_cPack);
@@ -149,10 +150,28 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          cCastScores = static_cast<typename TFloat::TInt::T>(cScores);
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-         if(!bFixedSizePack) {
-            cShift = static_cast<int>(
-                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+         if(bFixedSizePack) {
+            iTensorBin = TFloat::TInt::Load(pInputData) & maskBits;
+
+            iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+            k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+            static_cast<typename TFloat::TInt::T>(cCompilerScores) > (iTensorBin, cCastScores);
+
+            pInputData += TFloat::TInt::k_cSIMDPack;
+         } else {
+            cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
+            iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+
+            iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+            k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+            static_cast<typename TFloat::TInt::T>(cCompilerScores) > (iTensorBin, cCastScores);
+
+            cShift -= cBitsPerItemMax;
+            if(cShift < 0) {
+               cShift = cShiftReset;
+               pInputData += TFloat::TInt::k_cSIMDPack;
+            }
          }
       }
 
@@ -201,28 +220,6 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
             // This will allow the CPU to do the gathering operation in the background while it works on computation.
             // Probably we want to put the code below inside the loop into an inline function that we can call
             // either at the start during init or the end once the rest is done.. not sure which.
-
-            typename TFloat::TInt iTensorBin;
-            if(!bCollapsed) {
-               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-
-               // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD
-               // multiplication and even if SIMD multiplication exists it has high latency and cost.  We could avoid it
-               // entirely by changing the memory layout of the tensor at aUpdateTensorScores.  If we made cScores
-               // separate tensors, where we colocated all the updates for each class, then we could use the
-               // non-multiplied indexes to fetch the tensor bins from the first class, then we would add cTensorBins *
-               // sizeof(TFloat) to each iTensorBin value each to proceed to the next class score. This elimaintes all
-               // multiplication and we just need to add the value in a SIMD register to another SIMD register. This
-               // addition is free since we already have a "iTensorBin += 1" instruction below. The potential drawback
-               // is that if the tensors are really large we might benefit from keeping the scores for each clase
-               // co-located where they would probably be loaded as a single cache line load, and perhpas might be
-               // prefetched speculativley by the CPU more reliably. Since we typically use shifts to do the
-               // multiplication we only really benefit a lot potentially when k_dynamicScores == cCompilerScores.
-
-               iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
-               k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
-               static_cast<typename TFloat::TInt::T>(cCompilerScores) > (iTensorBin, cCastScores);
-            }
 
             TFloat sumExp = 0.0;
             size_t iScore1 = 0;
@@ -318,6 +315,27 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                adjust.Store(pGradientAndHessian, target);
 
                pGradientAndHessian += cScores << (bHessian ? (TFloat::k_cSIMDShift + 1) : TFloat::k_cSIMDShift);
+            }
+
+            if(!bCollapsed) {
+               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+
+               // TODO: (explore this) This multiplication is expensive since some processors (ARM) do not have SIMD
+               // multiplication and even if SIMD multiplication exists it has high latency and cost.  We could avoid it
+               // entirely by changing the memory layout of the tensor at aUpdateTensorScores.  If we made cScores
+               // separate tensors, where we colocated all the updates for each class, then we could use the
+               // non-multiplied indexes to fetch the tensor bins from the first class, then we would add cTensorBins *
+               // sizeof(TFloat) to each iTensorBin value each to proceed to the next class score. This elimaintes all
+               // multiplication and we just need to add the value in a SIMD register to another SIMD register. This
+               // addition is free since we already have a "iTensorBin += 1" instruction below. The potential drawback
+               // is that if the tensors are really large we might benefit from keeping the scores for each clase
+               // co-located where they would probably be loaded as a single cache line load, and perhpas might be
+               // prefetched speculativley by the CPU more reliably. Since we typically use shifts to do the
+               // multiplication we only really benefit a lot potentially when k_dynamicScores == cCompilerScores.
+
+               iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+               k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+               static_cast<typename TFloat::TInt::T>(cCompilerScores) > (iTensorBin, cCastScores);
             }
 
             if(bCollapsed) {

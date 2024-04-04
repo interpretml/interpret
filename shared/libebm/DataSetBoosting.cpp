@@ -516,8 +516,7 @@ ErrorEbm DataSetBoosting::InitTermData(const unsigned char* const pDataSetShared
             EBM_ASSERT(1 <= cParallelSamples);
 
             // this can't overflow or underflow
-            const size_t cParallelDataUnitsTo =
-                  (cParallelSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPackTo) + size_t{1};
+            const size_t cParallelDataUnitsTo = cParallelSamples / static_cast<size_t>(cItemsPerBitPackTo) + size_t{1};
             const size_t cDataUnitsTo = cParallelDataUnitsTo * cSIMDPack;
 
             if(IsMultiplyError(pSubset->GetObjectiveWrapper()->m_cUIntBytes, cDataUnitsTo)) {
@@ -533,14 +532,15 @@ ErrorEbm DataSetBoosting::InitTermData(const unsigned char* const pDataSetShared
                return Error_OutOfMemory;
             }
             pSubset->m_aaTermData[iTerm] = pTermDataTo;
-            const void* const pTermDataToEnd = IndexByte(pTermDataTo, cBytes);
+            const void* const pTermDataToLast =
+                  IndexByte(pTermDataTo, cBytes - pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
 
             memset(pTermDataTo, 0, cBytes);
 
-            int cShiftTo = static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPackTo)) *
-                  cBitsPerItemMaxTo;
+            int cShiftTo =
+                  static_cast<int>(cParallelSamples % static_cast<size_t>(cItemsPerBitPackTo)) * cBitsPerItemMaxTo;
             const int cShiftResetTo = (cItemsPerBitPackTo - 1) * cBitsPerItemMaxTo;
-            do {
+            while(true) {
                do {
                   size_t iPartition = 0;
                   do {
@@ -633,12 +633,21 @@ ErrorEbm DataSetBoosting::InitTermData(const unsigned char* const pDataSetShared
 
                      ++iPartition;
                   } while(cSIMDPack != iPartition);
+
+                  if(pTermDataToLast == pTermDataTo) {
+                     if(cShiftTo == cBitsPerItemMaxTo) {
+                        // we always leave the last slot empty (with zeros)
+                        goto done_subset;
+                     }
+                  }
+
                   cShiftTo -= cBitsPerItemMaxTo;
                } while(0 <= cShiftTo);
                cShiftTo = cShiftResetTo;
 
                pTermDataTo = IndexByte(pTermDataTo, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
-            } while(pTermDataToEnd != pTermDataTo);
+            }
+         done_subset:
 
             ++pSubset;
          } while(pSubsetsEnd != pSubset);
@@ -931,7 +940,7 @@ ErrorEbm DataSetBoosting::InitBags(
 
                   // this can't overflow or underflow
                   const size_t cParallelDataUnits =
-                        (cParallelSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
+                        cParallelSamples / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
                   const size_t cDataUnits = cParallelDataUnits * cSIMDPack;
 
                   size_t maskBits;
@@ -944,14 +953,14 @@ ErrorEbm DataSetBoosting::InitBags(
 
                   void* pTermData = pSubset->m_aaTermData[iTerm];
                   const size_t cBytes = pSubset->GetObjectiveWrapper()->m_cUIntBytes * cDataUnits;
-                  const void* const pTermDataEnd = IndexByte(pTermData, cBytes);
+                  const void* const pTermDataLast =
+                        IndexByte(pTermData, cBytes - pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
 
                   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
                   int cShift =
-                        static_cast<int>((cParallelSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
-                        cBitsPerItemMax;
+                        static_cast<int>(cParallelSamples % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
 
-                  do {
+                  while(true) {
                      do {
                         size_t iPartition = 0;
                         do {
@@ -994,12 +1003,22 @@ ErrorEbm DataSetBoosting::InitBags(
 
                            ++iPartition;
                         } while(cSIMDPack != iPartition);
+
+                        if(pTermDataLast == pTermData) {
+                           if(cShift == cBitsPerItemMax) {
+                              // we always leave the last slot empty (with zeros)
+                              goto done_subset;
+                           }
+                        }
+
                         cShift -= cBitsPerItemMax;
                      } while(0 <= cShift);
                      cShift = cShiftReset;
 
                      pTermData = IndexByte(pTermData, pSubset->m_pObjective->m_cUIntBytes * cSIMDPack);
-                  } while(pTermDataEnd != pTermData);
+                  }
+               done_subset:
+
                   ++pSubset;
                } while(pSubsetsEnd != pSubset);
             }

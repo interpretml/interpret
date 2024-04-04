@@ -135,11 +135,12 @@ struct BitPackObjective final {
                pData->m_aWeights =
                      IndexByte(pData->m_aWeights, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
             }
+
+            const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
+
             pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
-                  sizeof(typename TObjective::TFloatInternal::T) * (bHessian ? size_t{2} : size_t{1}) *
-                        cCompilerScores * cRemnants);
-            pData->m_aPacked = IndexByte(pData->m_aPacked,
-                  sizeof(typename TObjective::TFloatInternal::TInt::T) * TObjective::TFloatInternal::TInt::k_cSIMDPack);
+                  sizeof(typename TObjective::TFloatInternal::T) * (bHessian ? size_t{2} : size_t{1}) * cScores *
+                        cRemnants);
 
             if(!TObjective::k_bRmse) {
                constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
@@ -152,8 +153,8 @@ struct BitPackObjective final {
                   pData->m_aTargets = 
                         IndexByte(pData->m_aTargets, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
                }
-               pData->m_aSampleScores = IndexByte(pData->m_aSampleScores,
-                     sizeof(typename TObjective::TFloatInternal::T) * cCompilerScores * cRemnants);
+               pData->m_aSampleScores = IndexByte(
+                     pData->m_aSampleScores, sizeof(typename TObjective::TFloatInternal::T) * cScores * cRemnants);
             }
          }
          DoneBitpacking<TObjective,
@@ -599,6 +600,7 @@ struct Objective : public Registrable {
       const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
+      TFloat updateScorePrev;
 
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
@@ -623,10 +625,18 @@ struct Objective : public Registrable {
 #endif // GPU_COMPILE
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-         if(!bFixedSizePack) {
-            cShift = static_cast<int>(
-                           ((cSamples >> TFloat::k_cSIMDShift) - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) *
+         if(bFixedSizePack) {
+            updateScorePrev = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
+            pInputData += TFloat::TInt::k_cSIMDPack;
+         } else {
+            cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
+            updateScorePrev = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
+            cShift -= cBitsPerItemMax;
+            if(cShift < 0) {
+               cShift = cShiftReset;
+               pInputData += TFloat::TInt::k_cSIMDPack;
+            }
          }
       }
 
@@ -670,7 +680,8 @@ struct Objective : public Registrable {
          while(true) {
             if(!bCollapsed) {
                const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
+               updateScore = updateScorePrev;
+               updateScorePrev = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
             const TFloat target = TFloat::Load(pTargetData);
