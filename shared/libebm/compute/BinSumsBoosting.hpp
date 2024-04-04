@@ -861,6 +861,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
       do {
+         TFloat weight;
+         if(bWeight) {
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
+         }
+
          Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, cArrayScores>*
                apBins[TFloat::k_cSIMDPack];
          TFloat::TInt::Execute(
@@ -868,12 +874,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
                   apBins[i] = IndexBin(aBins, static_cast<size_t>(x));
                },
                iTensorBin);
-
-         TFloat weight;
-         if(bWeight) {
-            weight = TFloat::Load(pWeight);
-            pWeight += TFloat::k_cSIMDPack;
-         }
 
          size_t iScore = 0;
          do {
