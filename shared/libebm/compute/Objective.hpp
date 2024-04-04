@@ -600,7 +600,6 @@ struct Objective : public Registrable {
       const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
-      TFloat updateScorePrev;
 
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
@@ -626,12 +625,12 @@ struct Objective : public Registrable {
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
          if(bFixedSizePack) {
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
             pInputData += TFloat::TInt::k_cSIMDPack;
          } else {
             cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
             cShift -= cBitsPerItemMax;
             if(cShift < 0) {
                cShift = cShiftReset;
@@ -678,25 +677,34 @@ struct Objective : public Registrable {
             cShift = cShiftReset;
          }
          while(true) {
-            if(!bCollapsed) {
-               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore = updateScorePrev;
-               updateScorePrev = TFloat::Load(aUpdateTensorScores, iTensorBin);
-            }
+            TFloat sampleScore = TFloat::Load(pSampleScore);
 
             const TFloat target = TFloat::Load(pTargetData);
             pTargetData += TFloat::k_cSIMDPack;
 
-            TFloat sampleScore = TFloat::Load(pSampleScore);
+            TFloat weight;
+            if(bValidation) {
+               if(bWeight) {
+                  weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+               }
+            }
+
+            typename TFloat::TInt iTensorBin;
+            if(!bCollapsed) {
+               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+            }
             sampleScore += updateScore;
+            if(!bCollapsed) {
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
+            }
+
             sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
             if(bValidation) {
                TFloat metric = pObjective->CalcMetric(sampleScore, target);
                if(bWeight) {
-                  const TFloat weight = TFloat::Load(pWeight);
-                  pWeight += TFloat::k_cSIMDPack;
                   metricSum = FusedMultiplyAdd(metric, weight, metricSum);
                } else {
                   metricSum += metric;
