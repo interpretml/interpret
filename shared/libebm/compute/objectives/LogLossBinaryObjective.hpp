@@ -103,7 +103,6 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
       const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
-      TFloat updateScorePrev;
 
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
@@ -129,12 +128,12 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
          if(bFixedSizePack) {
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
             pInputData += TFloat::TInt::k_cSIMDPack;
          } else {
             cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
             cShift -= cBitsPerItemMax;
             if(cShift < 0) {
                cShift = cShiftReset;
@@ -186,6 +185,19 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
             cShift = cShiftReset;
          }
          while(true) {
+            TFloat sampleScore = TFloat::Load(pSampleScore);
+
+            const typename TFloat::TInt target = TFloat::TInt::Load(pTargetData);
+            pTargetData += TFloat::TInt::k_cSIMDPack;
+
+            TFloat weight;
+            if(bValidation) {
+               if(bWeight) {
+                  weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+               }
+            }
+
             // TODO: the speed of this loop can probably be improved by (AFTER eliminating the target by sorting the
             // data):
             //   0) eliminate the target by sorting the data and making it a templated argument, so it has 0 CPU cost
@@ -197,17 +209,15 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
             // Probably we want to put the code below inside the loop into an inline function that we can call
             // either at the start during init or the end once the rest is done.. not sure which.
 
+            typename TFloat::TInt iTensorBin;
             if(!bCollapsed) {
-               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore = updateScorePrev;
-               updateScorePrev = TFloat::Load(aUpdateTensorScores, iTensorBin);
+               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+            }
+            sampleScore += updateScore;
+            if(!bCollapsed) {
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
             }
 
-            const typename TFloat::TInt target = TFloat::TInt::Load(pTargetData);
-            pTargetData += TFloat::TInt::k_cSIMDPack;
-
-            TFloat sampleScore = TFloat::Load(pSampleScore);
-            sampleScore += updateScore;
             sampleScore.Store(pSampleScore);
             pSampleScore += TFloat::k_cSIMDPack;
 
@@ -224,8 +234,6 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                metric = TFloat::template ApproxLog<bDisableApprox, false>(metric);
 
                if(bWeight) {
-                  const TFloat weight = TFloat::Load(pWeight);
-                  pWeight += TFloat::k_cSIMDPack;
                   metricSum = FusedMultiplyAdd(metric, weight, metricSum);
                } else {
                   metricSum += metric;
