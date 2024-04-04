@@ -145,7 +145,6 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
       const typename TFloat::TInt::T* pInputData;
 
       TFloat updateScore;
-      TFloat updateScorePrev;
 
       if(bCollapsed) {
          updateScore = aUpdateTensorScores[0];
@@ -171,12 +170,12 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
 
          cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
          if(bFixedSizePack) {
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, TFloat::TInt::Load(pInputData) & maskBits);
             pInputData += TFloat::TInt::k_cSIMDPack;
          } else {
             cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
                   cBitsPerItemMax;
-            updateScorePrev = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
+            updateScore = TFloat::Load(aUpdateTensorScores, (TFloat::TInt::Load(pInputData) >> cShift) & maskBits);
             cShift -= cBitsPerItemMax;
             if(cShift < 0) {
                cShift = cShiftReset;
@@ -228,22 +227,32 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
             cShift = cShiftReset;
          }
          while(true) {
-            if(!bCollapsed) {
-               const typename TFloat::TInt iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
-               updateScore = updateScorePrev;
-               updateScorePrev = TFloat::Load(aUpdateTensorScores, iTensorBin);
+            TFloat gradient = TFloat::Load(pGradient);
+
+            TFloat weight;
+            if(bValidation) {
+               // we use RMSE so get the squared error part here
+               if(bWeight) {
+                  weight = TFloat::Load(pWeight);
+                  pWeight += TFloat::k_cSIMDPack;
+               }
             }
 
-            TFloat gradient = TFloat::Load(pGradient);
+            typename TFloat::TInt iTensorBin;
+            if(!bCollapsed) {
+               iTensorBin = (iTensorBinCombined >> cShift) & maskBits;
+            }
             gradient += updateScore;
+            if(!bCollapsed) {
+               updateScore = TFloat::Load(aUpdateTensorScores, iTensorBin);
+            }
+
             gradient.Store(pGradient);
             pGradient += TFloat::k_cSIMDPack;
 
             if(bValidation) {
                // we use RMSE so get the squared error part here
                if(bWeight) {
-                  const TFloat weight = TFloat::Load(pWeight);
-                  pWeight += TFloat::k_cSIMDPack;
                   metricSum = FusedMultiplyAdd(gradient * gradient, weight, metricSum);
                } else {
                   metricSum = FusedMultiplyAdd(gradient, gradient, metricSum);
