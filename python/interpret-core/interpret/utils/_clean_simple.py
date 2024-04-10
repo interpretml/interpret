@@ -260,9 +260,9 @@ def typify_classification(vec):
         ):
             dtype = np.bool_
         else:
-            dtype = np.unicode_
+            dtype = np.str_
     else:
-        dtype = np.unicode_
+        dtype = np.str_
 
     return vec.astype(dtype, copy=False)
 

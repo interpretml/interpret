@@ -294,8 +294,8 @@ _disallowed_types = frozenset(
         dict,
         Ellipsis,
         np.csingle,
-        np.complex_,
-        np.clongfloat,
+        np.complex128,
+        np.clongdouble,
         np.void,
     ]
 )
@@ -314,7 +314,7 @@ def _densify_object_ndarray(X_col):
     types = set(map(type, X_col))
     if len(types) == 1:
         if str in types:
-            return X_col.astype(np.unicode_)
+            return X_col.astype(np.str_)
         elif bool in types:
             return X_col.astype(np.bool_)
 
@@ -353,7 +353,7 @@ def _densify_object_ndarray(X_col):
             # it will silently convert negative integers to unsigned!
 
             # TODO : should this be np.float64 with a check for big integers
-            return X_col.astype(np.unicode_)
+            return X_col.astype(np.str_)
 
     if all(
         one_type is float or issubclass(one_type, np.floating) for one_type in types
@@ -430,7 +430,7 @@ def _densify_object_ndarray(X_col):
     # writing our own cython code that can be more efficient at walking through items in an array.  If we write
     # our own cython there is the added advantage that we can check types in the same loop and therefore eliminate
     # the costly "set(map(type, X_col))" calls above
-    return X_col.astype(np.unicode_)
+    return X_col.astype(np.str_)
 
 
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
@@ -448,9 +448,9 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
     if issubclass(uniques.dtype.type, np.floating):
         floats = uniques.astype(np.float64, copy=False)
-        uniques = floats.astype(np.unicode_)
+        uniques = floats.astype(np.str_)
     else:
-        uniques = uniques.astype(np.unicode_, copy=False)
+        uniques = uniques.astype(np.str_, copy=False)
         try:
             # we rely here on there being a round trip format within this language from float64 to text to float64
 
@@ -544,7 +544,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
 
     if issubclass(X_col.dtype.type, np.floating):
         uniques = uniques.astype(np.float64, copy=False)
-    uniques = uniques.astype(np.unicode_, copy=False)
+    uniques = uniques.astype(np.str_, copy=False)
 
     mapping = np.fromiter(
         (categories.get(val, -1) for val in uniques), np.int64, count=len(uniques)
@@ -725,7 +725,7 @@ def _process_continuous(X_col, nonmissings):
                     floats[idx] = one_item_array.astype(dtype=np.float64)[0]
                 except TypeError:
                     # use .astype instead of str(one_item_array) here to ensure identical string categories
-                    one_str_array = one_item_array.astype(dtype=np.unicode_)
+                    one_str_array = one_item_array.astype(dtype=np.str_)
                     try:
                         # use .astype(..) instead of float(..) to ensure identical conversion results
                         floats[idx] = one_str_array.astype(dtype=np.float64)[0]
@@ -948,7 +948,7 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.values
         is_ordered = X_col.ordered
-        pd_categories = X_col.categories.values.astype(dtype=np.unicode_, copy=False)
+        pd_categories = X_col.categories.values.astype(dtype=np.str_, copy=False)
         X_col = X_col.codes
 
         if feature_type == "ignore":
