@@ -11,7 +11,7 @@ variables:
 - name: ubuntu_bld
   value: ubuntu-20.04
 - name: mac_bld
-  value: macOS-13
+  value: macOS-latest
 - name: windows_bld
   value: windows-2022
 - name: ubuntu_test
