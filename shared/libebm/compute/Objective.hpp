@@ -107,6 +107,8 @@ struct BitPackObjective final {
          const Objective* const pObjective, ApplyUpdateBridge* const pData) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
+      static_assert(cCompilerPack <= COUNT_BITS(typename TObjective::TFloatInternal::TInt::T),
+            "cCompilerPack must fit into the bitpack");
 
       if(cCompilerPack == pData->m_cPack) {
          size_t cSamples = pData->m_cSamples;
