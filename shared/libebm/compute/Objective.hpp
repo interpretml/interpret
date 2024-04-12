@@ -138,9 +138,15 @@ struct BitPackObjective final {
 
             const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-            pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
-                  sizeof(typename TObjective::TFloatInternal::T) * (bHessian ? size_t{2} : size_t{1}) * cScores *
-                        cRemnants);
+            constexpr bool bGradientsAndHessians = TObjective::k_bRmse || !bValidation;
+            if(bGradientsAndHessians) {
+               EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
+               pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
+                     sizeof(typename TObjective::TFloatInternal::T) * (bHessian ? size_t{2} : size_t{1}) * cScores *
+                           cRemnants);
+            } else {
+               EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
+            }
 
             if(!TObjective::k_bRmse) {
                constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;

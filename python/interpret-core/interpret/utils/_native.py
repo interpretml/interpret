@@ -772,7 +772,9 @@ class Native:
         self.is_debug = is_debug
         # TODO: re-enable AVX512 after we have sufficient evidence it works and speeds processing
         self.acceleration = (
-            Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F if simd else Native.AccelerationFlags_NONE
+            Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F
+            if simd
+            else Native.AccelerationFlags_NONE
         )
         self.approximates = True
 
