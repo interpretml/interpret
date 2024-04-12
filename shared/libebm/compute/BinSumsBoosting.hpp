@@ -947,6 +947,7 @@ struct BitPack final {
    INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
+      static_assert(cCompilerPack <= COUNT_BITS(typename TFloat::TInt::T), "cCompilerPack must fit into the bitpack");
 
       if(cCompilerPack == pParams->m_cPack) {
          size_t cSamples = pParams->m_cSamples;
@@ -967,11 +968,15 @@ struct BitPack final {
             }
             pParams->m_cSamples = cSamples;
             if(bWeight) {
+               EBM_ASSERT(nullptr != pParams->m_aWeights);
                pParams->m_aWeights = IndexByte(pParams->m_aWeights, sizeof(typename TFloat::T) * cRemnants);
+            } else {
+               EBM_ASSERT(nullptr == pParams->m_aWeights);
             }
 
             const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
+            EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
             pParams->m_aGradientsAndHessians = IndexByte(pParams->m_aGradientsAndHessians,
                   sizeof(typename TFloat::T) * (bHessian ? size_t{2} : size_t{1}) * cScores * cRemnants);
          }
@@ -984,7 +989,7 @@ struct BitPack final {
                bHessian,
                bWeight,
                cCompilerScores,
-               GetNextBitPack<TFloat>(cCompilerPack, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
+               GetNextBitPack<typename TFloat::TInt::T>(cCompilerPack, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
       }
    }
 };
@@ -1020,7 +1025,8 @@ INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* cons
          bHessian,
          bWeight,
          cCompilerScores,
-         GetFirstBitPack<TFloat>(k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
+         GetFirstBitPack<typename TFloat::TInt::T>(
+               k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
 }
 template<typename TFloat,
       bool bParallel,

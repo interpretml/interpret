@@ -312,7 +312,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
    EBM_ASSERT(FloatCalc{0} <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
-   EBM_ASSERT(0 <= cSamplesLeafMin);
    EBM_ASSERT(0.0 < hessianMin);
    EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
    do {

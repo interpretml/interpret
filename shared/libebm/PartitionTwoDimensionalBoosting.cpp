@@ -89,7 +89,6 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
    auto* const aGradientPairsHigh =
          bUseStackMemory ? binHigh.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_High->GetGradientPairs();
 
-   EBM_ASSERT(0 <= cSamplesLeafMin);
    EBM_ASSERT(0.0 < hessianMin);
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
@@ -301,7 +300,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       auto* pTotals1HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
       auto* pTotals1HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
 
-      EBM_ASSERT(0 <= cSamplesLeafMin);
       EBM_ASSERT(0.0 < hessianMin);
 
       LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");

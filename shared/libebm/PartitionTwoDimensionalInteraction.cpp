@@ -98,7 +98,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       auto* const aGradientPairs11 =
             bUseStackMemory ? bin11.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_11->GetGradientPairs();
 
-      EBM_ASSERT(0 <= cSamplesLeafMin);
       EBM_ASSERT(0.0 < hessianMin);
 
 #ifndef NDEBUG

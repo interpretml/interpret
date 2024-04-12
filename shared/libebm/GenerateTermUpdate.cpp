@@ -714,7 +714,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
-      if(IntEbm{0} == lastDimensionLeavesMax || 1 != cRealDimensions && MONOTONE_NONE != significantDirection) {
+      if(IntEbm{0} == lastDimensionLeavesMax || (1 != cRealDimensions && MONOTONE_NONE != significantDirection)) {
          // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
          // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
          // but then collapse them afterwards into a single bin, but that's more work.

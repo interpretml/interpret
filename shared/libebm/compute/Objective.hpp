@@ -132,8 +132,11 @@ struct BitPackObjective final {
             pData->m_cSamples = cSamples;
 
             if(bWeight) {
+               EBM_ASSERT(nullptr != pData->m_aWeights);
                pData->m_aWeights =
                      IndexByte(pData->m_aWeights, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
+            } else {
+               EBM_ASSERT(nullptr == pData->m_aWeights);
             }
 
             const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
@@ -149,6 +152,9 @@ struct BitPackObjective final {
             }
 
             if(!TObjective::k_bRmse) {
+               EBM_ASSERT(nullptr != pData->m_aTargets);
+               EBM_ASSERT(nullptr != pData->m_aSampleScores);
+               
                constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
                if(bClassification) {
                   // targets are integers
@@ -161,6 +167,9 @@ struct BitPackObjective final {
                }
                pData->m_aSampleScores = IndexByte(
                      pData->m_aSampleScores, sizeof(typename TObjective::TFloatInternal::T) * cScores * cRemnants);
+            } else {
+               EBM_ASSERT(nullptr == pData->m_aTargets);
+               EBM_ASSERT(nullptr == pData->m_aSampleScores);
             }
          }
          DoneBitpacking<TObjective,
