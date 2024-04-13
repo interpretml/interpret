@@ -28,19 +28,10 @@ variables:
   value: true
 - name: runCodesignValidationInjection
   value: false
+- name: Codeql.SkipTaskAutoInjection
+  value: true
 
 jobs:
-- job: disable_tasks
-  pool:
-    vmImage: ${{ variables.ubuntu_bld }}
-  steps:
-  - checkout: none
-  - task: CodeQL@0
-    enabled: false
-  - task: ms.nuget-security-analysis.nuget-security-analysis.nuget-security-analysis@0
-    enabled: false
-  - task: ComponentGovernanceComponentDetection@0
-    enabled: false
 - job: bld
   strategy:
     matrix:
