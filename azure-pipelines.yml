@@ -11,7 +11,7 @@ variables:
 - name: ubuntu_bld
   value: ubuntu-20.04
 - name: mac_bld
-  value: macOS-latest
+  value: macOS-13
 - name: windows_bld
   value: windows-2022
 - name: ubuntu_test
@@ -20,8 +20,27 @@ variables:
   value: macOS-latest
 - name: windows_test
   value: windows-latest
+- name: skipComponentGovernanceDetection
+  value: true
+- name: skipSCA
+  value: true
+- name: skipNugetSecurityAnalysis
+  value: true
+- name: runCodesignValidationInjection
+  value: false
 
 jobs:
+- job: disable_tasks
+  pool:
+    vmImage: ${{ variables.ubuntu_bld }}
+  steps:
+  - checkout: none
+  - task: CodeQL@0
+    enabled: false
+  - task: ms.nuget-security-analysis.nuget-security-analysis.nuget-security-analysis@0
+    enabled: false
+  - task: ComponentGovernanceComponentDetection@0
+    enabled: false
 - job: bld
   strategy:
     matrix:
@@ -68,9 +87,6 @@ jobs:
     maxParallel: 12
   pool:
     vmImage: $(image.name)
-  variables:
-    skipComponentGovernanceDetection: true
-    #runCodesignValidationInjection: false
   steps:
   - task: PythonScript@0
     inputs:
@@ -118,9 +134,6 @@ jobs:
 - job: vis
   pool:
     vmImage: ${{ variables.ubuntu_bld }}
-  variables:
-    skipComponentGovernanceDetection: true
-    #runCodesignValidationInjection: false
   steps:
   - script: |
       cd shared/vis
@@ -173,9 +186,6 @@ jobs:
 - job: sdist
   pool:
     vmImage: ${{ variables.ubuntu_bld }}
-  variables:
-    skipComponentGovernanceDetection: true
-    #runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
@@ -223,9 +233,6 @@ jobs:
   dependsOn: [bld, vis]
   pool:
     vmImage: ${{ variables.ubuntu_bld }}
-  variables:
-    skipComponentGovernanceDetection: true
-    #runCodesignValidationInjection: false
   steps:
   - task: UsePythonVersion@0
     inputs:
