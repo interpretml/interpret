@@ -79,6 +79,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       if(bHessian) {
          hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
       }
+      pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
 
       if(bWeight) {
          gradient *= weight;
@@ -91,8 +92,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       if(bHessian) {
          hessianTotal += hessian;
       }
-
-      pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 
    auto* const pGradientPair = aBins->GetGradientPairs();
@@ -241,9 +240,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
          GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
 
-
-   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
-
    // The compiler is normally pretty good about optimizing multiplications into shifts when possible
    // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
    // even when the multiplication has a fixed compile time constant value that is a power of 2, so
@@ -356,16 +352,14 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
             if(bHessian) {
                hessian *= weight;
             }
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
          }
+
          if(!bHessian) {
             gradhess0 = gradient;
          } else {
             TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
-         }
-
-         if(bWeight) {
-            weight = TFloat::Load(pWeight);
-            pWeight += TFloat::k_cSIMDPack;
          }
 
          gradient = TFloat::Load(pGradientAndHessian);
@@ -471,7 +465,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    const typename TFloat::T* const pGradientsAndHessiansEnd =
          pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
 
-   const typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
+   static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
          GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
 
    // The compiler is normally pretty good about optimizing multiplications into shifts when possible
@@ -489,7 +483,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
    constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
    static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
-   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
 
    const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
 #ifndef GPU_COMPILE
