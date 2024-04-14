@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.1] - 2024-04-14
+### Fixed
+- added compatibility with numpy 2.0 thanks to @DerWeh in PR #525
+- fixed bug that was preventing SIMD from being used in python
+- removed approximate division in SIMD since the approximation was too inaccurate
+### Changed
+- EBM fitting time reduced
+
 ## [v0.6.0] - 2024-03-16
 ### Added
 - Documentation on recommended hyperparameters to help users optimize their models.
