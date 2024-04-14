@@ -203,12 +203,12 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifact: sdist
-      itemPattern: interpret-core-*.tar.gz
+      itemPattern: interpret_core-*.tar.gz
       path: "$(System.ArtifactsDirectory)/sdist"
     displayName: Download sdist
   - script: |
       cd "$(System.ArtifactsDirectory)/sdist"
-      tarball_path=$(echo interpret-core-*.tar.gz)
+      tarball_path=$(echo interpret_core-*.tar.gz)
       python -m pip install --upgrade pip setuptools wheel
       python -m pip install "$tarball_path"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       cd "$(Build.SourcesDirectory)/docs/"
@@ -412,12 +412,12 @@ jobs:
   - task: DownloadPipelineArtifact@2
     inputs:
       artifactName: sdist
-      itemPattern: interpret-core-*.tar.gz
+      itemPattern: interpret_core-*.tar.gz
       targetPath: "$(System.ArtifactsDirectory)/sdist"
   - script: |
       python -m pip install --upgrade pip setuptools wheel
-      FOR %%A IN ("$(System.ArtifactsDirectory)\sdist\interpret-core-*.tar.gz") DO SET "install_file=%%~nA"
-      REM the above line got "interpret-core-x.x.x.tar" and we now need to strip the ".tar"
+      FOR %%A IN ("$(System.ArtifactsDirectory)\sdist\interpret_core-*.tar.gz") DO SET "install_file=%%~nA"
+      REM the above line got "interpret_core-x.x.x.tar" and we now need to strip the ".tar"
       FOR %%A IN ("%install_file%") DO SET "install_file=%%~nA"
       SET PATH=%PATH%;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
       python -m pip install "$(System.ArtifactsDirectory)\sdist\%install_file%.tar.gz"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
@@ -432,7 +432,7 @@ jobs:
   - script: |
       python -m pip install --upgrade pip setuptools wheel
       cd "$(System.ArtifactsDirectory)/sdist"
-      install_file=$(echo interpret-core-*.tar.gz)
+      install_file=$(echo interpret_core-*.tar.gz)
       install_file=${install_file%.tar.gz}
       python -m pip install "$(System.ArtifactsDirectory)/sdist/$install_file.tar.gz"[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
       mkdir -p "$(Agent.TempDirectory)/zqmr/t"
