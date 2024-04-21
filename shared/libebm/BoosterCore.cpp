@@ -718,7 +718,9 @@ ErrorEbm BoosterCore::Create(void* const rng,
             }
 
             size_t cBytesPerFastBinMax = 0;
+#if 0 < PARALLEL_BINS_BYTES_MAX
             size_t cBytesParallelBoostTrainingMax = 0;
+#endif
 
             if(0 != cTrainingSamples) {
                DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
@@ -744,19 +746,21 @@ ErrorEbm BoosterCore::Create(void* const rng,
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
 
+#if 0 < PARALLEL_BINS_BYTES_MAX
                   if(1 == cScores && 1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
                      if(IsMultiplyError(
                               cBytesPerFastBin, cTensorBinsMax, pSubset->GetObjectiveWrapper()->m_cSIMDPack)) {
-                        cBytesParallelBoostTrainingMax = PARALLEL_BINS_BYTES_MAX;
+                        cBytesParallelBoostTrainingMax = static_cast<size_t>(PARALLEL_BINS_BYTES_MAX);
                      } else {
                         size_t cBytesParallelBoostTraining =
                               cBytesPerFastBin * cTensorBinsMax * pSubset->GetObjectiveWrapper()->m_cSIMDPack;
-                        cBytesParallelBoostTraining = EbmMin(cBytesParallelBoostTraining, PARALLEL_BINS_BYTES_MAX);
+                        cBytesParallelBoostTraining = EbmMin(cBytesParallelBoostTraining, static_cast<size_t>(PARALLEL_BINS_BYTES_MAX));
 
                         cBytesParallelBoostTrainingMax =
                               EbmMax(cBytesParallelBoostTrainingMax, cBytesParallelBoostTraining);
                      }
                   }
+#endif // 0 < PARALLEL_BINS_BYTES_MAX
 
                   ++pSubset;
                } while(pSubsetsEnd != pSubset);
@@ -793,8 +797,11 @@ ErrorEbm BoosterCore::Create(void* const rng,
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerFastBinMax, cTensorBinsMax)");
                return Error_OutOfMemory;
             }
-            pBoosterCore->m_cBytesFastBins =
-                  EbmMax(cBytesParallelBoostTrainingMax, cBytesPerFastBinMax * cTensorBinsMax);
+            cBytesPerFastBinMax *= cTensorBinsMax;
+#if 0 < PARALLEL_BINS_BYTES_MAX
+            cBytesPerFastBinMax = EbmMax(cBytesParallelBoostTrainingMax, cBytesPerFastBinMax);
+#endif
+            pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax;
 
             if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin size overflow");

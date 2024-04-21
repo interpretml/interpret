@@ -15,6 +15,7 @@
 #define ZONE_main
 #include "zones.h"
 
+#include "bridge.h"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 
@@ -786,6 +787,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             size_t cParallelTensorBins = cTensorBins;
             bool bParallelBins = false;
             const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
+#if 0 < PARALLEL_BINS_BYTES_MAX
             if(1 != cSIMDPack) {
                const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
                if(cBytesParallel <= PARALLEL_BINS_BYTES_MAX) {
@@ -796,6 +798,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   }
                }
             }
+#endif // 0 < PARALLEL_BINS_BYTES_MAX
 
             aFastBins->ZeroMem(cBytesPerFastBin, cParallelTensorBins);
 

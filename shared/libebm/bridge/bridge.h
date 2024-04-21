@@ -26,10 +26,9 @@ static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to cont
 static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 
 
-// from benchmarking, it seems that things are faster if our data can fit into L1 data cache, but get
-// slower if we depend on L2, so keep it under typical L1 data cache sizes, which for smaller mobile
-// laptops and ARM is 16kB
-#define PARALLEL_BINS_BYTES_MAX (STATIC_CAST(size_t, (16384)))
+// using parallel binning was alwasy slower in my tests, so eliminate 
+// this extra code for now until we can find a place where it's faster
+#define PARALLEL_BINS_BYTES_MAX 0
 
 struct ApplyUpdateBridge {
    size_t m_cScores;

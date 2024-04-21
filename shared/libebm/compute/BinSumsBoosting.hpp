@@ -195,6 +195,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
+#if 0 < PARALLEL_BINS_BYTES_MAX
 template<typename TFloat,
       bool bParallel,
       bool bCollapsed,
@@ -430,6 +431,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
    }
 }
+#endif // 0 < PARALLEL_BINS_BYTES_MAX
 
 template<typename TFloat,
       bool bParallel,
@@ -1259,6 +1261,7 @@ struct CountClassesBoosting<TFloat, bParallel, bCollapsed, bHessian, bWeight, k_
    }
 };
 
+#if 0 < PARALLEL_BINS_BYTES_MAX
 template<typename TFloat, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
 
@@ -1290,6 +1293,8 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* con
       }
    }
 }
+#endif // 0 < PARALLEL_BINS_BYTES_MAX
+
 
 template<typename TFloat, bool bParallel, typename std::enable_if<!bParallel, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
@@ -1386,14 +1391,14 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* con
    }
 }
 
-template<typename TFloat, typename std::enable_if<1 == TFloat::k_cSIMDPack, int>::type = 0>
+template<typename TFloat, typename std::enable_if<1 == TFloat::k_cSIMDPack || 0 == PARALLEL_BINS_BYTES_MAX, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
    EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
    static constexpr bool bParallel = false;
    return DoneParallel<TFloat, bParallel>(pParams);
 }
 
-template<typename TFloat, typename std::enable_if<1 != TFloat::k_cSIMDPack, int>::type = 0>
+template<typename TFloat, typename std::enable_if<1 != TFloat::k_cSIMDPack && 0 < PARALLEL_BINS_BYTES_MAX, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
    if(pParams->m_bParallelBins) {
       static constexpr bool bParallel = true;
