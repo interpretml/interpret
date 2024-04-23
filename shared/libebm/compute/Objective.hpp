@@ -294,21 +294,6 @@ struct Objective : public Registrable {
    // Welcome to the demented hall of mirrors.. a prison for your mind
    // And no, I did not make this to purposely torment you
 
-   template<class TObjective> struct HasHessianInternal {
-      // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
-
-      template<typename T> static auto check(T* p) -> decltype(p->CalcGradientHessian(0, 0), std::true_type());
-
-      static std::false_type check(...);
-
-      using internal_type = decltype(check(static_cast<typename std::remove_reference<TObjective>::type*>(nullptr)));
-      static constexpr bool value = internal_type::value;
-   };
-   template<typename TObjective> constexpr static bool HasHessian() {
-      // use SFINAE to determine if TObjective has the function CalcGradientHessian with the correct signature
-      return HasHessianInternal<TObjective>::value;
-   }
-
    template<typename TObjective> constexpr static bool IsEdgeObjective() {
       return std::is_base_of<BinaryObjective, TObjective>::value ||
             std::is_base_of<MulticlassObjective, TObjective>::value ||
@@ -383,7 +368,7 @@ struct Objective : public Registrable {
          bool bCollapsed,
          bool bValidation,
          bool bWeight,
-         typename std::enable_if<HasHessian<TObjective>(), int>::type = 0>
+         typename std::enable_if<TObjective::k_bHessian, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge* const pData) const {
       if(pData->m_bHessianNeeded) {
          return ApproxApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, true>(pData);
@@ -395,7 +380,7 @@ struct Objective : public Registrable {
          bool bCollapsed,
          bool bValidation,
          bool bWeight,
-         typename std::enable_if<!HasHessian<TObjective>(), int>::type = 0>
+         typename std::enable_if<!TObjective::k_bHessian, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm HessianApplyUpdate(ApplyUpdateBridge* const pData) const {
       EBM_ASSERT(!pData->m_bHessianNeeded);
       return ApproxApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, false>(pData);
@@ -899,7 +884,7 @@ struct Objective : public Registrable {
       static_assert(bHessianConstantGood, "this->HessianConstant() should return a double");
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
 
-      pObjectiveWrapperOut->m_bObjectiveHasHessian = HasHessian<TObjective>() ? EBM_TRUE : EBM_FALSE;
+      pObjectiveWrapperOut->m_bObjectiveHasHessian = TObjective::k_bHessian ? EBM_TRUE : EBM_FALSE;
       pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
@@ -1093,10 +1078,11 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
 };
 
 #define OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                               \
-      __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bApprox, cItemsPerBitPackMax, cItemsPerBitPackMin)               \
+      __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian, bApprox, cItemsPerBitPackMax, cItemsPerBitPackMin)     \
  public:                                                                                                               \
    using TFloatInternal = TFloat;                                                                                      \
    static constexpr bool k_bRmse = false;                                                                              \
+   static constexpr bool k_bHessian = (bHessian);                                                                      \
    static constexpr bool k_bApprox = (bApprox);                                                                        \
    static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC);                                                   \
    static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION);                                                        \
@@ -1141,9 +1127,15 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
             cCompilerPack>(pData);                                                                                     \
    }
 
-#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION)                                          \
+#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian)                                \
    OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                                    \
-         __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, false, k_cItemsPerBitPackUndefined, k_cItemsPerBitPackUndefined)  \
+         __EBM_TYPE,                                                                                                   \
+         __MAXIMIZE_METRIC,                                                                                            \
+         __LINK_FUNCTION,                                                                                              \
+         bHessian,                                                                                                     \
+         false,                                                                                                        \
+         k_cItemsPerBitPackUndefined,                                                                                  \
+         k_cItemsPerBitPackUndefined)                                                                                  \
    OBJECTIVE_TEMPLATE_BOILERPLATE
 
 } // namespace DEFINED_ZONE_NAME

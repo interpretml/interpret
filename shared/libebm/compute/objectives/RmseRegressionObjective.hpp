@@ -9,6 +9,7 @@
 template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
    using TFloatInternal = TFloat;
    static constexpr bool k_bRmse = true;
+   static constexpr bool k_bHessian = false;
    static constexpr bool k_bApprox = false;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr LinkEbm k_linkFunction = Link_identity;

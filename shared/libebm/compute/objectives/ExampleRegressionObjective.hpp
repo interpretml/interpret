@@ -11,7 +11,7 @@ template<typename TFloat> struct ExampleRegressionObjective : RegressionObjectiv
    //   - this class type
    //   - MINIMIZE_METRIC or MAXIMIZE_METRIC determines which direction the metric should go for early stopping
    //   - Link function type. See libebm.h for a list of available link functions
-   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity)
+   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity, true)
 
    // member variables should be of type TFloat
    TFloat m_param0;

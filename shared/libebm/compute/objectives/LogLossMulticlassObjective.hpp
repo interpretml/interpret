@@ -11,6 +11,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          MINIMIZE_METRIC,
          Link_mlogit,
          true,
+         true,
          k_cItemsPerBitPackUndefined,
          k_cItemsPerBitPackUndefined)
 

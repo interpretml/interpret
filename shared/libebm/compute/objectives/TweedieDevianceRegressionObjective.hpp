@@ -7,7 +7,7 @@
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat> struct TweedieDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
+   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Link_log, true)
 
    TFloat m_variancePowerParamSub1;
    TFloat m_variancePowerParamSub2;
