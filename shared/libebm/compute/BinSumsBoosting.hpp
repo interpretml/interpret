@@ -1262,7 +1262,7 @@ struct CountClassesBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_
 };
 
 #if 0 < PARALLEL_BINS_BYTES_MAX
-template<typename TFloat, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
+template<typename TFloat, bool bHessian, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
 
    // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
@@ -1273,139 +1273,130 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* con
    EBM_ASSERT(k_cItemsPerBitPackUndefined != pParams->m_cPack); // excluded in caller
    static constexpr bool bCollapsed = false;
    EBM_ASSERT(1 == pParams->m_cScores); // excluded in caller
-   if(EBM_FALSE != pParams->m_bHessian) {
-      static constexpr bool bHessian = true;
-      if(nullptr != pParams->m_aWeights) {
-         static constexpr bool bWeight = true;
-         return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-      } else {
-         static constexpr bool bWeight = false;
-         return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-      }
+   if(nullptr != pParams->m_aWeights) {
+      static constexpr bool bWeight = true;
+      return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
    } else {
-      static constexpr bool bHessian = false;
-      if(nullptr != pParams->m_aWeights) {
-         static constexpr bool bWeight = true;
-         return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-      } else {
-         static constexpr bool bWeight = false;
-         return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-      }
+      static constexpr bool bWeight = false;
+      return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
    }
 }
 #endif // 0 < PARALLEL_BINS_BYTES_MAX
 
 
-template<typename TFloat, bool bParallel, typename std::enable_if<!bParallel, int>::type = 0>
+template<typename TFloat, bool bHessian, bool bParallel, typename std::enable_if<!bParallel && bHessian, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
    if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
       static constexpr bool bCollapsed = true;
-      if(EBM_FALSE != pParams->m_bHessian) {
-         static constexpr bool bHessian = true;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass, but for a collapsed so don't optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
          } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass, but for a collapsed so don't optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+            // muticlass, but for a collapsed so don't optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
          }
       } else {
-         static constexpr bool bHessian = false;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+         static constexpr bool bWeight = false;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
          } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+            // muticlass, but for a collapsed so don't optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
          }
       }
    } else {
       static constexpr bool bCollapsed = false;
-      if(EBM_FALSE != pParams->m_bHessian) {
-         static constexpr bool bHessian = true;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass
-               return CountClassesBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_cCompilerScoresStart>::
-                     Func(pParams);
-            }
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
          } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // muticlass
-               return CountClassesBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_cCompilerScoresStart>::
-                     Func(pParams);
-            }
+            // muticlass
+            return CountClassesBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_cCompilerScoresStart>::
+                  Func(pParams);
          }
       } else {
-         static constexpr bool bHessian = false;
-         if(nullptr != pParams->m_aWeights) {
-            static constexpr bool bWeight = true;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+         static constexpr bool bWeight = false;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
          } else {
-            static constexpr bool bWeight = false;
-            if(size_t{1} == pParams->m_cScores) {
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
-            } else {
-               // Odd: gradient multiclass. Allow it, but do not optimize for it
-               return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
-                     pParams);
-            }
+            // muticlass
+            return CountClassesBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_cCompilerScoresStart>::
+                  Func(pParams);
          }
       }
    }
 }
 
-template<typename TFloat, typename std::enable_if<1 == TFloat::k_cSIMDPack || 0 == PARALLEL_BINS_BYTES_MAX, int>::type = 0>
+template<typename TFloat, bool bHessian, bool bParallel, typename std::enable_if<!bParallel && !bHessian, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
+   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+      static constexpr bool bCollapsed = true;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
+         } else {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
+         }
+      } else {
+         static constexpr bool bWeight = false;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
+         } else {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
+         }
+      }
+   } else {
+      static constexpr bool bCollapsed = false;
+      if(nullptr != pParams->m_aWeights) {
+         static constexpr bool bWeight = true;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
+         } else {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
+         }
+      } else {
+         static constexpr bool bWeight = false;
+         if(size_t{1} == pParams->m_cScores) {
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_oneScore>(pParams);
+         } else {
+            // Odd: gradient multiclass. Allow it, but do not optimize for it
+            return OperatorBinSumsBoosting<TFloat, bHessian, bParallel, bCollapsed, bWeight, k_dynamicScores>(
+                  pParams);
+         }
+      }
+   }
+}
+
+template<typename TFloat,
+      bool bHessian,
+      typename std::enable_if<1 == TFloat::k_cSIMDPack || 0 == PARALLEL_BINS_BYTES_MAX, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
    EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
    static constexpr bool bParallel = false;
-   return DoneParallel<TFloat, bParallel>(pParams);
+   return DoneParallel<TFloat, bHessian, bParallel>(pParams);
 }
 
-template<typename TFloat, typename std::enable_if<1 != TFloat::k_cSIMDPack && 0 < PARALLEL_BINS_BYTES_MAX, int>::type = 0>
+template<typename TFloat,
+      bool bHessian,
+      typename std::enable_if<1 != TFloat::k_cSIMDPack && 0 < PARALLEL_BINS_BYTES_MAX, int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
    if(pParams->m_bParallelBins) {
       static constexpr bool bParallel = true;
-      return DoneParallel<TFloat, bParallel>(pParams);
+      return DoneParallel<TFloat, bHessian, bParallel>(pParams);
    } else {
       static constexpr bool bParallel = false;
-      return DoneParallel<TFloat, bParallel>(pParams);
+      return DoneParallel<TFloat, bHessian, bParallel>(pParams);
    }
 }
 
@@ -1423,7 +1414,13 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* 
 
    EBM_ASSERT(1 <= pParams->m_cScores);
 
-   error = CheckParallel<TFloat>(pParams);
+   if(EBM_FALSE != pParams->m_bHessian) {
+      static constexpr bool bHessian = true;
+      error = CheckParallel<TFloat, bHessian>(pParams);
+   } else {
+      static constexpr bool bHessian = false;
+      error = CheckParallel<TFloat, bHessian>(pParams);
+   }
 
    LOG_0(Trace_Verbose, "Exited BinSumsBoosting");
 
