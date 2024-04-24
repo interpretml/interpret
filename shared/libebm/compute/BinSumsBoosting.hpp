@@ -1238,26 +1238,49 @@ GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge* const pParam
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
 INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
+
+   // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
+   static_assert(!bParallel || 0 == PARALLEL_BINS_BYTES_MAX ||
+               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(PARALLEL_BINS_BYTES_MAX - 1),
+         "PARALLEL_BINS_BYTES_MAX is too large");
+
    return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(
          pParams);
 }
 
-
-
-
-
-template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores>
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      bool bCollapsed,
+      size_t cCompilerScores,
+      typename std::enable_if<1 == TFloat::k_cSIMDPack || bCollapsed || 1 != cCompilerScores ||
+                  0 == PARALLEL_BINS_BYTES_MAX,
+            int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
-
-   // for now disable all parallel
+   EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
    static constexpr bool bParallel = false;
-
    return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
 }
 
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      bool bCollapsed,
+      size_t cCompilerScores,
+      typename std::enable_if<!(1 == TFloat::k_cSIMDPack || bCollapsed || 1 != cCompilerScores ||
+                                    0 == PARALLEL_BINS_BYTES_MAX),
+            int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
+   if(pParams->m_bParallelBins) {
+      EBM_ASSERT(k_cItemsPerBitPackUndefined != pParams->m_cPack); // excluded in caller
 
-
-
+      static constexpr bool bParallel = true;
+      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
+   } else {
+      static constexpr bool bParallel = false;
+      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
+   }
+}
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cPossibleScores>
 struct CountClassesBoosting final {
