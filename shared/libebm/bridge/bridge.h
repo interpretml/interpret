@@ -25,10 +25,18 @@ typedef float FloatSmall;
 static_assert(sizeof(UIntSmall) < sizeof(UIntBig), "UIntBig must be able to contain UIntSmall");
 static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to contain FloatSmall");
 
-
-// using parallel binning was alwasy slower in my tests, so eliminate 
-// this extra code for now until we can find a place where it's faster
-#define PARALLEL_BINS_BYTES_MAX 0
+// When hessians are present, parallel binning seems to be slighly faster, at least while all
+// the histograms fit into the L1 data cache.  512 bins * 8 bytes/bin * 8 parallel histograms
+// takes 32768 bytes, which is also the L1 data cache for older CPUs. At this size the difference
+// between parallel and non-parallel histograms is very small, and keeping it at 512 bins allows us
+// to keep excercising the non-parallel version at our default of 1024 bin.
+#define HESSIAN_PARALLEL_BIN_BYTES_MAX 32768
+// When there are no hessians, non-parallel histograms seem to always be faster, so disable it.
+// With 2 bins the speed difference is marginal, with parallel binning around 8% slower. 
+// The speed differential increases with the number of bins however.
+#define GRADIENT_PARALLEL_BIN_BYTES_MAX 0
+// multiclass is always significantly slower, so disable it.
+#define MULTISCORE_PARALLEL_BIN_BYTES_MAX 0
 
 struct ApplyUpdateBridge {
    size_t m_cScores;

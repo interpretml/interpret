@@ -33,6 +33,7 @@ template<typename TFloat,
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
+   static_assert(k_cItemsPerBitPackUndefined == cCompilerPack, "cCompilerPack must match bCollapsed.");
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
@@ -112,6 +113,7 @@ template<typename TFloat,
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
+   static_assert(k_cItemsPerBitPackUndefined == cCompilerPack, "cCompilerPack must match bCollapsed.");
 
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -195,7 +197,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
-#if 0 < PARALLEL_BINS_BYTES_MAX
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
@@ -203,10 +204,11 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores, int>::type = 0>
+      typename std::enable_if<bParallel && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
-   static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
+   static_assert(!bCollapsed, "bCollapsed cannot be true for parallel histograms.");
+   static_assert(1 != TFloat::k_cSIMDPack, "If k_cSIMDPack is 1 there is no reason to process in parallel.");
    static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
    static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
@@ -431,7 +433,6 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
       TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
    }
 }
-#endif // 0 < PARALLEL_BINS_BYTES_MAX
 
 template<typename TFloat,
       bool bHessian,
@@ -440,10 +441,11 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<!bParallel && 1 == TFloat::k_cSIMDPack && !bCollapsed && 1 == cCompilerScores,
+      typename std::enable_if<!bCollapsed && 1 == TFloat::k_cSIMDPack && 1 == cCompilerScores,
             int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
+   static_assert(!bParallel, "BinSumsBoosting specialization for SIMD pack of 1 does not handle parallel bins.");
    static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
    static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
@@ -629,11 +631,10 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<!bParallel && 1 != TFloat::k_cSIMDPack && !bCollapsed && 1 == cCompilerScores,
+      typename std::enable_if<!bCollapsed && 1 != TFloat::k_cSIMDPack && !bParallel && 1 == cCompilerScores,
             int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
-   static_assert(1 == cCompilerScores, "This specialization of BinSumsBoostingInternal cannot handle multiclass.");
    static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
@@ -816,8 +817,11 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<bParallel && !bCollapsed && 1 != cCompilerScores, int>::type = 0>
+      typename std::enable_if<bParallel && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(!bCollapsed, "bCollapsed cannot be true for parallel histograms.");
+   static_assert(1 != TFloat::k_cSIMDPack, "If k_cSIMDPack is 1 there is no reason to process in parallel.");
 
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -967,10 +971,8 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<!bParallel && !bCollapsed && 1 != cCompilerScores, int>::type = 0>
+      typename std::enable_if<!bCollapsed && !bParallel && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
-
-   static_assert(!bParallel, "BinSumsBoosting specialization for collapsed does not handle parallel bins.");
 
    static constexpr size_t cArrayScores = GetArrayScores(cCompilerScores);
 
@@ -1238,12 +1240,6 @@ GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge* const pParam
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
 INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-
-   // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
-   static_assert(!bParallel || 0 == PARALLEL_BINS_BYTES_MAX ||
-               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(PARALLEL_BINS_BYTES_MAX - 1),
-         "PARALLEL_BINS_BYTES_MAX is too large");
-
    return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(
          pParams);
 }
@@ -1253,8 +1249,11 @@ template<typename TFloat,
       bool bWeight,
       bool bCollapsed,
       size_t cCompilerScores,
-      typename std::enable_if<1 == TFloat::k_cSIMDPack || bCollapsed || 1 != cCompilerScores ||
-                  0 == PARALLEL_BINS_BYTES_MAX,
+      typename std::enable_if<bCollapsed || 1 == TFloat::k_cSIMDPack || 
+                  0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
+                  0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
+                  0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||
+                  !bHessian && 1 != cCompilerScores,
             int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
    EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
@@ -1267,8 +1266,11 @@ template<typename TFloat,
       bool bWeight,
       bool bCollapsed,
       size_t cCompilerScores,
-      typename std::enable_if<!(1 == TFloat::k_cSIMDPack || bCollapsed || 1 != cCompilerScores ||
-                                    0 == PARALLEL_BINS_BYTES_MAX),
+      typename std::enable_if<!(bCollapsed || 1 == TFloat::k_cSIMDPack || 
+                                    0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
+                                    0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
+                                    0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||
+                                    !bHessian && 1 != cCompilerScores),
             int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
    if(pParams->m_bParallelBins) {
@@ -1330,6 +1332,22 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm CheckScores(BinSumsBoostingBridge* cons
 template<typename TFloat>
 INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* const pParams) {
    LOG_0(Trace_Verbose, "Entered BinSumsBoosting");
+
+   // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
+   static_assert(0 == HESSIAN_PARALLEL_BIN_BYTES_MAX ||
+               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(
+                     HESSIAN_PARALLEL_BIN_BYTES_MAX - 1),
+         "HESSIAN_PARALLEL_BIN_BYTES_MAX is too large");
+
+   static_assert(0 == GRADIENT_PARALLEL_BIN_BYTES_MAX ||
+               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(
+                     GRADIENT_PARALLEL_BIN_BYTES_MAX - 1),
+         "GRADIENT_PARALLEL_BIN_BYTES_MAX is too large");
+
+   static_assert(0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX ||
+               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(
+                     MULTISCORE_PARALLEL_BIN_BYTES_MAX - 1),
+         "MULTISCORE_PARALLEL_BIN_BYTES_MAX is too large");
 
    // all our memory should be aligned. It is required by SIMD for correctness or performance
    EBM_ASSERT(IsAligned(pParams->m_aGradientsAndHessians));

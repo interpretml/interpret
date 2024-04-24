@@ -787,24 +787,41 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             size_t cParallelTensorBins = cTensorBins;
             bool bParallelBins = false;
             const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
-#if 0 < PARALLEL_BINS_BYTES_MAX
-            if(1 != cSIMDPack) {
-               const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
-               if(cBytesParallel <= PARALLEL_BINS_BYTES_MAX) {
-                  if(1 != cTensorBins && 1 == cScores) {
-                     // use parallel bins
-                     bParallelBins = true;
-                     cParallelTensorBins *= cSIMDPack;
-                  }
+
+            // in the future use TermBoostFlags_DisableNewtonGain and TermBoostFlags_DisableNewtonUpdate and
+            // TermBoostFlags_GradientSums flags in addition to what the objective allows when setting bHessian
+            const bool bHessian = pBoosterCore->IsHessian();
+#if 0 < HESSIAN_PARALLEL_BIN_BYTES_MAX || 0 < GRADIENT_PARALLEL_BIN_BYTES_MAX || 0 < MULTISCORE_PARALLEL_BIN_BYTES_MAX
+            size_t cBytesParallelMax;
+            if(bHessian) {
+               if(size_t {1} == cScores) {
+                  cBytesParallelMax = HESSIAN_PARALLEL_BIN_BYTES_MAX;
+               } else {
+                  cBytesParallelMax = MULTISCORE_PARALLEL_BIN_BYTES_MAX;
+               }
+            } else {
+               if(size_t {1} == cScores) {
+                  cBytesParallelMax = GRADIENT_PARALLEL_BIN_BYTES_MAX;
+               } else {
+                  // don't allow parallel gradient multiclass boosting. multiclass should be hessian boosting
+                  cBytesParallelMax = 0;
                }
             }
-#endif // 0 < PARALLEL_BINS_BYTES_MAX
+            if(1 != cSIMDPack && 1 != cTensorBins) {
+               const size_t cBytesParallel = cBytesPerFastBin * cTensorBins * cSIMDPack;
+               if(cBytesParallel <= cBytesParallelMax) {
+                  // use parallel bins
+                  bParallelBins = true;
+                  cParallelTensorBins *= cSIMDPack;
+               }
+            }
+#endif
 
             aFastBins->ZeroMem(cBytesPerFastBin, cParallelTensorBins);
 
             BinSumsBoostingBridge params;
             params.m_bParallelBins = bParallelBins ? EBM_TRUE : EBM_FALSE;
-            params.m_bHessian = pBoosterCore->IsHessian() ? EBM_TRUE : EBM_FALSE;
+            params.m_bHessian = bHessian ? EBM_TRUE : EBM_FALSE;
             params.m_cScores = cScores;
             params.m_cPack = cPack;
             params.m_cSamples = pSubset->GetCountSamples();

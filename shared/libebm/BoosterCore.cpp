@@ -718,7 +718,23 @@ ErrorEbm BoosterCore::Create(void* const rng,
             }
 
             size_t cBytesPerFastBinMax = 0;
-#if 0 < PARALLEL_BINS_BYTES_MAX
+#if 0 < HESSIAN_PARALLEL_BIN_BYTES_MAX || 0 < GRADIENT_PARALLEL_BIN_BYTES_MAX || 0 < MULTISCORE_PARALLEL_BIN_BYTES_MAX
+            size_t cBytesParallelMax;
+            if(bHessian) {
+               if(size_t {1} == cScores) {
+                  // the caller can specify gradient boosting as an option for an objective with a hessian
+                  cBytesParallelMax = EbmMax(HESSIAN_PARALLEL_BIN_BYTES_MAX, GRADIENT_PARALLEL_BIN_BYTES_MAX);
+               } else {
+                  cBytesParallelMax = MULTISCORE_PARALLEL_BIN_BYTES_MAX;
+               }
+            } else {
+               if(size_t {1} == cScores) {
+                  cBytesParallelMax = GRADIENT_PARALLEL_BIN_BYTES_MAX;
+               } else {
+                  // don't allow parallel gradient multiclass boosting. multiclass should be hessian boosting
+                  cBytesParallelMax = 0;
+               }
+            }
             size_t cBytesParallelBoostTrainingMax = 0;
 #endif
 
@@ -746,21 +762,21 @@ ErrorEbm BoosterCore::Create(void* const rng,
                   }
                   cBytesPerFastBinMax = EbmMax(cBytesPerFastBinMax, cBytesPerFastBin);
 
-#if 0 < PARALLEL_BINS_BYTES_MAX
-                  if(1 == cScores && 1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
+#if 0 < HESSIAN_PARALLEL_BIN_BYTES_MAX || 0 < GRADIENT_PARALLEL_BIN_BYTES_MAX || 0 < MULTISCORE_PARALLEL_BIN_BYTES_MAX
+                  if(1 != pSubset->GetObjectiveWrapper()->m_cSIMDPack) {
                      if(IsMultiplyError(
                               cBytesPerFastBin, cTensorBinsMax, pSubset->GetObjectiveWrapper()->m_cSIMDPack)) {
-                        cBytesParallelBoostTrainingMax = static_cast<size_t>(PARALLEL_BINS_BYTES_MAX);
+                        cBytesParallelBoostTrainingMax = cBytesParallelMax;
                      } else {
                         size_t cBytesParallelBoostTraining =
                               cBytesPerFastBin * cTensorBinsMax * pSubset->GetObjectiveWrapper()->m_cSIMDPack;
-                        cBytesParallelBoostTraining = EbmMin(cBytesParallelBoostTraining, static_cast<size_t>(PARALLEL_BINS_BYTES_MAX));
+                        cBytesParallelBoostTraining = EbmMin(cBytesParallelBoostTraining, cBytesParallelMax);
 
                         cBytesParallelBoostTrainingMax =
                               EbmMax(cBytesParallelBoostTrainingMax, cBytesParallelBoostTraining);
                      }
                   }
-#endif // 0 < PARALLEL_BINS_BYTES_MAX
+#endif
 
                   ++pSubset;
                } while(pSubsetsEnd != pSubset);
@@ -798,7 +814,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
                return Error_OutOfMemory;
             }
             cBytesPerFastBinMax *= cTensorBinsMax;
-#if 0 < PARALLEL_BINS_BYTES_MAX
+#if 0 < HESSIAN_PARALLEL_BIN_BYTES_MAX || 0 < GRADIENT_PARALLEL_BIN_BYTES_MAX || 0 < MULTISCORE_PARALLEL_BIN_BYTES_MAX
             cBytesPerFastBinMax = EbmMax(cBytesParallelBoostTrainingMax, cBytesPerFastBinMax);
 #endif
             pBoosterCore->m_cBytesFastBins = cBytesPerFastBinMax;
