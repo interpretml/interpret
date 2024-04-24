@@ -31,12 +31,19 @@ static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to c
 // between parallel and non-parallel histograms is very small, and keeping it at 512 bins allows us
 // to keep excercising the non-parallel version at our default of 1024 bin.
 #define HESSIAN_PARALLEL_BIN_BYTES_MAX 32768
+#ifdef NDEBUG
 // When there are no hessians, non-parallel histograms seem to always be faster, so disable it.
 // With 2 bins the speed difference is marginal, with parallel binning around 8% slower. 
 // The speed differential increases with the number of bins however.
 #define GRADIENT_PARALLEL_BIN_BYTES_MAX 0
 // multiclass is always significantly slower, so disable it.
+// TODO: check if it's still slower now that we double-load the hessians
 #define MULTISCORE_PARALLEL_BIN_BYTES_MAX 0
+#else
+// for DEBUG, enable parallel gradient and parallel multiclass
+#define GRADIENT_PARALLEL_BIN_BYTES_MAX   1024
+#define MULTISCORE_PARALLEL_BIN_BYTES_MAX 1024
+#endif
 
 struct ApplyUpdateBridge {
    size_t m_cScores;
