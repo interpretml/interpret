@@ -25,9 +25,9 @@ static constexpr int k_cItemsPerBitPackBoostingMin = 1;
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<bCollapsed && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
@@ -104,9 +104,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<bCollapsed && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
@@ -199,9 +199,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<bParallel && !bCollapsed && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
@@ -436,9 +436,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<!bParallel && 1 == TFloat::k_cSIMDPack && !bCollapsed && 1 == cCompilerScores,
             int>::type = 0>
@@ -625,9 +625,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<!bParallel && 1 != TFloat::k_cSIMDPack && !bCollapsed && 1 == cCompilerScores,
             int>::type = 0>
@@ -812,9 +812,9 @@ learn that each unpredictable load is followed by 5+ predictable ones at the sam
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<bParallel && !bCollapsed && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
@@ -963,9 +963,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack,
       typename std::enable_if<!bParallel && !bCollapsed && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
@@ -1124,12 +1124,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       int cCompilerPack>
 struct BitPack final {
-   INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
       static_assert(cCompilerPack <= COUNT_BITS(typename TFloat::TInt::T), "cCompilerPack must fit into the bitpack");
@@ -1142,9 +1142,9 @@ struct BitPack final {
             BinSumsBoostingInternal<TFloat,
                   bHessian,
                   bWeight,
-                  bParallel,
                   bCollapsed,
                   cCompilerScores,
+                  bParallel,
                   k_cItemsPerBitPackUndefined>(pParams);
 
             cSamples -= cRemnants;
@@ -1165,32 +1165,32 @@ struct BitPack final {
             pParams->m_aGradientsAndHessians = IndexByte(pParams->m_aGradientsAndHessians,
                   sizeof(typename TFloat::T) * (bHessian ? size_t{2} : size_t{1}) * cScores * cRemnants);
          }
-         BinSumsBoostingInternal<TFloat, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores, cCompilerPack>(
+         BinSumsBoostingInternal<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel, cCompilerPack>(
                pParams);
       } else {
          BitPack<TFloat,
                bHessian,
                bWeight,
-               bParallel,
                bCollapsed,
                cCompilerScores,
+               bParallel,
                GetNextBitPack<typename TFloat::TInt::T>(cCompilerPack, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
       }
    }
 };
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cCompilerScores>
-struct BitPack<TFloat, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores, k_cItemsPerBitPackUndefined>
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
+struct BitPack<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel, k_cItemsPerBitPackUndefined>
       final {
-   INLINE_ALWAYS static void Func(BinSumsBoostingBridge* const pParams) {
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
 
       BinSumsBoostingInternal<TFloat,
             bHessian,
             bWeight,
-            bParallel,
             bCollapsed,
             cCompilerScores,
+            bParallel,
             k_cItemsPerBitPackUndefined>(
             pParams);
    }
@@ -1199,160 +1199,108 @@ struct BitPack<TFloat, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       typename std::enable_if<!bCollapsed && 1 == cCompilerScores, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    BitPack<TFloat,
          bHessian,
          bWeight,
-         bParallel,
          bCollapsed,
          cCompilerScores,
+         bParallel,
          GetFirstBitPack<typename TFloat::TInt::T>(
                k_cItemsPerBitPackBoostingMax, k_cItemsPerBitPackBoostingMin)>::Func(pParams);
 }
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      bool bParallel,
       bool bCollapsed,
       size_t cCompilerScores,
+      bool bParallel,
       typename std::enable_if<bCollapsed || 1 != cCompilerScores, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingBridge* const pParams) {
    BinSumsBoostingInternal<TFloat,
          bHessian,
          bWeight,
-         bParallel,
          bCollapsed,
          cCompilerScores,
+         bParallel,
          k_cItemsPerBitPackUndefined>(
          pParams);
 }
 
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cCompilerScores>
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
 GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-   BitPackBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores>(pParams);
+   BitPackBoosting<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
 }
 
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cCompilerScores>
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
 INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-   return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bParallel, bCollapsed, cCompilerScores>(
+   return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(
          pParams);
 }
 
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cPossibleScores>
-struct CountClassesBoosting final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
-      if(cPossibleScores == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, cPossibleScores>(
-               pParams);
-      } else {
-         return CountClassesBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, cPossibleScores + 1>::Func(
-               pParams);
-      }
-   }
-};
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, bool bCollapsed>
-struct CountClassesBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_cCompilerScoresMax + 1> final {
-   INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
-      return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_dynamicScores>(pParams);
-   }
-};
-
-#if 0 < PARALLEL_BINS_BYTES_MAX
-template<typename TFloat, bool bHessian, bool bWeight, bool bParallel, typename std::enable_if<bParallel, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
-
-   // some scatter/gather SIMD instructions are often signed integers and we only use the positive range
-   static_assert(0 == PARALLEL_BINS_BYTES_MAX ||
-               !IsConvertError<typename std::make_signed<typename TFloat::TInt::T>::type>(PARALLEL_BINS_BYTES_MAX - 1),
-         "PARALLEL_BINS_BYTES_MAX is too large");
-
-   EBM_ASSERT(k_cItemsPerBitPackUndefined != pParams->m_cPack); // excluded in caller
-   static constexpr bool bCollapsed = false;
-   EBM_ASSERT(1 == pParams->m_cScores); // excluded in caller
-   return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_oneScore>(pParams);
-}
-#endif // 0 < PARALLEL_BINS_BYTES_MAX
 
 
-template<typename TFloat,
-      bool bHessian,
-      bool bWeight,
-      bool bParallel,
-      typename std::enable_if<!bParallel && bHessian, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
-   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
-      static constexpr bool bCollapsed = true;
-      if(size_t{1} == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_oneScore>(pParams);
-      } else {
-         // muticlass, but for a collapsed so don't optimize for it
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_dynamicScores>(
-               pParams);
-      }
-   } else {
-      static constexpr bool bCollapsed = false;
-      if(size_t{1} == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_oneScore>(pParams);
-      } else {
-         // muticlass
-         return CountClassesBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_cCompilerScoresStart>::
-               Func(pParams);
-      }
-   }
-}
 
-template<typename TFloat,
-      bool bHessian,
-      bool bWeight,
-      bool bParallel,
-      typename std::enable_if<!bParallel && !bHessian, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static ErrorEbm DoneParallel(BinSumsBoostingBridge* const pParams) {
-   if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
-      static constexpr bool bCollapsed = true;
-      if(size_t{1} == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_oneScore>(pParams);
-      } else {
-         // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_dynamicScores>(
-               pParams);
-      }
-   } else {
-      static constexpr bool bCollapsed = false;
-      if(size_t{1} == pParams->m_cScores) {
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_oneScore>(pParams);
-      } else {
-         // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bParallel, bCollapsed, k_dynamicScores>(
-               pParams);
-      }
-   }
-}
 
-template<typename TFloat,
-      bool bHessian,
-      bool bWeight,
-      typename std::enable_if<1 == TFloat::k_cSIMDPack || 0 == PARALLEL_BINS_BYTES_MAX, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
-   EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores>
+INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
+
+   // for now disable all parallel
    static constexpr bool bParallel = false;
-   return DoneParallel<TFloat, bHessian, bWeight, bParallel>(pParams);
+
+   return OperatorBinSumsBoosting<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
+}
+
+
+
+
+
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cPossibleScores>
+struct CountClassesBoosting final {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
+      if(cPossibleScores == pParams->m_cScores) {
+         return DoneScores<TFloat, bHessian, bWeight, bCollapsed, cPossibleScores>(pParams);
+      } else {
+         return CountClassesBoosting<TFloat, bHessian, bWeight, bCollapsed, cPossibleScores + 1>::Func(pParams);
+      }
+   }
+};
+template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed>
+struct CountClassesBoosting<TFloat, bHessian, bWeight, bCollapsed, k_cCompilerScoresMax + 1> final {
+   INLINE_RELEASE_TEMPLATED static ErrorEbm Func(BinSumsBoostingBridge* const pParams) {
+      return DoneScores<TFloat, bHessian, bWeight, bCollapsed, k_dynamicScores>(pParams);
+   }
+};
+
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      bool bCollapsed,
+      typename std::enable_if<bCollapsed || !bHessian, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm CheckScores(BinSumsBoostingBridge* const pParams) {
+   if(size_t{1} == pParams->m_cScores) {
+      return DoneScores<TFloat, bHessian, bWeight, bCollapsed, k_oneScore>(pParams);
+   } else {
+      // muticlass, but for a collapsed or non-hessian so don't optimize for it
+      return DoneScores<TFloat, bHessian, bWeight, bCollapsed, k_dynamicScores>(pParams);
+   }
 }
 
 template<typename TFloat,
       bool bHessian,
       bool bWeight,
-      typename std::enable_if<1 != TFloat::k_cSIMDPack && 0 < PARALLEL_BINS_BYTES_MAX, int>::type = 0>
-INLINE_RELEASE_TEMPLATED static ErrorEbm CheckParallel(BinSumsBoostingBridge* const pParams) {
-   if(pParams->m_bParallelBins) {
-      static constexpr bool bParallel = true;
-      return DoneParallel<TFloat, bHessian, bWeight, bParallel>(pParams);
+      bool bCollapsed,
+      typename std::enable_if<!bCollapsed && bHessian, int>::type = 0>
+INLINE_RELEASE_TEMPLATED static ErrorEbm CheckScores(BinSumsBoostingBridge* const pParams) {
+   if(size_t{1} == pParams->m_cScores) {
+      return DoneScores<TFloat, bHessian, bWeight, bCollapsed, k_oneScore>(pParams);
    } else {
-      static constexpr bool bParallel = false;
-      return DoneParallel<TFloat, bHessian, bWeight, bParallel>(pParams);
+      // muticlass
+      return CountClassesBoosting<TFloat, bHessian, bWeight, bCollapsed, k_cCompilerScoresStart>::Func(pParams);
    }
 }
 
@@ -1374,19 +1322,43 @@ INLINE_RELEASE_TEMPLATED static ErrorEbm BinSumsBoosting(BinSumsBoostingBridge* 
       static constexpr bool bHessian = true;
       if(nullptr == pParams->m_aWeights) {
          static constexpr bool bWeight = false;
-         error = CheckParallel<TFloat, bHessian, bWeight>(pParams);
+         if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+            static constexpr bool bCollapsed = true;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         } else {
+            static constexpr bool bCollapsed = false;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         }
       } else {
          static constexpr bool bWeight = true;
-         error = CheckParallel<TFloat, bHessian, bWeight>(pParams);
+         if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+            static constexpr bool bCollapsed = true;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         } else {
+            static constexpr bool bCollapsed = false;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         }
       }
    } else {
       static constexpr bool bHessian = false;
       if(nullptr == pParams->m_aWeights) {
          static constexpr bool bWeight = false;
-         error = CheckParallel<TFloat, bHessian, bWeight>(pParams);
+         if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+            static constexpr bool bCollapsed = true;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         } else {
+            static constexpr bool bCollapsed = false;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         }
       } else {
          static constexpr bool bWeight = true;
-         error = CheckParallel<TFloat, bHessian, bWeight>(pParams);
+         if(k_cItemsPerBitPackUndefined == pParams->m_cPack) {
+            static constexpr bool bCollapsed = true;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         } else {
+            static constexpr bool bCollapsed = false;
+            error = CheckScores<TFloat, bHessian, bWeight, bCollapsed>(pParams);
+         }
       }
    }
 

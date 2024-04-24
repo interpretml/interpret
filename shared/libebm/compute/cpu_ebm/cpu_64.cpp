@@ -332,9 +332,9 @@ struct Cpu_64_Float final {
       return Error_None;
    }
 
-   template<bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cCompilerScores>
+   template<bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) noexcept {
-      RemoteBinSumsBoosting<Cpu_64_Float, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores>(pParams);
+      RemoteBinSumsBoosting<Cpu_64_Float, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
       return Error_None;
    }
 

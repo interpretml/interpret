@@ -706,9 +706,9 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Error_None;
    }
 
-   template<bool bHessian, bool bWeight, bool bParallel, bool bCollapsed, size_t cCompilerScores>
+   template<bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) noexcept {
-      RemoteBinSumsBoosting<Avx2_32_Float, bHessian, bWeight, bParallel, bCollapsed, cCompilerScores>(pParams);
+      RemoteBinSumsBoosting<Avx2_32_Float, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
       return Error_None;
    }
 
