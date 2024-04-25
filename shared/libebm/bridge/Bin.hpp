@@ -59,7 +59,6 @@ static_assert(std::is_standard_layout<BinBase>::value,
 static_assert(
       std::is_trivial<BinBase>::value, "We use memcpy in several places, so disallow non-trivial types in general");
 
-
 template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
 struct BinData;
 
@@ -232,7 +231,6 @@ struct BinData<TFloat, TUInt, false, false, bHessian, cCompilerScores> : BinBase
    // IMPORTANT: m_aGradientPairs must be in the last position for the struct hack and this must be standard layout
    GradientPair<TFloat, bHessian> m_aGradientPairs[cCompilerScores];
 };
-
 
 template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
 struct Bin final : BinData<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores> {
@@ -501,8 +499,7 @@ GPU_BOTH inline static Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerSc
 }
 
 template<typename TFloat, typename TUInt, bool bCount, bool bWeight, bool bHessian, size_t cCompilerScores>
-inline static size_t CountBins(
-      const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const pBinHigh,
+inline static size_t CountBins(const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const pBinHigh,
       const Bin<TFloat, TUInt, bCount, bWeight, bHessian, cCompilerScores>* const pBinLow,
       const size_t cBytesPerBin) {
    const size_t cBytesDiff = CountBytes(pBinHigh, pBinLow);

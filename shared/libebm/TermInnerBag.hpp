@@ -38,25 +38,21 @@ struct TermInnerBag final {
          const size_t iTerm,
          const size_t iBag,
          const TermInnerBag* const* const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount :
-                                        aaTermInnerBags[iTerm][iBag].m_aCounts;
+      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount : aaTermInnerBags[iTerm][iBag].m_aCounts;
    }
    static inline UIntMain* GetCounts(
          const bool bCollapsed, const size_t iTerm, const size_t iBag, TermInnerBag** const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount :
-                                        aaTermInnerBags[iTerm][iBag].m_aCounts;
+      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount : aaTermInnerBags[iTerm][iBag].m_aCounts;
    }
    static inline const FloatPrecomp* GetWeights(const bool bCollapsed,
          const size_t iTerm,
          const size_t iBag,
          const TermInnerBag* const* const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight :
-                                        aaTermInnerBags[iTerm][iBag].m_aWeights;
+      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight : aaTermInnerBags[iTerm][iBag].m_aWeights;
    }
    static inline FloatPrecomp* GetWeights(
          const bool bCollapsed, const size_t iTerm, const size_t iBag, TermInnerBag** const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight :
-                                        aaTermInnerBags[iTerm][iBag].m_aWeights;
+      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight : aaTermInnerBags[iTerm][iBag].m_aWeights;
    }
 
  private:

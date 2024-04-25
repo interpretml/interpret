@@ -53,7 +53,8 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
 
    ZeroGradientPairs(aSumGradientPairs, cScores);
 
-   const auto* const aBins = pBoosterShell->GetBoostingMainBins()
+   const auto* const aBins =
+         pBoosterShell->GetBoostingMainBins()
                ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
@@ -624,7 +625,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto* const aBins = pBoosterShell->GetBoostingMainBins()
+      const auto* const aBins =
+            pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
       const auto* const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
       const auto* const pBinsLast = NegativeIndexBin(pBinsEnd, cBytesPerBin);

@@ -481,7 +481,7 @@ extern void ConvertAddBin(const size_t cScores,
          ++pCounts;
          if(bUInt64Dest) {
             // we should only use aCounts on the last call to ConvertAddBin since it's added
-            EBM_ASSERT(0 == *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples)); 
+            EBM_ASSERT(0 == *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples));
             // assign instead of add since this should only be called this was on the last iteration
             *reinterpret_cast<uint64_t*>(pAddDest + iDestSamples) = static_cast<uint64_t>(src);
          } else {

@@ -29,7 +29,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
    // specialized versions that eliminate the counts and weights when not needed.  We could
    // probably improve BinSumsInteraction using the same techniques used in BinSumsBoosting
    // where the function was specialized for cCompilerScore==1 and cCompilerScore!=1 and more
-   // importantly where we prefetch the gathing load as early as possible or 
+   // importantly where we prefetch the gathing load as early as possible or
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
@@ -46,12 +46,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
 
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pParams->m_cScores);
 
-   auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-                             ->Specialize<typename TFloat::T,
-                                   typename TFloat::TInt::T,
-                                   true, true,
-                                   bHessian,
-                                   cArrayScores>();
+   auto* const aBins =
+         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, true, true, bHessian, cArrayScores>();
 
    const size_t cSamples = pParams->m_cSamples;
 
@@ -142,7 +139,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsInteractionInternal(BinSumsInteractio
       // want my tensors to be co-located into one big chunck of memory and the indexes will all index from the
       // base pointer!  I should be able to handle even very big tensors.
 
-      Bin<typename TFloat::T, typename TFloat::TInt::T, true, true, bHessian, cArrayScores>* apBins[TFloat::k_cSIMDPack];
+      Bin<typename TFloat::T, typename TFloat::TInt::T, true, true, bHessian, cArrayScores>*
+            apBins[TFloat::k_cSIMDPack];
       size_t cBins;
       {
          DimensionalData* const pDimensionalData = &aDimensionalDataShifted[-1];

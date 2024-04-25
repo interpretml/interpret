@@ -33,7 +33,7 @@ static_assert(sizeof(FloatSmall) < sizeof(FloatBig), "FloatBig must be able to c
 #define HESSIAN_PARALLEL_BIN_BYTES_MAX 32768
 #ifdef NDEBUG
 // When there are no hessians, non-parallel histograms seem to always be faster, so disable it.
-// With 2 bins the speed difference is marginal, with parallel binning around 8% slower. 
+// With 2 bins the speed difference is marginal, with parallel binning around 8% slower.
 // The speed differential increases with the number of bins however.
 #define GRADIENT_PARALLEL_BIN_BYTES_MAX 0
 // multiclass is always significantly slower, so disable it.

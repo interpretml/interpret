@@ -59,7 +59,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
 
-      auto* const aBins = pBoosterShell->GetBoostingMainBins()
+      auto* const aBins =
+            pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
@@ -591,7 +592,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
 #ifndef NDEBUG
                const ErrorEbm errorDebug =
 #endif // NDEBUG
-               pInnerTermUpdate->SetCountSlices(iDimension, 1);
+                     pInnerTermUpdate->SetCountSlices(iDimension, 1);
                // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split
                // array at all
                EBM_ASSERT(Error_None == errorDebug);

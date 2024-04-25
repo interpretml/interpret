@@ -234,7 +234,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       ErrorEbm error;
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
 
-      auto* const aBins = pBoosterShell->GetBoostingMainBins()
+      auto* const aBins =
+            pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
       Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 

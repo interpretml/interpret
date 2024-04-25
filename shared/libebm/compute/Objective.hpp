@@ -89,8 +89,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void DoneBitpacking(
          bHessian,
          bDisableApprox,
          cCompilerScores,
-         cCompilerPack>(
-               pData);
+         cCompilerPack>(pData);
 }
 
 // in our current format cCompilerScores will always be 1, but just in case we change our code to allow
@@ -154,7 +153,7 @@ struct BitPackObjective final {
             if(!TObjective::k_bRmse) {
                EBM_ASSERT(nullptr != pData->m_aTargets);
                EBM_ASSERT(nullptr != pData->m_aSampleScores);
-               
+
                constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
                if(bClassification) {
                   // targets are integers
@@ -162,7 +161,7 @@ struct BitPackObjective final {
                         IndexByte(pData->m_aTargets, sizeof(typename TObjective::TFloatInternal::TInt::T) * cRemnants);
                } else {
                   // targets are floats
-                  pData->m_aTargets = 
+                  pData->m_aTargets =
                         IndexByte(pData->m_aTargets, sizeof(typename TObjective::TFloatInternal::T) * cRemnants);
                }
                pData->m_aSampleScores = IndexByte(
@@ -179,8 +178,7 @@ struct BitPackObjective final {
                bHessian,
                bDisableApprox,
                cCompilerScores,
-               cCompilerPack>(
-               pObjective, pData);
+               cCompilerPack>(pObjective, pData);
       } else {
          BitPackObjective<TObjective,
                bCollapsed,
@@ -424,13 +422,8 @@ struct Objective : public Registrable {
          bool bDisableApprox,
          typename std::enable_if<!TObjective::IsMultiScore, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
-      return OperatorApplyUpdate<TObjective,
-            bCollapsed,
-            bValidation,
-            bWeight,
-            bHessian,
-            bDisableApprox,
-            k_oneScore>(pData);
+      return OperatorApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, k_oneScore>(
+            pData);
    }
    template<typename TObjective,
          bool bCollapsed,
@@ -491,8 +484,7 @@ struct Objective : public Registrable {
                   bWeight,
                   bHessian,
                   bDisableApprox,
-                  cCompilerScores>(
-                        pData);
+                  cCompilerScores>(pData);
          } else {
             return CountScores < TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox,
                    k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores :
@@ -501,8 +493,7 @@ struct Objective : public Registrable {
       }
    };
    template<typename TObjective, bool bCollapsed, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox>
-   struct CountScores<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores>
-         final {
+   struct CountScores<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
          return pObjective->OperatorApplyUpdate<TObjective,
                bCollapsed,
@@ -510,8 +501,7 @@ struct Objective : public Registrable {
                bWeight,
                bHessian,
                bDisableApprox,
-               k_dynamicScores>(
-                     pData);
+               k_dynamicScores>(pData);
       }
    };
 
@@ -529,8 +519,7 @@ struct Objective : public Registrable {
             bWeight,
             bHessian,
             bDisableApprox,
-            cCompilerScores>(
-                  this, pData);
+            cCompilerScores>(this, pData);
    }
 
  protected:
@@ -1128,8 +1117,7 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
    }
 
 #define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian)                                \
-   OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                                    \
-         __EBM_TYPE,                                                                                                   \
+   OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE,                                                                         \
          __MAXIMIZE_METRIC,                                                                                            \
          __LINK_FUNCTION,                                                                                              \
          bHessian,                                                                                                     \

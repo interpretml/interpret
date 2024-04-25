@@ -46,9 +46,8 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    const size_t cSamples = pParams->m_cSamples;
 
-   auto* const aBins =
-         reinterpret_cast<BinBase*>(pParams->m_aFastBins)
-               ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, 1>();
+   auto* const aBins = reinterpret_cast<BinBase*>(pParams->m_aFastBins)
+                             ->Specialize<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian, 1>();
 
    const typename TFloat::T* pGradientAndHessian =
          reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
@@ -444,8 +443,7 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<!bCollapsed && 1 == TFloat::k_cSIMDPack && 1 == cCompilerScores,
-            int>::type = 0>
+      typename std::enable_if<!bCollapsed && 1 == TFloat::k_cSIMDPack && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
    static_assert(!bParallel, "BinSumsBoosting specialization for SIMD pack of 1 does not handle parallel bins.");
@@ -1263,8 +1261,7 @@ struct BitPack final {
    }
 };
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
-struct BitPack<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel, k_cItemsPerBitPackUndefined>
-      final {
+struct BitPack<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel, k_cItemsPerBitPackUndefined> final {
    GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(BinSumsBoostingBridge* const pParams) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
@@ -1275,8 +1272,7 @@ struct BitPack<TFloat, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel
             bCollapsed,
             cCompilerScores,
             bParallel,
-            k_cItemsPerBitPackUndefined>(
-            pParams);
+            k_cItemsPerBitPackUndefined>(pParams);
    }
 };
 
@@ -1311,8 +1307,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void BitPackBoosting(BinSumsBoostingB
          bCollapsed,
          cCompilerScores,
          bParallel,
-         k_cItemsPerBitPackUndefined>(
-         pParams);
+         k_cItemsPerBitPackUndefined>(pParams);
 }
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
@@ -1322,8 +1317,7 @@ GPU_GLOBAL static void RemoteBinSumsBoosting(BinSumsBoostingBridge* const pParam
 
 template<typename TFloat, bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
 INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) {
-   return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(
-         pParams);
+   return TFloat::template OperatorBinSumsBoosting<bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
 }
 
 template<typename TFloat,
@@ -1331,7 +1325,7 @@ template<typename TFloat,
       bool bWeight,
       bool bCollapsed,
       size_t cCompilerScores,
-      typename std::enable_if<bCollapsed || 1 == TFloat::k_cSIMDPack || 
+      typename std::enable_if<bCollapsed || 1 == TFloat::k_cSIMDPack ||
                   0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
                   0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
                   0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||
@@ -1348,7 +1342,7 @@ template<typename TFloat,
       bool bWeight,
       bool bCollapsed,
       size_t cCompilerScores,
-      typename std::enable_if<!(bCollapsed || 1 == TFloat::k_cSIMDPack || 
+      typename std::enable_if<!(bCollapsed || 1 == TFloat::k_cSIMDPack ||
                                     0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
                                     0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
                                     0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||

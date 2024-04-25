@@ -186,7 +186,7 @@ INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN
 // and make them worse. Also, the reciprocal algorithm is different between Intel and AMD
 // and it makes comparisons difficult, and I don't think this division is critical to
 // making it faster
-//#define FAST_DIVISION
+// #define FAST_DIVISION
 
 // 16 byte alignment works for *most* SIMD implementation, but it's even better to align with the 64 byte cache!
 #define SIMD_BYTE_ALIGNMENT STATIC_CAST(size_t, 64)

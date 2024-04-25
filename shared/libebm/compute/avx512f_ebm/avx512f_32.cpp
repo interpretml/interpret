@@ -752,8 +752,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
 
    template<bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorBinSumsBoosting(BinSumsBoostingBridge* const pParams) noexcept {
-      RemoteBinSumsBoosting<Avx512f_32_Float, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(
-            pParams);
+      RemoteBinSumsBoosting<Avx512f_32_Float, bHessian, bWeight, bCollapsed, cCompilerScores, bParallel>(pParams);
       return Error_None;
    }
 

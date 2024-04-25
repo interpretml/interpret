@@ -59,12 +59,13 @@ ErrorEbm TermInnerBag::InitTermInnerBags(const size_t cTerms,
 
    const size_t cInnerBagsAfterZero = size_t{0} == cInnerBags ? size_t{1} : cInnerBags;
    if(IsMultiplyError(sizeof(TermInnerBag), cInnerBagsAfterZero)) {
-      LOG_0(Trace_Warning, "WARNING TermInnerBag::InitTermInnerBags IsMultiplyError(sizeof(TermInnerBag), cInnerBagsAfterZero)");
+      LOG_0(Trace_Warning,
+            "WARNING TermInnerBag::InitTermInnerBags IsMultiplyError(sizeof(TermInnerBag), cInnerBagsAfterZero)");
       return Error_OutOfMemory;
    }
    const size_t cTermInnerBagBytes = sizeof(TermInnerBag) * cInnerBagsAfterZero;
 
-   const Term* const* ppTerm = apTerms; 
+   const Term* const* ppTerm = apTerms;
 
    TermInnerBag** paTermInnerBag = aaTermInnerBags;
    const TermInnerBag* const* const paTermInnerBagEnd = &aaTermInnerBags[cTerms];
@@ -84,7 +85,6 @@ ErrorEbm TermInnerBag::InitTermInnerBags(const size_t cTerms,
          return Error_OutOfMemory;
       }
       const size_t cBytesWeights = sizeof(FloatPrecomp) * cBins;
-
 
       TermInnerBag* const aTermInnerBag = static_cast<TermInnerBag*>(malloc(cTermInnerBagBytes));
       if(nullptr == aTermInnerBag) {

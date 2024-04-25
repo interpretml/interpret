@@ -660,9 +660,8 @@ WARNING_POP
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
-ErrorEbm DataSetBoosting::CopyWeights(const unsigned char* const pDataSetShared,
-      const BagEbm direction, 
-      const BagEbm* const aBag) {
+ErrorEbm DataSetBoosting::CopyWeights(
+      const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::CopyWeights");
 
    EBM_ASSERT(nullptr != pDataSetShared);
@@ -680,8 +679,7 @@ ErrorEbm DataSetBoosting::CopyWeights(const unsigned char* const pDataSetShared,
    BagEbm replication = 0;
    FloatShared weight;
    if(IsMultiplyError(sizeof(FloatShared), m_cSamples)) {
-      LOG_0(Trace_Warning,
-            "WARNING DataSetBoosting::CopyWeights IsMultiplyError(sizeof(FloatShared), m_cSamples)");
+      LOG_0(Trace_Warning, "WARNING DataSetBoosting::CopyWeights IsMultiplyError(sizeof(FloatShared), m_cSamples)");
       return Error_OutOfMemory;
    }
    FloatShared* pWeightTo = reinterpret_cast<FloatShared*>(malloc(sizeof(FloatShared) * m_cSamples));
@@ -728,7 +726,6 @@ ErrorEbm DataSetBoosting::CopyWeights(const unsigned char* const pDataSetShared,
    return Error_None;
 }
 WARNING_POP
-
 
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
@@ -934,7 +931,6 @@ ErrorEbm DataSetBoosting::InitBags(
 
                   size_t cParallelSamples = cSubsetSamples / cSIMDPack;
                   EBM_ASSERT(1 <= cParallelSamples);
-
 
                   size_t maskBits;
                   if(sizeof(UIntBig) == pSubset->m_pObjective->m_cUIntBytes) {
