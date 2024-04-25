@@ -202,247 +202,6 @@ template<typename TFloat,
       size_t cCompilerScores,
       bool bParallel,
       int cCompilerPack,
-      typename std::enable_if<bParallel && 1 == cCompilerScores, int>::type = 0>
-GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
-
-   static_assert(!bCollapsed, "bCollapsed cannot be true for parallel histograms.");
-   static_assert(1 != TFloat::k_cSIMDPack, "If k_cSIMDPack is 1 there is no reason to process in parallel.");
-   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
-
-   static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-   static_assert(!bHessian ||
-               sizeof(typename TFloat::T) ==
-                     Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess,
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-   static_assert((bHessian ? size_t{2} : size_t{1}) * sizeof(typename TFloat::T) ==
-               sizeof(Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>),
-         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
-
-#ifndef GPU_COMPILE
-   EBM_ASSERT(nullptr != pParams);
-   EBM_ASSERT(1 <= pParams->m_cSamples);
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
-   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
-   EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
-   EBM_ASSERT(nullptr != pParams->m_aFastBins);
-   EBM_ASSERT(size_t{1} == pParams->m_cScores);
-   EBM_ASSERT(0 != pParams->m_cBytesFastBins);
-#endif // GPU_COMPILE
-
-   const size_t cSamples = pParams->m_cSamples;
-
-   typename TFloat::T* const aBins = reinterpret_cast<typename TFloat::T*>(pParams->m_aFastBins);
-
-   const typename TFloat::T* pGradientAndHessian =
-         reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
-   const typename TFloat::T* const pGradientsAndHessiansEnd =
-         pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
-
-   static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
-         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
-
-   // The compiler is normally pretty good about optimizing multiplications into shifts when possible
-   // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
-   // even when the multiplication has a fixed compile time constant value that is a power of 2, so
-   // we manually convert the multiplications into shifts.
-   //
-   // We also have tried the Multiply templated function that is designed to convert multiplications
-   // into shifts, but using that templated function breaks the compiler optimization that unrolls
-   // the bitpacking loop.
-   //
-   constexpr static bool bSmall = 4 == cBytesPerBin;
-   constexpr static bool bMed = 8 == cBytesPerBin;
-   constexpr static bool bLarge = 16 == cBytesPerBin;
-   static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
-   constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
-   static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
-#ifndef GPU_COMPILE
-   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
-#endif // GPU_COMPILE
-
-   const typename TFloat::TInt offsets =
-         TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
-
-   const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(1 <= cItemsPerBitPack);
-   EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
-#endif // GPU_COMPILE
-
-   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(1 <= cBitsPerItemMax);
-   EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
-#endif // GPU_COMPILE
-
-   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
-
-   const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
-#ifndef GPU_COMPILE
-   EBM_ASSERT(nullptr != pInputData);
-#endif // GPU_COMPILE
-
-   typename TFloat::TInt iTensorBin;
-   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-   int cShift;
-   if(bFixedSizePack) {
-      iTensorBin = (TFloat::TInt::Load(pInputData) & maskBits) + offsets;
-      if(bHessian) {
-         iTensorBin = PermuteForInterleaf(iTensorBin);
-      }
-      pInputData += TFloat::TInt::k_cSIMDPack;
-   } else {
-      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
-            cBitsPerItemMax;
-      iTensorBin = ((TFloat::TInt::Load(pInputData) >> cShift) & maskBits) + offsets;
-      if(bHessian) {
-         iTensorBin = PermuteForInterleaf(iTensorBin);
-      }
-
-      cShift -= cBitsPerItemMax;
-      if(cShift < 0) {
-         cShift = cShiftReset;
-         pInputData += TFloat::TInt::k_cSIMDPack;
-      }
-   }
-
-   const typename TFloat::T* pWeight;
-   if(bWeight) {
-      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
-#ifndef GPU_COMPILE
-      EBM_ASSERT(nullptr != pWeight);
-#endif // GPU_COMPILE
-   }
-
-   // We want to structure the loop below so that the load happens immediately after the store
-   // because that allows the maximum possible time for the gathering load to happen in the CPU pipeline.
-   // To do that we put the store at the top and the load below. But now we need to exectute a
-   // store on the first iteration, so load the values from memory here that we'll then store
-   // back on the first loop iteration
-   typename TFloat::TInt iTensorBinPrev = offsets;
-   TFloat bin0;
-   TFloat bin1;
-   if(!bHessian) {
-      bin0 = TFloat::template Load<cFixedShift>(aBins, iTensorBinPrev);
-   } else {
-      TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
-   }
-
-   TFloat gradient = 0;
-   TFloat hessian;
-   if(bHessian) {
-      hessian = 0;
-   }
-
-   TFloat gradhess0;
-   TFloat gradhess1;
-
-   TFloat weight;
-   if(bWeight) {
-      weight = 0;
-   }
-   do {
-      const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
-      pInputData += TFloat::TInt::k_cSIMDPack;
-      if(bFixedSizePack) {
-         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
-         // the loop below. The compiler can only do that though if it can guarantee that all
-         // iterations of the loop have the name number of loops.  Setting cShift here allows this
-         cShift = cShiftReset;
-      }
-      do {
-         if(bWeight) {
-            gradient *= weight;
-            if(bHessian) {
-               hessian *= weight;
-            }
-            weight = TFloat::Load(pWeight);
-            pWeight += TFloat::k_cSIMDPack;
-         }
-
-         if(!bHessian) {
-            gradhess0 = gradient;
-         } else {
-            TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
-         }
-
-         gradient = TFloat::Load(pGradientAndHessian);
-         if(bHessian) {
-            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
-         }
-         pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
-
-         bin0 += gradhess0;
-         if(bHessian) {
-            bin1 += gradhess1;
-         }
-
-         if(!bHessian) {
-            bin0.template Store<cFixedShift>(aBins, iTensorBinPrev);
-         } else {
-            TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
-         }
-
-         // This load is a gathering load and is the main bottleneck to EBMs. We want
-         // to give it as much time as possible to execute the load before using the bin0
-         // or bin1 values, which we do since the addition of the gradient
-         // to the bin0 value above is almost an entire loop away. We would like
-         // this load to be as early as possible, but we cannot move it before the bin0 Store
-         // operation since that operation can change the memory that we're loading here, but the
-         // optimal solution is to have as little work done between the Store and this gathering load
-         // All the other loads are predictable and should be much faster than this gathering load.
-
-         if(!bHessian) {
-            bin0 = TFloat::template Load<cFixedShift>(aBins, iTensorBin);
-         } else {
-            TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
-         }
-
-         iTensorBinPrev = iTensorBin;
-         iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
-         if(bHessian) {
-            iTensorBin = PermuteForInterleaf(iTensorBin);
-         }
-
-         cShift -= cBitsPerItemMax;
-      } while(0 <= cShift);
-      if(!bFixedSizePack) {
-         cShift = cShiftReset;
-      }
-   } while(pGradientsAndHessiansEnd != pGradientAndHessian);
-
-   if(bWeight) {
-      gradient *= weight;
-      if(bHessian) {
-         hessian *= weight;
-      }
-   }
-   if(!bHessian) {
-      gradhess0 = gradient;
-   } else {
-      TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
-   }
-
-   bin0 += gradhess0;
-   if(bHessian) {
-      bin1 += gradhess1;
-   }
-
-   if(!bHessian) {
-      bin0.template Store<cFixedShift>(aBins, iTensorBinPrev);
-   } else {
-      TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
-   }
-}
-
-template<typename TFloat,
-      bool bHessian,
-      bool bWeight,
-      bool bCollapsed,
-      size_t cCompilerScores,
-      bool bParallel,
-      int cCompilerPack,
       typename std::enable_if<!bCollapsed && 1 == TFloat::k_cSIMDPack && 1 == cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
 
@@ -798,6 +557,247 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
          cShift = cShiftReset;
       }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+}
+
+template<typename TFloat,
+      bool bHessian,
+      bool bWeight,
+      bool bCollapsed,
+      size_t cCompilerScores,
+      bool bParallel,
+      int cCompilerPack,
+      typename std::enable_if<bParallel && 1 == cCompilerScores, int>::type = 0>
+GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+
+   static_assert(!bCollapsed, "bCollapsed cannot be true for parallel histograms.");
+   static_assert(1 != TFloat::k_cSIMDPack, "If k_cSIMDPack is 1 there is no reason to process in parallel.");
+   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
+
+   static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert(!bHessian ||
+               sizeof(typename TFloat::T) ==
+                     Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetHess,
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+   static_assert((bHessian ? size_t{2} : size_t{1}) * sizeof(typename TFloat::T) ==
+               sizeof(Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>),
+         "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
+
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pParams);
+   EBM_ASSERT(1 <= pParams->m_cSamples);
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
+   EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
+   EBM_ASSERT(nullptr != pParams->m_aFastBins);
+   EBM_ASSERT(size_t{1} == pParams->m_cScores);
+   EBM_ASSERT(0 != pParams->m_cBytesFastBins);
+#endif // GPU_COMPILE
+
+   const size_t cSamples = pParams->m_cSamples;
+
+   typename TFloat::T* const aBins = reinterpret_cast<typename TFloat::T*>(pParams->m_aFastBins);
+
+   const typename TFloat::T* pGradientAndHessian =
+         reinterpret_cast<const typename TFloat::T*>(pParams->m_aGradientsAndHessians);
+   const typename TFloat::T* const pGradientsAndHessiansEnd =
+         pGradientAndHessian + (bHessian ? size_t{2} : size_t{1}) * cSamples;
+
+   static constexpr typename TFloat::TInt::T cBytesPerBin = static_cast<typename TFloat::TInt::T>(
+         GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(false, false, bHessian, size_t{1}));
+
+   // The compiler is normally pretty good about optimizing multiplications into shifts when possible
+   // BUT, when compiling for SIMD, it seems to use a SIMD multiplication instruction instead of shifts
+   // even when the multiplication has a fixed compile time constant value that is a power of 2, so
+   // we manually convert the multiplications into shifts.
+   //
+   // We also have tried the Multiply templated function that is designed to convert multiplications
+   // into shifts, but using that templated function breaks the compiler optimization that unrolls
+   // the bitpacking loop.
+   //
+   constexpr static bool bSmall = 4 == cBytesPerBin;
+   constexpr static bool bMed = 8 == cBytesPerBin;
+   constexpr static bool bLarge = 16 == cBytesPerBin;
+   static_assert(bSmall || bMed || bLarge, "cBytesPerBin size must be small, medium, or large");
+   constexpr static int cFixedShift = bSmall ? 2 : bMed ? 3 : 4;
+   static_assert(1 << cFixedShift == cBytesPerBin, "cFixedShift must match the BinSize");
+#ifndef GPU_COMPILE
+   EBM_ASSERT(0 == pParams->m_cBytesFastBins % static_cast<size_t>(cBytesPerBin));
+#endif // GPU_COMPILE
+
+   const typename TFloat::TInt offsets =
+         TFloat::TInt::MakeIndexes() * static_cast<typename TFloat::TInt::T>(pParams->m_cBytesFastBins >> cFixedShift);
+
+   const int cItemsPerBitPack = GET_ITEMS_PER_BIT_PACK(cCompilerPack, pParams->m_cPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cItemsPerBitPack);
+   EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   const int cBitsPerItemMax = GetCountBits<typename TFloat::TInt::T>(cItemsPerBitPack);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(1 <= cBitsPerItemMax);
+   EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(typename TFloat::TInt::T));
+#endif // GPU_COMPILE
+
+   const typename TFloat::TInt maskBits = MakeLowMask<typename TFloat::TInt::T>(cBitsPerItemMax);
+
+   const typename TFloat::TInt::T* pInputData = reinterpret_cast<const typename TFloat::TInt::T*>(pParams->m_aPacked);
+#ifndef GPU_COMPILE
+   EBM_ASSERT(nullptr != pInputData);
+#endif // GPU_COMPILE
+
+   typename TFloat::TInt iTensorBin;
+   const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
+   int cShift;
+   if(bFixedSizePack) {
+      iTensorBin = (TFloat::TInt::Load(pInputData) & maskBits) + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
+      pInputData += TFloat::TInt::k_cSIMDPack;
+   } else {
+      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+      iTensorBin = ((TFloat::TInt::Load(pInputData) >> cShift) & maskBits) + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
+
+      cShift -= cBitsPerItemMax;
+      if(cShift < 0) {
+         cShift = cShiftReset;
+         pInputData += TFloat::TInt::k_cSIMDPack;
+      }
+   }
+
+   const typename TFloat::T* pWeight;
+   if(bWeight) {
+      pWeight = reinterpret_cast<const typename TFloat::T*>(pParams->m_aWeights);
+#ifndef GPU_COMPILE
+      EBM_ASSERT(nullptr != pWeight);
+#endif // GPU_COMPILE
+   }
+
+   // We want to structure the loop below so that the load happens immediately after the store
+   // because that allows the maximum possible time for the gathering load to happen in the CPU pipeline.
+   // To do that we put the store at the top and the load below. But now we need to exectute a
+   // store on the first iteration, so load the values from memory here that we'll then store
+   // back on the first loop iteration
+   typename TFloat::TInt iTensorBinPrev = offsets;
+   TFloat bin0;
+   TFloat bin1;
+   if(!bHessian) {
+      bin0 = TFloat::template Load<cFixedShift>(aBins, iTensorBinPrev);
+   } else {
+      TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
+   }
+
+   TFloat gradient = 0;
+   TFloat hessian;
+   if(bHessian) {
+      hessian = 0;
+   }
+
+   TFloat gradhess0;
+   TFloat gradhess1;
+
+   TFloat weight;
+   if(bWeight) {
+      weight = 0;
+   }
+   do {
+      const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
+      pInputData += TFloat::TInt::k_cSIMDPack;
+      if(bFixedSizePack) {
+         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+         // the loop below. The compiler can only do that though if it can guarantee that all
+         // iterations of the loop have the name number of loops.  Setting cShift here allows this
+         cShift = cShiftReset;
+      }
+      do {
+         if(bWeight) {
+            gradient *= weight;
+            if(bHessian) {
+               hessian *= weight;
+            }
+            weight = TFloat::Load(pWeight);
+            pWeight += TFloat::k_cSIMDPack;
+         }
+
+         if(!bHessian) {
+            gradhess0 = gradient;
+         } else {
+            TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
+         }
+
+         gradient = TFloat::Load(pGradientAndHessian);
+         if(bHessian) {
+            hessian = TFloat::Load(&pGradientAndHessian[TFloat::k_cSIMDPack]);
+         }
+         pGradientAndHessian += (bHessian ? size_t{2} : size_t{1}) * TFloat::k_cSIMDPack;
+
+         bin0 += gradhess0;
+         if(bHessian) {
+            bin1 += gradhess1;
+         }
+
+         if(!bHessian) {
+            bin0.template Store<cFixedShift>(aBins, iTensorBinPrev);
+         } else {
+            TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
+         }
+
+         // This load is a gathering load and is the main bottleneck to EBMs. We want
+         // to give it as much time as possible to execute the load before using the bin0
+         // or bin1 values, which we do since the addition of the gradient
+         // to the bin0 value above is almost an entire loop away. We would like
+         // this load to be as early as possible, but we cannot move it before the bin0 Store
+         // operation since that operation can change the memory that we're loading here, but the
+         // optimal solution is to have as little work done between the Store and this gathering load
+         // All the other loads are predictable and should be much faster than this gathering load.
+
+         if(!bHessian) {
+            bin0 = TFloat::template Load<cFixedShift>(aBins, iTensorBin);
+         } else {
+            TFloat::template DoubleLoad<cFixedShift>(aBins, iTensorBin, bin0, bin1);
+         }
+
+         iTensorBinPrev = iTensorBin;
+         iTensorBin = ((iTensorBinCombined >> cShift) & maskBits) + offsets;
+         if(bHessian) {
+            iTensorBin = PermuteForInterleaf(iTensorBin);
+         }
+
+         cShift -= cBitsPerItemMax;
+      } while(0 <= cShift);
+      if(!bFixedSizePack) {
+         cShift = cShiftReset;
+      }
+   } while(pGradientsAndHessiansEnd != pGradientAndHessian);
+
+   if(bWeight) {
+      gradient *= weight;
+      if(bHessian) {
+         hessian *= weight;
+      }
+   }
+   if(!bHessian) {
+      gradhess0 = gradient;
+   } else {
+      TFloat::Interleaf(gradient, hessian, gradhess0, gradhess1);
+   }
+
+   bin0 += gradhess0;
+   if(bHessian) {
+      bin1 += gradhess1;
+   }
+
+   if(!bHessian) {
+      bin0.template Store<cFixedShift>(aBins, iTensorBinPrev);
+   } else {
+      TFloat::template DoubleStore<cFixedShift>(aBins, iTensorBinPrev, bin0, bin1);
+   }
 }
 
 template<typename TFloat,
