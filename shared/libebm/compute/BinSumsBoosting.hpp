@@ -814,6 +814,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
    static_assert(!bCollapsed, "bCollapsed cannot be true for parallel histograms.");
    static_assert(1 != TFloat::k_cSIMDPack, "If k_cSIMDPack is 1 there is no reason to process in parallel.");
+   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
    static_assert(0 == Bin<typename TFloat::T, typename TFloat::TInt::T, false, false, bHessian>::k_offsetGrad,
          "We treat aBins as a flat array of TFloat::T, so the Bin class needs to be ordered in an exact way");
@@ -829,6 +830,7 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
    EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
@@ -878,26 +880,43 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    typename TFloat::TInt iTensorBin;
    const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
    int cShift;
-   cShift =
-         static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
-   iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+   if(bFixedSizePack) {
+      iTensorBin = TFloat::TInt::Load(pInputData) & maskBits;
 
-   // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
-   // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
-   // there are low numbers of shifts, which should be the case for anything with a compile time constant here
-   iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
-   k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
-   static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-         false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
-   iTensorBin = iTensorBin + offsets;
-   if(bHessian) {
-      iTensorBin = PermuteForInterleaf(iTensorBin);
-   }
-
-   cShift -= cBitsPerItemMax;
-   if(cShift < 0) {
-      cShift = cShiftReset;
+      // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+      // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+      // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+      iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+      k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+      static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+            false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+      iTensorBin = iTensorBin + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
       pInputData += TFloat::TInt::k_cSIMDPack;
+   } else {
+      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+      iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+
+      // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+      // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+      // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+      iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+      k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+      static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+            false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+      iTensorBin = iTensorBin + offsets;
+      if(bHessian) {
+         iTensorBin = PermuteForInterleaf(iTensorBin);
+      }
+
+      cShift -= cBitsPerItemMax;
+      if(cShift < 0) {
+         cShift = cShiftReset;
+         pInputData += TFloat::TInt::k_cSIMDPack;
+      }
    }
 
    const typename TFloat::T* pWeight;
@@ -913,6 +932,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    do {
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
+      if(bFixedSizePack) {
+         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+         // the loop below. The compiler can only do that though if it can guarantee that all
+         // iterations of the loop have the name number of loops.  Setting cShift here allows this
+         cShift = cShiftReset;
+      }
       do {
          TFloat weight;
          if(bWeight) {
@@ -987,7 +1012,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
-      cShift = cShiftReset;
+      if(!bFixedSizePack) {
+         cShift = cShiftReset;
+      }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
@@ -1000,11 +1027,13 @@ template<typename TFloat,
       int cCompilerPack,
       typename std::enable_if<!bCollapsed && !bParallel && 1 != cCompilerScores, int>::type = 0>
 GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridge* const pParams) {
+   static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 
 #ifndef GPU_COMPILE
    EBM_ASSERT(nullptr != pParams);
    EBM_ASSERT(1 <= pParams->m_cSamples);
    EBM_ASSERT(0 == pParams->m_cSamples % size_t{TFloat::k_cSIMDPack});
+   EBM_ASSERT(0 == pParams->m_cSamples % size_t{(bFixedSizePack ? cCompilerPack : 1) * TFloat::k_cSIMDPack});
    EBM_ASSERT(nullptr != pParams->m_aGradientsAndHessians);
    EBM_ASSERT(nullptr != pParams->m_aFastBins);
    EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == pParams->m_cScores);
@@ -1049,22 +1078,36 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    typename TFloat::TInt iTensorBin;
    const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
    int cShift;
-   cShift =
-         static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
-   iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+   if(bFixedSizePack) {
+      iTensorBin = TFloat::TInt::Load(pInputData) & maskBits;
 
-   // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
-   // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
-   // there are low numbers of shifts, which should be the case for anything with a compile time constant here
-   iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
-   k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
-   static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
-         false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+      // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+      // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+      // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+      iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+      k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+      static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+            false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
 
-   cShift -= cBitsPerItemMax;
-   if(cShift < 0) {
-      cShift = cShiftReset;
       pInputData += TFloat::TInt::k_cSIMDPack;
+   } else {
+      cShift = static_cast<int>((cSamples >> TFloat::k_cSIMDShift) % static_cast<size_t>(cItemsPerBitPack)) *
+            cBitsPerItemMax;
+      iTensorBin = (TFloat::TInt::Load(pInputData) >> cShift) & maskBits;
+
+      // normally the compiler is better at optimimizing multiplications into shifs, but it isn't better
+      // if TFloat is a SIMD type. For SIMD shifts & adds will almost always be better than multiplication if
+      // there are low numbers of shifts, which should be the case for anything with a compile time constant here
+      iTensorBin = Multiply < typename TFloat::TInt, typename TFloat::TInt::T,
+      k_dynamicScores != cCompilerScores && 1 != TFloat::k_cSIMDPack,
+      static_cast<typename TFloat::TInt::T>(GetBinSize<typename TFloat::T, typename TFloat::TInt::T>(
+            false, false, bHessian, cCompilerScores)) > (iTensorBin, cBytesPerBin);
+
+      cShift -= cBitsPerItemMax;
+      if(cShift < 0) {
+         cShift = cShiftReset;
+         pInputData += TFloat::TInt::k_cSIMDPack;
+      }
    }
 
    const typename TFloat::T* pWeight;
@@ -1078,6 +1121,12 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
    do {
       const typename TFloat::TInt iTensorBinCombined = TFloat::TInt::Load(pInputData);
       pInputData += TFloat::TInt::k_cSIMDPack;
+      if(bFixedSizePack) {
+         // If we have a fixed sized cCompilerPack then the compiler should be able to unroll
+         // the loop below. The compiler can only do that though if it can guarantee that all
+         // iterations of the loop have the name number of loops.  Setting cShift here allows this
+         cShift = cShiftReset;
+      }
       do {
          TFloat weight;
          if(bWeight) {
@@ -1150,7 +1199,9 @@ GPU_DEVICE NEVER_INLINE static void BinSumsBoostingInternal(BinSumsBoostingBridg
 
          cShift -= cBitsPerItemMax;
       } while(0 <= cShift);
-      cShift = cShiftReset;
+      if(!bFixedSizePack) {
+         cShift = cShiftReset;
+      }
    } while(pGradientsAndHessiansEnd != pGradientAndHessian);
 }
 
