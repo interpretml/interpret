@@ -4,7 +4,17 @@
 import enum
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Enum, Table
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    JSON,
+    DateTime,
+    Enum,
+    Table,
+    UniqueConstraint,
+)
 from sqlalchemy.sql.expression import null
 from sqlalchemy.sql.sqltypes import Boolean, Numeric, LargeBinary
 
@@ -17,7 +27,7 @@ VERSION_LEN = 256
 ERROR_LEN = 10000
 
 # Measure related fields.
-MEASURE_STR_LEN = 64
+MEASURE_STR_LEN = None
 
 # These descriptions shouldn't be much longer than a tweet (use links for more verbosity).
 DESCRIPTION_LEN = 300
@@ -176,7 +186,7 @@ class Task(Base):
 
     __tablename__ = "task"
     id = Column(Integer, primary_key=True)
-    name = Column(String(NAME_LEN), unique=True)
+    name = Column(String(NAME_LEN))
     description = Column(String(DESCRIPTION_LEN))
     version = Column(String(VERSION_LEN))
     problem = Column(String(PROBLEM_LEN))
@@ -188,6 +198,7 @@ class Task(Base):
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=task_measure_outcome_table, back_populates="tasks"
     )
+    __table_args__ = (UniqueConstraint("name", "problem", name="u_name_problem"),)
 
 
 class Asset(Base):

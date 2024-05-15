@@ -1,12 +1,12 @@
 """ This is called to run a trial by worker nodes (local / remote). """
 
 
-def run_trials(trial_ids, db_url, timeout, raise_exception):
+def run_trials(trial_ids, db_url, timeout, raise_exception, debug_fn=None):
     """Runs trials. Includes wheel installation and timeouts."""
     from powerlift.bench.store import Store
     import traceback
     from powerlift.executors.base import timed_run
-    from powerlift.bench.store import MIMETYPE_PKL_FUNC, MIMETYPE_WHEEL, BytesParser
+    from powerlift.bench.store import MIMETYPE_FUNC, MIMETYPE_WHEEL, BytesParser
     from powerlift.bench.experiment import Store
     import subprocess
     import tempfile
@@ -16,6 +16,8 @@ def run_trials(trial_ids, db_url, timeout, raise_exception):
     store = Store(db_url)
     for trial_id in trial_ids:
         trial = store.find_trial_by_id(trial_id)
+        if trial is None:
+            raise RuntimeError(f"No trial found for id {trial_id}")
 
         # Handle input assets
         trial_run_fn = None
@@ -31,12 +33,15 @@ def run_trials(trial_ids, db_url, timeout, raise_exception):
                     subprocess.check_call(
                         [sys.executable, "-m", "pip", "install", filepath]
                     )
-                elif input_asset.mimetype == MIMETYPE_PKL_FUNC:
+                elif input_asset.mimetype == MIMETYPE_FUNC:
                     trial_run_fn = BytesParser.deserialize(
-                        MIMETYPE_PKL_FUNC, input_asset.embedded
+                        MIMETYPE_FUNC, input_asset.embedded
                     )
                 else:
                     continue
+        if debug_fn is not None:
+            trial_run_fn = debug_fn
+
         if trial_run_fn is None:
             raise RuntimeError("No trial run function found.")
 

@@ -1,20 +1,16 @@
 """Experiment classes for benchmarking.
 
-The experiment and its associate classes are the main interface to work with benchmarking.
+The experiment and its associate classes.
 """
 
-import random
-from types import FunctionType
 import pandas as pd
 from typing import Dict, Iterable
 from typing import Type, TypeVar
-from powerlift.bench.store import Store
 from typing import Union, Optional, List
 from dataclasses import dataclass
 from numbers import Number
 
-from powerlift.executors.base import Executor
-from powerlift.executors import LocalMachine
+from powerlift.bench.store import Store
 
 
 @dataclass(frozen=True)
@@ -130,151 +126,21 @@ class Method:
         return cls(None, name, f"Method: {name}", "0.0.1", {}, {})
 
 
+@dataclass(frozen=True)
 class Experiment:
-    """Represents an experiment with its trials and a store."""
+    """Represents an experiment with its trials."""
 
-    def __init__(
-        self,
-        store_or_uri: Union[str, Store],
-        name: str = None,
-        description: str = None,
-        _id: int = None,
-    ):
-        """Initializes - autogenerates fields if args aren't set.
-
-        Args:
-            store_or_uri (Union[str, Store]): Store or database uri.
-            name (str, optional): Name of experiment. Defaults to None and autogenerates.
-            description (str, optional): Description of experiment. Defaults to None and autogenerates.
-            _id (int, optional): ID of experiment. If provided, will associated with an existing experiment with same name. Defaults to None and creates a new experiment.
-        """
-        if name is None:
-            name = f"#{random.randint(0, 9999)}"
-        if description is None:
-            description = f"Experiment: {name}"
-        if isinstance(store_or_uri, str):
-            self._store = Store(store_or_uri)
-        else:
-            self._store = store_or_uri
-        self._name = name
-        self._description = description
-        self._id = _id
-        self._trials = []
-
-    @property
-    def store(self) -> Store:
-        return self._store
-
-    @property
-    def id(self) -> int:
-        return self._id
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def description(self) -> str:
-        return self._description
-
-    @property
-    def trials(self) -> List:
-        return self._trials
-
-    def run(
-        self,
-        trial_run_fn: FunctionType,
-        trial_gen_fn: FunctionType,
-        timeout: int = None,
-        n_replicates: int = 1,
-        executor: Executor = None,
-    ) -> Executor:
-        """Runs the experiment. Typically done asynchronously.
-
-        Args:
-            trial_run_fn (FunctionType): This function is run for each trial (locally or remote). Make sure all imports and objects needed are defined within.
-            trial_gen_fn (FunctionType): This function determines which trials are generated from the tasks found in store. Best to see documentation examples for usage.
-            timeout (int, optional): Timeout in seconds for each trial run. Defaults to None.
-            n_replicates (int, optional): Number of times to repeat a trial run. Defaults to 1.
-            executor (Executor, optional): Executor responsible for running trials (local machine, remote docker container, etc). Defaults to None and will select local machine.
-
-        Raises:
-            TypeError: Invalid arguments may raise this.
-
-        Returns:
-            Executor: Either executor provided to call, or local machine executor.
-        """
-        # Create experiment if needed
-        if self._id is None:
-            self._id, _ = self._store.get_or_create_experiment(
-                self._name, self._description
-            )
-
-        # Create trials
-        trial_params = []
-        for task in self._store.iter_tasks():
-            generated_trials = trial_gen_fn(task)
-            for generated_trial in generated_trials:
-                if isinstance(generated_trial, tuple):
-                    # Response: (method, meta)
-                    method = generated_trial[0]
-                    meta = generated_trial[1]
-                else:
-                    # Response: method
-                    method = generated_trial
-                    meta = {}
-                if isinstance(method, str):
-                    method = Method.from_name(method)
-                elif isinstance(method, Method):
-                    pass
-                else:
-                    raise TypeError(f"Cannot handle method type: {type(method)}")
-                method_id, _ = self._store.get_or_create_method(
-                    method.name,
-                    method.description,
-                    method.version,
-                    method.params,
-                    method.env,
-                )
-                method = Method(
-                    method_id,
-                    method.name,
-                    method.description,
-                    method.version,
-                    method.params,
-                    method.env,
-                )
-
-                for replicate_num in range(n_replicates):
-                    trial_param = {
-                        "experiment_id": self.id,
-                        "task_id": task.id,
-                        "method_id": method.id,
-                        "replicate_num": replicate_num,
-                        "meta": meta,
-                    }
-                    trial_params.append(trial_param)
-                    self._trials.append(
-                        Trial(None, self, task, method, replicate_num, meta, [])
-                    )
-
-        # Save to store
-        trial_ids = self._store.create_trials(trial_params)
-        for _id, trial in zip(trial_ids, self._trials):
-            trial._id = _id
-
-        # Run trials
-        if executor is None:
-            executor = LocalMachine(self._store)
-        executor.submit(trial_run_fn, self._trials, timeout=timeout)
-        return executor
+    id: Optional[int]
+    name: str
+    description: str
+    trials: List
 
 
 class Trial:
     def __init__(
         self,
         _id: Optional[int],
-        experiment: Experiment,
+        store: Store,
         task: Task,
         method: Method,
         replicate_num: int,
@@ -285,7 +151,7 @@ class Trial:
 
         Args:
             _id (Optional[int]): ID of trial or None.
-            experiment (Experiment): Experiment of trial.
+            store (Store): Store to persist measures.
             task (Task): Task of trial.
             method (Method): Method of trial.
             replicate_num (int): Replicate number of trial (when a trial is repeated many times).
@@ -293,7 +159,7 @@ class Trial:
             input_assets (List[Asset]): Input assets that are available on trial run.
         """
         self._id = _id
-        self._experiment = experiment
+        self._store = store
         self._task = task
         self._method = method
         self._replicate_num = replicate_num
@@ -317,13 +183,13 @@ class Trial:
             type_ (Union[None, Type, str], optional): Type of measure. Defaults to None.
             lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
-        self._experiment.store.add_measure(
+        self._store.add_measure(
             self._id, type(self), name, value, description, type_, lower_is_better
         )
 
     @property
-    def experiment(self):
-        return self._experiment
+    def store(self):
+        return self._store
 
     @property
     def task(self):

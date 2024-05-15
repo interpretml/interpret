@@ -11,18 +11,20 @@ Currently supported:
 Near future support:
 - Ikonomovska regression datasets
 - scikit-learn associated datasets
+
+# TODO(nopdive): Review how seq_num (integrity) are done with measure outcomes.
 """
 
+from collections.abc import Mapping
 import pytz
 import base64
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type
 import random
 import random
-from powerlift.db.actions import delete_db, create_db
+from powerlift.db.actions import drop_tables, create_db, create_tables
 from powerlift.measures import class_stats, data_stats, regression_stats
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import create_engine
 from tqdm import tqdm
 from itertools import chain
 from sqlalchemy.orm import Session
@@ -63,7 +65,7 @@ def _compile_function(src_ast):
 MIMETYPE_DF = "application/vnd.interpretml/parquet-series"
 MIMETYPE_SERIES = "application/vnd.interpretml/parquet-series"
 MIMETYPE_JSON = "application/json"
-MIMETYPE_PKL_FUNC = "application/vnd.interpretml/pickle-function"
+MIMETYPE_FUNC = "application/vnd.interpretml/function-str"
 MIMETYPE_WHEEL = "application/vnd.interpretml/python-wheel"
 
 
@@ -74,14 +76,18 @@ class BytesParser:
         import json
         import pandas as pd
 
-        bstream = io.BytesIO(bytes)
+        if not isinstance(bytes, io.BytesIO):
+            bstream = io.BytesIO(bytes)
+        else:
+            bstream = bytes
+
         if mimetype == MIMETYPE_JSON:
             return json.load(bstream)
         elif mimetype == MIMETYPE_DF:
             return pd.read_parquet(bstream)
         elif mimetype == MIMETYPE_SERIES:
             return pd.read_parquet(bstream)["Target"]
-        elif mimetype == MIMETYPE_PKL_FUNC:
+        elif mimetype == MIMETYPE_FUNC:
             src = bstream.getvalue().decode("utf-8")
             src_ast = _parse_function(src)
             if src_ast is None:
@@ -120,7 +126,7 @@ class BytesParser:
             if src_ast is None:
                 raise RuntimeError("Serialized code not valid.")
             bstream.write(src.encode("utf-8"))
-            mimetype = MIMETYPE_PKL_FUNC
+            mimetype = MIMETYPE_FUNC
         elif isinstance(obj, Wheel):
             content = base64.b64encode(obj.content).decode("ascii")
             json_record = {
@@ -147,16 +153,15 @@ class Store:
             uri (str): Database URI to connect store to.
             force_recreate (bool, optional): This will delete and create the database associated with the uri if set to true. Defaults to False.
         """
+        self._engine = create_db(uri, **create_engine_kwargs)
         if force_recreate:
-            delete_db(uri)
-            self._engine = create_db(uri, **create_engine_kwargs)
-        else:
-            self._engine = create_engine(uri, **create_engine_kwargs)
+            drop_tables(self._engine)
+        create_tables(self._engine)
 
         self._conn = self._engine.connect()
         self._session = Session(bind=self._conn)
 
-        self._declared_measures = {}
+        self._declared_measures_cache = {}
         self._measure_counts = {}
         self._uri = uri
 
@@ -335,14 +340,12 @@ class Store:
     def from_db_trial(self, trial_orm):
         from powerlift.bench.experiment import Trial
 
-        experiment_orm = trial_orm.experiment
-        experiment = self.from_db_experiment(experiment_orm)
         input_assets = [self.from_db_asset(asset) for asset in trial_orm.input_assets]
         task = self.from_db_task(trial_orm.task)
         method = self.from_db_method(trial_orm.method)
         return Trial(
             trial_orm.id,
-            experiment,
+            self,
             task,
             method,
             trial_orm.replicate_num,
@@ -369,6 +372,13 @@ class Store:
         if trial_orm is None:
             return None
         return self.from_db_trial(trial_orm)
+
+    def get_experiment(self, name: str) -> Optional[int]:
+        exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
+        if exp_orm is None:
+            return None
+        else:
+            return exp_orm.id
 
     def get_or_create_experiment(self, name: str, description: str) -> Tuple[int, bool]:
         """Get or create experiment keyed by name."""
@@ -444,6 +454,82 @@ class Store:
             self._session.commit()
         return method_orm.id, created
 
+    def iter_experiment_trials(self, experiment_id: int):
+        trial_orms = self._session.query(db.Trial).filter_by(
+            experiment_id=experiment_id
+        )
+        for trial_orm in trial_orms:
+            trial = self.from_db_trial(trial_orm)
+            yield trial
+
+    def iter_status(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
+        # TODO(nopdive): Should this be in the store?
+        trial_orms = self._session.query(db.Trial).filter_by(
+            experiment_id=experiment_id
+        )
+        for trial_orm in trial_orms:
+            record = {
+                "trial_id": trial_orm.id,
+                "replicate_num": trial_orm.replicate_num,
+                "meta": trial_orm.meta,
+                "method": trial_orm.method.name,
+                "task": trial_orm.task.name,
+                "status": trial_orm.status.name,
+                "errmsg": trial_orm.errmsg,
+                "create_time": trial_orm.create_time,
+                "start_time": trial_orm.start_time,
+                "end_time": trial_orm.end_time,
+            }
+            yield record
+
+    def iter_results(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
+        trial_orms = self._session.query(db.Trial).filter_by(
+            experiment_id=experiment_id
+        )
+        for trial_orm in trial_orms:
+            for measure_outcome in trial_orm.measure_outcomes:
+                record = {
+                    "trial_id": trial_orm.id,
+                    "replicate_num": trial_orm.replicate_num,
+                    "meta": trial_orm.meta,
+                    "method": trial_orm.method.name,
+                    "task": trial_orm.task.name,
+                    "name": measure_outcome.measure_description.name,
+                    "seq_num": measure_outcome.seq_num,
+                    "type": measure_outcome.measure_description.type.name,
+                    "num_val": measure_outcome.num_val,
+                    "str_val": measure_outcome.str_val,
+                    "json_val": measure_outcome.json_val,
+                }
+                yield record
+
+    def iter_available_tasks(
+        self, include_measures: bool = False
+    ) -> Iterable[Mapping[str, object]]:
+        task_orms = self._session.query(db.Task)
+        for task_orm in task_orms:
+            record = {
+                "task_id": task_orm.id,
+                "name": task_orm.name,
+                "version": task_orm.version,
+                "problem": task_orm.problem,
+                "origin": task_orm.origin,
+                "config": task_orm.config,
+            }
+            if include_measures:
+                for measure_outcome in task_orm.measure_outcomes:
+                    record.update(
+                        {
+                            "measure_name": measure_outcome.measure_description.name,
+                            "seq_num": measure_outcome.seq_num,
+                            "type": measure_outcome.measure_description.type.name,
+                            "num_val": measure_outcome.num_val,
+                            "str_val": measure_outcome.str_val,
+                            "json_val": measure_outcome.json_val,
+                        }
+                    )
+            yield record
+
     def iter_tasks(self):
         for task_orm in self._session.query(db.Task).all():
             task = self.from_db_task(task_orm)
@@ -476,7 +562,7 @@ class Store:
             type_ = db.TypeEnum[type_.upper()]
 
         # Create measure description if needed
-        is_declared = name in self._declared_measures
+        is_declared = name in self._declared_measures_cache
         if not is_declared:
             if description is None:
                 description = f"Measure: {name}"
@@ -503,9 +589,9 @@ class Store:
                         .filter_by(name=name)
                         .one()
                     )
-            self._declared_measures[name] = measure_description_orm
+            self._declared_measures_cache[name] = measure_description_orm
         else:
-            measure_description_orm = self._declared_measures[name]
+            measure_description_orm = self._declared_measures_cache[name]
 
         # Create measure
         seq_num = self._measure_counts[name] = self._measure_counts.get(name, -1) + 1
@@ -515,6 +601,8 @@ class Store:
             timestamp=timestamp,
             seq_num=seq_num,
         )
+        self._session.add(measure_outcome_orm)
+
         if type_ == db.TypeEnum.STR:
             measure_outcome_orm.str_val = value
         elif type_ == db.TypeEnum.JSON:
@@ -537,11 +625,18 @@ class Store:
         trial_or_task_orm.measure_outcomes.append(measure_outcome_orm)
         if not is_declared:
             self._session.add(measure_description_orm)
-        self._session.add(measure_outcome_orm)
         self._session.commit()
         return measure_outcome_orm.id
 
-    def create_task_with_data(self, supervised, version="0.0.1"):
+    def create_task_with_data(self, data, version="0.0.1"):
+        if isinstance(data, SupervisedDataset):
+            return self._create_task_with_supervised(data, version)
+        elif isinstance(data, DataFrameDataset):
+            return self._create_task_with_dataframe(data, version)
+        else:  # pragma: no cover
+            raise ValueError(f"Does not support {type(data)}")
+
+    def _create_task_with_supervised(self, supervised, version):
         X_bstream, y_bstream, meta_bstream = SupervisedDataset.serialize(supervised)
         X_name, y_name, meta_name = supervised.asset_names()
         X_mimetype, y_mimetype, meta_mimetype = supervised.mimetypes()
@@ -574,7 +669,7 @@ class Store:
 
         meta = supervised.meta
         task_orm = db.Task(
-            name=f"{meta['name']}:{meta['problem']}",
+            name=meta["name"],
             description=f"Dataset {meta['name']} for {meta['problem']}",
             version=version,
             problem=meta["problem"],
@@ -599,17 +694,91 @@ class Store:
 
         return task_orm.id
 
+    def _create_task_with_dataframe(self, data, version):
+        inputs_bstream, outputs_bstream, meta_bstream = DataFrameDataset.serialize(data)
+        inputs_name, outputs_name, meta_name = data.asset_names()
+        inputs_mimetype, outputs_mimetype, meta_mimetype = data.mimetypes()
 
-def populate_task_measures(store, task_id, supervised):
+        inputs_orm = db.Asset(
+            name=inputs_name,
+            description=f"Inputs for {data.name()}",
+            version=version,
+            is_embedded=True,
+            mimetype=inputs_mimetype,
+            embedded=inputs_bstream.getvalue(),
+        )
+        outputs_orm = db.Asset(
+            name=outputs_name,
+            description=f"Outputs for {data.name()}",
+            version=version,
+            is_embedded=True,
+            mimetype=outputs_mimetype,
+            embedded=outputs_bstream.getvalue(),
+        )
+
+        meta_orm = db.Asset(
+            name=meta_name,
+            description=f"Metadata for {data.name()}",
+            version=version,
+            is_embedded=True,
+            mimetype=meta_mimetype,
+            embedded=meta_bstream.getvalue(),
+        )
+
+        meta = data.meta
+        task_orm = db.Task(
+            name=meta["name"],
+            description=f"Dataset {meta['name']} for {meta['problem']}",
+            version=version,
+            problem=meta["problem"],
+            origin=meta["source"],
+            config={
+                "type": "data_dataframe",
+                "aliases": {
+                    "inputs": inputs_name,
+                    "outputs": outputs_name,
+                    "meta": meta_name,
+                },
+            },
+        )
+        task_orm.assets.append(inputs_orm)
+        task_orm.assets.append(outputs_orm)
+        task_orm.assets.append(meta_orm)
+
+        self._session.add(inputs_orm)
+        self._session.add(outputs_orm)
+        self._session.add(task_orm)
+        self._session.commit()
+
+        return task_orm.id
+
+
+def populate_task_measures(store, task_id, data):
     from powerlift.bench.experiment import Task
 
-    meta = supervised.meta
+    meta = data.meta
     unprocessed_measures = []
-    if meta["problem"] == "regression":
-        unprocessed_measures.extend(regression_stats(supervised.y))
-    elif meta["problem"] in ["binary", "multiclass"]:
-        unprocessed_measures.extend(class_stats(supervised.y))
-    unprocessed_measures.extend(data_stats(supervised.X, meta["categorical_mask"]))
+    if isinstance(data, SupervisedDataset):
+        if meta["problem"] == "regression":
+            unprocessed_measures.extend(regression_stats(data.y))
+        elif meta["problem"] in ["binary", "multiclass"]:
+            unprocessed_measures.extend(class_stats(data.y))
+        unprocessed_measures.extend(data_stats(data.X, meta["categorical_mask"]))
+    elif isinstance(data, DataFrameDataset):
+        inputs_data_stats = [
+            (f"inputs_{x1}", x2, x3, x4)
+            for x1, x2, x3, x4 in data_stats(
+                data.inputs, meta["inputs_categorical_mask"]
+            )
+        ]
+        outputs_data_stats = [
+            (f"outputs_{x1}", x2, x3, x4)
+            for x1, x2, x3, x4 in data_stats(
+                data.outputs, meta["outputs_categorical_mask"]
+            )
+        ]
+        unprocessed_measures.extend(inputs_data_stats)
+        unprocessed_measures.extend(outputs_data_stats)
 
     for unprocessed_measure in unprocessed_measures:
         name, description, value, lower_is_better = unprocessed_measure
@@ -623,7 +792,9 @@ def populate_task_measures(store, task_id, supervised):
         )
 
 
-def retrieve_cache(cache_dir: Optional[str], names: List[str]) -> List[io.BytesIO]:
+def retrieve_cache(
+    cache_dir: Optional[str], names: List[str]
+) -> Optional[List[io.BytesIO]]:
     if cache_dir is None:
         return None
 
@@ -637,18 +808,64 @@ def retrieve_cache(cache_dir: Optional[str], names: List[str]) -> List[io.BytesI
                 outputs.append(io.BytesIO(f.read()))
         else:
             return None
+    return outputs
 
 
 def update_cache(cache_dir, names: List[str], bytes_io: List[io.BytesIO]):
     cache_dir = pathlib.Path(os.path.expanduser(cache_dir))
-    for i, _ in enumerate(names):
-        filepath = pathlib.Path(cache_dir, names[i])
+    for name, a_bytes_io in zip(names, bytes_io):
+        filepath = pathlib.Path(cache_dir, name)
         with open(filepath, "wb") as f:
-            f.write(bytes_io[i].getvalue())
+            f.write(a_bytes_io.getvalue())
+
+
+class Dataset:
+    pass
 
 
 @dataclass
-class SupervisedDataset:
+class DataFrameDataset(Dataset):
+    inputs: pd.DataFrame
+    outputs: pd.DataFrame
+    meta: dict
+
+    @classmethod
+    def serialize(cls, obj):
+        _, inputs_bstream = BytesParser.serialize(obj.inputs)
+        _, outputs_bstream = BytesParser.serialize(obj.outputs)
+        _, meta_bstream = BytesParser.serialize(obj.meta)
+        return inputs_bstream, outputs_bstream, meta_bstream
+
+    @classmethod
+    def deserialize(
+        cls,
+        inputs_bstream: io.BytesIO,
+        outputs_bstream: io.BytesIO,
+        meta_bstream: io.BytesIO,
+    ):
+        inputs = BytesParser.deserialize(MIMETYPE_DF, inputs_bstream)
+        outputs = BytesParser.deserialize(MIMETYPE_DF, outputs_bstream)
+        meta = BytesParser.deserialize(MIMETYPE_JSON, meta_bstream)
+        return cls(inputs, outputs, meta)
+
+    def asset_names(self):
+        inputs_name = f"{self.meta['name']}.inputs.parquet"
+        outputs_name = f"{self.meta['name']}.outputs.parquet"
+        meta_name = f"{self.meta['name']}.meta.json"
+        return inputs_name, outputs_name, meta_name
+
+    def mimetypes(self):
+        inputs_metadata = MIMETYPE_DF
+        outputs_metadata = MIMETYPE_DF
+        meta_metadata = MIMETYPE_JSON
+        return inputs_metadata, outputs_metadata, meta_metadata
+
+    def name(self):
+        return self.meta["name"]
+
+
+@dataclass
+class SupervisedDataset(Dataset):
     X: pd.DataFrame
     y: pd.Series
     meta: dict
@@ -667,7 +884,7 @@ class SupervisedDataset:
         X = BytesParser.deserialize(MIMETYPE_DF, X_bstream)
         y = BytesParser.deserialize(MIMETYPE_SERIES, y_bstream)
         meta = BytesParser.deserialize(MIMETYPE_JSON, meta_bstream)
-        cls(X, y, meta)
+        return cls(X, y, meta)
 
     def asset_names(self):
         X_name = f"{self.meta['name']}.X.parquet"
@@ -687,14 +904,14 @@ class SupervisedDataset:
 
 def populate_with_datasets(
     store: Store,
-    dataset_iter: Iterable[SupervisedDataset] = None,
+    dataset_iter: Iterable[Dataset] = None,
     cache_dir: str = None,
 ):
     """Populates store with datasets.
 
     Args:
         store (Store): Store for experiment.
-        dataset_iter (Iterable[SupervisedDataset], optional): Iterable of supervised datasets. Defaults to None, which populates with OpenML and PMLB.
+        dataset_iter (Iterable[Dataset], optional): Iterable of supervised datasets. Defaults to None, which populates with OpenML and PMLB.
         cache_dir (str, optional): If dataset_iter is None, use this cache directory across calls. Defaults to None.
     """
     if dataset_iter is None:
@@ -702,12 +919,12 @@ def populate_with_datasets(
             retrieve_openml(cache_dir=cache_dir), retrieve_pmlb(cache_dir=cache_dir)
         )
 
-    for supervised in dataset_iter:
-        task_id = store.create_task_with_data(supervised)
-        populate_task_measures(store, task_id, supervised)
+    for dataset in dataset_iter:
+        task_id = store.create_task_with_data(dataset)
+        populate_task_measures(store, task_id, dataset)
 
 
-def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset]:
+def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML CC18 datasets.
 
     Args:
@@ -757,7 +974,7 @@ def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset]:
         yield supervised
 
 
-def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset]:
+def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
     """Retrieves PMLB regression and classification datasets.
 
     Args:

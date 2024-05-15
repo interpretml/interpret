@@ -15,7 +15,7 @@ class LocalMachine(Executor):
         self,
         store: Store,
         n_cpus: int = None,
-        raise_exception: bool = False,
+        debug_mode: bool = False,
         wheel_filepaths: List[str] = None,
     ):
         """Runs trial runs on the local machine.
@@ -23,18 +23,18 @@ class LocalMachine(Executor):
         Args:
             store (Store): Store that houses trials.
             n_cpus (int, optional): Max number of cpus to run on.. Defaults to None.
-            raise_exception (bool, optional): Raise exception on failure. Defaults to False.
+            debug_mode (bool, optional): Restricts to a single thread and raises exceptions. Good for debugging.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
         """
-        if n_cpus != 1:
-            self._pool = Pool(processes=n_cpus)
-        else:
+        if debug_mode:
             self._pool = None
+        else:
+            self._pool = Pool(processes=n_cpus)
 
         self._trial_id_to_result = {}
         self._store = store
         self._n_cpus = n_cpus
-        self._raise_exception = raise_exception
+        self._debug_mode = debug_mode
         self._wheel_filepaths = wheel_filepaths
 
     def __del__(self):
@@ -50,16 +50,23 @@ class LocalMachine(Executor):
         for trial in trials:
             if self._pool is None:
                 try:
-                    res = runner.run_trials([trial.id], self._store.uri, timeout, False)
+                    debug_fn = trial_run_fn if self._debug_mode else None
+                    res = runner.run_trials(
+                        [trial.id],
+                        self._store.uri,
+                        timeout,
+                        self._debug_mode,
+                        debug_fn=debug_fn,
+                    )
                     self._trial_id_to_result[trial.id] = res
                 except Exception as e:
                     self._trial_id_to_result[trial.id] = e
-                    if self._raise_exception:
+                    if self._debug_mode:
                         raise e
             else:
                 self._trial_id_to_result[trial.id] = self._pool.apply_async(
                     runner.run_trials,
-                    ([trial.id], self._store.uri, timeout, self._raise_exception),
+                    ([trial.id], self._store.uri, timeout, self._debug_mode),
                     error_callback=handle_err,
                 )
 
@@ -81,8 +88,8 @@ class LocalMachine(Executor):
         return self._store
 
     @property
-    def raise_exception(self):
-        return self._raise_exception
+    def debug_mode(self):
+        return self._debug_mode
 
     @property
     def wheel_filepaths(self):

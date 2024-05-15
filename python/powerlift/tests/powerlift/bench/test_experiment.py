@@ -1,4 +1,4 @@
-from powerlift.bench import Experiment, Store
+from powerlift.bench import Store, Benchmark
 
 from powerlift.executors.docker import InsecureDocker
 from powerlift.executors.localmachine import LocalMachine
@@ -42,7 +42,10 @@ def _benchmark(trial):
         is_cat = meta["categorical_mask"]
         cat_cols = [idx for idx in range(X.shape[1]) if is_cat[idx]]
         num_cols = [idx for idx in range(X.shape[1]) if not is_cat[idx]]
-        cat_ohe_step = ("ohe", OneHotEncoder(sparse=True, handle_unknown="ignore"))
+        cat_ohe_step = (
+            "ohe",
+            OneHotEncoder(sparse_output=True, handle_unknown="ignore"),
+        )
         cat_pipe = Pipeline([cat_ohe_step])
         num_pipe = Pipeline([("identity", FunctionTransformer())])
         transformers = [("cat", cat_pipe, cat_cols), ("num", num_pipe, num_cols)]
@@ -72,6 +75,51 @@ def _benchmark(trial):
         trial.log("auc", auc)
 
 
+def _assert_benchmark(benchmark):
+    experiment = benchmark._experiment()
+    assert len(experiment.trials) > 0
+    status = benchmark.status()
+    assert len(status) > 0
+    results = benchmark.results()
+    assert len(results) > 0
+    available_tasks = benchmark.available_tasks(include_measures=True)
+    assert len(available_tasks) > 0
+
+
+def test_scikit_experiment_debug(populated_store):
+    store = populated_store
+    executor = LocalMachine(store, n_cpus=1, debug_mode=True)
+    benchmark = Benchmark(store, "scikit_debug")
+    benchmark.run(_benchmark, _trials, timeout=60 * 10, executor=executor)
+    benchmark.wait_until_complete()
+    _assert_benchmark(benchmark)
+
+
+def test_scikit_experiment_local(populated_store):
+    store = populated_store
+    executor = LocalMachine(store, n_cpus=2)
+    benchmark = Benchmark(store, name="scikit")
+    benchmark.run(_benchmark, _trials, timeout=10, executor=executor)
+    benchmark.wait_until_complete()
+    _assert_benchmark(benchmark)
+
+
+@pytest.mark.skip("Remove this when testing docker.")
+def test_scikit_experiment_docker(populated_store):
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    uri = os.getenv("DOCKER_DB_URL")
+    executor = InsecureDocker(
+        populated_store, n_running_containers=2, docker_db_uri=uri
+    )
+    benchmark = Benchmark(populated_store, name="scikit_docker")
+    benchmark.run(_benchmark, _trials, timeout=10, executor=executor)
+    benchmark.wait_until_complete()
+    _assert_benchmark(benchmark)
+
+
 def test_multiprocessing():
     """This tests exists to ensure there is no hang in pytest."""
     from multiprocessing.pool import Pool
@@ -89,9 +137,8 @@ def test_multiprocessing():
     pool.close()
 
 
-# def test_scikit_experiment_aci(populated_azure_store):
 @pytest.mark.skip("Remove this when testing ACI.")
-def test_scikit_experiment_aci():
+def test_scikit_experiment_aci(populated_azure_store):
     """
     As of 2022-06-09:
     - Takes roughly 20 seconds to submit 10 tasks.
@@ -107,8 +154,7 @@ def test_scikit_experiment_aci():
     subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
     resource_group = os.getenv("AZURE_RESOURCE_GROUP")
 
-    store = Store(os.getenv("AZURE_DB_URL"), force_recreate=False)
-    # store = populated_azure_store
+    store = populated_azure_store
     executor = AzureContainerInstance(
         store,
         azure_tenant_id,
@@ -121,37 +167,7 @@ def test_scikit_experiment_aci():
         mem_size_gb=2,
         raise_exception=True,
     )
-
-    experiment = Experiment(store)
-    executor = experiment.run(_benchmark, _trials, timeout=10, executor=executor)
-    executor.join()
-
-
-def test_scikit_experiment_debug(populated_store):
-    store = populated_store
-    executor = LocalMachine(store, n_cpus=1, raise_exception=True)
-    experiment = Experiment(store, name="scikit")
-    executor = experiment.run(_benchmark, _trials, timeout=10, executor=executor)
-    executor.join()
-
-
-def test_scikit_experiment_local(populated_store):
-    store = populated_store
-    executor = LocalMachine(store, n_cpus=2)
-    experiment = Experiment(store, name="scikit")
-    executor = experiment.run(_benchmark, _trials, timeout=10, executor=executor)
-    executor.join()
-
-
-def test_scikit_experiment_docker(populated_store):
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    uri = os.getenv("DOCKER_DB_URL")
-    executor = InsecureDocker(
-        populated_store, n_running_containers=2, docker_db_uri=uri
-    )
-    experiment = Experiment(populated_store, name="scikit")
-    executor = experiment.run(_benchmark, _trials, timeout=10, executor=executor)
-    executor.join()
+    benchmark = Benchmark(store, name="scikit")
+    benchmark.run(_benchmark, _trials, timeout=10, executor=executor)
+    benchmark.wait_until_complete()
+    _assert_benchmark(benchmark)

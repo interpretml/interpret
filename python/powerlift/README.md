@@ -10,12 +10,12 @@ Powerlift is all about testing machine learning techniques across many, many dat
 Yes, we run this for InterpretML on as many docker containers we can run in parallel on. Why wait days for benchmark evalations when you can wait for minutes? Rhetorical question, please don't hurt me.
 
 ```python
-def trials(task):
+def trial_filter(task):
     if task.problem == "binary" and task.scalar_measure("n_rows") <= 10000:
         return ["rf", "svm"]
     return []
 
-def benchmark(trial):
+def trial_runner(trial):
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.svm import LinearSVC
     from sklearn.calibration import CalibratedClassifierCV
@@ -36,7 +36,7 @@ def benchmark(trial):
         is_cat = meta["categorical_mask"]
         cat_cols = [idx for idx in range(X.shape[1]) if is_cat[idx]]
         num_cols = [idx for idx in range(X.shape[1]) if not is_cat[idx]]
-        cat_ohe_step = ("ohe", OneHotEncoder(sparse=True, handle_unknown="ignore"))
+        cat_ohe_step = ("ohe", OneHotEncoder(sparse_output=True, handle_unknown="ignore"))
         cat_pipe = Pipeline([cat_ohe_step])
         num_pipe = Pipeline([("identity", FunctionTransformer())])
         transformers = [("cat", cat_pipe, cat_cols), ("num", num_pipe, num_cols)]
@@ -66,16 +66,17 @@ def benchmark(trial):
         trial.log("auc", auc)
 
 # Create experiment within database.
-from powerlift.bench import Experiment
-experiment = Experiment("postgresql://localhost/powerlift", name="SVM vs RF")
+import os
+from powerlift.bench import Benchmark
+benchmark = Benchmark(f"sqlite:///{os.getcwd()}/powerlift.db", name="SVM vs RF")
 
 # Only run this once for the database (downloads PMLB and OpenML CC18 datasets).
 from powerlift.bench import populate_with_datasets
-populate_with_datasets(experiment.store, cache_dir="~/.powerlift")
+populate_with_datasets(benchmark.store, cache_dir="~/.powerlift")
 
 # Run experiment
-executor = experiment.run(benchmark, trials, timeout=10)
-executor.join()
+benchmark.run(trial_runner, trial_filter)
+benchmark.wait_until_complete()
 ```
 
 This can also be run on Azure Container Instances where needed.
@@ -101,12 +102,12 @@ executor = AzureContainerInstance(
     mem_size_gb=2,
     raise_exception=True,
 )
-experiment = Experiment(store, "SVM vs RF")
-executor = experiment.run(benchmark, trials, timeout=10, executor=executor)
-executor.join()
+benchmark = Benchmark(store, name="SVM vs RF")
+benchmark.run(trial_runner, trial_filter, timeout=10, executor=executor)
+benchmark.wait_until_complete()
 ```
 
 ## Install
-`pip install powerlift`
+`pip install powerlift[datasets]`
 
 That's it, go get 'em boss.

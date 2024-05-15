@@ -21,6 +21,24 @@ def delete_db(uri, **create_engine_kwargs):
     return engine
 
 
+def create_tables(engine):
+    """Creates tables if needed.
+
+    Args:
+      engine: SQLAlchemy engine.
+    """
+    db.Base.metadata.create_all(engine, checkfirst=True)
+
+
+def drop_tables(engine):
+    """Drops tables if needed.
+
+    Args:
+      engine: SQLAlchemy engine.
+    """
+    db.Base.metadata.drop_all(engine, checkfirst=True)
+
+
 def create_db(uri, **create_engine_kwargs):
     """Creates database if not already exists.
 
@@ -34,5 +52,4 @@ def create_db(uri, **create_engine_kwargs):
     engine = create_engine(uri, **create_engine_kwargs)
     if not database_exists(engine.url):
         create_database(engine.url)
-        db.Base.metadata.create_all(engine)
     return engine
