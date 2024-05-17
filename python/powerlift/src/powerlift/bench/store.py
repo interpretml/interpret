@@ -173,6 +173,9 @@ class Store:
         self._session.close()
         self._conn.close()
 
+    def rollback(self):
+        self._session.rollback()
+
     def start_trial(self, trial_id):
         trial_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
         start_time = datetime.now(pytz.utc)
@@ -902,26 +905,46 @@ class SupervisedDataset(Dataset):
         return self.meta["name"]
 
 
+class DatasetAlreadyExistsError(Exception):
+    """Raised when dataset already exists in store."""
+    pass
+
 def populate_with_datasets(
     store: Store,
     dataset_iter: Iterable[Dataset] = None,
     cache_dir: str = None,
-):
+    exist_ok: bool = False,
+) -> bool:
     """Populates store with datasets.
+
+    Attempts to add datasets to store from iterable.
+    This can be made idempotent by setting `exist_ok` to true.
 
     Args:
         store (Store): Store for experiment.
         dataset_iter (Iterable[Dataset], optional): Iterable of supervised datasets. Defaults to None, which populates with OpenML and PMLB.
         cache_dir (str, optional): If dataset_iter is None, use this cache directory across calls. Defaults to None.
+        exist_ok (bool, optional): Do not raise exception if a dataset already exist.
+    Returns:
+        bool: True if datasets were created, False otherwise
     """
+
     if dataset_iter is None:
         dataset_iter = chain(
             retrieve_openml(cache_dir=cache_dir), retrieve_pmlb(cache_dir=cache_dir)
         )
 
     for dataset in dataset_iter:
-        task_id = store.create_task_with_data(dataset)
-        populate_task_measures(store, task_id, dataset)
+        try:
+            task_id = store.create_task_with_data(dataset)
+            populate_task_measures(store, task_id, dataset)
+        except IntegrityError as e:
+            store.rollback()
+            if not exist_ok:
+                raise DatasetAlreadyExistsError("Dataset already in store") from e
+            else:
+                return False
+    return True
 
 
 def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
