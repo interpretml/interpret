@@ -6,6 +6,7 @@ import json
 import logging
 import operator
 import os
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import combinations, count
@@ -289,21 +290,15 @@ def _clean_exclude(exclude, feature_map):
 
 
 @dataclass(repr=False)
-class EBMModel(BaseEstimator):
-    """Base class for all EBMs."""
+class EBMBase(ABC, BaseEstimator):
+    """Base class for non-private and differentially private EBMs."""
 
     # Explainer
     feature_names: Optional[Sequence[str]] = None
     feature_types: Optional[Sequence[Optional[str]]] = None
     # Preprocessor
     max_bins: NonNegativeInt = 1024
-    max_interaction_bins: NonNegativeInt = 32
     # Stages
-    interactions: Optional[Union[
-        Annotated[int, Field(strict=True, ge=0)],
-        Annotated[float, Field(gt=0.0, lt=1.0)],
-        List[Union[tuple, Sequence[Union[int, str]]]],
-    ]] = 0.95
     exclude: Optional[Union[
         Literal["mains"],
         List[Union[Sequence[Union[int, str]], str, int]],
@@ -314,19 +309,10 @@ class EBMModel(BaseEstimator):
         Annotated[float, Field(ge=0.0, lt=1.0)],
     ] = 0.15
     outer_bags: Annotated[int, Field(ge=1)] = 14
-    inner_bags: NonNegativeInt = 0
     # Boosting
     learning_rate: PositiveFloat = 0.01
-    greediness: NonNegativeFloat = 1.5
-    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)] = 1.0
-    smoothing_rounds: NonNegativeInt = 200
-    interaction_smoothing_rounds: NonNegativeInt = 50
     max_rounds: NonNegativeInt = 25000
-    early_stopping_rounds: NonNegativeInt = 50
-    early_stopping_tolerance: float = 0.0
     # Trees
-    min_samples_leaf: NonNegativeInt = 2
-    min_hessian: NonNegativeFloat = 1e-4
     max_leaves: PositiveInt = 3
     objective: Optional[str] = None
     # Overall
@@ -349,10 +335,6 @@ class EBMModel(BaseEstimator):
     link_param_: float = field(init=False)
     bag_weights_: np.ndarray = field(init=False)  # np.float64, 1D[bag]
     breakpoint_iteration_: np.ndarray = field(init=False)  # np.int64, 2D[stage, bag]
-
-    histogram_edges_: List[Union[None, np.ndarray]] = field(init=False)  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray] = field(init=False)  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray = field(init=False)  # np.int64, 1D[feature]
 
     intercept_: Union[float, np.ndarray] = field(init=False)  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray = field(init=False)  # np.float64, 1D[bag], or 2D[bag, class]
@@ -419,117 +401,24 @@ class EBMModel(BaseEstimator):
             objective = "rmse"
         return task, objective
 
-    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
-        """
-        Bins for non-private EBMs.
+    @abstractmethod
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed): ...
 
-        As a side-effect, this methods set the attribute `unique_val_counts_`.
-        """
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
-        # that we don't need to have the count when boosting or for interaction
-        # detection. Benchmarking indicates switching these would decrease the accuracy
-        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
-        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
-        # a boosting restriction.
-        min_samples_bin = 1
+    @abstractmethod
+    def _has_interactions(self, n_classes: int) -> bool: ...
 
-        # TODO: bump this up to something like 10 again, but ONLY after we've standardized
-        #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
-        #       categorical to continuous soft transitions.
-        min_unique_continuous = 0
+    @abstractmethod
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size): ...
 
-        bin_levels = [self.max_bins, self.max_interaction_bins]
+    @abstractmethod
+    def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights): ...
 
-        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
-        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
-        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
-        # so it can be replicated without creating an EBM
-        # noise_scale_binning is not needed, so we separate it
-        *binning_result, self.unique_val_counts_, noise_scale_binning = construct_bins(
-            X=X,
-            y=y,
-            sample_weight=sample_weight,
-            feature_names_given=self.feature_names,
-            feature_types_given=self.feature_types,
-            max_bins_leveled=bin_levels,
-            binning="quantile",
-            min_samples_bin=min_samples_bin,
-            min_unique_continuous=min_unique_continuous,
-            seed=seed,
-            epsilon=None,
-            delta=None,
-            composition=None,
-            privacy_bounds=None,
-        )
-        missing_val_counts = binning_result[6]
-
-        if np.count_nonzero(missing_val_counts):
-            warn(
-                "Missing values detected. Our visualizations do not currently display missing values. "
-                "To retain the glassbox nature of the model you need to either set the missing values "
-                "to an extreme value like -1000 that will be visible on the graphs, or manually "
-                "examine the missing value score in ebm.term_scores_[term_index][0]"
-            )
-        return binning_result
-
-    def _has_interactions(self, n_classes: int) -> bool:
-        if self.interactions is None:
-            return False
-
-        if isinstance(self.interactions, (int, float)):
-            if self.interactions == 0:
-                return False
-
-            if n_classes > 2:
-                warn(
-                    "Detected multiclass problem. Forcing interactions to 0. "
-                    "Multiclass interactions only have local explanations. "
-                    "They are not currently displayed in the global explanation "
-                    "visualizations. Set interactions=0 to disable this warning. "
-                    "If you still want multiclass interactions, this API accepts "
-                    "a list, and the measure_interactions function can be used to "
-                    "detect them.",
-                    stacklevel=2,
-                )
-                return False
-        elif len(self.interactions) == 0:  # interactions must be a list of the interactions
-            return False
-        return True
-
-    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
-        """Mock method for privacy subclasses."""
-        del term_features, sample_weight, domain_size
-        return None, None, Native.TermBoostFlags_Default
-
-    def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
-        """
-        Non-private bins.
-
-        As a side-effect, this methods set the attribute `histogram_edges_`.
-        """
-        del main_bin_weights  # only needed in DP models
-        return make_bin_weights(
-            X,
-            n_samples,
-            sample_weight,
-            feature_names_in,
-            feature_types_in,
-            bins,
-            term_features,
-        )
-
-    def _set_histogram_edges(self, feature_bounds, histogram_weights):
-        # per-feature
-        self.histogram_weights_ = histogram_weights
-        # dependant attribute (can be re-derived after serialization from feature_bounds_)
-        self.histogram_edges_ = make_all_histogram_edges(
-            feature_bounds, histogram_weights
-        )
+    @abstractmethod
+    def _set_histogram_edges(self, feature_bounds, histogram_weights): ...
 
     @staticmethod
-    def _is_stratified(n_classes: int) -> bool:
-        """Whether to stratify bags."""
-        return n_classes >= 0
+    @abstractmethod
+    def _is_stratified(n_classes: int) -> bool: ...
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
@@ -682,7 +571,7 @@ class EBMModel(BaseEstimator):
 
         domain_size = 1 if n_classes >= 0 else max_target - min_target
         (
-            noise_scale_boosting, bin_data_weights, term_boost_flags
+            noise_scale_boosting, bin_data_weights
         ) = self._privacy_parameters(term_features, main_bin_weights, sample_weight, domain_size)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
@@ -698,57 +587,21 @@ class EBMModel(BaseEstimator):
             feature_types_in,
         )
 
-        parallel_args = []
-        for idx in range(self.outer_bags):
-            early_stopping_rounds_local = self.early_stopping_rounds
-            bag = internal_bags[idx]
-            if bag is None or (bag >= 0).all():
-                # if there are no validation samples, turn off early stopping
-                # because the validation metric cannot improve each round
-                early_stopping_rounds_local = 0
-
-            init_score_local = init_score
-            if (
-                init_score_local is not None
-                and bag is not None
-                and np.count_nonzero(bag) != len(bag)
-            ):
-                # TODO: instead of making these copies we should
-                # put init_score into the native shared dataframe
-                init_score_local = init_score_local[bag != 0]
-
-            parallel_args.append(
-                (
-                    dataset,
-                    bag,
-                    init_score_local,
-                    term_features,
-                    self.inner_bags,
-                    term_boost_flags,
-                    self.learning_rate,
-                    self.min_samples_leaf,
-                    self.min_hessian,
-                    self.max_leaves,
-                    self.greediness,
-                    self.cyclic_progress,
-                    self.smoothing_rounds,
-                    nominal_smoothing,
-                    self.max_rounds,
-                    early_stopping_rounds_local,
-                    self.early_stopping_tolerance,
-                    noise_scale_boosting,
-                    bin_data_weights,
-                    rngs[idx],
-                    self._create_boster_flags,
-                    objective,
-                    None,
-                )
-            )
+        parallel_args = self._parallel_args(
+            dataset,
+            internal_bags,
+            init_score,
+            term_features,
+            nominal_smoothing,
+            noise_scale_boosting,
+            bin_data_weights,
+            rngs,
+            objective
+        )
 
         results = provider.parallel(boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
-        del parallel_args  # parallel_args holds references to dataset, so must be deleted
         del dataset
 
         breakpoint_iteration = [[]]
@@ -904,46 +757,21 @@ class EBMModel(BaseEstimator):
                         "available and exact."
                     )
 
-            parallel_args = []
-            for idx in range(self.outer_bags):
-                early_stopping_rounds_local = self.early_stopping_rounds
-                if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
-                    # if there are no validation samples, turn off early stopping
-                    # because the validation metric cannot improve each round
-                    early_stopping_rounds_local = 0
-
-                parallel_args.append(
-                    (
-                        dataset,
-                        internal_bags[idx],
-                        scores_bags[idx],
-                        boost_groups,
-                        self.inner_bags,
-                        term_boost_flags,
-                        self.learning_rate,
-                        self.min_samples_leaf,
-                        self.min_hessian,
-                        self.max_leaves,
-                        self.greediness,
-                        self.cyclic_progress,
-                        self.interaction_smoothing_rounds,
-                        nominal_smoothing,
-                        self.max_rounds,
-                        early_stopping_rounds_local,
-                        self.early_stopping_tolerance,
-                        noise_scale_boosting,
-                        bin_data_weights,
-                        rngs[idx],
-                        self._create_boster_flags,
-                        objective,
-                        None,
-                    )
-                )
+            parallel_args = self._parallel_args2(
+                dataset,
+                internal_bags,
+                scores_bags,
+                boost_groups,
+                nominal_smoothing,
+                noise_scale_boosting,
+                bin_data_weights,
+                rngs,
+                objective
+            )
 
             results = provider.parallel(boost, parallel_args)
 
             # allow python to reclaim these big memory items via reference counting
-            del parallel_args  # this holds references to dataset, scores_bags, and bags
             del dataset
             del scores_bags
 
@@ -2060,6 +1888,223 @@ class EBMModel(BaseEstimator):
 
 
 @dataclass(repr=False)
+class EBMModel(EBMBase):
+    """Base class for non-private EBMs."""
+    # Preprocessor
+    max_interaction_bins: NonNegativeInt = 32
+    # Stages
+    interactions: Optional[Union[
+        Annotated[int, Field(strict=True, ge=0)],
+        Annotated[float, Field(gt=0.0, lt=1.0)],
+        List[Union[tuple, Sequence[Union[int, str]]]],
+    ]] = 0.95
+    # Ensemble
+    inner_bags: NonNegativeInt = 0
+    # boosting
+    greediness: NonNegativeFloat = 1.5
+    cyclic_progress: Annotated[float, Field(ge=0.0, le=1.0)] = 1.0
+    smoothing_rounds: NonNegativeInt = 200
+    interaction_smoothing_rounds: NonNegativeInt = 50
+    early_stopping_rounds: NonNegativeInt = 50
+    early_stopping_tolerance: float = 0.0
+    # Trees
+    min_samples_leaf: NonNegativeInt = 2
+    min_hessian: NonNegativeFloat = 1e-4
+
+    # additional attributes set by fit
+    histogram_edges_: List[Union[None, np.ndarray]] = field(init=False)  # np.float64, 1D[hist_edge]
+    histogram_weights_: List[np.ndarray] = field(init=False)  # np.float64, 1D[hist_bin]
+    unique_val_counts_: np.ndarray = field(init=False)  # np.int64, 1D[feature]
+
+    def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
+        """
+        Bins for non-private EBMs.
+
+        As a side-effect, this methods set the attribute `unique_val_counts_`.
+        """
+        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # that we don't need to have the count when boosting or for interaction
+        # detection. Benchmarking indicates switching these would decrease the accuracy
+        # slightly, but it might be worth the speedup. Unfortunately, with outer bags
+        # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
+        # a boosting restriction.
+        min_samples_bin = 1
+
+        # TODO: bump this up to something like 10 again, but ONLY after we've standardized
+        #       our code to turn 1 and 1.0 both into the categorical "1" AND we can handle
+        #       categorical to continuous soft transitions.
+        min_unique_continuous = 0
+
+        bin_levels = [self.max_bins, self.max_interaction_bins]
+
+        # after normalizing to a 32-bit signed integer, we pass the random_state into the EBMPreprocessor
+        # exactly as passed to us. This means that we should get the same preprocessed data for the mains
+        # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
+        # so it can be replicated without creating an EBM
+        # noise_scale_binning is not needed, so we separate it
+        *binning_result, self.unique_val_counts_, noise_scale_binning = construct_bins(
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=bin_levels,
+            binning="quantile",
+            min_samples_bin=min_samples_bin,
+            min_unique_continuous=min_unique_continuous,
+            seed=seed,
+            epsilon=None,
+            delta=None,
+            composition=None,
+            privacy_bounds=None,
+        )
+        missing_val_counts = binning_result[6]
+
+        if np.count_nonzero(missing_val_counts):
+            warn(
+                "Missing values detected. Our visualizations do not currently display missing values. "
+                "To retain the glassbox nature of the model you need to either set the missing values "
+                "to an extreme value like -1000 that will be visible on the graphs, or manually "
+                "examine the missing value score in ebm.term_scores_[term_index][0]"
+            )
+        return binning_result
+
+    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        """Mock method for privacy subclasses."""
+        del term_features, main_bin_weights, sample_weight, domain_size
+        return None, None
+
+    def _has_interactions(self, n_classes: int) -> bool:
+        if self.interactions is None:
+            return False
+
+        if isinstance(self.interactions, (int, float)):
+            if self.interactions == 0:
+                return False
+
+            if n_classes > 2:
+                warn(
+                    "Detected multiclass problem. Forcing interactions to 0. "
+                    "Multiclass interactions only have local explanations. "
+                    "They are not currently displayed in the global explanation "
+                    "visualizations. Set interactions=0 to disable this warning. "
+                    "If you still want multiclass interactions, this API accepts "
+                    "a list, and the measure_interactions function can be used to "
+                    "detect them.",
+                    stacklevel=2,
+                )
+                return False
+        elif len(self.interactions) == 0:  # interactions must be a list of the interactions
+            return False
+        return True
+
+    def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
+        """Non-private bins."""
+        del main_bin_weights  # only needed in DP models
+        return make_bin_weights(
+            X,
+            n_samples,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+            bins,
+            term_features,
+        )
+
+    def _set_histogram_edges(self, feature_bounds, histogram_weights):
+        # per-feature
+        self.histogram_weights_ = histogram_weights
+        # dependant attribute (can be re-derived after serialization from feature_bounds_)
+        self.histogram_edges_ = make_all_histogram_edges(
+            feature_bounds, histogram_weights
+        )
+
+    @staticmethod
+    def _is_stratified(n_classes: int) -> bool:
+        """Whether to stratify bags."""
+        return n_classes >= 0
+
+    def _parallel_args(self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+        for idx in range(self.outer_bags):
+            early_stopping_rounds_local = self.early_stopping_rounds
+            bag = internal_bags[idx]
+            if bag is None or (bag >= 0).all():
+                # if there are no validation samples, turn off early stopping
+                # because the validation metric cannot improve each round
+                early_stopping_rounds_local = 0
+
+            init_score_local = init_score
+            if (
+                init_score_local is not None
+                and bag is not None
+                and np.count_nonzero(bag) != len(bag)
+            ):
+                # TODO: instead of making these copies we should
+                # put init_score into the native shared dataframe
+                init_score_local = init_score_local[bag != 0]
+
+            yield (
+                dataset,
+                bag,
+                init_score_local,
+                term_features,
+                self.inner_bags,
+                Native.TermBoostFlags_Default,
+                self.learning_rate,
+                self.min_samples_leaf,
+                self.min_hessian,
+                self.max_leaves,
+                self.greediness,
+                self.cyclic_progress,
+                self.smoothing_rounds,
+                nominal_smoothing,
+                self.max_rounds,
+                early_stopping_rounds_local,
+                self.early_stopping_tolerance,
+                noise_scale_boosting,
+                bin_data_weights,
+                rngs[idx],
+                self._create_boster_flags,
+                objective,
+                None,
+            )
+
+    def _parallel_args2(self, dataset, internal_bags, scores_bags, boost_groups, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+        for idx in range(self.outer_bags):
+            early_stopping_rounds_local = self.early_stopping_rounds
+            if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
+                # if there are no validation samples, turn off early stopping
+                # because the validation metric cannot improve each round
+                early_stopping_rounds_local = 0
+
+            yield (
+                    dataset,
+                    internal_bags[idx],
+                    scores_bags[idx],
+                    boost_groups,
+                    self.inner_bags,
+                    Native.TermBoostFlags_Default,
+                    self.learning_rate,
+                    self.min_samples_leaf,
+                    self.min_hessian,
+                    self.max_leaves,
+                    self.greediness,
+                    self.cyclic_progress,
+                    self.interaction_smoothing_rounds,
+                    nominal_smoothing,
+                    self.max_rounds,
+                    early_stopping_rounds_local,
+                    self.early_stopping_tolerance,
+                    noise_scale_boosting,
+                    bin_data_weights,
+                    rngs[idx],
+                    self._create_boster_flags,
+                    objective,
+                    None,
+            )
+
+
+@dataclass(repr=False)
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     """An Explainable Boosting Classifier
 
@@ -2447,33 +2492,21 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
 
 @dataclass(repr=False)
-class DPEBMModel(EBMModel):
+class DPEBMModel(EBMBase):
+    """Base class for differentially private EBMs."""
 
     # BEGIN: overwriting default values
     # Preprocessor
     max_bins: int = 32
-    max_interaction_bins: None = None
 
-    # Stages
-    interactions: Literal[0] = 0
     # Ensemble
     validation_size: Union[
         Annotated[int, Field(strict=True, ge=0)],
         Annotated[float, Field(ge=0.0, lt=1.0)],
     ] = 0
     outer_bags: Annotated[int, Field(ge=1)] = 1
-    inner_bags: Literal[0] = 0
     # Boosting
-    greediness: Literal[0] = 0
-    cyclic_progress: Literal[1.0] = 1.0
-    smoothing_rounds: Literal[0] = 0
-    interaction_smoothing_rounds: Literal[0] = 0
     max_rounds: NonNegativeInt = 300
-    early_stopping_rounds: Literal[0] = 0
-    early_stopping_tolerance: Literal[0] = 0
-    # Trees
-    min_samples_leaf: Literal[0] = 0
-    min_hessian: Literal[0] = 0
 
     # Overall
     random_state: Optional[int] = None
@@ -2489,11 +2522,6 @@ class DPEBMModel(EBMModel):
     ]] = None
     privacy_target_min: Optional[float] = None
     privacy_target_max: Optional[float] = None
-
-    # dropping hints for non-existent values
-    histogram_edges_: None = field(init=False)
-    histogram_weights_: None = field(init=False)
-    unique_val_counts_: None = field(init=False)
 
     # additional attributes set by fit
     noise_scale_binning_: float = field(init=False)
@@ -2597,6 +2625,10 @@ class DPEBMModel(EBMModel):
             )
         return binning_result
 
+    def _has_interactions(self, n_classes: int) -> Literal[False]:
+        """Interactions are not implemented for differentially private EBMs."""
+        return False
+
     def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
         """As a side effect, this function set noise_scale_boosting."""
         # [DP] Calculate how much noise will be applied to each iteration of the algorithm
@@ -2629,11 +2661,8 @@ class DPEBMModel(EBMModel):
                 f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
             )
 
-        term_boost_flags = (
-            Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
-        )
         self.noise_scale_boosting_ = noise_scale_boosting
-        return noise_scale_boosting, main_bin_weights, term_boost_flags
+        return noise_scale_boosting, main_bin_weights
 
     def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
         """DP bins."""
@@ -2656,6 +2685,46 @@ class DPEBMModel(EBMModel):
     def _is_stratified(n_classes: int) -> Literal[False]:
         """Stratification violates differential privacy."""
         return False
+
+    def _parallel_args(self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+        for idx in range(self.outer_bags):
+            bag = internal_bags[idx]
+
+            init_score_local = init_score
+            if (
+                init_score_local is not None
+                and bag is not None
+                and np.count_nonzero(bag) != len(bag)
+            ):
+                # TODO: instead of making these copies we should
+                # put init_score into the native shared dataframe
+                init_score_local = init_score_local[bag != 0]
+
+            yield (
+                dataset,
+                bag,
+                init_score_local,
+                term_features,
+                0,  # = inner_bags,
+                Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits,
+                self.learning_rate,
+                0,  # min_samples_leaf,
+                0,  # min_hessian,
+                self.max_leaves,
+                0,  # greediness,
+                1,  # cyclic_progress,
+                0,  # smoothing_rounds,
+                nominal_smoothing,
+                self.max_rounds,
+                0,  # = early_stopping_rounds
+                0,  # = early_stopping_tolerance
+                noise_scale_boosting,
+                bin_data_weights,
+                rngs[idx],
+                self._create_boster_flags,
+                objective,
+                None,
+            )
 
 
 class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
