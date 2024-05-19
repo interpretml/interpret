@@ -408,7 +408,7 @@ class EBMBase(ABC, BaseEstimator):
     def _has_interactions(self, n_classes: int) -> bool: ...
 
     @abstractmethod
-    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size): ...
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size): ...
 
     @abstractmethod
     def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights): ...
@@ -570,9 +570,7 @@ class EBMBase(ABC, BaseEstimator):
         bag_weights = np.array(bag_weights, np.float64)
 
         domain_size = 1 if n_classes >= 0 else max_target - min_target
-        (
-            noise_scale_boosting, bin_data_weights
-        ) = self._privacy_parameters(term_features, main_bin_weights, sample_weight, domain_size)
+        noise_scale_boosting = self._privacy_noise_scale(term_features, sample_weight, domain_size)
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -594,7 +592,7 @@ class EBMBase(ABC, BaseEstimator):
             term_features,
             nominal_smoothing,
             noise_scale_boosting,
-            bin_data_weights,
+            main_bin_weights,
             rngs,
             objective
         )
@@ -764,7 +762,7 @@ class EBMBase(ABC, BaseEstimator):
                 boost_groups,
                 nominal_smoothing,
                 noise_scale_boosting,
-                bin_data_weights,
+                main_bin_weights,
                 rngs,
                 objective
             )
@@ -1969,10 +1967,10 @@ class EBMModel(EBMBase):
             )
         return binning_result
 
-    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size):
         """Mock method for privacy subclasses."""
-        del term_features, main_bin_weights, sample_weight, domain_size
-        return None, None
+        del term_features, sample_weight, domain_size
+        return None
 
     def _has_interactions(self, n_classes: int) -> bool:
         if self.interactions is None:
@@ -2025,6 +2023,7 @@ class EBMModel(EBMBase):
         return n_classes >= 0
 
     def _parallel_args(self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+        del bin_data_weights  # only used in DP
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = self.early_stopping_rounds
             bag = internal_bags[idx]
@@ -2062,7 +2061,7 @@ class EBMModel(EBMBase):
                 early_stopping_rounds_local,
                 self.early_stopping_tolerance,
                 noise_scale_boosting,
-                bin_data_weights,
+                None,  # bin_data_weights
                 rngs[idx],
                 self._create_boster_flags,
                 objective,
@@ -2070,6 +2069,7 @@ class EBMModel(EBMBase):
             )
 
     def _parallel_args2(self, dataset, internal_bags, scores_bags, boost_groups, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+        del bin_data_weights  # only used in DP
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = self.early_stopping_rounds
             if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
@@ -2078,29 +2078,29 @@ class EBMModel(EBMBase):
                 early_stopping_rounds_local = 0
 
             yield (
-                    dataset,
-                    internal_bags[idx],
-                    scores_bags[idx],
-                    boost_groups,
-                    self.inner_bags,
-                    Native.TermBoostFlags_Default,
-                    self.learning_rate,
-                    self.min_samples_leaf,
-                    self.min_hessian,
-                    self.max_leaves,
-                    self.greediness,
-                    self.cyclic_progress,
-                    self.interaction_smoothing_rounds,
-                    nominal_smoothing,
-                    self.max_rounds,
-                    early_stopping_rounds_local,
-                    self.early_stopping_tolerance,
-                    noise_scale_boosting,
-                    bin_data_weights,
-                    rngs[idx],
-                    self._create_boster_flags,
-                    objective,
-                    None,
+                dataset,
+                internal_bags[idx],
+                scores_bags[idx],
+                boost_groups,
+                self.inner_bags,
+                Native.TermBoostFlags_Default,
+                self.learning_rate,
+                self.min_samples_leaf,
+                self.min_hessian,
+                self.max_leaves,
+                self.greediness,
+                self.cyclic_progress,
+                self.interaction_smoothing_rounds,
+                nominal_smoothing,
+                self.max_rounds,
+                early_stopping_rounds_local,
+                self.early_stopping_tolerance,
+                noise_scale_boosting,
+                None,  # bin_data_weights
+                rngs[idx],
+                self._create_boster_flags,
+                objective,
+                None,
             )
 
 
@@ -2629,7 +2629,7 @@ class DPEBMModel(EBMBase):
         """Interactions are not implemented for differentially private EBMs."""
         return False
 
-    def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size):
         """As a side effect, this function set noise_scale_boosting."""
         # [DP] Calculate how much noise will be applied to each iteration of the algorithm
         max_weight = 1 if sample_weight is None else np.max(sample_weight)
@@ -2662,7 +2662,7 @@ class DPEBMModel(EBMBase):
             )
 
         self.noise_scale_boosting_ = noise_scale_boosting
-        return noise_scale_boosting, main_bin_weights
+        return noise_scale_boosting
 
     def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
         """DP bins."""
