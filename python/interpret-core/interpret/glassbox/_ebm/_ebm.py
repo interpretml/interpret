@@ -253,23 +253,6 @@ class EBMExplanation(FeatureValueExplanation):
         raise ValueError(msg)
 
 
-def is_private(estimator):
-    """Return True if the given estimator is a differentially private EBM estimator
-    Parameters
-    ----------
-    estimator : estimator instance
-        Estimator object to test.
-    Returns
-    -------
-    out : bool
-        True if estimator is a differentially private EBM estimator and False otherwise.
-    """
-
-    return isinstance(
-        estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)
-    )
-
-
 def _clean_exclude(exclude, feature_map):
     ret = set()
     for term in exclude:
@@ -374,6 +357,11 @@ class EBMModel(BaseEstimator):
     intercept_: Union[float, np.ndarray] = field(init=False)  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray = field(init=False)  # np.float64, 1D[bag], or 2D[bag, class]
 
+    # flags to unify regular and differently private version
+    _link_flags = Native.LinkFlags_Default
+    _create_boster_flags = Native.CreateBoosterFlags_Default
+    _create_interaction_flags = Native.CreateInteractionFlags_Default
+
     def validate(self):
         """
         Validate the parameters and update convertible types.
@@ -432,7 +420,11 @@ class EBMModel(BaseEstimator):
         return task, objective
 
     def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
-        """Bins for non-private EBMS."""
+        """
+        Bins for non-private EBMs.
+
+        As a side-effect, this methods set the attribute `unique_val_counts_`.
+        """
         # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
         # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
@@ -452,7 +444,8 @@ class EBMModel(BaseEstimator):
         # exactly as passed to us. This means that we should get the same preprocessed data for the mains
         # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
         # so it can be replicated without creating an EBM
-        binning_result = construct_bins(
+        # noise_scale_binning is not needed, so we separate it
+        *binning_result, self.unique_val_counts_, noise_scale_binning = construct_bins(
             X=X,
             y=y,
             sample_weight=sample_weight,
@@ -507,6 +500,36 @@ class EBMModel(BaseEstimator):
         """Mock method for privacy subclasses."""
         del term_features, sample_weight, domain_size
         return None, None, Native.TermBoostFlags_Default
+
+    def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
+        """
+        Non-private bins.
+
+        As a side-effect, this methods set the attribute `histogram_edges_`.
+        """
+        del main_bin_weights  # only needed in DP models
+        return make_bin_weights(
+            X,
+            n_samples,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+            bins,
+            term_features,
+        )
+
+    def _set_histogram_edges(self, feature_bounds, histogram_weights):
+        # per-feature
+        self.histogram_weights_ = histogram_weights
+        # dependant attribute (can be re-derived after serialization from feature_bounds_)
+        self.histogram_edges_ = make_all_histogram_edges(
+            feature_bounds, histogram_weights
+        )
+
+    @staticmethod
+    def _is_stratified(n_classes: int) -> bool:
+        """Whether to stratify bags."""
+        return n_classes >= 0
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
         """Fits model to provided samples.
@@ -574,14 +597,7 @@ class EBMModel(BaseEstimator):
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
 
-        is_differential_privacy = is_private(self)
-
-        flags = (
-            Native.LinkFlags_DifferentialPrivacy
-            if is_differential_privacy
-            else Native.LinkFlags_Default
-        )
-        link, link_param = native.determine_link(flags, objective, n_classes)
+        link, link_param = native.determine_link(self._link_flags, objective, n_classes)
 
         init_score, X, n_samples = clean_init_score_and_X(
             link,
@@ -603,8 +619,6 @@ class EBMModel(BaseEstimator):
             feature_bounds,
             histogram_weights,
             missing_val_counts,
-            unique_val_counts,
-            noise_scale_binning,
         ) = self._construct_bins(X, y, sample_weight=sample_weight, n_classes=n_classes, seed=seed)
 
         n_features_in = len(bins)
@@ -626,9 +640,10 @@ class EBMModel(BaseEstimator):
         rng = native.branch_rng(native.create_rng(seed))
         rngs = _create_rngs(rng, n_rngs=self.outer_bags)
         if bags is None:
-            stratified = n_classes >= 0 and not is_differential_privacy
-            internal_bags = [make_bag(y, self.validation_size, bagged_rng, stratified)
-                             for bagged_rng in rngs]
+            internal_bags = [
+                make_bag(y, self.validation_size, bagged_rng, self._is_stratified(n_classes))
+                 for bagged_rng in rngs
+            ]
         else:
             internal_bags = []
             for bag in bags:
@@ -724,11 +739,7 @@ class EBMModel(BaseEstimator):
                     noise_scale_boosting,
                     bin_data_weights,
                     rngs[idx],
-                    (
-                        Native.CreateBoosterFlags_DifferentialPrivacy
-                        if is_differential_privacy
-                        else Native.CreateBoosterFlags_Default
-                    ),
+                    self._create_boster_flags,
                     objective,
                     None,
                 )
@@ -807,11 +818,7 @@ class EBMModel(BaseEstimator):
                             max_cardinality,
                             self.min_samples_leaf,
                             self.min_hessian,
-                            (
-                                Native.CreateInteractionFlags_DifferentialPrivacy
-                                if is_differential_privacy
-                                else Native.CreateInteractionFlags_Default
-                            ),
+                            self._create_interaction_flags,
                             objective,
                             None,
                         )
@@ -927,11 +934,7 @@ class EBMModel(BaseEstimator):
                         noise_scale_boosting,
                         bin_data_weights,
                         rngs[idx],
-                        (
-                            Native.CreateBoosterFlags_DifferentialPrivacy
-                            if is_differential_privacy
-                            else Native.CreateBoosterFlags_Default
-                        ),
+                        self._create_boster_flags,
                         objective,
                         None,
                     )
@@ -966,24 +969,17 @@ class EBMModel(BaseEstimator):
 
         term_features, bagged_scores = order_terms(term_features, bagged_scores)
 
-        if is_differential_privacy:
-            # for now we only support mains for DP models
-            bin_weights = [
-                main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
-            ]
-        else:
-            histogram_edges = make_all_histogram_edges(
-                feature_bounds, histogram_weights
-            )
-            bin_weights = make_bin_weights(
-                X,
-                n_samples,
-                sample_weight,
-                feature_names_in,
-                feature_types_in,
-                bins,
-                term_features,
-            )
+        bin_weights = self._make_bin_weights(
+            X,
+            n_samples,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+            bins,
+            term_features,
+            main_bin_weights
+        )
+        self._set_histogram_edges(feature_bounds, histogram_weights)
 
         if n_classes == 1:
             bagged_intercept = np.full(self.outer_bags, -np.inf, np.float64)
@@ -998,23 +994,9 @@ class EBMModel(BaseEstimator):
 
         term_names = generate_term_names(feature_names_in, term_features)
 
-        # dependent attributes (can be re-derrived after serialization)
+        # dependent attributes (can be re-derived after serialization)
         self.n_features_in_ = n_features_in  # scikit-learn specified name
         self.term_names_ = term_names
-
-        if is_differential_privacy:
-            self.noise_scale_binning_ = noise_scale_binning
-            self.noise_scale_boosting_ = noise_scale_boosting
-        else:
-            # differentially private models would need to pay additional privacy budget to make
-            # these public, but they are non-essential so we don't disclose them in the DP setting
-
-            # dependent attribute (can be re-derrived after serialization from feature_bounds_)
-            self.histogram_edges_ = histogram_edges
-
-            # per-feature
-            self.histogram_weights_ = histogram_weights
-            self.unique_val_counts_ = unique_val_counts
 
         if n_classes >= 0:
             self.classes_ = classes  # required by scikit-learn
@@ -2517,8 +2499,17 @@ class DPEBMModel(EBMModel):
     noise_scale_binning_: float = field(init=False)
     noise_scale_boosting_: float = field(init=False)
 
+    # flags to unify regular and differently private version
+    _link_flags = Native.LinkFlags_DifferentialPrivacy
+    _create_boster_flags = Native.CreateBoosterFlags_DifferentialPrivacy
+    _create_interaction_flags = Native.CreateInteractionFlags_DifferentialPrivacy
+
     def _construct_bins(self, X, y, *, sample_weight, n_classes, seed):
-        """Bins for private EBMS."""
+        """
+        Bins for private EBMs.
+
+        As a side-effect, this methods set the attributes `noise_scale_binning_`.
+        """
         # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
         # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
@@ -2577,7 +2568,7 @@ class DPEBMModel(EBMModel):
         # exactly as passed to us. This means that we should get the same preprocessed data for the mains
         # if we create an EBMPreprocessor with the same seed.  For interactions, we increment by one
         # so it can be replicated without creating an EBM
-        binning_result = construct_bins(
+        *binning_result, _unique_val_counts, self.noise_scale_binning_ = construct_bins(
             X=X,
             y=y,
             sample_weight=sample_weight,
@@ -2607,6 +2598,7 @@ class DPEBMModel(EBMModel):
         return binning_result
 
     def _privacy_parameters(self, term_features, main_bin_weights, sample_weight, domain_size):
+        """As a side effect, this function set noise_scale_boosting."""
         # [DP] Calculate how much noise will be applied to each iteration of the algorithm
         max_weight = 1 if sample_weight is None else np.max(sample_weight)
         bin_eps = self.epsilon * self.bin_budget_frac
@@ -2640,7 +2632,30 @@ class DPEBMModel(EBMModel):
         term_boost_flags = (
             Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits
         )
+        self.noise_scale_boosting_ = noise_scale_boosting
         return noise_scale_boosting, main_bin_weights, term_boost_flags
+
+    def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights):
+        """DP bins."""
+        # for now we only support mains for DP models
+        return [
+            main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
+        ]
+
+    def _set_histogram_edges(self, feature_bounds, histogram_weights):
+        """
+        No-op for DP models.
+
+        Differentially private models would need to pay additional privacy budget to make
+        these public, but they are non-essential so we don't disclose them in the DP setting
+
+        """
+        del feature_bounds, histogram_weights
+
+    @staticmethod
+    def _is_stratified(n_classes: int) -> Literal[False]:
+        """Stratification violates differential privacy."""
+        return False
 
 
 class DPExplainableBoostingClassifier(DPEBMModel, ClassifierMixin, ExplainerMixin):
