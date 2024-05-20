@@ -819,7 +819,8 @@ def update_cache(cache_dir, names: List[str], bytes_io: List[io.BytesIO]):
     for name, a_bytes_io in zip(names, bytes_io):
         filepath = pathlib.Path(cache_dir, name)
         with open(filepath, "wb") as f:
-            f.write(a_bytes_io.getvalue())
+            b = a_bytes_io.getvalue()
+            f.write(b)
 
 
 class Dataset:
