@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.2 - 2024-05-20
+### Fixed
+- Fix for binary streams with fastparquet that breaks on some systems.
+
 ## v0.1.1 - 2024-05-20
 ### Added
 - `exist_ok` parameter added for `populate_with_datasets`
