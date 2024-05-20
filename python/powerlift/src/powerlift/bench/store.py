@@ -112,10 +112,20 @@ class BytesParser:
         bstream = io.BytesIO()
         mimetype = None
         if isinstance(obj, pd.Series):
-            obj.astype(dtype=object).to_frame(name="Target").to_parquet(bstream)
+            orig_close = bstream.close
+            bstream.close = lambda: None
+            try:
+                obj.astype(dtype=object).to_frame(name="Target").to_parquet(bstream)
+            finally:
+                bstream.close = orig_close
             mimetype = MIMETYPE_SERIES
         elif isinstance(obj, pd.DataFrame):
-            obj.to_parquet(bstream)
+            orig_close = bstream.close
+            bstream.close = lambda: None
+            try:
+                obj.to_parquet(bstream)
+            finally:
+                bstream.close = orig_close
             mimetype = MIMETYPE_DF
         elif isinstance(obj, dict):
             bstream.write(json.dumps(obj).encode())
@@ -137,6 +147,8 @@ class BytesParser:
             mimetype = MIMETYPE_WHEEL
         else:
             return None, None
+        
+
         return mimetype, bstream
 
 
