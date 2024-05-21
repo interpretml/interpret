@@ -15,11 +15,10 @@ Near future support:
 # TODO(nopdive): Review how seq_num (integrity) are done with measure outcomes.
 """
 
-from collections.abc import Mapping
 import pytz
 import base64
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type, Mapping
 import random
 import random
 from powerlift.db.actions import drop_tables, create_db, create_tables
