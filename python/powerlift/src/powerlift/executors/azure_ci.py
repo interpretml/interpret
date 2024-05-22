@@ -128,7 +128,6 @@ class AzureContainerInstance(LocalMachine):
         n_running_containers: int = 1,
         num_cores: int = 1,
         mem_size_gb: int = 2,
-        raise_exception: bool = False,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
     ):
@@ -145,7 +144,6 @@ class AzureContainerInstance(LocalMachine):
             n_running_containers (int, optional): Max number of containers to run simultaneously. Defaults to 1.
             num_cores (int, optional): Number of cores per container. Defaults to 1.
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
-            raise_exception (bool, optional): Raise exception on failure. Defaults to False.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
         """
@@ -164,7 +162,7 @@ class AzureContainerInstance(LocalMachine):
             "subscription_id": subscription_id,
             "resource_group": resource_group,
         }
-        super().__init__(store, n_running_containers, raise_exception, wheel_filepaths)
+        super().__init__(store, n_running_containers, False, wheel_filepaths)
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""
@@ -183,7 +181,7 @@ class AzureContainerInstance(LocalMachine):
                 [trial.id],
                 uri,
                 timeout,
-                self._raise_exception,
+                False,
                 self._image,
             )
             tasks.append(params)
@@ -201,8 +199,6 @@ class AzureContainerInstance(LocalMachine):
                 self._trial_id_to_result[0] = res
             except Exception as e:
                 self._trial_id_to_result[0] = e
-                if self._raise_exception:
-                    raise e
         else:
             self._trial_id_to_result[0] = self._pool.apply_async(
                 _run,

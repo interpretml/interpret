@@ -44,9 +44,8 @@ class InsecureDocker(LocalMachine):
     def __init__(
         self,
         store: Store,
-        image: str = "interpretml/powerlift:0.0.1",
+        image: str = "interpretml/powerlift:0.1.4",
         n_running_containers: int = None,
-        raise_exception: bool = False,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
     ):
@@ -56,13 +55,12 @@ class InsecureDocker(LocalMachine):
             store (Store): Store that houses trials.
             image (str, optional): Image to execute in container. Defaults to "interpretml/powerlift:0.0.1".
             n_running_containers (int, optional): Max number of containers running simultaneously. Defaults to None.
-            raise_exception (bool, optional): Raise exception on failure. Defaults to False.
-            wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
+            wheel_filepaths (List[str], optional): List of wheel filepaths to install on docker trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
         """
         self._docker_db_uri = docker_db_uri
         self._image = image
-        super().__init__(store, n_running_containers, raise_exception, wheel_filepaths)
+        super().__init__(store, n_running_containers, False, wheel_filepaths)
 
     def submit(self, trial_run_fn, trials: Iterable, timeout=None):
         uri = (
@@ -74,7 +72,7 @@ class InsecureDocker(LocalMachine):
         for trial in trials:
             self._trial_id_to_result[trial.id] = self._pool.apply_async(
                 _run_docker,
-                ([trial.id], uri, timeout, self._raise_exception, self._image),
+                ([trial.id], uri, timeout, False, self._image),
                 error_callback=handle_err,
             )
 
