@@ -15,6 +15,7 @@ from typing import (
     Any,
     ClassVar,
     Dict,
+    Iterator,
     List,
     Literal,
     Mapping,
@@ -72,7 +73,7 @@ from ._bin import (
     ebm_predict_scores,
     make_bin_weights,
 )
-from ._boost import boost
+from ._boost import BoostArguments, boost
 from ._json import UNTESTED_from_jsonable, to_jsonable
 from ._tensor import remove_last, trim_tensor
 from ._utils import (
@@ -585,19 +586,20 @@ class EBMBase(ABC, BaseEstimator):
             feature_types_in,
         )
 
-        parallel_args = self._parallel_args(
-            dataset,
-            internal_bags,
-            init_score,
-            term_features,
-            nominal_smoothing,
-            noise_scale_boosting,
-            main_bin_weights,
-            rngs,
-            objective
+        results = provider.parallel(
+            boost,
+            self._parallel_args(
+                dataset,
+                internal_bags,
+                init_score,
+                term_features,
+                nominal_smoothing,
+                noise_scale_boosting,
+                main_bin_weights,
+                rngs,
+                objective,
+            ),
         )
-
-        results = provider.parallel(boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
         del dataset
@@ -755,19 +757,20 @@ class EBMBase(ABC, BaseEstimator):
                         "available and exact."
                     )
 
-            parallel_args = self._parallel_args2(
-                dataset,
-                internal_bags,
-                scores_bags,
-                boost_groups,
-                nominal_smoothing,
-                noise_scale_boosting,
-                main_bin_weights,
-                rngs,
-                objective
+            results = provider.parallel(
+                boost,
+                self._parallel_args2(
+                    dataset,
+                    internal_bags,
+                    scores_bags,
+                    boost_groups,
+                    nominal_smoothing,
+                    noise_scale_boosting,
+                    main_bin_weights,
+                    rngs,
+                    objective,
+                ),
             )
-
-            results = provider.parallel(boost, parallel_args)
 
             # allow python to reclaim these big memory items via reference counting
             del dataset
@@ -2022,7 +2025,9 @@ class EBMModel(EBMBase):
         """Whether to stratify bags."""
         return n_classes >= 0
 
-    def _parallel_args(self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+    def _parallel_args(
+        self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective
+    ) -> Iterator[BoostArguments]:
         del bin_data_weights  # only used in DP
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = self.early_stopping_rounds
@@ -2042,7 +2047,7 @@ class EBMModel(EBMBase):
                 # put init_score into the native shared dataframe
                 init_score_local = init_score_local[bag != 0]
 
-            yield (
+            yield BoostArguments(
                 dataset,
                 bag,
                 init_score_local,
@@ -2061,14 +2066,16 @@ class EBMModel(EBMBase):
                 early_stopping_rounds_local,
                 self.early_stopping_tolerance,
                 noise_scale_boosting,
-                None,  # bin_data_weights
-                rngs[idx],
-                self._create_boster_flags,
-                objective,
-                None,
+                bin_weights=None,
+                rng=rngs[idx],
+                create_booster_flags=self._create_boster_flags,
+                objective=objective,
+                experimental_params=None,
             )
 
-    def _parallel_args2(self, dataset, internal_bags, scores_bags, boost_groups, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+    def _parallel_args2(
+        self, dataset, internal_bags, scores_bags, boost_groups, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective
+    ) -> Iterator[BoostArguments]:
         del bin_data_weights  # only used in DP
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = self.early_stopping_rounds
@@ -2077,7 +2084,7 @@ class EBMModel(EBMBase):
                 # because the validation metric cannot improve each round
                 early_stopping_rounds_local = 0
 
-            yield (
+            yield BoostArguments(
                 dataset,
                 internal_bags[idx],
                 scores_bags[idx],
@@ -2096,11 +2103,11 @@ class EBMModel(EBMBase):
                 early_stopping_rounds_local,
                 self.early_stopping_tolerance,
                 noise_scale_boosting,
-                None,  # bin_data_weights
-                rngs[idx],
-                self._create_boster_flags,
-                objective,
-                None,
+                bin_weights=None,
+                rng=rngs[idx],
+                create_booster_flags=self._create_boster_flags,
+                objective=objective,
+                experimental_params=None,
             )
 
 
@@ -2686,7 +2693,9 @@ class DPEBMModel(EBMBase):
         """Stratification violates differential privacy."""
         return False
 
-    def _parallel_args(self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective):
+    def _parallel_args(
+        self, dataset, internal_bags, init_score, term_features, nominal_smoothing, noise_scale_boosting, bin_data_weights, rngs, objective
+    ) -> Iterator[BoostArguments]:
         for idx in range(self.outer_bags):
             bag = internal_bags[idx]
 
@@ -2700,30 +2709,30 @@ class DPEBMModel(EBMBase):
                 # put init_score into the native shared dataframe
                 init_score_local = init_score_local[bag != 0]
 
-            yield (
+            yield BoostArguments(
                 dataset,
                 bag,
                 init_score_local,
                 term_features,
-                0,  # = inner_bags,
-                Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits,
-                self.learning_rate,
-                0,  # min_samples_leaf,
-                0,  # min_hessian,
-                self.max_leaves,
-                0,  # greediness,
-                1,  # cyclic_progress,
-                0,  # smoothing_rounds,
-                nominal_smoothing,
-                self.max_rounds,
-                0,  # = early_stopping_rounds
-                0,  # = early_stopping_tolerance
-                noise_scale_boosting,
-                bin_data_weights,
-                rngs[idx],
-                self._create_boster_flags,
-                objective,
-                None,
+                n_inner_bags=0,
+                term_boost_flags=Native.TermBoostFlags_GradientSums | Native.TermBoostFlags_RandomSplits,
+                learning_rate=self.learning_rate,
+                min_samples_leaf=0,
+                min_hessian=0,
+                max_leaves=self.max_leaves,
+                greediness=0,
+                cyclic_progress=1,
+                smoothing_rounds=0,
+                nominal_smoothing=nominal_smoothing,
+                max_rounds=self.max_rounds,
+                early_stopping_rounds=0,
+                early_stopping_tolerance=0,
+                noise_scale=noise_scale_boosting,
+                bin_weights=bin_data_weights,
+                rng=rngs[idx],
+                create_booster_flags=self._create_boster_flags,
+                objective=objective,
+                experimental_params=None,
             )
 
 

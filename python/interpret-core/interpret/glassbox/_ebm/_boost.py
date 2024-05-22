@@ -1,13 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ...utils._native import Native, Booster
+import heapq
+import logging
+from collections import namedtuple
+from inspect import signature
 
 import numpy as np
 
-import heapq
-
-import logging
+from ...utils._native import Booster, Native
 
 _log = logging.getLogger(__name__)
 
@@ -214,3 +215,7 @@ def boost(
         return None, model_update, step_idx, rng
     except Exception as e:
         return e, None, None, None
+
+
+# helper for parallel use of boost, to ensure correct arguments are provided
+BoostArguments = namedtuple("BoostArguments", signature(boost).parameters.keys())
