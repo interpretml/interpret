@@ -409,7 +409,7 @@ class EBMBase(ABC, BaseEstimator):
     def _has_interactions(self, n_classes: int) -> bool: ...
 
     @abstractmethod
-    def _privacy_noise_scale(self, term_features, sample_weight, domain_size): ...
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size) -> int: ...
 
     @abstractmethod
     def _make_bin_weights(self, X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features, main_bin_weights): ...
@@ -657,10 +657,10 @@ class EBMBase(ABC, BaseEstimator):
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
 
-                parallel_args = []
-                for idx in range(self.outer_bags):
-                    # TODO: the combinations below should be selected from the non-excluded features
-                    parallel_args.append(
+                bagged_ranked_interaction = provider.parallel(
+                    rank_interactions,
+                    (
+                        # TODO: the combinations below should be selected from the non-excluded features
                         (
                             dataset,
                             internal_bags[idx],
@@ -675,14 +675,9 @@ class EBMBase(ABC, BaseEstimator):
                             objective,
                             None,
                         )
-                    )
-
-                bagged_ranked_interaction = provider.parallel(
-                    rank_interactions, parallel_args
+                        for idx in range(self.outer_bags)
+                    ),
                 )
-
-                # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
-                del parallel_args
 
                 # Select merged pairs
                 pair_ranks = {}
@@ -1970,10 +1965,10 @@ class EBMModel(EBMBase):
             )
         return binning_result
 
-    def _privacy_noise_scale(self, term_features, sample_weight, domain_size):
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size) -> Literal[0]:
         """Mock method for privacy subclasses."""
         del term_features, sample_weight, domain_size
-        return None
+        return 0
 
     def _has_interactions(self, n_classes: int) -> bool:
         if self.interactions is None:
@@ -2636,7 +2631,7 @@ class DPEBMModel(EBMBase):
         """Interactions are not implemented for differentially private EBMs."""
         return False
 
-    def _privacy_noise_scale(self, term_features, sample_weight, domain_size):
+    def _privacy_noise_scale(self, term_features, sample_weight, domain_size) -> int:
         """As a side effect, this function set noise_scale_boosting."""
         # [DP] Calculate how much noise will be applied to each iteration of the algorithm
         max_weight = 1 if sample_weight is None else np.max(sample_weight)
