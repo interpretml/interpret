@@ -24,10 +24,10 @@ def bin_native(
 ):
     # called under: fit
 
-    # bin_native exists separately from bin_native_by_dimension so that we can eventually boost 
+    # bin_native exists separately from bin_native_by_dimension so that we can eventually boost
     # mains, pairs, and interactions together at the same time. In order to accomplish this though,
-    # we want to be able to insert the same feature multiple times with different binning resolutions.  
-    # The bins_iter parameter exists here in order to be able to pass in features multiple times with 
+    # we want to be able to insert the same feature multiple times with different binning resolutions.
+    # The bins_iter parameter exists here in order to be able to pass in features multiple times with
     # different bin resolutions.
     # TODO: implement the above and also a method of keeping track when the same feature appears multiple
     # times with different resolutions.  Today we have a 1:1 correspondence with feature indexes, so

@@ -10,6 +10,8 @@
 # For more details, please refer to the paper:
 # https://arxiv.org/abs/1911.04974
 
+# An alternative method based on systems of equations is in interpret/utils/_purify.py
+
 import numpy as np
 
 
