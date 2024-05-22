@@ -13,31 +13,32 @@ def _determine_impurities(scores, weights):
     n_equations = 0
     n_tensor = 1
     for dim_idx in range(len(shape)):
-        m = 1
+        multiply = 1
         n_tensor *= shape[dim_idx]
         for exclude_idx in range(len(shape)):
             if dim_idx != exclude_idx:
-                m *= shape[exclude_idx]
-        n_equations += m
+                multiply *= shape[exclude_idx]
+        n_equations += multiply
     b = np.zeros((n_equations,), float)
     coefficients = np.zeros((n_equations, n_equations), float)
     lookups = np.empty(shape + (len(shape),), int)
     exclude_idx = len(shape) - 1
-    idx = 0
-    tensor_index = np.zeros(len(shape), int)
+    equation_idx = 0
+    tensor_index = [0] * len(shape)
     while True:
         for bin_idx in range(shape[exclude_idx]):
             tensor_index[exclude_idx] = bin_idx
-            lookups[tuple(tensor_index) + (exclude_idx,)] = idx
+            lookups[tuple(tensor_index + [exclude_idx])] = equation_idx
         tensor_index[exclude_idx] = 0
-        idx += 1
-        if idx == n_equations:
+        equation_idx += 1
+        if equation_idx == n_equations:
             break
         dim_idx = len(shape) - 1
         while True:
             if dim_idx != exclude_idx:
-                tensor_index[dim_idx] += 1
-                if tensor_index[dim_idx] != shape[dim_idx]:
+                bin_idx = tensor_index[dim_idx] + 1
+                tensor_index[dim_idx] = bin_idx
+                if bin_idx != shape[dim_idx]:
                     break
                 tensor_index[dim_idx] = 0
             if dim_idx == 0:
@@ -45,23 +46,26 @@ def _determine_impurities(scores, weights):
                 break
             dim_idx -= 1
     exclude_idx = len(shape) - 1
-    idx = 0
-    tensor_index = np.zeros(len(shape), int)
+    equation_idx = 0
+    tensor_index = [0] * len(shape)
     while True:
         for bin_idx in range(shape[exclude_idx]):
             tensor_index[exclude_idx] = bin_idx
-            for coeff_idx in lookups[tuple(tensor_index)]:
-                coefficients[idx, coeff_idx] += weights[tuple(tensor_index)]
-            b[idx] += weights[tuple(tensor_index)] * scores[tuple(tensor_index)]
+            tupple_index = tuple(tensor_index)
+            weight = weights[tupple_index]
+            b[equation_idx] += weight * scores[tupple_index]
+            for coeff_idx in lookups[tupple_index]:
+                coefficients[equation_idx, coeff_idx] += weight
         tensor_index[exclude_idx] = 0
-        idx += 1
-        if idx == n_equations:
+        equation_idx += 1
+        if equation_idx == n_equations:
             break
         dim_idx = len(shape) - 1
         while True:
             if dim_idx != exclude_idx:
-                tensor_index[dim_idx] += 1
-                if tensor_index[dim_idx] != shape[dim_idx]:
+                bin_idx = tensor_index[dim_idx] + 1
+                tensor_index[dim_idx] = bin_idx
+                if bin_idx != shape[dim_idx]:
                     break
                 tensor_index[dim_idx] = 0
             if dim_idx == 0:
@@ -125,18 +129,139 @@ def _determine_impurities(scores, weights):
     base_idx = 0
     for exclude_idx in range(len(shape) - 1, -1, -1):
         count = n_tensor // shape[exclude_idx]
-        impure_shape = tuple(
-            n_bins for dim_idx, n_bins in enumerate(shape) if dim_idx != exclude_idx
-        )
+        impure_shape = list(shape)
+        del impure_shape[exclude_idx]
+        impure_shape = tuple(impure_shape)
         impurities.append(solution[base_idx : base_idx + count].reshape(impure_shape))
         base_idx += count
     return impurities
 
 
 def _remove_impurities(scores, impurities):
+    for i in range(scores.ndim):
+        new_shape = list(scores.shape)
+        new_shape[scores.ndim - 1 - i] = 1
+        scores -= impurities[i].reshape(tuple(new_shape))
+
+
+def _measure_impurity(scores, weights):
+    if scores.ndim != weights.ndim:
+        if scores.ndim != weights.ndim + 1:
+            raise Exception(
+                "scores and weights do not match in terms of dimensionality."
+            )
+        # multiclass means the scores have the class scores in the last dimension
+        return sum(
+            _measure_impurity(scores[..., i], weights) for i in range(scores.shape[-1])
+        )
+
     shape = scores.shape
-    for i in range(len(shape)):
-        new_shape = list(shape)
-        new_shape[len(shape) - 1 - i] = 1
-        new_shape = tuple(new_shape)
-        scores -= impurities[i].reshape(new_shape)
+    exclude_idx = len(shape) - 1
+    tensor_index = [0] * len(shape)
+    total_system = 0.0
+    while True:
+        total_equation = 0.0
+        for bin_idx in range(shape[exclude_idx]):
+            tensor_index[exclude_idx] = bin_idx
+            tupple_index = tuple(tensor_index)
+            total_equation += weights[tupple_index] * scores[tupple_index]
+        tensor_index[exclude_idx] = 0
+        total_system += abs(total_equation)
+
+        dim_idx = len(shape) - 1
+        while True:
+            if dim_idx != exclude_idx:
+                bin_idx = tensor_index[dim_idx] + 1
+                tensor_index[dim_idx] = bin_idx
+                if bin_idx != shape[dim_idx]:
+                    break
+                tensor_index[dim_idx] = 0
+            if dim_idx == 0:
+                exclude_idx -= 1
+                break
+            dim_idx -= 1
+        if exclude_idx < 0:
+            break
+    return total_system
+
+
+def _purify_single(scores, weights):
+    scores = scores.copy()
+    n_dim = scores.ndim
+    impurities = []
+    prev_level = [(tuple(range(n_dim)), [scores, weights])]
+    for n_dimensions in range(n_dim, 1, -1):
+        next_level = {}
+        for dims, (level_scores, level_weights) in prev_level:
+            level_impurities = _determine_impurities(level_scores, level_weights)
+            _remove_impurities(level_scores, level_impurities)
+            if n_dimensions != n_dim:
+                # do not insert the original score tensor into the impurities
+                impurities.append((dims, level_scores))
+            for impure_idx in range(n_dimensions):
+                exclude_idx = n_dimensions - 1 - impure_idx
+                new_dims = list(dims)
+                del new_dims[exclude_idx]
+                new_dims = tuple(new_dims)
+                if new_dims in next_level:
+                    next_level[new_dims][0] += level_impurities[impure_idx]
+                else:
+                    next_level[new_dims] = [
+                        level_impurities[impure_idx],
+                        level_weights.sum(axis=exclude_idx),
+                    ]
+        # TODO: this sorts by the indexes, which will be different from Fortran ordered languages,
+        #       which will make the results different on those systems. We should sort by
+        #       Fortran order here to get reproducible results            
+        prev_level = sorted(next_level.items())
+
+    intercept = 0.0
+    for dims, (level_scores, level_weights) in prev_level:
+        mean = np.average(level_scores, weights=level_weights)
+        intercept += mean
+        level_scores -= mean
+        impurities.append((dims, level_scores))
+
+    return scores, impurities, intercept
+
+
+# TODO: Apply purification to EBMs either (based on a boolean option that we can expose publicly):
+#    1) After all boosting is complete.  We can either throw away the lower dimensional contributions,
+#       or move the score contributions to the lower dimensional terms based on benchmarking results.
+#    2) During boosting, where we would throw away the impure components so that
+#       the algorithm would not overfit the lower dimensional components.
+#       - This would be especially important when we boost mains and interactions together at
+#         the same time because we don't want the model to force feed some mains that just happen
+#         to be included in an interaction.
+def purify(scores, weights):
+    if scores.ndim != weights.ndim:
+        if scores.ndim != weights.ndim + 1:
+            raise Exception(
+                "scores and weights do not match in terms of dimensionality."
+            )
+        # multiclass means the scores have the class scores in the last dimension
+
+        new_dims = None
+        new_tensor = []
+        new_intercept = []
+        for class_idx in range(scores.shape[-1]):
+            tensor, impurities, intercept = _purify_single(
+                scores[..., class_idx], weights
+            )
+            new_tensor.append(tensor)
+            new_intercept.append(intercept)
+            if new_dims is None:
+                new_dims = [dims for dims, _ in impurities]
+                new_impurities = [[] for _ in impurities]
+            for i in range(len(impurities)):
+                new_impurities[i].append(impurities[i][1])
+
+        impurities = [
+            (key, np.stack(vals, axis=-1, dtype=float))
+            for key, vals in zip(new_dims, new_impurities)
+        ]
+        new_tensor = np.stack(new_tensor, axis=-1, dtype=float)
+        new_intercept = np.array(new_intercept, float)
+        return new_tensor, impurities, new_intercept
+    tensor, impurities, intercept = _purify_single(scores, weights)
+    return tensor, impurities, np.array([intercept], float)
