@@ -82,44 +82,44 @@ def _determine_impurities(scores, weights):
     # coefficients = np.linalg.cholesky(coefficients)
     # solution = np.linalg.solve(coefficients, b)
 
-    # WORKS?: (Sometimes has "Singular matrix" error ?): QR Decomposition
+    # FAILS (sometimes): QR Decomposition, error "Singular matrix"
     # 6.877648830413818 seconds
     # Q, R = np.linalg.qr(coefficients)
     # solution = np.linalg.solve(R, np.dot(Q.T, b))
 
-    # WORKS: (but has floating point noise): SVD (Singular Value Decomposition)
+    # WORKS: SVD (Singular Value Decomposition). Very pure results.
     # 33.93425178527832 seconds
     # U, s, V = np.linalg.svd(coefficients)
     # c = np.dot(U.T, b)
     # w = np.linalg.solve(np.diag(s), c[:len(s)])
     # solution = np.dot(V.T, w)
 
-    # WORKS: Biconjugate Gradient Method. Iterative and approximate but seems to return purest solution.
+    # WORKS: Biconjugate Gradient Method. Iterative and approximate and result has impurities.
     # 0.08552408218383789 seconds
     # from scipy.sparse.linalg import bicg
     # solution, _ = bicg(coefficients, b)
 
-    # WORKS (very noisy): Biconjugate Gradient Stabilized Method. Seems to have noise in the 1e-6 range
+    # WORKS: Biconjugate Gradient Stabilized Method. Iterative and approximate and result has impurities.
     # 0.042778968811035156 seconds
     # from scipy.sparse.linalg import bicgstab
     # solution, _ = bicgstab(coefficients, b)
 
-    # WORKS: Conjugate Gradient iteration. Iterative and approximate but seems to return purest solution.
+    # WORKS: Conjugate Gradient iteration. Iterative and approximate and result has impurities.
     # 0.04851675033569336 seconds
     from scipy.sparse.linalg import cg
 
     solution, _ = cg(coefficients, b)
 
-    # WORKS: Generalized Minimal Residual. Iterative and approximate but seems to return purest solution.
+    # WORKS: Generalized Minimal Residual. Iterative and approximate and result has impurities.
     # 0.045647621154785156 seconds
     # from scipy.sparse.linalg import gmres
     # solution, _ = gmres(coefficients, b, x0=np.zeros_like(b))
 
-    # WORKS (but has floating point noise): lstsq
+    # WORKS: lstsq. Very pure results.
     # 26.812599897384644 seconds
     # solution, _, _, _ = np.linalg.lstsq(coefficients, b)
 
-    # WORKS (but has floating point noise): solve using pseudoinverse of a matrix
+    # WORKS: Solve using pseudoinverse of a matrix. Somewhat inaccurate for large tensors
     # 33.44229531288147 seconds
     # solution = np.dot(np.linalg.pinv(coefficients), b)
 
@@ -224,10 +224,11 @@ def _purify_single(scores, weights):
         mean = np.average(level_scores, weights=level_weights)
         intercept += mean
         level_scores -= mean
-        key = tuple(
-            n_dim - 1 - i for i in range(n_dim - 1, -1, -1) if ((1 << i) & dims) == 0
-        )
-        impurities.append((key, level_scores))
+        if n_dim != 1:
+            key = tuple(
+                n_dim - 1 - i for i in range(n_dim - 1, -1, -1) if ((1 << i) & dims) == 0
+            )
+            impurities.append((key, level_scores))
 
     return scores, impurities, intercept
 

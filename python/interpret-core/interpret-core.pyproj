@@ -145,6 +145,7 @@
     <Compile Include="tests\utils\test_link.py" />
     <Compile Include="tests\utils\test_measure_interactions.py" />
     <Compile Include="tests\utils\test_native.py" />
+    <Compile Include="tests\utils\test_purify.py" />
     <Compile Include="tests\utils\test_SPOTgreedy.py" />
     <Compile Include="tests\utils\__init__.py" />
     <Compile Include="tests\visual\test_dashboard.py" />
