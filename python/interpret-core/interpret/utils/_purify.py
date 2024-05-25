@@ -189,7 +189,7 @@ def _purify_single(scores, weights):
     scores = scores.copy()
     n_dim = scores.ndim
     impurities = []
-    prev_level = [(tuple(range(n_dim)), [scores, weights])]
+    prev_level = [(0, [scores, weights])]
     for n_dimensions in range(n_dim, 1, -1):
         next_level = {}
         for dims, (level_scores, level_weights) in prev_level:
@@ -197,22 +197,26 @@ def _purify_single(scores, weights):
             _remove_impurities(level_scores, level_impurities)
             if n_dimensions != n_dim:
                 # do not insert the original score tensor into the impurities
-                impurities.append((dims, level_scores))
-            for impure_idx in range(n_dimensions):
-                exclude_idx = n_dimensions - 1 - impure_idx
-                new_dims = list(dims)
-                del new_dims[exclude_idx]
-                new_dims = tuple(new_dims)
+                key = tuple(
+                    n_dim - 1 - i
+                    for i in range(n_dim - 1, -1, -1)
+                    if ((1 << i) & dims) == 0
+                )
+                impurities.append((key, level_scores))
+
+            impure_idx = 0
+            for dim_idx in range(n_dim):
+                if (1 << dim_idx) & dims != 0:
+                    continue
+                new_dims = dims | (1 << dim_idx)
                 if new_dims in next_level:
                     next_level[new_dims][0] += level_impurities[impure_idx]
                 else:
                     next_level[new_dims] = [
                         level_impurities[impure_idx],
-                        level_weights.sum(axis=exclude_idx),
+                        level_weights.sum(axis=n_dimensions - 1 - impure_idx),
                     ]
-        # TODO: this sorts by the indexes, which will be different from Fortran ordered languages,
-        #       which will make the results different on those systems. We should sort by
-        #       Fortran order here to get reproducible results            
+                impure_idx += 1
         prev_level = sorted(next_level.items())
 
     intercept = 0.0
@@ -220,7 +224,10 @@ def _purify_single(scores, weights):
         mean = np.average(level_scores, weights=level_weights)
         intercept += mean
         level_scores -= mean
-        impurities.append((dims, level_scores))
+        key = tuple(
+            n_dim - 1 - i for i in range(n_dim - 1, -1, -1) if ((1 << i) & dims) == 0
+        )
+        impurities.append((key, level_scores))
 
     return scores, impurities, intercept
 
