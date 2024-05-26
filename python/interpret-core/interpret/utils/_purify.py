@@ -189,13 +189,21 @@ def _purify_single(scores, weights):
     scores = scores.copy()
     n_dim = scores.ndim
     impurities = []
-    prev_level = [(0, [scores, weights])]
+    n_possible = (1 << n_dim) - 1
+    prev_level = [None] * n_possible
+    prev_level[0] = [scores, weights]
+    next_level = [None] * n_possible
     for n_dimensions in range(n_dim, 1, -1):
-        next_level = {}
-        for dims, (level_scores, level_weights) in prev_level:
+        for dims in range(n_possible):
+            items = prev_level[dims]
+            if items is None:
+                continue
+            level_scores, level_weights = items
+            prev_level[dims] = None
+
             level_impurities = _determine_impurities(level_scores, level_weights)
             _remove_impurities(level_scores, level_impurities)
-            if n_dimensions != n_dim:
+            if dims != 0:
                 # do not insert the original score tensor into the impurities
                 key = tuple(
                     n_dim - 1 - i
@@ -209,24 +217,34 @@ def _purify_single(scores, weights):
                 if (1 << dim_idx) & dims != 0:
                     continue
                 new_dims = dims | (1 << dim_idx)
-                if new_dims in next_level:
-                    next_level[new_dims][0] += level_impurities[impure_idx]
+                items = next_level[new_dims]
+                if items is not None:
+                    items[0] += level_impurities[impure_idx]
                 else:
                     next_level[new_dims] = [
                         level_impurities[impure_idx],
                         level_weights.sum(axis=n_dimensions - 1 - impure_idx),
                     ]
                 impure_idx += 1
-        prev_level = sorted(next_level.items())
+        temp = next_level
+        next_level = prev_level
+        prev_level = temp
 
     intercept = 0.0
-    for dims, (level_scores, level_weights) in prev_level:
+    for dims in range(n_possible):
+        items = prev_level[dims]
+        if items is None:
+            continue
+        level_scores, level_weights = items
+
         mean = np.average(level_scores, weights=level_weights)
         intercept += mean
         level_scores -= mean
-        if n_dim != 1:
+        if dims != 0:
             key = tuple(
-                n_dim - 1 - i for i in range(n_dim - 1, -1, -1) if ((1 << i) & dims) == 0
+                n_dim - 1 - i
+                for i in range(n_dim - 1, -1, -1)
+                if ((1 << i) & dims) == 0
             )
             impurities.append((key, level_scores))
 
