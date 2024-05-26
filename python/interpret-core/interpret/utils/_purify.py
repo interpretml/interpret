@@ -21,30 +21,33 @@ def _purify_single_level(scores, weights):
         n_equations += multiply
     b = np.zeros((n_equations,), float)
     coefficients = np.zeros((n_equations, n_equations), float)
-    lookups = np.empty(shape + (len(shape),), int)
-    exclude_idx = len(shape) - 1
-    equation_idx = 0
-    tensor_index = [0] * len(shape)
-    while True:
-        for bin_idx in range(shape[exclude_idx]):
-            tensor_index[exclude_idx] = bin_idx
-            lookups[tuple(tensor_index + [exclude_idx])] = equation_idx
-        tensor_index[exclude_idx] = 0
-        equation_idx += 1
-        if equation_idx == n_equations:
-            break
-        dim_idx = len(shape) - 1
-        while True:
-            if dim_idx != exclude_idx:
-                bin_idx = tensor_index[dim_idx] + 1
-                tensor_index[dim_idx] = bin_idx
-                if bin_idx != shape[dim_idx]:
-                    break
-                tensor_index[dim_idx] = 0
-            if dim_idx == 0:
-                exclude_idx -= 1
-                break
-            dim_idx -= 1
+
+    surface_indexes = np.empty(len(shape), int)
+    base_idx = 0
+    for exclude_idx in range(len(shape) - 1, -1, -1):
+        count = n_tensor // shape[exclude_idx]
+        surface_indexes[exclude_idx] = base_idx
+        base_idx += count
+
+    surface_dim_inc = np.empty((len(shape), len(shape)), int)
+    surface_dim_reset = np.empty((len(shape), len(shape)), int)
+    multiply = 1
+    for exclude_idx in range(len(shape) -1, -1, -1):
+        n_neg_bins = -shape[exclude_idx]
+        for i in range(len(shape) -1, exclude_idx, -1):
+            val = multiply // shape[i]
+            surface_dim_inc[exclude_idx, i] = val
+            surface_dim_reset[exclude_idx, i] = val * n_neg_bins
+        surface_dim_inc[exclude_idx, exclude_idx] = 0
+        surface_dim_reset[exclude_idx, exclude_idx] = 0
+        for i in range(exclude_idx -1, -1, -1):
+            surface_dim_inc[exclude_idx, i] = multiply
+            surface_dim_reset[exclude_idx, i] = multiply * n_neg_bins
+        multiply *= shape[exclude_idx]
+
+    cur_inc = surface_dim_inc[-1]
+    cur_reset = surface_dim_reset[-1]
+
     exclude_idx = len(shape) - 1
     equation_idx = 0
     tensor_index = [0] * len(shape)
@@ -54,22 +57,36 @@ def _purify_single_level(scores, weights):
             tupple_index = tuple(tensor_index)
             weight = weights[tupple_index]
             b[equation_idx] += weight * scores[tupple_index]
-            for coeff_idx in lookups[tupple_index]:
-                coefficients[equation_idx, coeff_idx] += weight
+            
+            coefficients[equation_idx, surface_indexes] += weight
+            surface_indexes += cur_inc
+
         tensor_index[exclude_idx] = 0
+        surface_indexes += cur_reset
+
         equation_idx += 1
         if equation_idx == n_equations:
             break
         dim_idx = len(shape) - 1
         while True:
             if dim_idx != exclude_idx:
+                surface_indexes += surface_dim_inc[dim_idx]
+
                 bin_idx = tensor_index[dim_idx] + 1
                 tensor_index[dim_idx] = bin_idx
+
                 if bin_idx != shape[dim_idx]:
                     break
                 tensor_index[dim_idx] = 0
+
+                surface_indexes += surface_dim_reset[dim_idx]
+
             if dim_idx == 0:
                 exclude_idx -= 1
+                
+                cur_inc = surface_dim_inc[exclude_idx]
+                cur_reset = surface_dim_reset[exclude_idx]
+
                 break
             dim_idx -= 1
 
