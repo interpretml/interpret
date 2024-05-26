@@ -8,7 +8,7 @@
 import numpy as np
 
 
-def _determine_impurities(scores, weights):
+def _purify_single_level(scores, weights):
     shape = scores.shape
     n_equations = 0
     n_tensor = 1
@@ -129,19 +129,18 @@ def _determine_impurities(scores, weights):
     base_idx = 0
     for exclude_idx in range(len(shape) - 1, -1, -1):
         count = n_tensor // shape[exclude_idx]
-        impure_shape = list(shape)
-        del impure_shape[exclude_idx]
-        impure_shape = tuple(impure_shape)
-        impurities.append(solution[base_idx : base_idx + count].reshape(impure_shape))
+        impurity = solution[base_idx : base_idx + count]
         base_idx += count
+
+        impure_shape = list(shape)
+        impure_shape[exclude_idx] = 1
+        scores -= impurity.reshape(tuple(impure_shape))
+
+        del impure_shape[exclude_idx]
+        impurity = impurity.reshape(tuple(impure_shape))
+        impurities.append(impurity)
+        
     return impurities
-
-
-def _remove_impurities(scores, impurities):
-    for i in range(scores.ndim):
-        new_shape = list(scores.shape)
-        new_shape[scores.ndim - 1 - i] = 1
-        scores -= impurities[i].reshape(tuple(new_shape))
 
 
 def _measure_impurity(scores, weights):
@@ -185,7 +184,7 @@ def _measure_impurity(scores, weights):
     return total_system
 
 
-def _purify_single(scores, weights):
+def _purify_downstream(scores, weights):
     scores = scores.copy()
     n_dim = scores.ndim
     impurities = []
@@ -201,8 +200,7 @@ def _purify_single(scores, weights):
             level_scores, level_weights = items
             prev_level[dims] = None
 
-            level_impurities = _determine_impurities(level_scores, level_weights)
-            _remove_impurities(level_scores, level_impurities)
+            level_impurities = _purify_single_level(level_scores, level_weights)
             if dims != 0:
                 # do not insert the original score tensor into the impurities
                 key = tuple(
@@ -271,7 +269,7 @@ def purify(scores, weights):
         new_tensor = []
         new_intercept = []
         for class_idx in range(scores.shape[-1]):
-            tensor, impurities, intercept = _purify_single(
+            tensor, impurities, intercept = _purify_downstream(
                 scores[..., class_idx], weights
             )
             new_tensor.append(tensor)
@@ -289,5 +287,5 @@ def purify(scores, weights):
         new_tensor = np.stack(new_tensor, axis=-1, dtype=float)
         new_intercept = np.array(new_intercept, float)
         return new_tensor, impurities, new_intercept
-    tensor, impurities, intercept = _purify_single(scores, weights)
+    tensor, impurities, intercept = _purify_downstream(scores, weights)
     return tensor, impurities, np.array([intercept], float)
