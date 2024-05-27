@@ -10,20 +10,21 @@ import numpy as np
 
 def _purify_single_level(scores, weights):
     shape = scores.shape
+
     n_tensor = 1
     for n_bins in shape:
         n_tensor *= n_bins
 
     surface_dim_inc = np.empty((len(shape), len(shape)), int)
     surface_dim_reset = np.empty((len(shape), len(shape)), int)
-    multiply = 1
 
     surface_indexes = np.empty(len(shape), int)
-    base_idx = 0
+    equation_idx = 0
+    multiply = 1
     for exclude_idx in range(len(shape) - 1, -1, -1):
         count = n_tensor // shape[exclude_idx]
-        surface_indexes[exclude_idx] = base_idx
-        base_idx += count
+        surface_indexes[exclude_idx] = equation_idx
+        equation_idx += count
 
         n_neg_bins = -shape[exclude_idx]
         for i in range(len(shape) - 1, exclude_idx, -1):
@@ -37,34 +38,42 @@ def _purify_single_level(scores, weights):
             surface_dim_reset[exclude_idx, i] = multiply * n_neg_bins
         multiply *= shape[exclude_idx]
 
-    b = np.zeros((base_idx,), float)
-    coefficients = np.zeros((base_idx, base_idx), float)
+    b = np.zeros((equation_idx,), float)
+    coefficients = np.zeros((equation_idx, equation_idx), float)
+
+    flat_scores = scores.flatten()
+    flat_weights = weights.flatten()
 
     cur_inc = np.full(len(shape) - 1, 1, int)
     exclude_idx = len(shape) - 1
     equation_idx = 0
     tensor_index = [0] * len(shape)
+    tensor_idx = 0
+    tensor_inc = 1
     while True:
         save_index = surface_indexes[exclude_idx]
-        subsurface_indexes = np.delete(surface_indexes, exclude_idx)
+        reduced_indexes = np.delete(surface_indexes, exclude_idx)
+        local_idx = tensor_idx
         total = 0.0
-        for bin_idx in range(shape[exclude_idx]):
-            tensor_index[exclude_idx] = bin_idx
-            tupple_index = tuple(tensor_index)
-            weight = weights[tupple_index]
+        bval = 0.0
+        for _ in range(shape[exclude_idx]):
+            weight = flat_weights[local_idx]
             total += weight
-            b[equation_idx] += weight * scores[tupple_index]
-            coefficients[equation_idx, subsurface_indexes] += weight
-            subsurface_indexes += cur_inc
+            bval += weight * flat_scores[local_idx]
+            coefficients[equation_idx, reduced_indexes] += weight
+            reduced_indexes += cur_inc
+            local_idx += tensor_inc
+        b[equation_idx] = bval
         coefficients[equation_idx, save_index] += total
-
-        tensor_index[exclude_idx] = 0
 
         equation_idx += 1
         dim_idx = len(shape) - 1
+        multiply = 1
         while True:
             if dim_idx != exclude_idx:
                 surface_indexes += surface_dim_inc[dim_idx]
+
+                tensor_idx += multiply
 
                 bin_idx = tensor_index[dim_idx] + 1
                 tensor_index[dim_idx] = bin_idx
@@ -72,11 +81,14 @@ def _purify_single_level(scores, weights):
                 if bin_idx != shape[dim_idx]:
                     break
                 tensor_index[dim_idx] = 0
+                tensor_idx -= multiply * shape[dim_idx]
 
                 surface_indexes += surface_dim_reset[dim_idx]
+            multiply *= shape[dim_idx]
 
             dim_idx -= 1
             if dim_idx < 0:
+                tensor_inc *= shape[exclude_idx]
                 exclude_idx -= 1
                 if exclude_idx < 0:
                     # Solve the system of equations. There are many possible methods for this..
