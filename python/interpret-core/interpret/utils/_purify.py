@@ -10,17 +10,13 @@ import numpy as np
 
 def _purify_single_level(scores, weights):
     shape = scores.shape
-    n_equations = 0
     n_tensor = 1
-    for dim_idx in range(len(shape)):
-        multiply = 1
-        n_tensor *= shape[dim_idx]
-        for exclude_idx in range(len(shape)):
-            if dim_idx != exclude_idx:
-                multiply *= shape[exclude_idx]
-        n_equations += multiply
-    b = np.zeros((n_equations,), float)
-    coefficients = np.zeros((n_equations, n_equations), float)
+    for n_bins in shape:
+        n_tensor *= n_bins
+
+    surface_dim_inc = np.empty((len(shape), len(shape)), int)
+    surface_dim_reset = np.empty((len(shape), len(shape)), int)
+    multiply = 1
 
     surface_indexes = np.empty(len(shape), int)
     base_idx = 0
@@ -29,21 +25,20 @@ def _purify_single_level(scores, weights):
         surface_indexes[exclude_idx] = base_idx
         base_idx += count
 
-    surface_dim_inc = np.empty((len(shape), len(shape)), int)
-    surface_dim_reset = np.empty((len(shape), len(shape)), int)
-    multiply = 1
-    for exclude_idx in range(len(shape) -1, -1, -1):
         n_neg_bins = -shape[exclude_idx]
-        for i in range(len(shape) -1, exclude_idx, -1):
+        for i in range(len(shape) - 1, exclude_idx, -1):
             val = multiply // shape[i]
             surface_dim_inc[exclude_idx, i] = val
             surface_dim_reset[exclude_idx, i] = val * n_neg_bins
         surface_dim_inc[exclude_idx, exclude_idx] = 0
         surface_dim_reset[exclude_idx, exclude_idx] = 0
-        for i in range(exclude_idx -1, -1, -1):
+        for i in range(exclude_idx - 1, -1, -1):
             surface_dim_inc[exclude_idx, i] = multiply
             surface_dim_reset[exclude_idx, i] = multiply * n_neg_bins
         multiply *= shape[exclude_idx]
+
+    b = np.zeros((base_idx,), float)
+    coefficients = np.zeros((base_idx, base_idx), float)
 
     cur_inc = surface_dim_inc[-1]
     cur_reset = surface_dim_reset[-1]
@@ -57,7 +52,7 @@ def _purify_single_level(scores, weights):
             tupple_index = tuple(tensor_index)
             weight = weights[tupple_index]
             b[equation_idx] += weight * scores[tupple_index]
-            
+
             coefficients[equation_idx, surface_indexes] += weight
             surface_indexes += cur_inc
 
@@ -65,8 +60,6 @@ def _purify_single_level(scores, weights):
         surface_indexes += cur_reset
 
         equation_idx += 1
-        if equation_idx == n_equations:
-            break
         dim_idx = len(shape) - 1
         while True:
             if dim_idx != exclude_idx:
@@ -81,83 +74,83 @@ def _purify_single_level(scores, weights):
 
                 surface_indexes += surface_dim_reset[dim_idx]
 
-            if dim_idx == 0:
+            dim_idx -= 1
+            if dim_idx < 0:
                 exclude_idx -= 1
-                
+                if exclude_idx < 0:
+                    # Solve the system of equations. There are many possible methods for this..
+
+                    # FAILS: LU decomposition, error "Singular matrix"
+                    # solution = np.linalg.solve(coefficients, b)
+
+                    # FAILS: cholesky and LU decomposition, error "Matrix is not positive definite"
+                    # coefficients = np.linalg.cholesky(coefficients)
+                    # solution = np.linalg.solve(coefficients, b)
+
+                    # FAILS (sometimes): QR Decomposition, error "Singular matrix"
+                    # 6.877648830413818 seconds
+                    # Q, R = np.linalg.qr(coefficients)
+                    # solution = np.linalg.solve(R, np.dot(Q.T, b))
+
+                    # WORKS: SVD (Singular Value Decomposition). Very pure results.
+                    # 33.93425178527832 seconds
+                    # U, s, V = np.linalg.svd(coefficients)
+                    # c = np.dot(U.T, b)
+                    # w = np.linalg.solve(np.diag(s), c[:len(s)])
+                    # solution = np.dot(V.T, w)
+
+                    # WORKS: Biconjugate Gradient Method. Iterative and approximate and result has impurities.
+                    # 0.08552408218383789 seconds
+                    # from scipy.sparse.linalg import bicg
+                    # solution, _ = bicg(coefficients, b)
+
+                    # WORKS: Biconjugate Gradient Stabilized Method. Iterative and approximate and result has impurities.
+                    # 0.042778968811035156 seconds
+                    # from scipy.sparse.linalg import bicgstab
+                    # solution, _ = bicgstab(coefficients, b)
+
+                    # WORKS: Conjugate Gradient iteration. Iterative and approximate and result has impurities.
+                    # 0.04851675033569336 seconds
+                    from scipy.sparse.linalg import cg
+
+                    solution, _ = cg(coefficients, b)
+
+                    # WORKS: Generalized Minimal Residual. Iterative and approximate and result has impurities.
+                    # 0.045647621154785156 seconds
+                    # from scipy.sparse.linalg import gmres
+                    # solution, _ = gmres(coefficients, b, x0=np.zeros_like(b))
+
+                    # WORKS: lstsq. Very pure results.
+                    # 26.812599897384644 seconds
+                    # solution, _, _, _ = np.linalg.lstsq(coefficients, b)
+
+                    # WORKS: Solve using pseudoinverse of a matrix. Somewhat inaccurate for large tensors
+                    # 33.44229531288147 seconds
+                    # solution = np.dot(np.linalg.pinv(coefficients), b)
+
+                    # Also possible: Successive Over-Relaxation, Jacobi or Gauss-Seidel Iterative Methods
+
+                    impurities = []
+                    base_idx = 0
+                    for exclude_idx in range(len(shape) - 1, -1, -1):
+                        count = n_tensor // shape[exclude_idx]
+                        impurity = solution[base_idx : base_idx + count]
+                        base_idx += count
+
+                        impure_shape = list(shape)
+                        impure_shape[exclude_idx] = 1
+                        scores -= impurity.reshape(tuple(impure_shape))
+
+                        del impure_shape[exclude_idx]
+                        impurity = impurity.reshape(tuple(impure_shape))
+                        impurities.append(impurity)
+
+                    return impurities
+
                 cur_inc = surface_dim_inc[exclude_idx]
                 cur_reset = surface_dim_reset[exclude_idx]
 
                 break
-            dim_idx -= 1
-
-    # Solve the system of equations. There are many possible methods for this..
-
-    # FAILS: LU decomposition, error "Singular matrix"
-    # solution = np.linalg.solve(coefficients, b)
-
-    # FAILS: cholesky and LU decomposition, error "Matrix is not positive definite"
-    # coefficients = np.linalg.cholesky(coefficients)
-    # solution = np.linalg.solve(coefficients, b)
-
-    # FAILS (sometimes): QR Decomposition, error "Singular matrix"
-    # 6.877648830413818 seconds
-    # Q, R = np.linalg.qr(coefficients)
-    # solution = np.linalg.solve(R, np.dot(Q.T, b))
-
-    # WORKS: SVD (Singular Value Decomposition). Very pure results.
-    # 33.93425178527832 seconds
-    # U, s, V = np.linalg.svd(coefficients)
-    # c = np.dot(U.T, b)
-    # w = np.linalg.solve(np.diag(s), c[:len(s)])
-    # solution = np.dot(V.T, w)
-
-    # WORKS: Biconjugate Gradient Method. Iterative and approximate and result has impurities.
-    # 0.08552408218383789 seconds
-    # from scipy.sparse.linalg import bicg
-    # solution, _ = bicg(coefficients, b)
-
-    # WORKS: Biconjugate Gradient Stabilized Method. Iterative and approximate and result has impurities.
-    # 0.042778968811035156 seconds
-    # from scipy.sparse.linalg import bicgstab
-    # solution, _ = bicgstab(coefficients, b)
-
-    # WORKS: Conjugate Gradient iteration. Iterative and approximate and result has impurities.
-    # 0.04851675033569336 seconds
-    from scipy.sparse.linalg import cg
-
-    solution, _ = cg(coefficients, b)
-
-    # WORKS: Generalized Minimal Residual. Iterative and approximate and result has impurities.
-    # 0.045647621154785156 seconds
-    # from scipy.sparse.linalg import gmres
-    # solution, _ = gmres(coefficients, b, x0=np.zeros_like(b))
-
-    # WORKS: lstsq. Very pure results.
-    # 26.812599897384644 seconds
-    # solution, _, _, _ = np.linalg.lstsq(coefficients, b)
-
-    # WORKS: Solve using pseudoinverse of a matrix. Somewhat inaccurate for large tensors
-    # 33.44229531288147 seconds
-    # solution = np.dot(np.linalg.pinv(coefficients), b)
-
-    # Also possible: Successive Over-Relaxation, Jacobi or Gauss-Seidel Iterative Methods
-
-    impurities = []
-    base_idx = 0
-    for exclude_idx in range(len(shape) - 1, -1, -1):
-        count = n_tensor // shape[exclude_idx]
-        impurity = solution[base_idx : base_idx + count]
-        base_idx += count
-
-        impure_shape = list(shape)
-        impure_shape[exclude_idx] = 1
-        scores -= impurity.reshape(tuple(impure_shape))
-
-        del impure_shape[exclude_idx]
-        impurity = impurity.reshape(tuple(impure_shape))
-        impurities.append(impurity)
-        
-    return impurities
 
 
 def _measure_impurity(scores, weights):
