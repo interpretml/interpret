@@ -162,7 +162,14 @@ def _purify_single_level(scores, weights):
                         impurity = impurity.reshape(tuple(impure_shape))
                         impurities.append(impurity)
 
-                    return impurities
+                    # using systems of equations is not exact because we either
+                    # use an approximate iterative method or an exact method with
+                    # many steps that introduces floating point noise. We can
+                    # extract the intercept more accurately though, so do that.
+                    residual_intercept = np.average(scores, weights=weights)
+                    scores -= residual_intercept
+
+                    return impurities, residual_intercept
 
                 cur_inc = np.delete(surface_dim_inc[exclude_idx], exclude_idx)
                 break
@@ -217,6 +224,7 @@ def _purify_downstream(scores, weights):
     prev_level = [None] * n_possible
     prev_level[0] = [scores, weights]
     next_level = [None] * n_possible
+    intercept = 0.0
     for n_dimensions in range(n_dim, 1, -1):
         for dims in range(n_possible):
             items = prev_level[dims]
@@ -225,7 +233,10 @@ def _purify_downstream(scores, weights):
             level_scores, level_weights = items
             prev_level[dims] = None
 
-            level_impurities = _purify_single_level(level_scores, level_weights)
+            level_impurities, residual_intercept = _purify_single_level(
+                level_scores, level_weights
+            )
+            intercept += residual_intercept
             if dims != 0:
                 # do not insert the original score tensor into the impurities
                 key = tuple(
@@ -253,7 +264,6 @@ def _purify_downstream(scores, weights):
         next_level = prev_level
         prev_level = temp
 
-    intercept = 0.0
     for dims in range(n_possible):
         items = prev_level[dims]
         if items is None:
