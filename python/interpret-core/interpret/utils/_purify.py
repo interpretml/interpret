@@ -40,24 +40,25 @@ def _purify_single_level(scores, weights):
     b = np.zeros((base_idx,), float)
     coefficients = np.zeros((base_idx, base_idx), float)
 
-    cur_inc = surface_dim_inc[-1]
-    cur_reset = surface_dim_reset[-1]
-
+    cur_inc = np.full(len(shape) - 1, 1, int)
     exclude_idx = len(shape) - 1
     equation_idx = 0
     tensor_index = [0] * len(shape)
     while True:
+        save_index = surface_indexes[exclude_idx]
+        subsurface_indexes = np.delete(surface_indexes, exclude_idx)
+        total = 0.0
         for bin_idx in range(shape[exclude_idx]):
             tensor_index[exclude_idx] = bin_idx
             tupple_index = tuple(tensor_index)
             weight = weights[tupple_index]
+            total += weight
             b[equation_idx] += weight * scores[tupple_index]
-
-            coefficients[equation_idx, surface_indexes] += weight
-            surface_indexes += cur_inc
+            coefficients[equation_idx, subsurface_indexes] += weight
+            subsurface_indexes += cur_inc
+        coefficients[equation_idx, save_index] += total
 
         tensor_index[exclude_idx] = 0
-        surface_indexes += cur_reset
 
         equation_idx += 1
         dim_idx = len(shape) - 1
@@ -147,9 +148,7 @@ def _purify_single_level(scores, weights):
 
                     return impurities
 
-                cur_inc = surface_dim_inc[exclude_idx]
-                cur_reset = surface_dim_reset[exclude_idx]
-
+                cur_inc = np.delete(surface_dim_inc[exclude_idx], exclude_idx)
                 break
 
 
