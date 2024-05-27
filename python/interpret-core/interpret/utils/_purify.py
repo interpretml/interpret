@@ -19,12 +19,12 @@ def _purify_single_level(scores, weights):
     surface_dim_reset = np.empty((len(shape), len(shape)), int)
 
     surface_indexes = np.empty(len(shape), int)
-    equation_idx = 0
+    n_equations = 0
     multiply = 1
     for exclude_idx in range(len(shape) - 1, -1, -1):
         count = n_tensor // shape[exclude_idx]
-        surface_indexes[exclude_idx] = equation_idx
-        equation_idx += count
+        surface_indexes[exclude_idx] = n_equations
+        n_equations += count
 
         n_neg_bins = -shape[exclude_idx]
         for i in range(len(shape) - 1, exclude_idx, -1):
@@ -38,8 +38,8 @@ def _purify_single_level(scores, weights):
             surface_dim_reset[exclude_idx, i] = multiply * n_neg_bins
         multiply *= shape[exclude_idx]
 
-    b = np.zeros((equation_idx,), float)
-    coefficients = np.zeros((equation_idx, equation_idx), float)
+    b = np.empty(n_equations, float)
+    coefficients = np.zeros(n_equations * n_equations, float)
 
     flat_scores = scores.flatten()
     flat_weights = weights.flatten()
@@ -51,8 +51,10 @@ def _purify_single_level(scores, weights):
     tensor_idx = 0
     tensor_inc = 1
     while True:
-        save_index = surface_indexes[exclude_idx]
+        n_start = equation_idx * n_equations
+        save_index = surface_indexes[exclude_idx] + n_start
         reduced_indexes = np.delete(surface_indexes, exclude_idx)
+        reduced_indexes += n_start
         local_idx = tensor_idx
         total = 0.0
         bval = 0.0
@@ -60,11 +62,11 @@ def _purify_single_level(scores, weights):
             weight = flat_weights[local_idx]
             total += weight
             bval += weight * flat_scores[local_idx]
-            coefficients[equation_idx, reduced_indexes] += weight
+            coefficients[reduced_indexes] = weight
             reduced_indexes += cur_inc
             local_idx += tensor_inc
         b[equation_idx] = bval
-        coefficients[equation_idx, save_index] += total
+        coefficients[save_index] = total
 
         equation_idx += 1
         dim_idx = len(shape) - 1
@@ -91,6 +93,8 @@ def _purify_single_level(scores, weights):
                 tensor_inc *= shape[exclude_idx]
                 exclude_idx -= 1
                 if exclude_idx < 0:
+                    coefficients = coefficients.reshape((n_equations, n_equations))
+
                     # Solve the system of equations. There are many possible methods for this..
 
                     # FAILS: LU decomposition, error "Singular matrix"
@@ -126,7 +130,7 @@ def _purify_single_level(scores, weights):
                     # 0.04851675033569336 seconds
                     from scipy.sparse.linalg import cg
 
-                    solution, _ = cg(coefficients, b)
+                    solution, _ = cg(coefficients, b, atol=1e-10)
 
                     # WORKS: Generalized Minimal Residual. Iterative and approximate and result has impurities.
                     # 0.045647621154785156 seconds
