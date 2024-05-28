@@ -18,6 +18,7 @@
 #define EBM_ASSERT(x) assert(x)
 
 enum class TestPriority {
+   Purify,
    DataSetShared,
    BoostingUnusualInputs,
    InteractionUnusualInputs,

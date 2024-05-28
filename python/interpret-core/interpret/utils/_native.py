@@ -308,13 +308,13 @@ class Native:
             n_unknowns += n_tensor // n_bins
 
         impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
-        shape = np.array(shape, dtype=np.int64, order="C")
+        shape_array = np.array(tuple(reversed(shape)), dtype=np.int64, order="C")
         residual_intercept = ct.c_double(np.nan)
 
         return_code = self._unsafe.Purify(
             tolerance,
             len(shape),
-            Native._make_pointer(shape, np.int64),
+            Native._make_pointer(shape_array, np.int64),
             Native._make_pointer(weights, np.float64, len(shape)),
             Native._make_pointer(scores, np.float64, len(shape)),
             Native._make_pointer(impurity, np.float64),

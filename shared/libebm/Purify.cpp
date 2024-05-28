@@ -18,6 +18,97 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+extern ErrorEbm PurifyInternal(const size_t cTensorBins,
+      const double tolerance,
+      const size_t cDimensions,
+      const IntEbm* const aDimensionLengths,
+      const double* const aWeights,
+      double* const aScores,
+      double* const aImpurities,
+      double* const pResidualInterceptOut) {
+
+
+
+   // TODO: remove
+   UNUSED(tolerance);
+   UNUSED(pResidualInterceptOut);
+
+
+
+   size_t cSurfaceBins = 0;
+   for(size_t iExclude = 0; iExclude < cDimensions; ++iExclude) {
+      const size_t cBins = static_cast<size_t>(aDimensionLengths[iExclude]);
+      EBM_ASSERT(0 == cTensorBins % cBins);
+      const size_t cSurfaceBinsExclude = cTensorBins / cBins;
+      cSurfaceBins += cSurfaceBinsExclude;
+   }
+
+   memset(aImpurities, 0, cSurfaceBins * sizeof(*aImpurities));
+
+   const size_t cIterations = 100; // TODO: use tolerance instead, and track improvements
+
+   for(size_t iIteration = 0; iIteration < cIterations; ++iIteration) {
+
+      // TODO: do a card shuffle of the surface bin indexes to process them in random order
+
+      for(size_t iAllSurfaceBin = 0; iAllSurfaceBin < cSurfaceBins; ++iAllSurfaceBin) {
+         size_t cTensorIncrement = 1;
+         size_t iSweepDimension = 0;
+         size_t cSweepBins;
+         size_t iDimensionSurfaceBin = iAllSurfaceBin;
+         while(true) {
+            cSweepBins = static_cast<size_t>(aDimensionLengths[iSweepDimension]);
+            EBM_ASSERT(0 == cTensorBins % cSweepBins);
+            size_t cSurfaceBinsExclude = cTensorBins / cSweepBins;
+            if(iDimensionSurfaceBin < cSurfaceBinsExclude) {
+               // we've found it
+               break;
+            }
+            iDimensionSurfaceBin -= cSurfaceBinsExclude;
+            cTensorIncrement *= cSweepBins;
+            ++iSweepDimension;
+            EBM_ASSERT(iSweepDimension < cDimensions);
+         }
+
+         size_t iTensor = 0;
+         size_t multiple = 1;
+         for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+            const size_t cBins = static_cast<size_t>(aDimensionLengths[iDimension]);
+            if(iDimension != iSweepDimension) {
+               const size_t iBin = iDimensionSurfaceBin % cBins;
+               iDimensionSurfaceBin /= cBins;
+               iTensor += iBin * multiple;
+            }
+            multiple *= cBins;
+         }
+         EBM_ASSERT(0 == iDimensionSurfaceBin); // TODO: we could exit early on this condition in the future
+
+         const size_t iTensorEnd = iTensor + cTensorIncrement * cSweepBins;
+         double imuprity = 0;
+         double weightTotal = 0;
+         for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
+            const double weight = aWeights[iTensorCur];
+            const double score = aScores[iTensorCur];
+
+            imuprity += score * weight;
+            weightTotal += weight;
+         }
+
+         imuprity = 0.0 == weightTotal ? 0.0 : imuprity / weightTotal;
+
+         aImpurities[iAllSurfaceBin] += imuprity;
+         imuprity = -imuprity;
+
+         for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
+            aScores[iTensorCur] += imuprity;
+         }
+      }
+   }
+
+   return Error_None;
+}
+
+
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       IntEbm countDimensions,
       const IntEbm* dimensionLengths,
@@ -42,7 +133,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          static_cast<const void*>(impurities),
          static_cast<const void*>(residualInterceptOut));
 
-   //ErrorEbm error;
+   ErrorEbm error;
 
    if(nullptr != residualInterceptOut) {
       *residualInterceptOut = 0.0;
@@ -124,9 +215,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       return Error_IllegalParamVal;
    }
 
+   error = PurifyInternal(
+         cTensorBins, tolerance, cDimensions, dimensionLengths, weights, scores, impurities, residualInterceptOut);
+
    LOG_0(Trace_Info, "Exited Purify");
 
-   return Error_None;
+   return error;
 }
 
 } // namespace DEFINED_ZONE_NAME
