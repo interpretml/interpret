@@ -281,6 +281,53 @@ class Native:
 
         return random_numbers
 
+    def purify(self, scores, weights, tolerance=1e-6):
+        shape = scores.shape
+        if shape != weights.shape:
+            raise Exception(f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}.")
+
+        if len(shape) <= 1:
+            raise Exception("scores must be at least 2-dimensional to call the C purify.")
+
+        n_tensor = 1
+        for n_bins in shape:
+            n_tensor *= n_bins
+
+        if n_tensor == 0:
+            return [np.zeros(shape[:i] + shape[i+1:], float) for i in range(len(shape) -1, -1, -1)], 0.0
+
+        n_unknowns = 0
+        for n_bins in shape:
+            n_unknowns += n_tensor // n_bins
+        
+        impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
+        shape = np.array(shape, dtype=np.int64, order="C")
+        residual_intercept = ct.c_double(np.nan)
+
+        return_code = self._unsafe.Purify(
+            tolerance,
+            len(shape),
+            Native._make_pointer(shape, np.int64),
+            Native._make_pointer(weights, np.float64, len(shape)),
+            Native._make_pointer(scores, np.float64, len(shape)),
+            Native._make_pointer(impurity, np.float64),
+            ct.byref(residual_intercept),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "Purify")
+
+        impurities = []
+        base_idx = 0
+        for exclude_idx in range(len(shape) - 1, -1, -1):
+            count = n_tensor // shape[exclude_idx]
+            impure_shape = list(shape)
+            del impure_shape[exclude_idx]
+            impurities.append(impurity[base_idx : base_idx + count].reshape(tuple(impure_shape)))
+            base_idx += count
+
+        return impurities, residual_intercept.value
+
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(
             X_col.shape[0], Native._make_pointer(X_col, np.float64)
@@ -847,6 +894,24 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
+
+        self._unsafe.Purify.argtypes = [
+            # double tolerance
+            ct.c_double,
+            # int64_t countDimensions
+            ct.c_int64,
+            # int64_t * dimensionLengths
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * scores
+            ct.c_void_p,
+            # double * impurities
+            ct.c_void_p,
+            # double * residualInterceptOut
+            ct.POINTER(ct.c_double),
+        ]
+        self._unsafe.Purify.restype = ct.c_int32
 
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples

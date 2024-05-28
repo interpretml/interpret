@@ -10,6 +10,7 @@
       BranchRNG;
       GenerateSeed;
       GenerateGaussianRandom;
+      Purify;
       GetHistogramCutCount;
       CutUniform;
       CutQuantile;

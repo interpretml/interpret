@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="Purify.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="unzoned\logging.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>

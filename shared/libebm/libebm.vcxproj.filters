@@ -48,6 +48,7 @@
     <ClCompile Include="ConvertAddBin.cpp" />
     <ClCompile Include="compute_accessors.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
+    <ClCompile Include="Purify.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />

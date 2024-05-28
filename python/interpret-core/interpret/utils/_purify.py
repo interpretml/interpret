@@ -6,7 +6,7 @@
 # https://arxiv.org/abs/1911.04974
 
 import numpy as np
-
+# from ._native import Native
 
 def _purify_single_level(scores, weights):
     shape = scores.shape
@@ -217,6 +217,8 @@ def _measure_impurity(scores, weights):
 
 
 def _purify_downstream(scores, weights):
+    # native = Native.get_native_singleton()
+
     scores = scores.copy()
     n_dim = scores.ndim
     impurities = []
@@ -232,6 +234,9 @@ def _purify_downstream(scores, weights):
                 continue
             level_scores, level_weights = items
             prev_level[dims] = None
+
+            # _, residual_intercept = native.purify(level_scores, level_weights)
+            # assert residual_intercept == 0.0
 
             level_impurities, residual_intercept = _purify_single_level(
                 level_scores, level_weights
