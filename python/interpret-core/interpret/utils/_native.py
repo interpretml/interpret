@@ -284,22 +284,29 @@ class Native:
     def purify(self, scores, weights, tolerance=1e-6):
         shape = scores.shape
         if shape != weights.shape:
-            raise Exception(f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}.")
+            raise Exception(
+                f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            )
 
         if len(shape) <= 1:
-            raise Exception("scores must be at least 2-dimensional to call the C purify.")
+            raise Exception(
+                "scores must be at least 2-dimensional to call the C purify."
+            )
 
         n_tensor = 1
         for n_bins in shape:
             n_tensor *= n_bins
 
         if n_tensor == 0:
-            return [np.zeros(shape[:i] + shape[i+1:], float) for i in range(len(shape) -1, -1, -1)], 0.0
+            return [
+                np.zeros(shape[:i] + shape[i + 1 :], float)
+                for i in range(len(shape) - 1, -1, -1)
+            ], 0.0
 
         n_unknowns = 0
         for n_bins in shape:
             n_unknowns += n_tensor // n_bins
-        
+
         impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
         shape = np.array(shape, dtype=np.int64, order="C")
         residual_intercept = ct.c_double(np.nan)
@@ -323,7 +330,9 @@ class Native:
             count = n_tensor // shape[exclude_idx]
             impure_shape = list(shape)
             del impure_shape[exclude_idx]
-            impurities.append(impurity[base_idx : base_idx + count].reshape(tuple(impure_shape)))
+            impurities.append(
+                impurity[base_idx : base_idx + count].reshape(tuple(impure_shape))
+            )
             base_idx += count
 
         return impurities, residual_intercept.value

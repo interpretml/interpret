@@ -6,7 +6,9 @@
 # https://arxiv.org/abs/1911.04974
 
 import numpy as np
+
 # from ._native import Native
+
 
 def _purify_single_level(scores, weights):
     shape = scores.shape
