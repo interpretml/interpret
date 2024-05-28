@@ -104,17 +104,11 @@ def test_scikit_experiment_local(populated_store):
     _assert_benchmark(benchmark)
 
 
-@pytest.mark.skip("Remove this when testing docker.")
-def test_scikit_experiment_docker(populated_store):
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    uri = os.getenv("DOCKER_DB_URL")
+def test_scikit_experiment_docker(populated_docker_store, populated_docker_uri):
     executor = InsecureDocker(
-        populated_store, n_running_containers=2, docker_db_uri=uri
+        populated_docker_store, n_running_containers=2, docker_db_uri=populated_docker_uri
     )
-    benchmark = Benchmark(populated_store, name="scikit_docker")
+    benchmark = Benchmark(populated_docker_store, name="scikit_docker")
     benchmark.run(_benchmark, _trials, timeout=10, executor=executor)
     benchmark.wait_until_complete()
     _assert_benchmark(benchmark)
