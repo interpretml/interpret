@@ -282,6 +282,11 @@ class Native:
         return random_numbers
 
     def purify(self, scores, weights, tolerance=1e-6):
+        if np.isnan(tolerance) or tolerance < 0.0 or 1.0 <= tolerance:
+            raise Exception(
+                f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
+            )
+
         shape = scores.shape
         if shape != weights.shape:
             raise Exception(

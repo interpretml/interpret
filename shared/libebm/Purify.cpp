@@ -19,20 +19,26 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-extern ErrorEbm PurifyInternal(const size_t cTensorBins,
-      const double tolerance,
-      const size_t cDimensions,
+extern ErrorEbm PurifyInternal(const double tolerance,
+      const size_t cTensorBins,
+      const size_t cSurfaceBins,
       const IntEbm* const aDimensionLengths,
       const double* const aWeights,
       double* const aScores,
       double* const aImpurities,
       double* const pInterceptOut) {
+   EBM_ASSERT(!std::isnan(tolerance));
+   EBM_ASSERT(!std::isinf(tolerance));
+   EBM_ASSERT(0.0 <= tolerance);
    EBM_ASSERT(1 <= cTensorBins);
-   EBM_ASSERT(1 <= cDimensions);
+   // we ignore surfaces of length 1 and anything equal to the original tensor, so 2x2 is smallest
+   EBM_ASSERT(0 == cSurfaceBins || 4 <= cSurfaceBins);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScores);
    EBM_ASSERT(nullptr != aImpurities);
+
+   memset(aImpurities, 0, cSurfaceBins * sizeof(*aImpurities));
 
    const double* pScore = aScores;
    const double* pWeight = aWeights;
@@ -40,46 +46,110 @@ extern ErrorEbm PurifyInternal(const size_t cTensorBins,
    double impurityMax = 0.0;
    double impurityTotalAll = 0.0;
    double weightTotalAll = 0.0;
+   bool bInfWeight = false;
    do {
       const double weight = *pWeight;
+      if(!(0.0 <= weight)) {
+         LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
+         return Error_IllegalParamVal;
+      }
+      EBM_ASSERT(!std::isnan(weight));
+      bInfWeight |= weight == std::numeric_limits<double>::infinity();
       const double score = *pScore;
-      weightTotalAll += weight;
-      const double impurity = score * weight;
-      impurityTotalAll += impurity;
-      impurityMax += std::abs(impurity);
+      if(!std::isnan(score) && !std::isinf(score)) {
+         weightTotalAll += weight;
+         const double impurity = score * weight;
+         impurityTotalAll += impurity;
+         impurityMax += std::abs(impurity);
+      }
       ++pScore;
       ++pWeight;
    } while(aScoresEnd != pScore);
+   EBM_ASSERT(!std::isnan(weightTotalAll));
+   EBM_ASSERT(0.0 <= weightTotalAll);
 
-   if(0.0 == weightTotalAll) {
+   if(bInfWeight) {
+      // TODO: handle +inf weight by putting all the "weight" on +inf bins and ignoring non-inf bins.
+      // we also need to have a fallback incase the impurityTotalAll overflows when only considering inf bins.
+      LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be +inf");
+      return Error_IllegalParamVal;
+   } else {
+      // even if score and weight are never NaN or infinity, the product of both can be +-inf and if +inf is added
+      // to -inf it will be NaN, so impurityTotalAll can be NaN even if weight and score are well formed
+      // impurityMax cannot be NaN though here since abs(impurity) cannot be -inf. If score was zero and weight
+      // was +inf then impurityMax could be NaN, but we've excluded it at this point through bInfWeight.
+      EBM_ASSERT(!std::isnan(impurityMax));
+      EBM_ASSERT(0.0 <= impurityMax);
+   
+      if(std::isnan(impurityTotalAll) || std::isinf(impurityTotalAll) ||
+            std::numeric_limits<double>::infinity() == weightTotalAll) {
+         // TODO: handle impurityTotalAll and weightTotalAll overflows by inserting a multiple 
+         // that we can scale back repretedly by 0.5 until it succeeds
+         LOG_0(Trace_Error, "ERROR PurifyInternal impurityTotalAll overflow");
+         return Error_IllegalParamVal;
+      }
+   }
+  
+   if(impurityMax < std::numeric_limits<double>::min() || weightTotalAll < std::numeric_limits<double>::min()) {
+      // subnormal numbers are considered to be zero by us
+      // impurityMax could be zero because the scores are zero or the weights are zero. Either way, it's pure.
+      // subnormal funniness might allow impurityMax to be zero-ish, but not weightTotalAll, so check both
+      if(nullptr != pInterceptOut) {
+         *pInterceptOut = 0.0;
+      }
       return Error_None;
    }
-
-   impurityMax = impurityMax * tolerance / weightTotalAll;
+   if(std::numeric_limits<double>::infinity() == impurityMax) {
+      // handle this by just turning off early exit and let the algorithm exit when it cannot improve
+      // TODO: we could find this value better by mutiplying score and weight by a constant that we scale
+      //       repetedly by 0.5
+      impurityMax = 0.0;
+   } else {
+      impurityMax = impurityMax * tolerance / weightTotalAll;
+      // at this location: 
+      //   0.0 < impurityMax < +inf
+      //   0.0 <= tolerance < +inf
+      //   0.0 < weightTotalAll < +inf
+      //   impurityMax * tolerance can overflow to +inf, but dividing by a non-NaN, non-inf, non-zero number is non-NaN
+      EBM_ASSERT(!std::isnan(impurityMax));
+      if(std::numeric_limits<double>::infinity() == impurityMax) {
+         // handle this by just turning off early exit and let the algorithm exit when it cannot improve
+         // TODO: we could find this value better by mutiplying score and weight by a constant that we scale
+         //       repetedly by 0.5
+         impurityMax = 0.0;
+      }
+   }
 
    if(nullptr != pInterceptOut) {
       // pull out the intercept early since this will make purification easier
-      const double intercept = impurityTotalAll / weightTotalAll;
+      double intercept = impurityTotalAll / weightTotalAll;
+      EBM_ASSERT(!std::isnan(intercept));
+      if(std::isinf(intercept)) {
+         // the intercept is the weighted average of numbers, so it cannot mathematically
+         // be larger than the largest number, and we checked that the sum of those numbers
+         // did not overflow, so this shouldn't be possible without floating point noise
+         // If it does happen, the real value must be very very close to +-max_float,
+         // so use that instead
+
+         if(0.0 <= intercept) {
+            intercept = std::numeric_limits<double>::max();
+         } else {
+            intercept = -std::numeric_limits<double>::max();
+         }
+      }
+
       *pInterceptOut = intercept;
       const double interceptNeg = -intercept;
       double* pScore2 = aScores;
       do {
-         *pScore2 += interceptNeg;
+         // this can create new +-inf values, but not NaN since we limited intercept to non-NaN, non-inf
+         const double scoreOld = *pScore2;
+         const double scoreNew = scoreOld + interceptNeg;
+         EBM_ASSERT(std::isnan(scoreOld) || !std::isnan(scoreNew));
+         *pScore2 = scoreNew;
          ++pScore2;
       } while(aScoresEnd != pScore2);
    }
-
-   size_t cSurfaceBins = 0;
-   size_t iExclude = 0;
-   do {
-      const size_t cBins = static_cast<size_t>(aDimensionLengths[iExclude]);
-      EBM_ASSERT(0 == cTensorBins % cBins);
-      const size_t cSurfaceBinsExclude = cTensorBins / cBins;
-      cSurfaceBins += cSurfaceBinsExclude;
-      ++iExclude;
-   } while(cDimensions != iExclude);
-
-   memset(aImpurities, 0, cSurfaceBins * sizeof(*aImpurities));
 
    double impurityPrev = std::numeric_limits<double>::infinity();
    double impurityCur;
@@ -90,13 +160,15 @@ extern ErrorEbm PurifyInternal(const size_t cTensorBins,
 
       // TODO: do a card shuffle of the surface bin indexes to process them in random order
 
-      for(size_t iAllSurfaceBin = 0; iAllSurfaceBin < cSurfaceBins; ++iAllSurfaceBin) {
-         size_t cTensorIncrement = 1;
-         size_t iSweepDimension = 0;
+      size_t iAllSurfaceBin = 0;
+      do {
+         size_t cTensorIncrement = sizeof(double);
          size_t cSweepBins;
          size_t iDimensionSurfaceBin = iAllSurfaceBin;
+         const IntEbm* pSweepingDimensionLength = aDimensionLengths;
          while(true) {
-            cSweepBins = static_cast<size_t>(aDimensionLengths[iSweepDimension]);
+            cSweepBins = static_cast<size_t>(*pSweepingDimensionLength);
+            EBM_ASSERT(1 <= cSweepBins);
             EBM_ASSERT(0 == cTensorBins % cSweepBins);
             size_t cSurfaceBinsExclude = cTensorBins / cSweepBins;
             if(iDimensionSurfaceBin < cSurfaceBinsExclude) {
@@ -105,47 +177,57 @@ extern ErrorEbm PurifyInternal(const size_t cTensorBins,
             }
             iDimensionSurfaceBin -= cSurfaceBinsExclude;
             cTensorIncrement *= cSweepBins;
-            ++iSweepDimension;
-            EBM_ASSERT(iSweepDimension < cDimensions);
+            ++pSweepingDimensionLength;
          }
 
          size_t iTensor = 0;
-         size_t multiple = 1;
-         for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
-            const size_t cBins = static_cast<size_t>(aDimensionLengths[iDimension]);
-            if(iDimension != iSweepDimension) {
+         size_t multiple = sizeof(double);
+         const IntEbm* pDimensionLength = aDimensionLengths;
+         while(size_t{0} != iDimensionSurfaceBin) {
+            const size_t cBins = static_cast<size_t>(*pDimensionLength);
+            EBM_ASSERT(1 <= cBins);
+            if(pDimensionLength != pSweepingDimensionLength) {
                const size_t iBin = iDimensionSurfaceBin % cBins;
                iDimensionSurfaceBin /= cBins;
                iTensor += iBin * multiple;
             }
             multiple *= cBins;
+            ++pDimensionLength;
          }
-         EBM_ASSERT(0 == iDimensionSurfaceBin); // TODO: we could exit early on this condition in the future
 
          const size_t iTensorEnd = iTensor + cTensorIncrement * cSweepBins;
-         double impurity = 0;
-         double weightTotal = 0;
-         for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
-            const double weight = aWeights[iTensorCur];
-            const double score = aScores[iTensorCur];
+         double impurity = 0.0;
+         double weightTotal = 0.0;
+         size_t iTensorCur = iTensor;
+         do {
+            const double weight = *IndexByte(aWeights, iTensorCur);
+            const double score = *IndexByte(aScores, iTensorCur);
 
             impurity += score * weight;
             weightTotal += weight;
-         }
+            iTensorCur += cTensorIncrement;
+         } while(iTensorEnd != iTensorCur);
 
-         impurity = 0.0 == weightTotal ? 0.0 : impurity / weightTotal;
+         // TODO: retry if we get an overflow by using a factor we mutiply with 0.5 each iteration
+         impurity = weightTotal < std::numeric_limits<double>::min() ? 0.0 : impurity / weightTotal;
 
          const double absImpurity = std::abs(impurity);
          bRetry |= impurityMax < absImpurity;
          impurityCur += absImpurity;
 
+         // this can create new +-inf values in the surfaces
          aImpurities[iAllSurfaceBin] += impurity;
          impurity = -impurity;
 
-         for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
-            aScores[iTensorCur] += impurity;
-         }
-      }
+         size_t iTensorAdd = iTensor;
+         do {
+            // this can create new +-inf values in the tensor
+            *IndexByte(aScores, iTensorAdd) += impurity;
+            iTensorAdd += cTensorIncrement;
+         } while(iTensorEnd != iTensorAdd);
+
+         ++iAllSurfaceBin;
+      } while(cSurfaceBins != iAllSurfaceBin);
 
       if(impurityPrev <= impurityCur) {
          // To ensure that we exit even with floating point noise, exit when things do not improve.
@@ -264,8 +346,23 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       return Error_IllegalParamVal;
    }
 
+   if(std::isnan(tolerance) || std::isinf(tolerance) || tolerance < 0.0) {
+      LOG_0(Trace_Error, "ERROR Purify std::isnan(tolerance) || std::isinf(tolerance) || tolerance < 0.0)");
+      return Error_IllegalParamVal;
+   }
+
+   size_t cSurfaceBins = 0;
+   size_t iExclude = 0;
+   do {
+      const size_t cBins = static_cast<size_t>(dimensionLengths[iExclude]);
+      EBM_ASSERT(0 == cTensorBins % cBins);
+      const size_t cSurfaceBinsExclude = cTensorBins / cBins;
+      cSurfaceBins += cSurfaceBinsExclude;
+      ++iExclude;
+   } while(cDimensions != iExclude);
+
    error = PurifyInternal(
-         cTensorBins, tolerance, cDimensions, dimensionLengths, weights, scores, impurities, interceptOut);
+         tolerance, cTensorBins, cSurfaceBins, dimensionLengths, weights, scores, impurities, interceptOut);
 
    LOG_0(Trace_Info, "Exited Purify");
 
