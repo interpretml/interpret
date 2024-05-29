@@ -7,6 +7,7 @@
 #include <stdlib.h> // free
 #include <stddef.h> // size_t, ptrdiff_t
 #include <string.h> // memcpy
+#include <cmath> // std::abs
 
 #define ZONE_main
 #include "zones.h"
@@ -25,29 +26,67 @@ extern ErrorEbm PurifyInternal(const size_t cTensorBins,
       const double* const aWeights,
       double* const aScores,
       double* const aImpurities,
-      double* const pResidualInterceptOut) {
+      double* const pInterceptOut) {
+   EBM_ASSERT(1 <= cTensorBins);
+   EBM_ASSERT(1 <= cDimensions);
+   EBM_ASSERT(nullptr != aDimensionLengths);
+   EBM_ASSERT(nullptr != aWeights);
+   EBM_ASSERT(nullptr != aScores);
+   EBM_ASSERT(nullptr != aImpurities);
 
+   const double* pScore = aScores;
+   const double* pWeight = aWeights;
+   const double* const aScoresEnd = aScores + cTensorBins;
+   double impurityMax = 0.0;
+   double impurityTotalAll = 0.0;
+   double weightTotalAll = 0.0;
+   do {
+      const double weight = *pWeight;
+      const double score = *pScore;
+      weightTotalAll += weight;
+      const double impurity = score * weight;
+      impurityTotalAll += impurity;
+      impurityMax += std::abs(impurity);
+      ++pScore;
+      ++pWeight;
+   } while(aScoresEnd != pScore);
 
+   if(0.0 == weightTotalAll) {
+      return Error_None;
+   }
 
-   // TODO: remove
-   UNUSED(tolerance);
-   UNUSED(pResidualInterceptOut);
+   impurityMax = impurityMax * tolerance / weightTotalAll;
 
-
+   if(nullptr != pInterceptOut) {
+      // pull out the intercept early since this will make purification easier
+      const double intercept = impurityTotalAll / weightTotalAll;
+      *pInterceptOut = intercept;
+      const double interceptNeg = -intercept;
+      double* pScore2 = aScores;
+      do {
+         *pScore2 += interceptNeg;
+         ++pScore2;
+      } while(aScoresEnd != pScore2);
+   }
 
    size_t cSurfaceBins = 0;
-   for(size_t iExclude = 0; iExclude < cDimensions; ++iExclude) {
+   size_t iExclude = 0;
+   do {
       const size_t cBins = static_cast<size_t>(aDimensionLengths[iExclude]);
       EBM_ASSERT(0 == cTensorBins % cBins);
       const size_t cSurfaceBinsExclude = cTensorBins / cBins;
       cSurfaceBins += cSurfaceBinsExclude;
-   }
+      ++iExclude;
+   } while(cDimensions != iExclude);
 
    memset(aImpurities, 0, cSurfaceBins * sizeof(*aImpurities));
 
-   const size_t cIterations = 100; // TODO: use tolerance instead, and track improvements
-
-   for(size_t iIteration = 0; iIteration < cIterations; ++iIteration) {
+   double impurityPrev = std::numeric_limits<double>::infinity();
+   double impurityCur;
+   bool bRetry;
+   do {
+      impurityCur = 0.0;
+      bRetry = false;
 
       // TODO: do a card shuffle of the surface bin indexes to process them in random order
 
@@ -84,26 +123,36 @@ extern ErrorEbm PurifyInternal(const size_t cTensorBins,
          EBM_ASSERT(0 == iDimensionSurfaceBin); // TODO: we could exit early on this condition in the future
 
          const size_t iTensorEnd = iTensor + cTensorIncrement * cSweepBins;
-         double imuprity = 0;
+         double impurity = 0;
          double weightTotal = 0;
          for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
             const double weight = aWeights[iTensorCur];
             const double score = aScores[iTensorCur];
 
-            imuprity += score * weight;
+            impurity += score * weight;
             weightTotal += weight;
          }
 
-         imuprity = 0.0 == weightTotal ? 0.0 : imuprity / weightTotal;
+         impurity = 0.0 == weightTotal ? 0.0 : impurity / weightTotal;
 
-         aImpurities[iAllSurfaceBin] += imuprity;
-         imuprity = -imuprity;
+         const double absImpurity = std::abs(impurity);
+         bRetry |= impurityMax < absImpurity;
+         impurityCur += absImpurity;
+
+         aImpurities[iAllSurfaceBin] += impurity;
+         impurity = -impurity;
 
          for(size_t iTensorCur = iTensor; iTensorCur != iTensorEnd; iTensorCur += cTensorIncrement) {
-            aScores[iTensorCur] += imuprity;
+            aScores[iTensorCur] += impurity;
          }
       }
-   }
+
+      if(impurityPrev <= impurityCur) {
+         // To ensure that we exit even with floating point noise, exit when things do not improve.
+         break;
+      }
+      impurityPrev = impurityCur;
+   } while(bRetry);
 
    return Error_None;
 }
@@ -115,7 +164,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       const double* weights,
       double* scores,
       double* impurities,
-      double* residualInterceptOut) {
+      double* interceptOut) {
    LOG_N(Trace_Info,
          "Entered Purify: "
          "tolerance=%le, "
@@ -124,19 +173,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          "weights=%p, "
          "scores=%p, "
          "impurities=%p, "
-         "residualInterceptOut=%p",
+         "interceptOut=%p",
          tolerance,
          countDimensions,
          static_cast<const void*>(dimensionLengths),
          static_cast<const void*>(weights),
          static_cast<const void*>(scores),
          static_cast<const void*>(impurities),
-         static_cast<const void*>(residualInterceptOut));
+         static_cast<const void*>(interceptOut));
 
    ErrorEbm error;
 
-   if(nullptr != residualInterceptOut) {
-      *residualInterceptOut = 0.0;
+   if(nullptr != interceptOut) {
+      *interceptOut = 0.0;
    }
 
    if(countDimensions <= IntEbm{0}) {
@@ -216,7 +265,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    }
 
    error = PurifyInternal(
-         cTensorBins, tolerance, cDimensions, dimensionLengths, weights, scores, impurities, residualInterceptOut);
+         cTensorBins, tolerance, cDimensions, dimensionLengths, weights, scores, impurities, interceptOut);
 
    LOG_0(Trace_Info, "Exited Purify");
 

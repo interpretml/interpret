@@ -7,10 +7,10 @@
 
 import numpy as np
 
-# from ._native import Native
+from ._native import Native
 
 
-def _purify_single_level(scores, weights):
+def _UNUSED_purify_single_level(scores, weights):
     shape = scores.shape
 
     n_tensor = 1
@@ -219,7 +219,7 @@ def _measure_impurity(scores, weights):
 
 
 def _purify_downstream(scores, weights):
-    # native = Native.get_native_singleton()
+    native = Native.get_native_singleton()
 
     scores = scores.copy()
     n_dim = scores.ndim
@@ -237,13 +237,10 @@ def _purify_downstream(scores, weights):
             level_scores, level_weights = items
             prev_level[dims] = None
 
-            # _, residual_intercept = native.purify(level_scores, level_weights)
-            # assert residual_intercept == 0.0
-
-            level_impurities, residual_intercept = _purify_single_level(
+            level_impurities, level_intercept = native.purify(
                 level_scores, level_weights
             )
-            intercept += residual_intercept
+            intercept += level_intercept
             if dims != 0:
                 # do not insert the original score tensor into the impurities
                 key = tuple(

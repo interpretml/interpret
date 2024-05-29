@@ -140,7 +140,7 @@ TEST_CASE("Purify simple 3x4x5") {
 
    ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
    CHECK(Error_None == error);
-   CHECK(0.0 == residualIntercept);
+   CHECK(0.0 != residualIntercept);
 }
 
 TEST_CASE("Purify simple 3x3x3") {
@@ -154,5 +154,5 @@ TEST_CASE("Purify simple 3x3x3") {
 
    ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
    CHECK(Error_None == error);
-   CHECK(0.0 == residualIntercept);
+   CHECK(0.0 != residualIntercept);
 }

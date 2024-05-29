@@ -309,7 +309,7 @@ class Native:
 
         impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
         shape_array = np.array(tuple(reversed(shape)), dtype=np.int64, order="C")
-        residual_intercept = ct.c_double(np.nan)
+        intercept = ct.c_double(np.nan)
 
         return_code = self._unsafe.Purify(
             tolerance,
@@ -318,7 +318,7 @@ class Native:
             Native._make_pointer(weights, np.float64, len(shape)),
             Native._make_pointer(scores, np.float64, len(shape)),
             Native._make_pointer(impurity, np.float64),
-            ct.byref(residual_intercept),
+            ct.byref(intercept),
         )
 
         if return_code:  # pragma: no cover
@@ -335,7 +335,7 @@ class Native:
             )
             base_idx += count
 
-        return impurities, residual_intercept.value
+        return impurities, intercept.value
 
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(
