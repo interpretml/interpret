@@ -11,6 +11,9 @@
 
 static constexpr TestPriority k_filePriority = TestPriority::Purify;
 
+static constexpr double k_tolerancePurityDefault = 1e-6;
+static constexpr BoolEbm k_isRandomizedDefault = EBM_TRUE;
+
 TEST_CASE("Purify pure single dimensional 3, unweighted") {
    const IntEbm dimensionLengths[]{3};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
@@ -20,7 +23,14 @@ TEST_CASE("Purify pure single dimensional 3, unweighted") {
    double impurities[1]; // should be ignored
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -37,7 +47,14 @@ TEST_CASE("Purify impure single dimensional 3, unweighted") {
    double impurities[1]; // should be ignored
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(1.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -55,7 +72,14 @@ TEST_CASE("Purify pure 2x2, unweighted") {
    double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -76,7 +100,14 @@ TEST_CASE("Purify pure 2x2, weighted") {
    double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -98,7 +129,14 @@ TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
    double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(1.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -120,7 +158,14 @@ TEST_CASE("Purify pure 2x2 + intercept, weighted") {
    double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(1.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -142,7 +187,14 @@ TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
    double impuritiesExpected[]{1.0, -1.0, 1.0, -1.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -164,7 +216,14 @@ TEST_CASE("Purify pure 2x2 + impurities, weighted") {
    double impuritiesExpected[]{1.0, -1.0, 1.0, -1.0};
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         EBM_FALSE, // the impurities array isn't identifiable, so use a predictable ordering
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 == residualIntercept); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
@@ -183,7 +242,14 @@ TEST_CASE("Purify simple 3x4") {
    double impurities[7];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
@@ -196,7 +262,14 @@ TEST_CASE("Purify simple 3x4 with NaN") {
    double impurities[7];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
@@ -209,7 +282,14 @@ TEST_CASE("Purify simple 3x4 with -inf") {
    double impurities[7];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
@@ -222,7 +302,14 @@ TEST_CASE("Purify simple 3x4 with overflow") {
    double impurities[7];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
@@ -236,7 +323,14 @@ TEST_CASE("Purify simple 3x3x3") {
    double impurities[27];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
@@ -370,8 +464,14 @@ TEST_CASE("Purify simple 3x4x5") {
    double impurities[47];
    double residualIntercept;
 
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
 }
-

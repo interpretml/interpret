@@ -51,7 +51,7 @@ def _measure_impurity(scores, weights):
     return total_system
 
 
-def _purify_downstream(scores, weights):
+def _purify_downstream(scores, weights, tolerance, is_randomized):
     n_dim = scores.ndim
     if n_dim == 0:
         raise Exception("scores cannot have zero dimensions.")
@@ -73,7 +73,7 @@ def _purify_downstream(scores, weights):
             prev_level[dims] = None
 
             level_impurities, level_intercept = native.purify(
-                level_scores, level_weights
+                level_scores, level_weights, tolerance, is_randomized
             )
             intercept += level_intercept
             if dims != 0:
@@ -109,7 +109,9 @@ def _purify_downstream(scores, weights):
             continue
         level_scores, level_weights = items
 
-        _, level_intercept = native.purify(level_scores, level_weights)
+        _, level_intercept = native.purify(
+            level_scores, level_weights, tolerance, is_randomized
+        )
         intercept += level_intercept
 
         if dims != 0:
@@ -131,7 +133,7 @@ def _purify_downstream(scores, weights):
 #       - This would be especially important when we boost mains and interactions together at
 #         the same time because we don't want the model to force feed some mains that just happen
 #         to be included in an interaction.
-def purify(scores, weights):
+def purify(scores, weights, tolerance=1e-6, is_randomized=True):
     if scores.ndim != weights.ndim:
         if scores.ndim != weights.ndim + 1:
             raise Exception(
@@ -144,7 +146,7 @@ def purify(scores, weights):
         new_intercept = []
         for class_idx in range(scores.shape[-1]):
             tensor, impurities, intercept = _purify_downstream(
-                scores[..., class_idx], weights
+                scores[..., class_idx], weights, tolerance, is_randomized
             )
             new_tensor.append(tensor)
             new_intercept.append(intercept)
@@ -161,5 +163,7 @@ def purify(scores, weights):
         new_tensor = np.stack(new_tensor, axis=-1, dtype=float)
         new_intercept = np.array(new_intercept, float)
         return new_tensor, impurities, new_intercept
-    tensor, impurities, intercept = _purify_downstream(scores, weights)
+    tensor, impurities, intercept = _purify_downstream(
+        scores, weights, tolerance, is_randomized
+    )
     return tensor, impurities, np.array([intercept], float)

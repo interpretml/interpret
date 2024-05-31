@@ -2,6 +2,14 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
+// Purification algorithm from: https://arxiv.org/abs/1911.04974
+//@article {lengerich2019purifying,
+//  title={Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models},
+//  author={Lengerich, Benjamin and Tan, Sarah and Chang, Chun-Hao and Hooker, Giles and Caruana, Rich},
+//  journal={arXiv preprint arXiv:1911.04974},
+//  year={2019}
+//}
+
 #include "pch.hpp"
 
 #include <stdlib.h> // free
@@ -22,6 +30,7 @@ namespace DEFINED_ZONE_NAME {
 extern ErrorEbm PurifyInternal(const double tolerance,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
+      size_t* const aRandomize,
       const size_t* const aDimensionLengths,
       const double* const aWeights,
       double* const aScores,
@@ -35,6 +44,12 @@ extern ErrorEbm PurifyInternal(const double tolerance,
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScores);
+
+   static constexpr uint64_t seed = 9271049328402875910u;
+   RandomDeterministic rng;
+   if(nullptr != aRandomize) {
+      rng.Initialize(seed);
+   }
 
    if(nullptr != aImpurities) {
       memset(aImpurities, 0, cSurfaceBins * sizeof(*aImpurities));
@@ -183,10 +198,30 @@ extern ErrorEbm PurifyInternal(const double tolerance,
       impurityCur = 0.0;
       bRetry = false;
 
-      // TODO: do a card shuffle of the surface bin indexes to process them in random order
+      if(nullptr != aRandomize) {
+         size_t cRemaining = cSurfaceBins;
+         do {
+            --cRemaining;
+            aRandomize[cRemaining] = cRemaining;
+         } while(size_t{0} != cRemaining);
 
-      size_t iAllSurfaceBin = 0;
+         cRemaining = cSurfaceBins;
+         do {
+            const size_t iSwap = rng.NextFast(cRemaining);
+            const size_t iOriginal = aRandomize[iSwap];
+            --cRemaining;
+            aRandomize[iSwap] = aRandomize[cRemaining];
+            aRandomize[cRemaining] = iOriginal;
+         } while(size_t{0} != cRemaining);
+      }
+
+      size_t iRandom = 0;
       do {
+         size_t iAllSurfaceBin = iRandom;
+         if(nullptr != aRandomize) {
+            iAllSurfaceBin = aRandomize[iRandom];
+         }
+
          size_t cTensorIncrement = sizeof(double);
          size_t cSweepBins;
          size_t iDimensionSurfaceBin = iAllSurfaceBin;
@@ -329,8 +364,8 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                iTensorAdd += cTensorIncrement;
             } while(iTensorEnd != iTensorAdd);
          }
-         ++iAllSurfaceBin;
-      } while(cSurfaceBins != iAllSurfaceBin);
+         ++iRandom;
+      } while(cSurfaceBins != iRandom);
 
       if(impurityPrev <= impurityCur) {
          // To ensure that we exit even with floating point noise, exit when things do not improve.
@@ -344,6 +379,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
 
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
+      BoolEbm isRandomized,
       IntEbm countDimensions,
       const IntEbm* dimensionLengths,
       const double* weights,
@@ -353,6 +389,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    LOG_N(Trace_Info,
          "Entered Purify: "
          "tolerance=%le, "
+         "isRandomized=%s, "
          "countDimensions=%" IntEbmPrintf ", "
          "dimensionLengths=%p, "
          "weights=%p, "
@@ -360,6 +397,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          "impurities=%p, "
          "interceptOut=%p",
          tolerance,
+         ObtainTruth(isRandomized),
          countDimensions,
          static_cast<const void*>(dimensionLengths),
          static_cast<const void*>(weights),
@@ -464,8 +502,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       } while(cDimensions != iExclude);
    }
 
+   size_t* aRandomize = nullptr;
+
+   if(EBM_FALSE != isRandomized) {
+      if(IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)) {
+         LOG_0(Trace_Warning, "WARNING Purify IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)");
+         return Error_OutOfMemory;
+      }
+      aRandomize = static_cast<size_t *>(malloc(sizeof(*aRandomize) * cSurfaceBins));
+   }
+
    error = PurifyInternal(
-         tolerance, cTensorBins, cSurfaceBins, aDimensionLengths, weights, scores, impurities, interceptOut);
+         tolerance, cTensorBins, cSurfaceBins, aRandomize, aDimensionLengths, weights, scores, impurities, interceptOut);
+
+   free(aRandomize);
 
    LOG_0(Trace_Info, "Exited Purify");
 

@@ -281,11 +281,14 @@ class Native:
 
         return random_numbers
 
-    def purify(self, scores, weights, tolerance=1e-6):
+    def purify(self, scores, weights, tolerance, is_randomized):
         if np.isnan(tolerance) or tolerance < 0.0 or 1.0 <= tolerance:
             raise Exception(
                 f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
             )
+
+        if is_randomized is not True and is_randomized is not False:
+            raise Exception("is_randomized must be True or False.")
 
         shape = scores.shape
         if shape != weights.shape:
@@ -314,6 +317,7 @@ class Native:
 
         return_code = self._unsafe.Purify(
             tolerance,
+            is_randomized,
             len(shape),
             Native._make_pointer(shape_array, np.int64),
             Native._make_pointer(weights, np.float64, len(shape)),
@@ -909,6 +913,8 @@ class Native:
         self._unsafe.Purify.argtypes = [
             # double tolerance
             ct.c_double,
+            # int32_t isRandomized
+            ct.c_int32,
             # int64_t countDimensions
             ct.c_int64,
             # int64_t * dimensionLengths
