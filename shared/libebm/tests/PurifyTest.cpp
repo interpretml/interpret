@@ -11,6 +11,40 @@
 
 static constexpr TestPriority k_filePriority = TestPriority::Purify;
 
+TEST_CASE("Purify pure single dimensional 3, unweighted") {
+   const IntEbm dimensionLengths[]{3};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{2.0, 2.0, 2.0};
+   double scores[]{3.0, -1.5, -1.5};
+   double scoresExpected[]{3.0, -1.5, -1.5};
+   double impurities[1]; // should be ignored
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+}
+
+TEST_CASE("Purify impure single dimensional 3, unweighted") {
+   const IntEbm dimensionLengths[]{3};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{2.0, 2.0, 2.0};
+   double scores[]{4.0, 0.0, -1.0};
+   double scoresExpected[]{3.0, -1.0, -2.0};
+   double impurities[1]; // should be ignored
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(1.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+}
+
 TEST_CASE("Purify pure 2x2, unweighted") {
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);

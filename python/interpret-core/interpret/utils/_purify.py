@@ -52,10 +52,12 @@ def _measure_impurity(scores, weights):
 
 
 def _purify_downstream(scores, weights):
-    native = Native.get_native_singleton()
+    n_dim = scores.ndim
+    if n_dim == 0:
+        raise Exception("scores cannot have zero dimensions.")
 
     scores = scores.copy()
-    n_dim = scores.ndim
+    native = Native.get_native_singleton()
     impurities = []
     n_possible = (1 << n_dim) - 1
     prev_level = [None] * n_possible
@@ -107,9 +109,9 @@ def _purify_downstream(scores, weights):
             continue
         level_scores, level_weights = items
 
-        mean = np.average(level_scores, weights=level_weights)
-        intercept += mean
-        level_scores -= mean
+        _, level_intercept = native.purify(level_scores, level_weights)
+        intercept += level_intercept
+
         if dims != 0:
             key = tuple(
                 n_dim - 1 - i

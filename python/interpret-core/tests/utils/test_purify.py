@@ -10,6 +10,27 @@ from interpret.utils import purify
 from interpret.utils._purify import _measure_impurity
 
 
+def test_purify_regression_0():
+    shape = (5,0,5)
+
+    keys = set(
+        itertools.chain.from_iterable(
+            itertools.combinations(range(len(shape)), n) for n in range(1, len(shape))
+        )
+    )
+
+    scores = np.empty(shape, float)
+    weights = np.empty(shape, float)
+    purified, impurities, intercept = purify(scores, weights)
+
+    assert intercept == 0.0
+    assert purified.shape == shape
+    assert len(keys) == len(impurities)
+
+    for idxes, impurity in impurities:
+        assert idxes in keys
+        assert np.all(impurity == 0.0)
+
 def test_purify_regression_1():
     shape = (255,)
 

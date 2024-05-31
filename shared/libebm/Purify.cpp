@@ -32,7 +32,6 @@ extern ErrorEbm PurifyInternal(const double tolerance,
    EBM_ASSERT(0.0 <= tolerance);
    EBM_ASSERT(1 <= cTensorBins);
    // we ignore surfaces of length 1 and anything equal to the original tensor, so 2x2 is smallest
-   EBM_ASSERT(0 == cSurfaceBins || 4 <= cSurfaceBins);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScores);
@@ -166,6 +165,11 @@ extern ErrorEbm PurifyInternal(const double tolerance,
          *pScore2 = scoreNew;
          ++pScore2;
       } while(aScoresEnd != pScore2);
+   }
+
+   if(size_t{0} == cSurfaceBins) {
+      // this only happens for 1 dimensional inputs. Exit after finding the intercept
+      return Error_None;
    }
 
    // this prevents impurityCur from overflowing since the individual terms we add are not infinity
@@ -409,6 +413,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
 
    iDimension = 0;
    size_t cTensorBins = 1;
+   size_t aDimensionLengths[k_cDimensionsMax];
    do {
       const IntEbm dimensionsLength = dimensionLengths[iDimension];
       EBM_ASSERT(IntEbm{1} <= dimensionsLength);
@@ -418,6 +423,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          return Error_OutOfMemory;
       }
       const size_t cBins = static_cast<size_t>(dimensionsLength);
+      aDimensionLengths[iDimension] = cBins;
 
       if(IsMultiplyError(cTensorBins, cBins)) {
          // the scores tensor could not exist with this many tensor bins, so it is an error
@@ -445,17 +451,18 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       return Error_IllegalParamVal;
    }
 
-   size_t aDimensionLengths[k_cDimensionsMax];
    size_t cSurfaceBins = 0;
-   size_t iExclude = 0;
-   do {
-      const size_t cBins = static_cast<size_t>(dimensionLengths[iExclude]);
-      aDimensionLengths[iExclude] = cBins;
-      EBM_ASSERT(0 == cTensorBins % cBins);
-      const size_t cSurfaceBinsExclude = cTensorBins / cBins;
-      cSurfaceBins += cSurfaceBinsExclude;
-      ++iExclude;
-   } while(cDimensions != iExclude);
+   if(1 < cDimensions) {
+      // if there is only 1 dimension, then push all weight to the intercept and have no surface bins
+      size_t iExclude = 0;
+      do {
+         const size_t cBins = aDimensionLengths[iExclude];
+         EBM_ASSERT(0 == cTensorBins % cBins);
+         const size_t cSurfaceBinsExclude = cTensorBins / cBins;
+         cSurfaceBins += cSurfaceBinsExclude;
+         ++iExclude;
+      } while(cDimensions != iExclude);
+   }
 
    error = PurifyInternal(
          tolerance, cTensorBins, cSurfaceBins, aDimensionLengths, weights, scores, impurities, interceptOut);

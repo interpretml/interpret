@@ -293,26 +293,22 @@ class Native:
                 f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
             )
 
-        if len(shape) <= 1:
-            raise Exception(
-                "scores must be at least 2-dimensional to call the C purify."
-            )
+        impurity = None
+        if 2 <= len(shape):
+            n_tensor = 1
+            for n_bins in shape:
+                n_tensor *= n_bins
 
-        n_tensor = 1
-        for n_bins in shape:
-            n_tensor *= n_bins
+            if n_tensor == 0:
+                return [
+                    np.zeros(shape[:i] + shape[i + 1 :], float)
+                    for i in range(len(shape) - 1, -1, -1)
+                ], 0.0
 
-        if n_tensor == 0:
-            return [
-                np.zeros(shape[:i] + shape[i + 1 :], float)
-                for i in range(len(shape) - 1, -1, -1)
-            ], 0.0
-
-        n_unknowns = 0
-        for n_bins in shape:
-            n_unknowns += n_tensor // n_bins
-
-        impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
+            n_unknowns = 0
+            for n_bins in shape:
+                n_unknowns += n_tensor // n_bins
+            impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
         shape_array = np.array(tuple(reversed(shape)), dtype=np.int64, order="C")
         intercept = ct.c_double(np.nan)
 
@@ -322,7 +318,7 @@ class Native:
             Native._make_pointer(shape_array, np.int64),
             Native._make_pointer(weights, np.float64, len(shape)),
             Native._make_pointer(scores, np.float64, len(shape)),
-            Native._make_pointer(impurity, np.float64),
+            Native._make_pointer(impurity, np.float64, is_null_allowed=True),
             ct.byref(intercept),
         )
 
@@ -330,15 +326,16 @@ class Native:
             raise Native._get_native_exception(return_code, "Purify")
 
         impurities = []
-        base_idx = 0
-        for exclude_idx in range(len(shape) - 1, -1, -1):
-            count = n_tensor // shape[exclude_idx]
-            impure_shape = list(shape)
-            del impure_shape[exclude_idx]
-            impurities.append(
-                impurity[base_idx : base_idx + count].reshape(tuple(impure_shape))
-            )
-            base_idx += count
+        if 2 <= len(shape):
+            base_idx = 0
+            for exclude_idx in range(len(shape) - 1, -1, -1):
+                count = n_tensor // shape[exclude_idx]
+                impure_shape = list(shape)
+                del impure_shape[exclude_idx]
+                impurities.append(
+                    impurity[base_idx : base_idx + count].reshape(tuple(impure_shape))
+                )
+                base_idx += count
 
         return impurities, intercept.value
 
