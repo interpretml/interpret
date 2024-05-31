@@ -4,10 +4,208 @@
 
 #include "pch_test.hpp"
 
+#include <float.h>
+
 #include "libebm.h"
 #include "libebm_test.hpp"
 
 static constexpr TestPriority k_filePriority = TestPriority::Purify;
+
+TEST_CASE("Purify pure 2x2, unweighted") {
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{2.0, 2.0, 2.0, 2.0};
+   double scores[]{3.0, -3.0, -3.0, 3.0};
+   double scoresExpected[]{3.0, -3.0, -3.0, 3.0};
+   double impurities[4];
+   double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify pure 2x2, weighted") {
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{3.0, 2.0, 2.0, 3.0};
+   double scores[]{2.0, -3.0, -3.0, 2.0};
+   double scoresExpected[]{2.0, -3.0, -3.0, 2.0};
+   double impurities[4];
+   double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
+   // take the pure 2x2 case, and add an intercept of 1.0
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{2.0, 2.0, 2.0, 2.0};
+   double scores[]{3.0 + 1.0, -3.0 + 1.0, -3.0 + 1.0, 3.0 + 1.0};
+   double scoresExpected[]{3.0, -3.0, -3.0, 3.0};
+   double impurities[4];
+   double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(1.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify pure 2x2 + intercept, weighted") {
+   // take the pure 2x2 case (weighted), and add an intercept of 1.0
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{3.0, 2.0, 2.0, 3.0};
+   double scores[]{2.0 + 1.0, -3.0 + 1.0, -3.0 + 1.0, 2.0 + 1.0};
+   double scoresExpected[]{2.0, -3.0, -3.0, 2.0};
+   double impurities[4];
+   double impuritiesExpected[]{0.0, 0.0, 0.0, 0.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(1.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
+   // take the pure 2x2 case, and add an impure [[1.0, -1.0], [1.0, -1.0]]
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{2.0, 2.0, 2.0, 2.0};
+   double scores[]{3.0 + 1.0 + 1.0, -3.0 + 1.0 - 1.0, -3.0 - 1.0 + 1.0, 3.0 - 1.0 - 1.0};
+   double scoresExpected[]{3.0, -3.0, -3.0, 3.0};
+   double impurities[4];
+   double impuritiesExpected[]{1.0, -1.0, 1.0, -1.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify pure 2x2 + impurities, weighted") {
+   // take the pure 2x2 case, and add an impure [[1.0, -1.0], [1.0, -1.0]]
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   const double weights[]{3.0, 2.0, 2.0, 3.0};
+   double scores[]{2.0 + 1.0 + 1.0, -3.0 + 1.0 - 1.0, -3.0 - 1.0 + 1.0, 2.0 - 1.0 - 1.0};
+   double scoresExpected[]{2.0, -3.0, -3.0, 2.0};
+   double impurities[4];
+   double impuritiesExpected[]{1.0, -1.0, 1.0, -1.0};
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 == residualIntercept); // it started off pure
+   for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
+      CHECK_APPROX(scores[i], scoresExpected[i]);
+   }
+   for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
+      CHECK_APPROX(impurities[i], impuritiesExpected[i]);
+   }
+}
+
+TEST_CASE("Purify simple 3x4") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept);
+}
+
+TEST_CASE("Purify simple 3x4 with NaN") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, 4, NAN, 6, 7, 8, 9, 10, 11, 12};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept);
+}
+
+TEST_CASE("Purify simple 3x4 with -inf") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, 4, -INFINITY, 6, 7, 8, 9, 10, 11, 12};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept);
+}
+
+TEST_CASE("Purify simple 3x4 with overflow") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, DBL_MAX, DBL_MAX, DBL_MAX, 7, 8, 9, 10, 11, 12};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept);
+}
+
+TEST_CASE("Purify simple 3x3x3") {
+   const IntEbm dimensionLengths[]{3, 3, 3};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
+   const double weights[]{
+         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
+   double impurities[27];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept);
+}
 
 TEST_CASE("Purify simple 3x4x5") {
    const IntEbm dimensionLengths[]{3, 4, 5};
@@ -143,16 +341,3 @@ TEST_CASE("Purify simple 3x4x5") {
    CHECK(0.0 != residualIntercept);
 }
 
-TEST_CASE("Purify simple 3x3x3") {
-   const IntEbm dimensionLengths[]{3, 3, 3};
-   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
-   const double weights[]{
-         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
-   double impurities[27];
-   double residualIntercept;
-
-   ErrorEbm error = Purify(1e-6, cDimensions, dimensionLengths, weights, scores, impurities, &residualIntercept);
-   CHECK(Error_None == error);
-   CHECK(0.0 != residualIntercept);
-}
