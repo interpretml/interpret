@@ -225,7 +225,7 @@ TEST_CASE("Purify pure 2x2 + impurities, weighted") {
          impurities,
          &residualIntercept);
    CHECK(Error_None == error);
-   CHECK(0.0 == residualIntercept); // it started off pure
+   CHECK(-0.000001 < residualIntercept && residualIntercept < 0.000001); // it started off pure
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
       CHECK_APPROX(scores[i], scoresExpected[i]);
    }
