@@ -254,6 +254,45 @@ TEST_CASE("Purify simple 3x4") {
    CHECK(0.0 != residualIntercept);
 }
 
+TEST_CASE("Purify simple 3x4, infinite weights") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   const double weights[]{1, INFINITY, INFINITY, 4, INFINITY, 6, 7, INFINITY, 9, 10, INFINITY, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(0.0,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
+   CHECK(Error_None == error);
+   CHECK_APPROX(residualIntercept, 5.8);
+}
+
+TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, DBL_MAX, DBL_MAX, -DBL_MAX, 5, 6, -DBL_MAX, 8, 9, 10, 11, 12};
+   const double weights[]{1, INFINITY, INFINITY, INFINITY, 5, 6, INFINITY, 8, 9, 10, 11, 12};
+   double impurities[7];
+   double residualIntercept;
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept);
+   CHECK(Error_None == error);
+}
+
 TEST_CASE("Purify simple 3x4 with NaN") {
    const IntEbm dimensionLengths[]{3, 4};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
