@@ -2340,7 +2340,14 @@ class EBMModel(BaseEstimator):
             "allow_nan": True,
             "requires_y": True,
             "array_api_support": True,
-            "X_types": ["2darray", "string", "sparse", "categorical", "dict", "1dlabels"],
+            "X_types": [
+                "2darray",
+                "string",
+                "sparse",
+                "categorical",
+                "dict",
+                "1dlabels",
+            ],
         }
 
 

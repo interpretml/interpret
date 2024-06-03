@@ -311,9 +311,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       IntEbm countDimensions,
       const IntEbm* dimensionLengths,
       const double* weights,
-      double* scores,
-      double* impurities,
-      double* residualInterceptOut);
+      double* scoresInOut,
+      double* impuritiesOut,
+      double* interceptOut);
 
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(IntEbm countSamples, const double* featureVals);
 // CutUniform does not fail with valid inputs, so we return the number of cuts generated

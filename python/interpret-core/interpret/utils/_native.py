@@ -921,11 +921,11 @@ class Native:
             ct.c_void_p,
             # double * weights
             ct.c_void_p,
-            # double * scores
+            # double * scoresInOut
             ct.c_void_p,
-            # double * impurities
+            # double * impuritiesOut
             ct.c_void_p,
-            # double * residualInterceptOut
+            # double * interceptOut
             ct.POINTER(ct.c_double),
         ]
         self._unsafe.Purify.restype = ct.c_int32
