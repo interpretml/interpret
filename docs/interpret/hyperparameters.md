@@ -17,9 +17,9 @@ hyperparameters: [8, 16, 32, 64, 128, 256]
 guidance: For max_interaction_bins, more is not necessarily better, unlike with max_bins. A good value on many datasets seems to be 32, but it's worth trying higher and lower values.
 
 ## interactions
-default: 0.95
+default: 0.9
 
-hyperparameters: [0, 0.25, 0.5, 0.75, 0.95, 5, 10, 25, 50, 100, 250]
+hyperparameters: [0, 0.5, 0.75, 0.9, 0.95, 5, 10, 25, 50, 100, 250]
 
 guidance: Introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1.0 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.75 will automatically detect and use 75 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction, and 50 would create 50.
 

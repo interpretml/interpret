@@ -1035,7 +1035,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
             raise ValueError(msg)
-    elif _scipy_installed and isinstance(X_col, sp.sparse.spmatrix):
+    elif _scipy_installed and sp.sparse.issparse(X_col):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
             return _process_scipy_column(
                 X_col, categories, feature_type, min_unique_continuous
@@ -1204,7 +1204,7 @@ def unify_columns(
                 X_col, categories, feature_type, min_unique_continuous
             )
             yield feature_type_in, X_col, categories, bad
-    elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
+    elif _scipy_installed and sp.sparse.issparse(X):
         n_cols = X.shape[1]
 
         col_map = None
@@ -1283,7 +1283,7 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     elif _pandas_installed and isinstance(X, pd.Series):
         X_names = None
         n_cols = 1
-    elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
+    elif _scipy_installed and sp.sparse.issparse(X):
         X_names = None
         n_cols = X.shape[1]
     elif isinstance(X, dict):
@@ -1469,7 +1469,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, X.shape[0]
-    elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
+    elif _scipy_installed and sp.sparse.issparse(X):
         if n_samples is not None and n_samples != X.shape[0]:
             msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
             _log.error(msg)
@@ -1567,7 +1567,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
                 raise ValueError(msg)
-        elif _scipy_installed and isinstance(sample, sp.sparse.spmatrix):
+        elif _scipy_installed and sp.sparse.issparse(sample):
             if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True

@@ -2339,7 +2339,8 @@ class EBMModel(BaseEstimator):
         return {
             "allow_nan": True,
             "requires_y": True,
-            "X_types": ["2darray", "string", "sparse", "categorical"],
+            "array_api_support": True,
+            "X_types": ["2darray", "string", "sparse", "categorical", "dict", "1dlabels"],
         }
 
 
@@ -2368,7 +2369,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=32
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=0.95
+    interactions : int, float, or list of tuples of feature indices, default=0.9
 
         Interaction terms to be included in the model. Options are:
 
@@ -2554,7 +2555,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
+        ] = 0.9,
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
@@ -2689,7 +2690,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=32
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=0.95
+    interactions : int, float, or list of tuples of feature indices, default=0.9
 
         Interaction terms to be included in the model. Options are:
 
@@ -2875,7 +2876,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.95,
+        ] = 0.9,
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,

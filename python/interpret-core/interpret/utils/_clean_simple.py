@@ -87,7 +87,7 @@ def clean_dimensions(data, param_name):
             else:
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
                 data = data.astype(np.object_, copy=False).values
-        elif _scipy_installed and isinstance(data, sp.sparse.spmatrix):
+        elif _scipy_installed and sp.sparse.issparse(data):
             data = data.toarray()
         elif isinstance(data, list) or isinstance(data, tuple):
             data = np.array(data, np.object_)
