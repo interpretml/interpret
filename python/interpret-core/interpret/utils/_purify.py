@@ -51,8 +51,13 @@ def _measure_impurity(scores, weights):
     return total_system
 
 
-def _purify_downstream(scores, weights, tolerance, is_randomized):
-    n_dim = scores.ndim
+def purify(scores, weights, tolerance=1e-6, is_randomized=True):
+    if scores.ndim != weights.ndim and scores.ndim != weights.ndim + 1:
+        raise Exception(
+            "scores and weights do not match in terms of dimensionality."
+        )
+
+    n_dim = weights.ndim
     if n_dim == 0:
         raise Exception("scores cannot have zero dimensions.")
 
@@ -63,7 +68,7 @@ def _purify_downstream(scores, weights, tolerance, is_randomized):
     prev_level = [None] * n_possible
     prev_level[0] = [scores, weights]
     next_level = [None] * n_possible
-    intercept = 0.0
+    intercept = np.zeros(scores.shape[-1] if scores.ndim != weights.ndim else 1, np.float64)
     for n_dimensions in range(n_dim, 1, -1):
         for dims in range(n_possible):
             items = prev_level[dims]
@@ -133,37 +138,3 @@ def _purify_downstream(scores, weights, tolerance, is_randomized):
 #       - This would be especially important when we boost mains and interactions together at
 #         the same time because we don't want the model to force feed some mains that just happen
 #         to be included in an interaction.
-def purify(scores, weights, tolerance=1e-6, is_randomized=True):
-    if scores.ndim != weights.ndim:
-        if scores.ndim != weights.ndim + 1:
-            raise Exception(
-                "scores and weights do not match in terms of dimensionality."
-            )
-        # multiclass means the scores have the class scores in the last dimension
-
-        new_dims = None
-        new_tensor = []
-        new_intercept = []
-        for class_idx in range(scores.shape[-1]):
-            tensor, impurities, intercept = _purify_downstream(
-                scores[..., class_idx], weights, tolerance, is_randomized
-            )
-            new_tensor.append(tensor)
-            new_intercept.append(intercept)
-            if new_dims is None:
-                new_dims = [dims for dims, _ in impurities]
-                new_impurities = [[] for _ in impurities]
-            for i in range(len(impurities)):
-                new_impurities[i].append(impurities[i][1])
-
-        impurities = [
-            (key, np.stack(vals, axis=-1, dtype=float))
-            for key, vals in zip(new_dims, new_impurities)
-        ]
-        new_tensor = np.stack(new_tensor, axis=-1, dtype=float)
-        new_intercept = np.array(new_intercept, float)
-        return new_tensor, impurities, new_intercept
-    tensor, impurities, intercept = _purify_downstream(
-        scores, weights, tolerance, is_randomized
-    )
-    return tensor, impurities, np.array([intercept], float)

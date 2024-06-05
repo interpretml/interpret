@@ -290,58 +290,69 @@ class Native:
         if is_randomized is not True and is_randomized is not False:
             raise Exception("is_randomized must be True or False.")
 
-        shape = scores.shape
-        if shape != weights.shape:
+        shape_all = scores.shape
+        shape_classless = scores.shape
+        n_multi_scores = 1
+        if len(shape_all) == len(weights.shape) + 1:
+            # multiclass
+            n_multi_scores = shape_all[-1]
+            shape_classless = shape_all[:-1]
+
+        if shape_classless != weights.shape:
             raise Exception(
                 f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
             )
 
+        intercept = np.zeros(n_multi_scores, np.float64)
+
         impurity = None
-        if 2 <= len(shape):
+        if 2 <= len(shape_classless):
             n_tensor = 1
-            for n_bins in shape:
+            for n_bins in shape_classless:
                 n_tensor *= n_bins
 
             if n_tensor == 0:
                 return [
-                    np.zeros(shape[:i] + shape[i + 1 :], float)
-                    for i in range(len(shape) - 1, -1, -1)
-                ], 0.0
+                    np.zeros(shape_all[:i] + shape_all[i + 1 :], np.float64)
+                    for i in range(len(shape_classless) - 1, -1, -1)
+                ], intercept
 
-            n_unknowns = 0
-            for n_bins in shape:
-                n_unknowns += n_tensor // n_bins
-            impurity = np.empty(n_unknowns, dtype=np.float64, order="C")
-        shape_array = np.array(tuple(reversed(shape)), dtype=np.int64, order="C")
-        intercept = ct.c_double(np.nan)
+            n_impurity_scores = 0
+            for n_bins in shape_classless:
+                n_impurity_scores += n_tensor // n_bins
+            n_impurity_scores *= n_multi_scores
+            impurity = np.empty(n_impurity_scores, np.float64)
+        shape_array = np.array(tuple(reversed(shape_classless)), np.int64)
 
         return_code = self._unsafe.Purify(
             tolerance,
             is_randomized,
-            len(shape),
+            n_multi_scores,
+            len(shape_classless),
             Native._make_pointer(shape_array, np.int64),
-            Native._make_pointer(weights, np.float64, len(shape)),
-            Native._make_pointer(scores, np.float64, len(shape)),
+            Native._make_pointer(weights, np.float64, len(shape_classless)),
+            Native._make_pointer(scores, np.float64, len(shape_all)),
             Native._make_pointer(impurity, np.float64, is_null_allowed=True),
-            ct.byref(intercept),
+            Native._make_pointer(intercept, np.float64),
         )
 
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "Purify")
 
         impurities = []
-        if 2 <= len(shape):
+        if 2 <= len(shape_classless):
             base_idx = 0
-            for exclude_idx in range(len(shape) - 1, -1, -1):
-                count = n_tensor // shape[exclude_idx]
-                impure_shape = list(shape)
+            for exclude_idx in range(len(shape_classless) - 1, -1, -1):
+                count = n_tensor // shape_classless[exclude_idx]
+                count *= n_multi_scores
+                impure_shape = list(shape_all)
                 del impure_shape[exclude_idx]
                 impurities.append(
                     impurity[base_idx : base_idx + count].reshape(tuple(impure_shape))
                 )
                 base_idx += count
 
-        return impurities, intercept.value
+        return impurities, intercept
 
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(
@@ -915,6 +926,8 @@ class Native:
             ct.c_double,
             # int32_t isRandomized
             ct.c_int32,
+            # int64_t countMultiScores
+            ct.c_int64,
             # int64_t countDimensions
             ct.c_int64,
             # int64_t * dimensionLengths
@@ -926,7 +939,7 @@ class Native:
             # double * impuritiesOut
             ct.c_void_p,
             # double * interceptOut
-            ct.POINTER(ct.c_double),
+            ct.c_void_p,
         ]
         self._unsafe.Purify.restype = ct.c_int32
 

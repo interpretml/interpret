@@ -25,6 +25,7 @@ TEST_CASE("Purify pure single dimensional 3, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -49,6 +50,7 @@ TEST_CASE("Purify impure single dimensional 3, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -74,6 +76,7 @@ TEST_CASE("Purify pure 2x2, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -102,6 +105,7 @@ TEST_CASE("Purify pure 2x2, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -131,6 +135,7 @@ TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -160,6 +165,7 @@ TEST_CASE("Purify pure 2x2 + intercept, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -189,6 +195,7 @@ TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -218,6 +225,7 @@ TEST_CASE("Purify pure 2x2 + impurities, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          EBM_FALSE, // the impurities array isn't identifiable, so use a predictable ordering
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -244,6 +252,7 @@ TEST_CASE("Purify simple 3x4") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -264,6 +273,7 @@ TEST_CASE("Purify simple 3x4, infinite weights") {
 
    ErrorEbm error = Purify(0.0,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -284,6 +294,7 @@ TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -303,6 +314,7 @@ TEST_CASE("Purify simple 3x4 with NaN") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -323,6 +335,7 @@ TEST_CASE("Purify simple 3x4 with -inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -343,6 +356,7 @@ TEST_CASE("Purify simple 3x4 with overflow") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -364,6 +378,7 @@ TEST_CASE("Purify simple 3x3x3") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -505,6 +520,7 @@ TEST_CASE("Purify simple 3x4x5") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         IntEbm{1},
          cDimensions,
          dimensionLengths,
          weights,
@@ -513,4 +529,28 @@ TEST_CASE("Purify simple 3x4x5") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+}
+
+
+TEST_CASE("Purify simple multiclass 3x4") {
+   constexpr IntEbm cClasses = 2;
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept[0]);
+   CHECK(0.0 != residualIntercept[1]);
 }

@@ -308,6 +308,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       BoolEbm isRandomized,
+      IntEbm countMultiScores,
       IntEbm countDimensions,
       const IntEbm* dimensionLengths,
       const double* weights,
