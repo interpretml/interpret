@@ -11,6 +11,7 @@ EXPORTS
   BranchRNG
   GenerateSeed
   GenerateGaussianRandom
+  MeasureImpurity
   Purify
   GetHistogramCutCount
   CutUniform

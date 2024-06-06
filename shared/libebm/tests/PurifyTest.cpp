@@ -37,6 +37,9 @@ TEST_CASE("Purify pure single dimensional 3, unweighted") {
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
       CHECK_APPROX(scores[i], scoresExpected[i]);
    }
+
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify impure single dimensional 3, unweighted") {
@@ -62,6 +65,8 @@ TEST_CASE("Purify impure single dimensional 3, unweighted") {
    for(size_t i = 0; i < sizeof(scoresExpected) / sizeof(scoresExpected[0]); ++i) {
       CHECK_APPROX(scores[i], scoresExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2, unweighted") {
@@ -91,6 +96,8 @@ TEST_CASE("Purify pure 2x2, unweighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2, weighted") {
@@ -120,6 +127,8 @@ TEST_CASE("Purify pure 2x2, weighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
@@ -150,6 +159,8 @@ TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2 + intercept, weighted") {
@@ -180,6 +191,8 @@ TEST_CASE("Purify pure 2x2 + intercept, weighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
@@ -210,6 +223,8 @@ TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify pure 2x2 + impurities, weighted") {
@@ -240,6 +255,8 @@ TEST_CASE("Purify pure 2x2 + impurities, weighted") {
    for(size_t i = 0; i < sizeof(impuritiesExpected) / sizeof(impuritiesExpected[0]); ++i) {
       CHECK_APPROX(impurities[i], impuritiesExpected[i]);
    }
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4") {
@@ -261,6 +278,8 @@ TEST_CASE("Purify simple 3x4") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4, infinite weights") {
@@ -282,6 +301,8 @@ TEST_CASE("Purify simple 3x4, infinite weights") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK_APPROX(residualIntercept, 5.8);
+   //const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   //CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
@@ -302,6 +323,8 @@ TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
          impurities,
          &residualIntercept);
    CHECK(Error_None == error);
+   //const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   //CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4 with NaN") {
@@ -323,6 +346,8 @@ TEST_CASE("Purify simple 3x4 with NaN") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   //const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   //CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4 with -inf") {
@@ -344,6 +369,8 @@ TEST_CASE("Purify simple 3x4 with -inf") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   //const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   //CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4 with overflow") {
@@ -365,6 +392,8 @@ TEST_CASE("Purify simple 3x4 with overflow") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   //const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   //CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x3x3") {
@@ -387,6 +416,8 @@ TEST_CASE("Purify simple 3x3x3") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity && impurity < 0.001);
 }
 
 TEST_CASE("Purify simple 3x4x5") {
@@ -518,7 +549,7 @@ TEST_CASE("Purify simple 3x4x5") {
    double impurities[47];
    double residualIntercept;
 
-   ErrorEbm error = Purify(k_tolerancePurityDefault,
+   ErrorEbm error = Purify(0,
          k_isRandomizedDefault,
          IntEbm{1},
          cDimensions,
@@ -529,6 +560,8 @@ TEST_CASE("Purify simple 3x4x5") {
          &residualIntercept);
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept);
+   const double impurity = MeasureImpurity(1, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-1e-20 < impurity && impurity < 1e-20);
 }
 
 
@@ -553,4 +586,8 @@ TEST_CASE("Purify simple multiclass 3x4") {
    CHECK(Error_None == error);
    CHECK(0.0 != residualIntercept[0]);
    CHECK(0.0 != residualIntercept[1]);
+   const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity1 && impurity1 < 0.001);
 }

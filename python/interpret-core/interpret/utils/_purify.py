@@ -11,51 +11,14 @@ from ._native import Native
 
 
 def _measure_impurity(scores, weights):
-    if scores.ndim != weights.ndim:
-        if scores.ndim != weights.ndim + 1:
-            raise Exception(
-                "scores and weights do not match in terms of dimensionality."
-            )
-        # multiclass means the scores have the class scores in the last dimension
-        return sum(
-            _measure_impurity(scores[..., i], weights) for i in range(scores.shape[-1])
-        )
-
-    shape = scores.shape
-    exclude_idx = len(shape) - 1
-    tensor_index = [0] * len(shape)
-    total_system = 0.0
-    while True:
-        total_equation = 0.0
-        for bin_idx in range(shape[exclude_idx]):
-            tensor_index[exclude_idx] = bin_idx
-            tupple_index = tuple(tensor_index)
-            total_equation += weights[tupple_index] * scores[tupple_index]
-        tensor_index[exclude_idx] = 0
-        total_system += abs(total_equation)
-
-        dim_idx = len(shape) - 1
-        while True:
-            if dim_idx != exclude_idx:
-                bin_idx = tensor_index[dim_idx] + 1
-                tensor_index[dim_idx] = bin_idx
-                if bin_idx != shape[dim_idx]:
-                    break
-                tensor_index[dim_idx] = 0
-            if dim_idx == 0:
-                exclude_idx -= 1
-                break
-            dim_idx -= 1
-        if exclude_idx < 0:
-            break
-    return total_system
+    native = Native.get_native_singleton()
+    impurity = native.measure_impurity(scores, weights).sum()
+    return impurity
 
 
-def purify(scores, weights, tolerance=1e-6, is_randomized=True):
+def purify(scores, weights, tolerance=0.0, is_randomized=True):
     if scores.ndim != weights.ndim and scores.ndim != weights.ndim + 1:
-        raise Exception(
-            "scores and weights do not match in terms of dimensionality."
-        )
+        raise Exception("scores and weights do not match in terms of dimensionality.")
 
     n_dim = weights.ndim
     if n_dim == 0:
@@ -68,7 +31,9 @@ def purify(scores, weights, tolerance=1e-6, is_randomized=True):
     prev_level = [None] * n_possible
     prev_level[0] = [scores, weights]
     next_level = [None] * n_possible
-    intercept = np.zeros(scores.shape[-1] if scores.ndim != weights.ndim else 1, np.float64)
+    intercept = np.zeros(
+        scores.shape[-1] if scores.ndim != weights.ndim else 1, np.float64
+    )
     for n_dimensions in range(n_dim, 1, -1):
         for dims in range(n_possible):
             items = prev_level[dims]

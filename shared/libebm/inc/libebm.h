@@ -306,6 +306,12 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void* rng, SeedEbm*
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
       void* rng, double stddev, IntEbm count, double* randomOut);
 
+EBM_API_INCLUDE double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScores,
+      IntEbm indexMultiScore,
+      IntEbm countDimensions,
+      const IntEbm* dimensionLengths,
+      const double* weights,
+      const double* scores);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       BoolEbm isRandomized,
       IntEbm countMultiScores,

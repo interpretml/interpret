@@ -281,6 +281,46 @@ class Native:
 
         return random_numbers
 
+    def measure_impurity(self, scores, weights):
+        shape_all = scores.shape
+        shape_classless = scores.shape
+        n_multi_scores = 1
+        if len(shape_all) == len(weights.shape) + 1:
+            # multiclass
+            n_multi_scores = shape_all[-1]
+            shape_classless = shape_all[:-1]
+
+        if shape_classless != weights.shape:
+            raise Exception(
+                f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            )
+
+        if not scores.flags.c_contiguous:
+            scores = scores.copy()
+
+        if not weights.flags.c_contiguous:
+            weights = weights.copy()
+
+        shape_array = np.array(tuple(reversed(shape_classless)), np.int64)
+        impurities = np.empty(n_multi_scores, np.float64)
+
+        for i in range(n_multi_scores):
+            impurity = self._unsafe.MeasureImpurity(
+                n_multi_scores,
+                i,
+                len(shape_classless),
+                Native._make_pointer(shape_array, np.int64),
+                Native._make_pointer(weights, np.float64, len(shape_classless)),
+                Native._make_pointer(scores, np.float64, len(shape_all)),
+            )
+
+            if impurity < 0.0:  # pragma: no cover
+                raise Native._get_native_exception(int(impurity), "MeasureImpurity")
+
+            impurities[i] = impurity
+
+        return impurities
+
     def purify(self, scores, weights, tolerance, is_randomized):
         if np.isnan(tolerance) or tolerance < 0.0 or 1.0 <= tolerance:
             raise Exception(
@@ -920,6 +960,22 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
+
+        self._unsafe.MeasureImpurity.argtypes = [
+            # int64_t countMultiScores
+            ct.c_int64,
+            # int64_t indexMultiScore
+            ct.c_int64,
+            # int64_t countDimensions
+            ct.c_int64,
+            # int64_t * dimensionLengths
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * scores
+            ct.c_void_p,
+        ]
+        self._unsafe.MeasureImpurity.restype = ct.c_double
 
         self._unsafe.Purify.argtypes = [
             # double tolerance

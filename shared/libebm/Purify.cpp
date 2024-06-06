@@ -28,6 +28,195 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+EBM_API_BODY double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScores,
+      IntEbm indexMultiScore,
+      IntEbm countDimensions,
+      const IntEbm* dimensionLengths,
+      const double* weights,
+      const double* scores) {
+   LOG_N(Trace_Info,
+         "Entered MeasureImpurity: "
+         "countMultiScores=%" IntEbmPrintf ", "
+         "indexMultiScore=%" IntEbmPrintf ", "
+         "countDimensions=%" IntEbmPrintf ", "
+         "dimensionLengths=%p, "
+         "weights=%p, "
+         "scores=%p",
+         countMultiScores,
+         indexMultiScore,
+         countDimensions,
+         static_cast<const void*>(dimensionLengths),
+         static_cast<const void*>(weights),
+         static_cast<const void*>(scores));
+
+   if(countMultiScores <= IntEbm{0}) {
+      if(IntEbm{0} == countMultiScores) {
+         LOG_0(Trace_Info, "INFO MeasureImpurity zero scores");
+         return 0.0;
+      } else {
+         LOG_0(Trace_Error, "ERROR MeasureImpurity countMultiScores must be positive");
+         return double{Error_IllegalParamVal};
+      }
+   }
+   if(IsConvertError<size_t>(countMultiScores)) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity IsConvertError<size_t>(countMultiScores)");
+      return double{Error_IllegalParamVal};
+   }
+   const size_t cScores = static_cast<size_t>(countMultiScores);
+   if(IsMultiplyError(sizeof(double), cScores)) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity IsMultiplyError(sizeof(double), cScores)");
+      return double{Error_IllegalParamVal};
+   }
+
+   if(countMultiScores <= indexMultiScore) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity countMultiScores <= indexMultiScore");
+      return double{Error_IllegalParamVal};
+   }
+   if(indexMultiScore < IntEbm{0}) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity indexMultiScore must be positive");
+      return double{Error_IllegalParamVal};
+   }
+   const size_t iScore = static_cast<size_t>(indexMultiScore);
+
+   if(countDimensions <= IntEbm{0}) {
+      if(IntEbm{0} == countDimensions) {
+         LOG_0(Trace_Info, "INFO MeasureImpurity zero dimensions");
+         return 0.0;
+      } else {
+         LOG_0(Trace_Error, "ERROR MeasureImpurity countDimensions must be positive");
+         return double{Error_IllegalParamVal};
+      }
+   }
+   if(IntEbm{k_cDimensionsMax} < countDimensions) {
+      LOG_0(Trace_Warning, "WARNING MeasureImpurity countDimensions too large and would cause out of memory condition");
+      return double{Error_IllegalParamVal};
+   }
+   const size_t cDimensions = static_cast<size_t>(countDimensions);
+
+   if(nullptr == dimensionLengths) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity nullptr == dimensionLengths");
+      return double{Error_IllegalParamVal};
+   }
+
+   bool bZero = false;
+   size_t iDimension = 0;
+   do {
+      const IntEbm dimensionsLength = dimensionLengths[iDimension];
+      if(dimensionsLength <= IntEbm{0}) {
+         if(dimensionsLength < IntEbm{0}) {
+            LOG_0(Trace_Error, "ERROR MeasureImpurity dimensionsLength value cannot be negative");
+            return double{Error_IllegalParamVal};
+         }
+         bZero = true;
+      }
+      ++iDimension;
+   } while(cDimensions != iDimension);
+   if(bZero) {
+      LOG_0(Trace_Info, "INFO MeasureImpurity empty tensor");
+      return 0.0;
+   }
+
+   iDimension = 0;
+   size_t cTensorBins = 1;
+   size_t aDimensionLengths[k_cDimensionsMax];
+   do {
+      const IntEbm dimensionsLength = dimensionLengths[iDimension];
+      EBM_ASSERT(IntEbm{1} <= dimensionsLength);
+      if(IsConvertError<size_t>(dimensionsLength)) {
+         // the scores tensor could not exist with this many tensor bins, so it is an error
+         LOG_0(Trace_Error, "ERROR MeasureImpurity IsConvertError<size_t>(dimensionsLength)");
+         return double{Error_IllegalParamVal};
+      }
+      const size_t cBins = static_cast<size_t>(dimensionsLength);
+      aDimensionLengths[iDimension] = cBins;
+
+      if(IsMultiplyError(cTensorBins, cBins)) {
+         // the scores tensor could not exist with this many tensor bins, so it is an error
+         LOG_0(Trace_Error, "ERROR MeasureImpurity IsMultiplyError(cTensorBins, cBins)");
+         return double{Error_IllegalParamVal};
+      }
+      cTensorBins *= cBins;
+
+      ++iDimension;
+   } while(cDimensions != iDimension);
+   EBM_ASSERT(1 <= cTensorBins);
+
+   if(nullptr == weights) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity nullptr == weights");
+      return double{Error_IllegalParamVal};
+   }
+
+   if(nullptr == scores) {
+      LOG_0(Trace_Error, "ERROR MeasureImpurity nullptr == scoresInOut");
+      return double{Error_IllegalParamVal};
+   }
+
+   // shift to the proper class
+   scores = &scores[iScore];
+
+   const size_t* const pDimensionLengthsEnd = &aDimensionLengths[cDimensions];
+   const size_t* pDimensionLength = aDimensionLengths;
+   size_t cTensorWeightIncrement = sizeof(double);
+   double impurityTotal = 0.0;
+   size_t iTensorWeight = 0;
+   do {
+      const size_t cBins = *pDimensionLength;
+      size_t iSurfaceBin = 0;
+
+      const size_t cTensorScoreIncrement = cTensorWeightIncrement * cScores;
+      const size_t cBytesEnd = cTensorScoreIncrement * cBins;
+
+      EBM_ASSERT(0 == iTensorWeight);
+      do {
+      next:;
+         size_t iTensorWeightCur = iTensorWeight;
+         size_t iTensorScoreCur = iTensorWeight * cScores;
+         const size_t iTensorEnd = iTensorScoreCur + cBytesEnd;
+         double impurityCur = 0.0;
+         double weightTotal = 0.0;
+         do {
+            const double weight = *IndexByte(weights, iTensorWeightCur);
+            const double score = *IndexByte(scores, iTensorScoreCur);
+            weightTotal += weight;
+            impurityCur += weight * score;
+            iTensorWeightCur += cTensorWeightIncrement;
+            iTensorScoreCur += cTensorScoreIncrement;
+         } while(iTensorEnd != iTensorScoreCur);
+
+         impurityCur = impurityCur / weightTotal;
+         impurityTotal += std::abs(impurityCur);
+
+         ++iSurfaceBin;
+         size_t iSurfaceBinDeconstruct = iSurfaceBin;
+
+         size_t cSurfaceWeightIncrement = sizeof(double);
+         const size_t* pDimensionLengthInternal = aDimensionLengths;
+         do {
+            const size_t cBinsInternal = *pDimensionLengthInternal;
+            const size_t cSurfaceWeightIncrementNext = cSurfaceWeightIncrement * cBinsInternal;
+            if(pDimensionLengthInternal != pDimensionLength) {
+               iTensorWeight += cSurfaceWeightIncrement;
+               if(0 != iSurfaceBinDeconstruct % cBinsInternal) {
+                  goto next;
+               }
+               iSurfaceBinDeconstruct /= cBinsInternal;
+               iTensorWeight -= cSurfaceWeightIncrementNext;
+            }
+            cSurfaceWeightIncrement = cSurfaceWeightIncrementNext;
+            ++pDimensionLengthInternal;
+         } while(pDimensionLengthsEnd != pDimensionLengthInternal);
+      } while(false);
+      EBM_ASSERT(0 == iTensorWeight);
+
+      cTensorWeightIncrement *= cBins;
+
+      ++pDimensionLength;
+   } while(pDimensionLengthsEnd != pDimensionLength);
+
+   return impurityTotal;
+}
+
+
 template<size_t cCompilerScores>
 static ErrorEbm PurifyInternal(const double tolerance,
       const size_t cRuntimeScores,
@@ -653,7 +842,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
 
    if(IsMultiplyError(sizeof(*interceptOut), cScores)) {
       LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(sizeof(*interceptOut), cScores)");
-      return Error_OutOfMemory;
+      return Error_IllegalParamVal;
    }
 
    if(nullptr != interceptOut) {
@@ -707,7 +896,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       if(IsConvertError<size_t>(dimensionsLength)) {
          // the scores tensor could not exist with this many tensor bins, so it is an error
          LOG_0(Trace_Error, "ERROR Purify IsConvertError<size_t>(dimensionsLength)");
-         return Error_OutOfMemory;
+         return Error_IllegalParamVal;
       }
       const size_t cBins = static_cast<size_t>(dimensionsLength);
       aDimensionLengths[iDimension] = cBins;
@@ -715,7 +904,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       if(IsMultiplyError(cTensorBins, cBins)) {
          // the scores tensor could not exist with this many tensor bins, so it is an error
          LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(cTensorBins, cBins)");
-         return Error_OutOfMemory;
+         return Error_IllegalParamVal;
       }
       cTensorBins *= cBins;
 
@@ -753,7 +942,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
 
    if(IsMultiplyError(sizeof(double), cScores, cSurfaceBins)) {
       LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(sizeof(double), cScores, cSurfaceBins)");
-      return Error_OutOfMemory;
+      return Error_IllegalParamVal;
    }
 
    if(nullptr != impuritiesOut) {
@@ -767,6 +956,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          return Error_OutOfMemory;
       }
       aRandomize = static_cast<size_t *>(malloc(sizeof(*aRandomize) * cSurfaceBins));
+      if(nullptr == aRandomize) {
+         LOG_0(Trace_Warning, "WARNING Purify nullptr != aRandomize");
+         return Error_OutOfMemory;
+      }
    }
 
    const double* const pScoreEnd = &scoresInOut[cScores];
