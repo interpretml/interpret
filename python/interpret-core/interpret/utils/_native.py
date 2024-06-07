@@ -364,9 +364,12 @@ class Native:
             impurity = np.empty(n_impurity_scores, np.float64)
         shape_array = np.array(tuple(reversed(shape_classless)), np.int64)
 
+        is_multiclass_normalization = True
+
         return_code = self._unsafe.Purify(
             tolerance,
             is_randomized,
+            is_multiclass_normalization,
             n_multi_scores,
             len(shape_classless),
             Native._make_pointer(shape_array, np.int64),
@@ -981,6 +984,8 @@ class Native:
             # double tolerance
             ct.c_double,
             # int32_t isRandomized
+            ct.c_int32,
+            # int32_t isMulticlassNormalization
             ct.c_int32,
             # int64_t countMultiScores
             ct.c_int64,

@@ -13,6 +13,7 @@ static constexpr TestPriority k_filePriority = TestPriority::Purify;
 
 static constexpr double k_tolerancePurityDefault = 1e-6;
 static constexpr BoolEbm k_isRandomizedDefault = EBM_TRUE;
+static constexpr BoolEbm k_isMulticlassNormalization = EBM_TRUE;
 
 TEST_CASE("Purify pure single dimensional 3, unweighted") {
    const IntEbm dimensionLengths[]{3};
@@ -25,6 +26,7 @@ TEST_CASE("Purify pure single dimensional 3, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -53,6 +55,7 @@ TEST_CASE("Purify impure single dimensional 3, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -81,6 +84,7 @@ TEST_CASE("Purify pure 2x2, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -112,6 +116,7 @@ TEST_CASE("Purify pure 2x2, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -144,6 +149,7 @@ TEST_CASE("Purify pure 2x2 + incercept, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -176,6 +182,7 @@ TEST_CASE("Purify pure 2x2 + intercept, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -208,6 +215,7 @@ TEST_CASE("Purify pure 2x2 + impurities, unweighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -240,6 +248,7 @@ TEST_CASE("Purify pure 2x2 + impurities, weighted") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          EBM_FALSE, // the impurities array isn't identifiable, so use a predictable ordering
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -269,6 +278,7 @@ TEST_CASE("Purify simple 3x4") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -292,6 +302,7 @@ TEST_CASE("Purify simple 3x4, infinite weights") {
 
    ErrorEbm error = Purify(0.0,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -315,6 +326,7 @@ TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -337,6 +349,7 @@ TEST_CASE("Purify simple 3x4 with NaN") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -360,6 +373,7 @@ TEST_CASE("Purify simple 3x4 with -inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -383,6 +397,7 @@ TEST_CASE("Purify simple 3x4 with overflow") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -407,6 +422,7 @@ TEST_CASE("Purify simple 3x3x3") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -551,6 +567,7 @@ TEST_CASE("Purify simple 3x4x5") {
 
    ErrorEbm error = Purify(0,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          IntEbm{1},
          cDimensions,
          dimensionLengths,
@@ -576,6 +593,7 @@ TEST_CASE("Purify simple multiclass 3x4") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
+         k_isMulticlassNormalization,
          cClasses,
          cDimensions,
          dimensionLengths,

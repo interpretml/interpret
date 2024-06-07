@@ -314,6 +314,7 @@ EBM_API_INCLUDE double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiS
       const double* scores);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       BoolEbm isRandomized,
+      BoolEbm isMulticlassNormalization,
       IntEbm countMultiScores,
       IntEbm countDimensions,
       const IntEbm* dimensionLengths,
