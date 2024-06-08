@@ -250,18 +250,19 @@ static ErrorEbm PurifyInternal(const double tolerance,
    double* pImpurities = aImpuritiesOut;
    double* pIntercept = aInterceptOut;
 
+   const size_t iScoreEnd = sizeof(*pScores) * cScores * cTensorBins;
+   const double* const aWeightsEnd = &aWeights[cTensorBins];
    const double* const pScoreMulticlassEnd = &pScores[cScores];
    do {
       EBM_ASSERT(nullptr == pIntercept || 0.0 == *pIntercept);
 
-      const double* const aScoresEnd = pScores + cTensorBins * cScores;
       double impurityMax = 0.0;
       double impurityTotalAll = 0.0;
       double weightTotalAll = 0.0;
 
       double factorInterceptPre = 1.0;
 
-      const double* pScorePre = pScores;
+      size_t iScorePre = 0;
       const double* pWeightPre = aWeights;
       do {
          const double weight = *pWeightPre;
@@ -279,7 +280,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
                EBM_ASSERT(std::numeric_limits<double>::min() <= factorInterceptPre);
             skip_multiply_intercept:;
 
-               const double* pScoreInterior = pScorePre;
+               size_t iScoreInterior = iScorePre;
                const double* pWeightInterior = pWeightPre;
                impurityTotalAll = 0.0;
                cInfWeights = 0;
@@ -291,7 +292,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
                   }
                   EBM_ASSERT(!std::isnan(weightInterior)); // !(0.0 <= weightInterior) above checks for NaN
                   if(std::numeric_limits<double>::infinity() == weightInterior) {
-                     const double scoreInterior = *pScoreInterior;
+                     const double scoreInterior = *IndexByte(pScores, iScoreInterior);
                      if(!std::isnan(scoreInterior) && !std::isinf(scoreInterior)) {
                         ++cInfWeights;
                         impurityTotalAll += factorInterceptPre * scoreInterior;
@@ -301,25 +302,25 @@ static ErrorEbm PurifyInternal(const double tolerance,
                         EBM_ASSERT(!std::isnan(impurityTotalAll));
                      }
                   }
-                  pScoreInterior = IndexByte(pScoreInterior, cBytesScoreClasses);
+                  iScoreInterior += cBytesScoreClasses;
                   ++pWeightInterior;
-               } while(aScoresEnd != pScoreInterior);
+               } while(aWeightsEnd != pWeightInterior);
             } while(std::isinf(impurityTotalAll));
             // turn off early exiting based on tolerance
             impurityMax = 0.0;
             weightTotalAll = static_cast<double>(cInfWeights);
             goto pre_intercept;
          }
-         const double score = *pScorePre;
+         const double score = *IndexByte(pScores, iScorePre);
          if(!std::isnan(score) && !std::isinf(score)) {
             weightTotalAll += weight;
             const double impurity = weight * score;
             impurityTotalAll += impurity;
             impurityMax += std::abs(impurity);
          }
-         pScorePre = IndexByte(pScorePre, cBytesScoreClasses);
+         iScorePre += cBytesScoreClasses;
          ++pWeightPre;
-      } while(aScoresEnd != pScorePre);
+      } while(aWeightsEnd != pWeightPre);
       EBM_ASSERT(!std::isnan(weightTotalAll));
       EBM_ASSERT(0.0 <= weightTotalAll);
 
@@ -339,21 +340,21 @@ static ErrorEbm PurifyInternal(const double tolerance,
          EBM_ASSERT(std::numeric_limits<double>::min() <= factorInterceptPre);
          impurityTotalAll = 0.0;
          weightTotalAll = 0.0;
-         pScorePre = pScores;
+         iScorePre = 0;
          pWeightPre = aWeights;
          do {
             const double weight = *pWeightPre;
             EBM_ASSERT(!std::isnan(weight) && 0.0 <= weight && weight != std::numeric_limits<double>::infinity());
-            const double score = *pScorePre;
+            const double score = *IndexByte(pScores, iScorePre);
             if(!std::isnan(score) && !std::isinf(score)) {
                const double weightTimesFactor = factorInterceptPre * weight;
                weightTotalAll += weightTimesFactor;
                const double scoreTimesFactor = factorInterceptPre * score;
                impurityTotalAll += scoreTimesFactor * weightTimesFactor;
             }
-            pScorePre = IndexByte(pScorePre, cBytesScoreClasses);
+            iScorePre += cBytesScoreClasses;
             ++pWeightPre;
-         } while(aScoresEnd != pScorePre);
+         } while(aWeightsEnd != pWeightPre);
       }
       EBM_ASSERT(!std::isnan(weightTotalAll));
       EBM_ASSERT(0.0 <= weightTotalAll);
@@ -403,15 +404,16 @@ static ErrorEbm PurifyInternal(const double tolerance,
 
             *pIntercept = intercept;
             const double interceptNeg = -intercept;
-            double* pScore2 = pScores;
+            size_t iScore2 = 0;
             do {
                // this can create new +-inf values, but not NaN since we limited intercept to non-NaN, non-inf
+               double* const pScore2 = IndexByte(pScores, iScore2);
                const double scoreOld = *pScore2;
                const double scoreNew = scoreOld + interceptNeg;
                EBM_ASSERT(std::isnan(scoreOld) || !std::isnan(scoreNew));
                *pScore2 = scoreNew;
-               pScore2 = IndexByte(pScore2, cBytesScoreClasses);
-            } while(aScoresEnd != pScore2);
+               iScore2 += cBytesScoreClasses;
+            } while(iScoreEnd != iScore2);
          }
 
          if(size_t{0} != cSurfaceBins) {
@@ -651,7 +653,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
             if(nullptr != pIntercept) {
                double factorInterceptPost = 1.0;
 
-               const double* pScorePost = pScores;
+               size_t iScorePost = 0;
                const double* pWeightPost = aWeights;
                impurityTotalAll = 0.0;
                weightTotalAll = 0.0;
@@ -667,7 +669,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
                         EBM_ASSERT(std::numeric_limits<double>::min() <= factorInterceptPost);
                      skip_multiply_intercept2:;
 
-                        const double* pScoreInterior = pScorePost;
+                        size_t iScoreInterior = iScorePost;
                         const double* pWeightInterior = pWeightPost;
                         impurityTotalAll = 0.0;
                         cInfWeights = 0;
@@ -675,7 +677,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
                            const double weightInterior = *pWeightInterior;
                            EBM_ASSERT(!std::isnan(weightInterior) && 0.0 <= weightInterior);
                            if(std::numeric_limits<double>::infinity() == weightInterior) {
-                              const double scoreInterior = *pScoreInterior;
+                              const double scoreInterior = *IndexByte(pScores, iScoreInterior);
                               if(!std::isnan(scoreInterior) && !std::isinf(scoreInterior)) {
                                  ++cInfWeights;
                                  impurityTotalAll += factorInterceptPost * scoreInterior;
@@ -685,22 +687,22 @@ static ErrorEbm PurifyInternal(const double tolerance,
                                  EBM_ASSERT(!std::isnan(impurityTotalAll));
                               }
                            }
-                           pScoreInterior = IndexByte(pScoreInterior, cBytesScoreClasses);
+                           iScoreInterior += cBytesScoreClasses;
                            ++pWeightInterior;
-                        } while(aScoresEnd != pScoreInterior);
+                        } while(aWeightsEnd != pWeightInterior);
                      } while(std::isinf(impurityTotalAll));
                      weightTotalAll = static_cast<double>(cInfWeights);
                      goto post_intercept;
                   }
-                  const double score = *pScorePost;
+                  const double score = *IndexByte(pScores, iScorePost);
                   if(!std::isnan(score) && !std::isinf(score)) {
                      weightTotalAll += weight;
                      const double impurity = weight * score;
                      impurityTotalAll += impurity;
                   }
-                  pScorePost = IndexByte(pScorePost, cBytesScoreClasses);
+                  iScorePost += cBytesScoreClasses;
                   ++pWeightPost;
-               } while(aScoresEnd != pScorePost);
+               } while(aWeightsEnd != pWeightPost);
                EBM_ASSERT(!std::isnan(weightTotalAll));
                EBM_ASSERT(0.0 <= weightTotalAll);
 
@@ -713,22 +715,22 @@ static ErrorEbm PurifyInternal(const double tolerance,
                   EBM_ASSERT(std::numeric_limits<double>::min() <= factorInterceptPost);
                   impurityTotalAll = 0.0;
                   weightTotalAll = 0.0;
-                  pScorePost = pScores;
+                  iScorePost = 0;
                   pWeightPost = aWeights;
                   do {
                      const double weight = *pWeightPost;
                      EBM_ASSERT(
                            !std::isnan(weight) && 0.0 <= weight && weight != std::numeric_limits<double>::infinity());
-                     const double score = *pScorePost;
+                     const double score = *IndexByte(pScores, iScorePost);
                      if(!std::isnan(score) && !std::isinf(score)) {
                         const double weightTimesFactor = factorInterceptPost * weight;
                         weightTotalAll += weightTimesFactor;
                         const double scoreTimesFactor = factorInterceptPost * score;
                         impurityTotalAll += scoreTimesFactor * weightTimesFactor;
                      }
-                     pScorePost = IndexByte(pScorePost, cBytesScoreClasses);
+                     iScorePost += cBytesScoreClasses;
                      ++pWeightPost;
-                  } while(aScoresEnd != pScorePost);
+                  } while(aWeightsEnd != pWeightPost);
                }
                EBM_ASSERT(!std::isnan(weightTotalAll));
                EBM_ASSERT(0.0 <= weightTotalAll);
@@ -775,15 +777,16 @@ static ErrorEbm PurifyInternal(const double tolerance,
                   *pIntercept = newIntercept;
 
                   const double interceptChangeNeg = -interceptChange;
-                  double* pScore2 = pScores;
+                  size_t iScore2 = 0;
                   do {
                      // this can create new +-inf values, but not NaN since we limited intercept to non-NaN, non-inf
+                     double* const pScore2 = IndexByte(pScores, iScore2);
                      const double scoreOld = *pScore2;
                      const double scoreNew = scoreOld + interceptChangeNeg;
                      EBM_ASSERT(std::isnan(scoreOld) || !std::isnan(scoreNew));
                      *pScore2 = scoreNew;
-                     pScore2 = IndexByte(pScore2, cBytesScoreClasses);
-                  } while(aScoresEnd != pScore2);
+                     iScore2 += cBytesScoreClasses;
+                  } while(iScoreEnd != iScore2);
                }
             }
          }
