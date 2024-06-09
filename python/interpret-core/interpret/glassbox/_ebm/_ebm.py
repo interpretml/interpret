@@ -150,7 +150,7 @@ class EBMExplanation(FeatureValueExplanation):
                 "of samples in each bin, and by the sample weights (if any). The 15 most "
                 "important terms are shown."
             )
-            figure._interpret_help_link = "https://github.com/interpretml/interpret/blob/develop/examples/python/EBM_Feature_Importances.ipynb"
+            figure._interpret_help_link = "https://github.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/group-importances.ipynb"
 
             return figure
 
