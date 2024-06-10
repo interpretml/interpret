@@ -59,6 +59,10 @@ def test_purify_multiclass_1():
 
     refilled = purified + intercept
 
+    # make them identifiable for checking
+    refilled -= np.average(refilled, axis=-1, keepdims=True)
+    scores -= np.average(scores, axis=-1, keepdims=True)
+
     assert len(impurities) == 0
     assert np.allclose(refilled, scores)
 
@@ -124,6 +128,10 @@ def test_purify_multiclass_2():
             new_shape[i] = shape[i]
         refilled += impurity.reshape(new_shape)
 
+    # make them identifiable for checking
+    refilled -= np.average(refilled, axis=-1, keepdims=True)
+    scores -= np.average(scores, axis=-1, keepdims=True)
+
     assert np.allclose(refilled, scores)
 
 
@@ -188,6 +196,10 @@ def test_purify_multiclass_3():
             new_shape[i] = shape[i]
         refilled += impurity.reshape(new_shape)
 
+    # make them identifiable for checking
+    refilled -= np.average(refilled, axis=-1, keepdims=True)
+    scores -= np.average(scores, axis=-1, keepdims=True)
+
     assert np.allclose(refilled, scores)
 
 
@@ -251,5 +263,9 @@ def test_purify_multiclass_5():
         for i in idxes:
             new_shape[i] = shape[i]
         refilled += impurity.reshape(new_shape)
+
+    # make them identifiable for checking
+    refilled -= np.average(refilled, axis=-1, keepdims=True)
+    scores -= np.average(scores, axis=-1, keepdims=True)
 
     assert np.allclose(refilled, scores)

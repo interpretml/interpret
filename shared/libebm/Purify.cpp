@@ -803,8 +803,251 @@ static ErrorEbm PurifyInternal(const double tolerance,
    return Error_None;
 }
 
-template<size_t cCompilerScores>
-static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
+static void NormalizeClasses(const size_t cScores, double* const aScores) {
+   // TODO: this function propagates NaN values to all the other multiclass positions
+   // So, on any 2nd call we can use the knowlege that the 1st item in the array will be NaN if there are any NaN values
+
+   // Respond asymetrically to +inf and -inf.  -inf means
+   // that a particular class is impossible. +inf means that
+   // the class is always selected.  Having mutliple -inf
+   // values makes sense because then there are just a bunch
+   // of impossible classes, but if there are mutliple +inf values,
+   // it is ambiguous. In that case keep the multiple +inf values
+   // but when any value is +inf then all the rest can be shifted
+   // to -inf since they are impossible. NaN means a prediction
+   // is illegal, so propagate the NaN to all classes.
+   // Example responses look like:
+   // -1.1, -2.2,  NaN, +3.1 =>  NaN,  NaN,  NaN,  NaN
+   // -2.0, -3.0, -inf, +2.0 => -1.0, -2.0, -inf, +3.0
+   // -inf, -2.0, -inf, +3.0 => -inf, -2.5, -inf, +2.5
+   // -1.1, -2.2, +inf, +3.1 => -inf, -inf, +inf, -inf
+   // +inf, -2.2, +inf, +3.1 => +inf, -inf, +inf, -inf
+   // +inf, -2.2, -inf, +3.1 => +inf, -inf, -inf, -inf
+
+   // Do not overflow to +inf, or underflow to -inf:
+   //  low, high,  low,  0.0 =>  low, high,  low,  0.0
+   // high,  low, high,  0.0 => high,  low, high,  0.0
+   //
+   // This restriction means that in some rare cases the
+   // sum of the class scores will not be zero because
+   // we would otherwise generate a +-inf value.
+
+   EBM_ASSERT(1 <= cScores);
+   EBM_ASSERT(nullptr != aScores);
+   const double* const pScoresEnd = &aScores[cScores];
+   double* pScore;
+
+   double avg = 0.0;
+   double valMax = -std::numeric_limits<double>::infinity();
+   double valMin = std::numeric_limits<double>::infinity();
+   pScore = aScores;
+   do {
+      const double score = *pScore;
+      valMax = valMax < score ? score : valMax;
+      valMin = score < valMin ? score : valMin;
+      avg += score;
+      ++pScore;
+   } while(pScoresEnd != pScore);
+   EBM_ASSERT(!std::isnan(valMax));
+   EBM_ASSERT(!std::isnan(valMin));
+
+   const double normalize = 1.0 / static_cast<double>(cScores);
+   avg *= normalize;
+
+   if(std::isnan(avg)) {
+      if(-std::numeric_limits<double>::infinity() == valMax || std::numeric_limits<double>::infinity() == valMin) {
+         // valMax can only be -inf if all numbers are -inf or NaN
+         // valMin can only be +inf if all numbers are +inf or NaN
+         // But they summed to NaN, which all +-inf values cannot do, so there is a NaN
+         pScore = aScores;
+         do {
+            *pScore = std::numeric_limits<double>::quiet_NaN();
+            ++pScore;
+         } while(pScoresEnd != pScore);
+         return;
+      }
+      if(std::numeric_limits<double>::infinity() == valMax) {
+         pScore = aScores;
+         do {
+            double score = *pScore;
+            if(std::isnan(score)) {
+               pScore = aScores;
+               do {
+                  *pScore = std::numeric_limits<double>::quiet_NaN();
+                  ++pScore;
+               } while(pScoresEnd != pScore);
+               return;
+            }
+            score = std::numeric_limits<double>::infinity() == score ? score : -std::numeric_limits<double>::infinity();
+            *pScore = score;
+            ++pScore;
+         } while(pScoresEnd != pScore);
+         return;
+      }
+      if(-std::numeric_limits<double>::infinity() != valMin) {
+         EBM_ASSERT(!std::isinf(valMax));
+         EBM_ASSERT(!std::isinf(valMin));
+         // there are no +-inf values since neither valMax nor valMin have an infinity
+         // But, we summed to a NaN value. By summing numbers we could overflow to either +inf or -inf
+         // but then once there our sum cannot escale to create the opposite sign infinite value,
+         // so the only way that a NaN could exist is if there was alrady a NaN in the data.
+         pScore = aScores;
+         do {
+            *pScore = std::numeric_limits<double>::quiet_NaN();
+            ++pScore;
+         } while(pScoresEnd != pScore);
+         return;
+      }
+      // At this point there are no +inf values in the data, and we have at least one -inf value. Our sum was
+      // NaN, which could be caused by a NaN in the data or we could sum big numbres that overflowed to +inf and
+      // subsequently added a -inf value. We also know that there is at least one non-NaN, non-inf value in the
+      // data since valMax is set to such a number. We need to find the valMin in the non-inf data.
+
+      EBM_ASSERT(!std::isinf(valMax));
+      EBM_ASSERT(-std::numeric_limits<double>::infinity() == valMin);
+
+      avg = 0.0;
+      valMin = std::numeric_limits<double>::infinity();
+      size_t cNormal = 0;
+      pScore = aScores;
+      do {
+         const double score = *pScore;
+         EBM_ASSERT(std::numeric_limits<double>::infinity() != score);
+         if(-std::numeric_limits<double>::infinity() != score) {
+            if(std::isnan(score)) {
+               pScore = aScores;
+               do {
+                  *pScore = std::numeric_limits<double>::quiet_NaN();
+                  ++pScore;
+               } while(pScoresEnd != pScore);
+               return;
+            }
+            valMin = score < valMin ? score : valMin;
+            avg += score * normalize; // multiply by normalize to prevent overflowing
+            ++cNormal;
+         }
+         ++pScore;
+      } while(pScoresEnd != pScore);
+      EBM_ASSERT(1 <= cNormal); // since valMax is non-nan, non-inf
+
+      const double refactor = static_cast<double>(cScores) / static_cast<double>(cNormal);
+      avg *= refactor;
+
+      if(std::isinf(avg)) {
+         // avg cannot mathematically be larger than the largest number so if it overflowed it was
+         // due to floating point noise, so restore to non-inf
+         if(std::numeric_limits<double>::infinity() == avg) {
+            avg = std::numeric_limits<double>::max();
+         } else {
+            EBM_ASSERT(-std::numeric_limits<double>::infinity() == avg);
+            avg = -std::numeric_limits<double>::max();
+         }
+      }
+   } else if(std::isinf(avg)) {
+      if(-std::numeric_limits<double>::infinity() == valMax || std::numeric_limits<double>::infinity() == valMin) {
+         // valMax can only be -inf if all numbers are -inf or NaN
+         // valMin can only be +inf if all numbers are +inf or NaN
+         // But they summed to a non-NaN value, so there are no NaNs
+         // and all the values are already what they should be
+         return;
+      }
+      if(std::numeric_limits<double>::infinity() == valMax) {
+         pScore = aScores;
+         do {
+            double score = *pScore;
+            EBM_ASSERT(!std::isnan(score));
+            score = std::numeric_limits<double>::infinity() == score ? score : -std::numeric_limits<double>::infinity();
+            *pScore = score;
+            ++pScore;
+         } while(pScoresEnd != pScore);
+         return;
+      }
+      if(-std::numeric_limits<double>::infinity() == valMin) {
+         // valMax is known, but valMin was overwritten by -inf, so find it again
+         EBM_ASSERT(!std::isnan(valMax));
+         EBM_ASSERT(!std::isinf(valMax));
+         valMin = std::numeric_limits<double>::infinity();
+         avg = 0.0;
+         size_t cNormal = 0;
+         pScore = aScores;
+         do {
+            const double score = *pScore;
+            EBM_ASSERT(!std::isnan(score));
+            EBM_ASSERT(std::numeric_limits<double>::infinity() != score);
+            if(-std::numeric_limits<double>::infinity() != score) {
+               valMin = score < valMin ? score : valMin;
+               avg += score * normalize; // multiply by normalize to prevent overflowing
+               ++cNormal;
+            }
+            ++pScore;
+         } while(pScoresEnd != pScore);
+         EBM_ASSERT(1 <= cNormal); // since valMax is non-nan, non-inf
+
+         const double refactor = static_cast<double>(cScores) / static_cast<double>(cNormal);
+         avg *= refactor;
+      } else {
+         // there are no NaN, +-inf values, but there was an overflow, so prevent that
+         avg = 0.0;
+         pScore = aScores;
+         do {
+            const double score = *pScore;
+            avg += score * normalize; // multiply by normalize to prevent overflowing
+            ++pScore;
+         } while(pScoresEnd != pScore);
+      }
+      if(std::isinf(avg)) {
+         // avg cannot mathematically be larger than the largest number so if it overflowed it was
+         // due to floating point noise, so restore to non-inf
+         if(std::numeric_limits<double>::infinity() == avg) {
+            avg = std::numeric_limits<double>::max();
+         } else {
+            EBM_ASSERT(-std::numeric_limits<double>::infinity() == avg);
+            avg = -std::numeric_limits<double>::max();
+         }
+      }
+   }
+
+   EBM_ASSERT(!std::isnan(valMax));
+   EBM_ASSERT(!std::isinf(valMax));
+   EBM_ASSERT(!std::isnan(valMin));
+   EBM_ASSERT(!std::isinf(valMin));
+   EBM_ASSERT(!std::isnan(avg));
+   EBM_ASSERT(!std::isinf(avg));
+
+   double shift = -avg;
+   if(0.0 <= shift) {
+      if(std::numeric_limits<double>::max() - shift < valMax) {
+         shift = std::numeric_limits<double>::max() - valMax;
+      }
+   } else {
+      if(valMin < -std::numeric_limits<double>::max() - shift) {
+         shift = -std::numeric_limits<double>::max() - valMin;
+      }
+   }
+
+   pScore = aScores;
+   do {
+      double score = *pScore;
+      EBM_ASSERT(!std::isnan(score));
+      EBM_ASSERT(std::numeric_limits<double>::infinity() != score);
+      if(-std::numeric_limits<double>::infinity() != score) {
+         score += shift;
+         if(std::isinf(score)) {
+            // we limited shift to not overflow, so this overflow was due to floating point numeracy
+            if(std::numeric_limits<double>::infinity() == score) {
+               score = std::numeric_limits<double>::max();
+            } else {
+               EBM_ASSERT(-std::numeric_limits<double>::infinity() == score);
+               score = -std::numeric_limits<double>::max();
+            }
+         }
+         *pScore = score;
+      }
+      ++pScore;
+   } while(pScoresEnd != pScore);
+}
+
+static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
       size_t* const aRandomize,
@@ -813,14 +1056,12 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
       double* const aScoresInOut,
       double* const aImpuritiesOut,
       double* const aInterceptOut) {
-   EBM_ASSERT(1 <= cRuntimeScores);
-   EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == cRuntimeScores);
+   EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cTensorBins);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScoresInOut);
 
-   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
    const size_t cBytesScoreClasses = sizeof(double) * cScores;
 
    if(nullptr != aImpuritiesOut) {
@@ -830,10 +1071,18 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
    const size_t iScoresEnd = cBytesScoreClasses * cTensorBins;
    const double* const pWeightsEnd = &aWeights[cTensorBins];
    const double* const pScoreMulticlassEnd = &aScoresInOut[cScores];
+   const double* const pScoreEnd = &aScoresInOut[cScores * cTensorBins];
 
    double* pScores;
    double* pImpurities;
    double* pIntercept;
+
+   pScores = aScoresInOut;
+   do {
+      NormalizeClasses(cScores, pScores);
+      pScores += cScores;
+   } while(pScoreEnd != pScores);
+
    if(nullptr != aInterceptOut) {
       pScores = aScoresInOut;
       pImpurities = aImpuritiesOut;
@@ -975,6 +1224,12 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
             ++pIntercept;
          }
       } while(pScoreMulticlassEnd != pScores);
+
+      pScores = aScoresInOut;
+      do {
+         NormalizeClasses(cScores, pScores);
+         pScores += cScores;
+      } while(pScoreEnd != pScores);
    }
 
    if(size_t{0} != cSurfaceBins) {
@@ -1210,6 +1465,13 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
                      ++pImpurities;
                   }
                } while(pScoreMulticlassEnd != pScores);
+
+               size_t iTensorScoreNorm = iTensorScore;
+               do {
+                  double* const pScore = IndexByte(aScoresInOut, iTensorScoreNorm);
+                  NormalizeClasses(cScores, pScore);
+                  iTensorScoreNorm += cTensorScoreIncrement;
+               } while(iTensorEnd != iTensorScoreNorm);
             }
             ++iRandom;
          } while(cSurfaceBins != iRandom);
@@ -1362,6 +1624,12 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cRuntimeScores,
                ++pIntercept;
             }
          } while(pScoreMulticlassEnd != pScores);
+
+         pScores = aScoresInOut;
+         do {
+            NormalizeClasses(cScores, pScores);
+            pScores += cScores;
+         } while(pScoreEnd != pScores);
       }
    }
    return Error_None;
@@ -1536,7 +1804,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    }
 
    if(1 != cScores && EBM_FALSE != isMulticlassNormalization) {
-      error = PurifyNormalizedMulticlass<k_dynamicScores>(cScores,
+      error = PurifyNormalizedMulticlass(cScores,
             cTensorBins,
             cSurfaceBins,
             aRandomize,
