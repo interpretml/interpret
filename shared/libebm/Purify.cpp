@@ -434,6 +434,9 @@ static ErrorEbm PurifyInternal(const double tolerance,
                double impurityCur = std::numeric_limits<double>::infinity();
                bool bRetry;
                do {
+                  // if any non-infinite value was flipped to an infinite value, it could increase the impurity
+                  // so we set impurityCur to NaN. We need to reset it to +inf to avoid stopping early
+                  impurityCur = std::isnan(impurityCur) ? std::numeric_limits<double>::infinity() : impurityCur;
                   impurityPrev = impurityCur;
                   impurityCur = 0.0;
                   bRetry = false;
@@ -595,6 +598,7 @@ static ErrorEbm PurifyInternal(const double tolerance,
 
                         if(std::numeric_limits<double>::min() <= weightTotal) {
                            impurity = impurity / weightTotal / factor;
+                           EBM_ASSERT(!std::isnan(impurity));
                            if(std::isinf(impurity)) {
                               // impurity is the weighted average of numbers, so it cannot mathematically
                               // be larger than the largest number, and we checked that the sum of those numbers
@@ -610,45 +614,65 @@ static ErrorEbm PurifyInternal(const double tolerance,
                               }
                            }
 
-                           const double absImpurity = std::abs(impurity);
-                           bRetry |= impurityMax < absImpurity;
-                           impurityCur += absImpurity * impuritySumOverflowPreventer;
-
                            if(nullptr != pImpurities) {
                               double* const pImpurity = IndexByte(pImpurities, iSurfaceBin * cBytesScoreClasses);
-                              double newImpurity = *pImpurity + impurity;
+                              const double oldImpurity = *pImpurity;
+                              // we prevent impurities from reaching NaN or an infinity
+                              EBM_ASSERT(!std::isnan(oldImpurity));
+                              EBM_ASSERT(!std::isinf(oldImpurity));
+                              double newImpurity = oldImpurity + impurity;
                               if(std::isinf(newImpurity)) {
-                                 // It should be pretty difficult, or perhaps even impossible, for the impurity,
-                                 // which starts from 0.0 to reach +-infinity since it comes from the weighted averaged
-                                 // values in the original tensor. Allowing the impurity to reach +-inf creates more
-                                 // problems I think than limiting it to the maximum non-inf float value. Even if we do
-                                 // get an overflow to +inf, I think it should be pretty close to the max float.
-                                 // Checking here allows us to give a guarantee that the impurities are normal floats.
+                                 // There should be a solution that allows any tensor to be purified
+                                 // without overflowing any of the impurity cells, however due to the
+                                 // random ordering that we process cells, they could temporarily overflow
+                                 // to +-inf, so limit the change to something that doesn't overflow to
+                                 // allow the weight to be transfered elsewhere.
 
                                  if(std::numeric_limits<double>::infinity() == newImpurity) {
+                                    EBM_ASSERT(0.0 < oldImpurity);
+                                    impurity = std::numeric_limits<double>::max() - oldImpurity;
                                     newImpurity = std::numeric_limits<double>::max();
                                  } else {
                                     EBM_ASSERT(-std::numeric_limits<double>::infinity() == newImpurity);
+                                    EBM_ASSERT(oldImpurity < 0.0);
+                                    impurity = -std::numeric_limits<double>::max() - oldImpurity;
                                     newImpurity = -std::numeric_limits<double>::max();
                                  }
                               }
                               *pImpurity = newImpurity;
                            }
+
+                           const double absImpurity = std::abs(impurity);
+                           bRetry |= impurityMax < absImpurity;
+                           impurityCur += absImpurity * impuritySumOverflowPreventer;
+
                            impurity = -impurity;
 
                            size_t iScoreUpdate = iTensorScore;
                            do {
                               // this can create new +-inf values in the tensor
                               double* const pScoreUpdate = IndexByte(pScores, iScoreUpdate);
-                              double score = *pScoreUpdate + impurity;
-                              *pScoreUpdate = score;
+                              double score = *pScoreUpdate;
+                              if(!std::isinf(score)) {
+                                 score += impurity;
+                                 if(std::isinf(score)) {
+                                    // we transitioned a score to an infinity. This can dramatically increase the
+                                    // impurityCur value of the next iteration since we might have balanced a big
+                                    // value against an opposite sign big value and now with one of them as infinite
+                                    // the other has no counterbalance, so we need to reset our impurity checker
+                                    impurityCur = std::numeric_limits<double>::quiet_NaN();
+                                 }
+                                 *pScoreUpdate = score;
+                              }
                               iScoreUpdate += cTensorScoreIncrement;
                            } while(iTensorEnd != iScoreUpdate);
                         }
                      }
                      ++iRandom;
                   } while(cSurfaceBins != iRandom);
-               } while(bRetry && impurityCur < impurityPrev);
+                  // this loops on std::isnan(impurityCur)
+               } while(bRetry && !(impurityPrev <= impurityCur));
+               EBM_ASSERT(!std::isnan(impurityCur));
 
                if(nullptr != pIntercept) {
                   double factorPost = 1.0;
@@ -1248,6 +1272,9 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
       double impurityPrev;
       double impurityCur = std::numeric_limits<double>::infinity();
       do {
+         // if any non-infinite value was flipped to an infinite value, it could increase the impurity
+         // so we set impurityCur to NaN. We need to reset it to +inf to avoid stopping early
+         impurityCur = std::isnan(impurityCur) ? std::numeric_limits<double>::infinity() : impurityCur;
          impurityPrev = impurityCur;
          impurityCur = 0.0;
 
@@ -1410,6 +1437,7 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
 
                   if(std::numeric_limits<double>::min() <= weightTotal) {
                      impurity = impurity / weightTotal / factor;
+                     EBM_ASSERT(!std::isnan(impurity));
                      if(std::isinf(impurity)) {
                         // impurity is the weighted average of numbers, so it cannot mathematically
                         // be larger than the largest number, and we checked that the sum of those numbers
@@ -1425,37 +1453,55 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
                         }
                      }
 
-                     const double absImpurity = std::abs(impurity);
-                     impurityCur += absImpurity * impuritySumOverflowPreventer;
-
                      if(nullptr != pImpurities) {
                         double* const pImpurity = IndexByte(pImpurities, iSurfaceBin * cBytesScoreClasses);
-                        double newImpurity = *pImpurity + impurity;
+                        const double oldImpurity = *pImpurity;
+                        // we prevent impurities from reaching NaN or an infinity
+                        EBM_ASSERT(!std::isnan(oldImpurity));
+                        EBM_ASSERT(!std::isinf(oldImpurity));
+                        double newImpurity = oldImpurity + impurity;
                         if(std::isinf(newImpurity)) {
-                           // It should be pretty difficult, or perhaps even impossible, for the impurity,
-                           // which starts from 0.0 to reach +-infinity since it comes from the weighted averaged
-                           // values in the original tensor. Allowing the impurity to reach +-inf creates more
-                           // problems I think than limiting it to the maximum non-inf float value. Even if we do
-                           // get an overflow to +inf, I think it should be pretty close to the max float.
-                           // Checking here allows us to give a guarantee that the impurities are normal floats.
+                           // There should be a solution that allows any tensor to be purified
+                           // without overflowing any of the impurity cells, however due to the
+                           // random ordering that we process cells, they could temporarily overflow
+                           // to +-inf, so limit the change to something that doesn't overflow to
+                           // allow the weight to be transfered elsewhere.
 
                            if(std::numeric_limits<double>::infinity() == newImpurity) {
+                              EBM_ASSERT(0.0 < oldImpurity);
+                              impurity = std::numeric_limits<double>::max() - oldImpurity;
                               newImpurity = std::numeric_limits<double>::max();
                            } else {
                               EBM_ASSERT(-std::numeric_limits<double>::infinity() == newImpurity);
+                              EBM_ASSERT(oldImpurity < 0.0);
+                              impurity = -std::numeric_limits<double>::max() - oldImpurity;
                               newImpurity = -std::numeric_limits<double>::max();
                            }
                         }
                         *pImpurity = newImpurity;
                      }
+
+                     const double absImpurity = std::abs(impurity);
+                     impurityCur += absImpurity * impuritySumOverflowPreventer;
+
                      impurity = -impurity;
 
                      size_t iScoreUpdate = iTensorScore;
                      do {
                         // this can create new +-inf values in the tensor
                         double* const pScoreUpdate = IndexByte(pScores, iScoreUpdate);
-                        double score = *pScoreUpdate + impurity;
-                        *pScoreUpdate = score;
+                        double score = *pScoreUpdate;
+                        if(!std::isinf(score)) {
+                           score += impurity;
+                           if(std::isinf(score)) {
+                              // we transitioned a score to an infinity. This can dramatically increase the
+                              // impurityCur value of the next iteration since we might have balanced a big
+                              // value against an opposite sign big value and now with one of them as infinite
+                              // the other has no counterbalance, so we need to reset our impurity checker
+                              impurityCur = std::numeric_limits<double>::quiet_NaN();
+                           }
+                           *pScoreUpdate = score;
+                        }
                         iScoreUpdate += cTensorScoreIncrement;
                      } while(iTensorEnd != iScoreUpdate);
                   }
@@ -1475,7 +1521,9 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
             }
             ++iRandom;
          } while(cSurfaceBins != iRandom);
-      } while(impurityCur < impurityPrev);
+         // this loops on std::isnan(impurityCur)
+      } while(!(impurityPrev <= impurityCur));
+      EBM_ASSERT(!std::isnan(impurityCur));
 
       if(nullptr != aInterceptOut) {
          pScores = aScoresInOut;
@@ -1802,6 +1850,31 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          return Error_OutOfMemory;
       }
    }
+
+   // NOTES about generating new infinities during purification:
+   // - We can't prevent new infinities from being created in the purified output. An easy example is
+   //   [-DBL_MAX, -DBL_MAX, DBL_MAX] which purifies to [2/3 * -DBL_MAX, 2/3 * -DBL_MAX, 4/3 * DBL_MAX]
+   // - On the first purification, we cannot overflow the intercept or purification surface cell since we're taking
+   //   a weighted average the average cannot be larger than any value
+   // - On subsequent purification steps, we can overflow the intercept or purification surface cell, however I 
+   //   think if the algorithm was allowed to converge and there were no floating point noise issues the
+   //   purified cell and/or intercept would not overflow to an infinity
+   // - we can prevent the impurities and/or intercept from overflowing by limiting the amount of purification in
+   //   the step to a value that does not overflow and I think the algorithm is still guaranteed to make forward 
+   //   progress
+   // - eventually though, even the impurities can get infinities since we later purified the impurities until we reach
+   //   the intercept, so the only guarantee we could get in theory was that we don't overflow the intercept
+   // - But even for the intercept, since there is an existing intercept we can't guarantee that the purified intercept
+   //   will not overflow to an infinity, so there can be no guarantees in the EBM as a whole
+   // 
+   // We do take the following precautions:
+   // - when we move impurity from the original tensor to the impurity tensor, we limit the purification at that step
+   //   to a number that will not overflow the impurity cell
+   // - when we normalize multiclass scores, we have a rule that we never adjust them to overflow a value that was not
+   //   already an infinity. To do this we loose the guarantee that the numbers sum to zero within a bin
+   // - we DO NOT guarantee that the intercept avoids overflowing since we add to the intercept at the start and end,
+   //   but the caller can get this guarantee by passing NULL for the intercept pointer since we guarantee that the
+   //   impurities are non-overflowing
 
    if(1 != cScores && EBM_FALSE != isMulticlassNormalization) {
       error = PurifyNormalizedMulticlass(cScores,
