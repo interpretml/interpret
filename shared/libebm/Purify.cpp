@@ -217,11 +217,11 @@ EBM_API_BODY double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScor
 }
 
 
-static ErrorEbm PurifyInternal(RandomDeterministic &rng,
-      const double tolerance,
+static ErrorEbm PurifyInternal(const double tolerance,
       const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
+      RandomDeterministic* const pRng,
       size_t* const aRandomize,
       const size_t* const aDimensionLengths,
       const double* const aWeights,
@@ -233,6 +233,7 @@ static ErrorEbm PurifyInternal(RandomDeterministic &rng,
    EBM_ASSERT(0.0 <= tolerance);
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cTensorBins);
+   EBM_ASSERT(nullptr != pRng || aRandomize == nullptr);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScoresInOut);
@@ -448,7 +449,7 @@ static ErrorEbm PurifyInternal(RandomDeterministic &rng,
 
                      cRemaining = cSurfaceBins;
                      do {
-                        const size_t iSwap = rng.NextFast(cRemaining);
+                        const size_t iSwap = pRng->NextFast(cRemaining);
                         const size_t iOriginal = aRandomize[iSwap];
                         --cRemaining;
                         aRandomize[iSwap] = aRandomize[cRemaining];
@@ -1069,10 +1070,11 @@ static void NormalizeClasses(const size_t cScores, double* const aScores) {
    } while(pScoresEnd != pScore);
 }
 
-static ErrorEbm PurifyNormalizedMulticlass(RandomDeterministic &rng, 
+static ErrorEbm PurifyNormalizedMulticlass(
       const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
+      RandomDeterministic * const pRng,
       size_t* const aRandomize,
       const size_t* const aDimensionLengths,
       const double* const aWeights,
@@ -1081,6 +1083,7 @@ static ErrorEbm PurifyNormalizedMulticlass(RandomDeterministic &rng,
       double* const aInterceptOut) {
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cTensorBins);
+   EBM_ASSERT(nullptr != pRng || aRandomize == nullptr);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScoresInOut);
@@ -1280,7 +1283,7 @@ static ErrorEbm PurifyNormalizedMulticlass(RandomDeterministic &rng,
 
             cRemaining = cSurfaceBins;
             do {
-               const size_t iSwap = rng.NextFast(cRemaining);
+               const size_t iSwap = pRng->NextFast(cRemaining);
                const size_t iOriginal = aRandomize[iSwap];
                --cRemaining;
                aRandomize[iSwap] = aRandomize[cRemaining];
@@ -1873,10 +1876,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    //   impurities are non-overflowing
 
    if(1 != cScores && EBM_FALSE != isMulticlassNormalization) {
-      error = PurifyNormalizedMulticlass(rng,
-            cScores,
+      error = PurifyNormalizedMulticlass(cScores,
             cTensorBins,
             cSurfaceBins,
+            &rng,
             aRandomize,
             aDimensionLengths,
             weights,
@@ -1884,11 +1887,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
             impuritiesOut,
             interceptOut);
    } else {
-      error = PurifyInternal(rng,
-            tolerance,
+      error = PurifyInternal(tolerance,
             cScores,
             cTensorBins,
             cSurfaceBins,
+            &rng,
             aRandomize,
             aDimensionLengths,
             weights,
