@@ -217,9 +217,9 @@ EBM_API_BODY double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScor
 }
 
 
-template<size_t cCompilerScores>
-static ErrorEbm PurifyInternal(const double tolerance,
-      const size_t cRuntimeScores,
+static ErrorEbm PurifyInternal(RandomDeterministic &rng,
+      const double tolerance,
+      const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
       size_t* const aRandomize,
@@ -231,14 +231,12 @@ static ErrorEbm PurifyInternal(const double tolerance,
    EBM_ASSERT(!std::isnan(tolerance));
    EBM_ASSERT(!std::isinf(tolerance));
    EBM_ASSERT(0.0 <= tolerance);
-   EBM_ASSERT(1 <= cRuntimeScores);
-   EBM_ASSERT(k_dynamicScores == cCompilerScores || cCompilerScores == cRuntimeScores);
+   EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cTensorBins);
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScoresInOut);
 
-   const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
    const size_t cBytesScoreClasses = sizeof(double) * cScores;
 
    if(nullptr != aImpuritiesOut) {
@@ -420,12 +418,6 @@ static ErrorEbm PurifyInternal(const double tolerance,
             if(size_t{0} != cSurfaceBins) {
                // this only happens for 1 dimensional inputs. Exit after finding the intercept
 
-               RandomDeterministic rng;
-               if(nullptr != aRandomize) {
-                  static constexpr uint64_t seed = 9271049328402875910u;
-                  rng.Initialize(seed);
-               }
-
                // this prevents impurityCur from overflowing since the individual terms we add cannot sum to infinity
                // so as long as we multiply by 1/number_of_terms_summed we can guarantee the sum will not overflow
                // start from 0.5 instead of 1.0 to allow for floating point error.
@@ -442,6 +434,12 @@ static ErrorEbm PurifyInternal(const double tolerance,
                   bRetry = false;
 
                   if(nullptr != aRandomize) {
+                     // TODO: We're currently generating different randomized ordering for each class when doing multiclass
+                     // This might cause problems during boosting, especially if we use a non-zero tolerance because then there 
+                     // are small impurities that creep in and would change the multiclass predictions on a repetitive process 
+                     // like boosting. We could change this to use the same random order for all classes by looping over 
+                     // the classes after choosing the random order, like we do in PurifyNormalizedMulticlass.
+
                      size_t cRemaining = cSurfaceBins;
                      do {
                         --cRemaining;
@@ -1071,7 +1069,8 @@ static void NormalizeClasses(const size_t cScores, double* const aScores) {
    } while(pScoresEnd != pScore);
 }
 
-static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
+static ErrorEbm PurifyNormalizedMulticlass(RandomDeterministic &rng, 
+      const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
       size_t* const aRandomize,
@@ -1124,7 +1123,7 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
          do {
             const double weight = *pWeightPre;
             if(!(0.0 <= weight)) {
-               LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
+               LOG_0(Trace_Error, "ERROR PurifyNormalizedMulticlass weight cannot be negative or NaN");
                return Error_IllegalParamVal;
             }
             EBM_ASSERT(!std::isnan(weight)); // !(0.0 <= weight) above checks for NaN
@@ -1144,7 +1143,7 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
                   do {
                      const double weightInterior = *pWeightInterior;
                      if(!(0.0 <= weightInterior)) {
-                        LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
+                        LOG_0(Trace_Error, "ERROR PurifyNormalizedMulticlass weight cannot be negative or NaN");
                         return Error_IllegalParamVal;
                      }
                      EBM_ASSERT(!std::isnan(weightInterior)); // !(0.0 <= weightInterior) above checks for NaN
@@ -1258,12 +1257,6 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
 
    if(size_t{0} != cSurfaceBins) {
       // this only happens for 1 dimensional inputs. Exit after finding the intercept
-
-      RandomDeterministic rng;
-      if(nullptr != aRandomize) {
-         static constexpr uint64_t seed = 9271049328402875910u;
-         rng.Initialize(seed);
-      }
 
       // this prevents impurityCur from overflowing since the individual terms we add cannot sum to infinity
       // so as long as we multiply by 1/number_of_terms_summed we can guarantee the sum will not overflow
@@ -1838,6 +1831,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       return Error_IllegalParamVal;
    }
 
+   RandomDeterministic rng;
    size_t* aRandomize = nullptr;
    if(EBM_FALSE != isRandomized) {
       if(IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)) {
@@ -1849,6 +1843,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          LOG_0(Trace_Warning, "WARNING Purify nullptr != aRandomize");
          return Error_OutOfMemory;
       }
+      static constexpr uint64_t seed = 9271049328402875910u;
+      rng.Initialize(seed);
    }
 
    // NOTES about generating new infinities during purification:
@@ -1877,7 +1873,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    //   impurities are non-overflowing
 
    if(1 != cScores && EBM_FALSE != isMulticlassNormalization) {
-      error = PurifyNormalizedMulticlass(cScores,
+      error = PurifyNormalizedMulticlass(rng,
+            cScores,
             cTensorBins,
             cSurfaceBins,
             aRandomize,
@@ -1887,7 +1884,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
             impuritiesOut,
             interceptOut);
    } else {
-      error = PurifyInternal<k_dynamicScores>(tolerance,
+      error = PurifyInternal(rng,
+            tolerance,
             cScores,
             cTensorBins,
             cSurfaceBins,
