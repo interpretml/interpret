@@ -82,6 +82,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const size_t cSamplesLeafMin,
       const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
+      double* const aWeights,
       double* const pTotalGain
 #ifndef NDEBUG
       ,
@@ -371,6 +372,8 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    //   move_next_permutation:
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
+   double* aWeights = nullptr;
+
    if(2 == pTerm->GetCountRealDimensions()) {
       error = PartitionTwoDimensionalBoosting(pBoosterShell,
             flags,
@@ -379,6 +382,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             cSamplesLeafMin,
             hessianMin,
             aAuxiliaryBins,
+            aWeights,
             pTotalGain
 #ifndef NDEBUG
             ,

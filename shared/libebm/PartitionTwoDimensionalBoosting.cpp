@@ -223,6 +223,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const size_t cSamplesLeafMin,
          const double hessianMin,
          BinBase* const aAuxiliaryBinsBase,
+         double* const aWeights,
          double* const pTotalGain
 #ifndef NDEBUG
          ,
@@ -608,32 +609,45 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         FloatCalc predictionHighLow;
                         FloatCalc predictionHighHigh;
 
+                        FloatCalc weightLowLow;
+                        FloatCalc weightLowHigh;
+                        FloatCalc weightHighLow;
+                        FloatCalc weightHighHigh;
+
                         if(bUpdateWithHessian) {
+                           weightLowLow = static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess());
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess()));
+                                 weightLowLow);
+                           weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess());
                            predictionLowHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess()));
+                                 weightLowHigh);
+                           weightHighLow = static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess());
                            predictionHighLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess()));
+                                 weightHighLow);
+                           weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess());
                            predictionHighHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess()));
+                                 weightHighHigh);
                         } else {
+                           weightLowLow = static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight());
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight()));
+                                 weightLowLow);
+                           weightLowHigh = static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight());
                            predictionLowHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight()));
+                                 weightLowHigh);
+                           weightHighLow = static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight());
                            predictionHighLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight()));
+                                 weightHighLow);
+                           weightHighHigh = static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight());
                            predictionHighHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight()));
+                                 weightHighHigh);
                         }
 
                         FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
@@ -644,6 +658,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[4 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
                            aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
@@ -651,11 +673,25 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                            aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[4 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         } else {
                            aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
                            aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 4 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[2 + 4 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[3 + 4 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         }
                      }
                   } else {
@@ -731,32 +767,45 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         FloatCalc predictionHighLow;
                         FloatCalc predictionHighHigh;
 
+                        FloatCalc weightLowLow;
+                        FloatCalc weightLowHigh;
+                        FloatCalc weightHighLow;
+                        FloatCalc weightHighHigh;
+
                         if(bUpdateWithHessian) {
+                           weightLowLow = static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess());
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess()));
+                                 weightLowLow);
+                           weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess());
                            predictionLowHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess()));
+                                 weightLowHigh);
+                           weightHighLow = static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess());
                            predictionHighLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess()));
+                                 weightHighLow);
+                           weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess());
                            predictionHighHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess()));
+                                 weightHighHigh);
                         } else {
+                           weightLowLow = static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight());
                            predictionLowLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight()));
+                                 weightLowLow);
+                           weightLowHigh = static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight());
                            predictionLowHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight()));
+                                 weightLowHigh);
+                           weightHighLow = static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight());
                            predictionHighLow = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight()));
+                                 weightHighLow);
+                           weightHighHigh = static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight());
                            predictionHighHigh = ComputeSinglePartitionUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight()));
+                                 weightHighHigh);
                         }
                         FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
@@ -766,6 +815,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
                            aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[4 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
                            aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
@@ -773,11 +830,25 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
                            aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
                            aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                              aWeights[4 + 6 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         } else {
                            aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
                            aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
                            aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
                            aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           if(nullptr != aWeights) {
+                              aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
+                              aWeights[1 + 4 * iScore] = static_cast<double>(weightHighLow);
+                              aWeights[2 + 4 * iScore] = static_cast<double>(weightLowHigh);
+                              aWeights[3 + 4 * iScore] = static_cast<double>(weightHighHigh);
+                           }
                         }
                      }
                   }
@@ -816,12 +887,20 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatCalc update;
+         FloatCalc weight;
          if(bUpdateWithHessian) {
-            update = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-                  static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess()));
+            weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
+            update = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            if(nullptr != aWeights) {
+               aWeights[iScore] = static_cast<double>(weight);
+            }
          } else {
+            weight = static_cast<FloatCalc>(weightAll);
             update = ComputeSinglePartitionUpdate(
-                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), static_cast<FloatCalc>(weightAll));
+                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            if(nullptr != aWeights) {
+               aWeights[iScore] = static_cast<double>(weight);
+            }
          }
 
          aUpdateScores[iScore] = static_cast<FloatScore>(update);
@@ -842,6 +921,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const size_t cSamplesLeafMin,
          const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
+         double* const aWeights,
          double* const pTotalGain
 #ifndef NDEBUG
          ,
@@ -857,6 +937,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
@@ -871,6 +952,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
@@ -892,6 +974,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const size_t cSamplesLeafMin,
          const double hessianMin,
          BinBase* aAuxiliaryBinsBase,
+         double* const aWeights,
          double* const pTotalGain
 #ifndef NDEBUG
          ,
@@ -905,6 +988,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             cSamplesLeafMin,
             hessianMin,
             aAuxiliaryBinsBase,
+            aWeights,
             pTotalGain
 #ifndef NDEBUG
             ,
@@ -921,6 +1005,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const size_t cSamplesLeafMin,
       const double hessianMin,
       BinBase* aAuxiliaryBinsBase,
+      double* const aWeights,
       double* const pTotalGain
 #ifndef NDEBUG
       ,
@@ -941,6 +1026,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
@@ -955,6 +1041,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
@@ -972,6 +1059,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
@@ -986,6 +1074,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                cSamplesLeafMin,
                hessianMin,
                aAuxiliaryBinsBase,
+               aWeights,
                pTotalGain
 #ifndef NDEBUG
                ,
