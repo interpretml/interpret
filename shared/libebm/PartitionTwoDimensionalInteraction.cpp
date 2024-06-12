@@ -254,7 +254,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                   const FloatCalc d11 =
                         static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
 
-                  if(CalcInteractionFlags_Pure & flags) {
+                  if(CalcInteractionFlags_Purify & flags) {
                      // purified gain
 
                      // TODO: The interaction score is exactly equivalent to the gain calculated during
@@ -419,7 +419,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
-      if(!(CalcInteractionFlags_Pure & flags)) {
+      if(!(CalcInteractionFlags_Purify & flags)) {
          // if we are detecting impure interaction then so far we have only calculated the children partial gain
          // but we still need to subtract the partial gain of the parent to have
          // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it
