@@ -35,6 +35,18 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+extern ErrorEbm PurifyInternal(const double tolerance,
+      const size_t cScores,
+      const size_t cTensorBins,
+      const size_t cSurfaceBins,
+      RandomDeterministic* const pRng,
+      size_t* const aRandomize,
+      const size_t* const aDimensionLengths,
+      const double* const aWeights,
+      double* const pScores,
+      double* const pImpurities,
+      double* const pIntercept);
+
 extern void ConvertAddBin(const size_t cScores,
       const bool bHessian,
       const size_t cBins,
@@ -373,6 +385,11 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
    double* aWeights = nullptr;
+   if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
+      // allocate the biggest tensor that is possible to split into
+      // TODO: cache this memory allocation so that we don't do it each time
+      aWeights = static_cast<double*>(malloc(sizeof(double) * cScores * cTensorBins));
+   }
 
    if(2 == pTerm->GetCountRealDimensions()) {
       error = PartitionTwoDimensionalBoosting(pBoosterShell,
@@ -390,6 +407,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 #endif // NDEBUG
       );
       if(Error_None != error) {
+         free(aWeights);
 #ifndef NDEBUG
          free(aDebugCopyBins);
 #endif // NDEBUG
@@ -402,6 +420,8 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       EBM_ASSERT(!std::isnan(*pTotalGain));
       EBM_ASSERT(0 <= *pTotalGain);
    } else {
+      free(aWeights);
+
       LOG_0(Trace_Warning, "WARNING BoostMultiDimensional 2 != pTerm->GetCountSignificantFeatures()");
 
       // TODO: eventually handle this in our caller and this function can specialize in handling just 2 dimensional
@@ -411,6 +431,65 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       free(aDebugCopyBins);
 #endif // NDEBUG
       return Error_UnexpectedInternal;
+   }
+
+   if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
+      Tensor * const pTensor = pBoosterShell->GetInnerTermUpdate();
+
+      size_t cDimensions = pTerm->GetCountDimensions();
+      size_t cTensorBinsPurify = 1;
+      size_t iDimension = 0;
+      do {
+         const size_t cBins = pTensor->GetCountSlices(iDimension);
+         cTensorBinsPurify *= cBins;
+         ++iDimension;
+      } while(cDimensions != iDimension);
+
+      size_t acPurifyBins[k_cDimensionsMax];
+      size_t* pcPurifyBins = acPurifyBins;
+      const size_t* const pcPurifyBinsEnd = &acPurifyBins[pTerm->GetCountRealDimensions()];
+      size_t cSurfaceBinsTotal = 0;
+      iDimension = 0;
+      do {
+         const size_t cBins = pTensor->GetCountSlices(iDimension);
+         if(size_t{1} < cBins) {
+            *pcPurifyBins = cBins;
+            EBM_ASSERT(0 == cTensorBinsPurify % cBins);
+            const size_t cExcludeSurfaceBins = cTensorBinsPurify / cBins;
+            cSurfaceBinsTotal += cExcludeSurfaceBins;
+            ++pcPurifyBins;
+         }
+         ++iDimension;
+      } while(pcPurifyBinsEnd != pcPurifyBins);
+
+      constexpr double tolerance = 0.0; // TODO: for now purify to the max, but test tolerances and profile them
+
+      // TODO: in the future try randomizing the purification order.  It probably doesn't make much difference
+      //       though if we're purifying to the 0.0 tolerance, and it might make things slower, although we
+      //       could see a speed increase if it allows us to use bigger tolerance values.
+
+      double* pScores = pTensor->GetTensorScoresPointer();
+      const double* const pScoreMulticlassEnd = &pScores[cScores];
+      double* pWeights = aWeights;
+      do {
+         // ignore the return from PurifyInternal since we should check for NaN in the weights
+         // earlier and the checks in PurifyInternal are only for the stand-alone purification API
+         PurifyInternal(tolerance,
+               cScores,
+               cTensorBinsPurify,
+               cSurfaceBinsTotal,
+               nullptr,
+               nullptr,
+               acPurifyBins,
+               pWeights,
+               pScores,
+               nullptr,
+               nullptr);
+         pWeights += cTensorBinsPurify;
+         ++pScores;
+      } while(pScoreMulticlassEnd != pScores);
+   
+      free(aWeights);
    }
 
 #ifndef NDEBUG
