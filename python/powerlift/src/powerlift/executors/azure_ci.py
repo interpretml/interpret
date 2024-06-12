@@ -29,7 +29,7 @@ def _wait_for_completed_worker(results):
             time.sleep(1)
 
 
-def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers):
+def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete_group_container_on_complete):
     from azure.mgmt.containerinstance.models import (
         ContainerGroup,
         Container,
@@ -105,11 +105,12 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers):
         pass
 
     # Delete all container groups
-    for worker_id in range(n_running_containers):
-        container_group_name = f"powerlift-container-group-{worker_id}"
-        aci_client.container_groups.begin_delete(
-            resource_group_name, container_group_name
-        )
+    if delete_group_container_on_complete:
+        for worker_id in range(n_running_containers):
+            container_group_name = f"powerlift-container-group-{worker_id}"
+            aci_client.container_groups.begin_delete(
+                resource_group_name, container_group_name
+            )
     return None
 
 
@@ -124,12 +125,14 @@ class AzureContainerInstance(LocalMachine):
         azure_client_secret: str,
         subscription_id: str,
         resource_group: str,
-        image: str = "interpretml/powerlift:0.0.1",
+        image: str = "interpretml/powerlift:0.1.4",
         n_running_containers: int = 1,
         num_cores: int = 1,
         mem_size_gb: int = 2,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
+        raise_exception: bool = False,
+        delete_group_container_on_complete: bool = True
     ):
         """Runs remote execution of trials via Azure Container Instances.
 
@@ -146,6 +149,8 @@ class AzureContainerInstance(LocalMachine):
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
+            raise_exception (bool, optional): Raise exception on failure.
+            delete_group_container_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
         from multiprocessing import Manager
 
@@ -153,6 +158,7 @@ class AzureContainerInstance(LocalMachine):
         self._n_running_containers = n_running_containers
         self._num_cores = num_cores
         self._mem_size_gb = mem_size_gb
+        self._delete_group_container_on_complete = delete_group_container_on_complete
 
         self._docker_db_uri = docker_db_uri
         self._azure_json = {
@@ -162,7 +168,7 @@ class AzureContainerInstance(LocalMachine):
             "subscription_id": subscription_id,
             "resource_group": resource_group,
         }
-        super().__init__(store, n_running_containers, False, wheel_filepaths)
+        super().__init__(store=store, n_cpus=n_running_containers, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""
@@ -181,7 +187,7 @@ class AzureContainerInstance(LocalMachine):
                 [trial.id],
                 uri,
                 timeout,
-                False,
+                self._raise_exception,
                 self._image,
             )
             tasks.append(params)
@@ -192,6 +198,7 @@ class AzureContainerInstance(LocalMachine):
             self._num_cores,
             self._mem_size_gb,
             self._n_running_containers,
+            self._delete_group_container_on_complete,
         )
         if self._pool is None:
             try:

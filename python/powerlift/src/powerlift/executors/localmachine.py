@@ -17,6 +17,7 @@ class LocalMachine(Executor):
         n_cpus: int = None,
         debug_mode: bool = False,
         wheel_filepaths: List[str] = None,
+        raise_exception: bool = False
     ):
         """Runs trial runs on the local machine.
 
@@ -25,6 +26,7 @@ class LocalMachine(Executor):
             n_cpus (int, optional): Max number of cpus to run on.. Defaults to None.
             debug_mode (bool, optional): Restricts to a single thread and raises exceptions. Good for debugging.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
+            raise_exception (bool, optional): Raise exception on failure.
         """
         if debug_mode:
             self._pool = None
@@ -36,6 +38,7 @@ class LocalMachine(Executor):
         self._n_cpus = n_cpus
         self._debug_mode = debug_mode
         self._wheel_filepaths = wheel_filepaths
+        self._raise_exception = raise_exception
 
     def __del__(self):
         if self._pool is not None:
@@ -55,18 +58,18 @@ class LocalMachine(Executor):
                         [trial.id],
                         self._store.uri,
                         timeout,
-                        self._debug_mode,
+                        self._raise_exception or self._debug_mode,
                         debug_fn=debug_fn,
                     )
                     self._trial_id_to_result[trial.id] = res
                 except Exception as e:
                     self._trial_id_to_result[trial.id] = e
-                    if self._debug_mode:
+                    if self._raise_exception or self._debug_mode:
                         raise e
             else:
                 self._trial_id_to_result[trial.id] = self._pool.apply_async(
                     runner.run_trials,
-                    ([trial.id], self._store.uri, timeout, self._debug_mode),
+                    ([trial.id], self._store.uri, timeout, self._raise_exception or self._debug_mode),
                     error_callback=handle_err,
                 )
 
