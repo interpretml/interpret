@@ -621,7 +621,7 @@ TEST_CASE("Purify simple multiclass NaN") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -649,7 +649,7 @@ TEST_CASE("Purify simple multiclass +inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -677,7 +677,7 @@ TEST_CASE("Purify simple multiclass -inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -706,7 +706,7 @@ TEST_CASE("Purify simple multiclass overflow to -inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -734,7 +734,7 @@ TEST_CASE("Purify simple multiclass overflow to +inf") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -763,7 +763,7 @@ TEST_CASE("Purify simple multiclass +inf and NaN, overflow-inf,-overflow+inf, in
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
          cClasses,
          cDimensions,
          dimensionLengths,
@@ -803,7 +803,248 @@ TEST_CASE("Purify simple multiclass overflow the shifts") {
 
    ErrorEbm error = Purify(k_tolerancePurityDefault,
          k_isRandomizedDefault,
-         k_isMulticlassNormalization,
+         EBM_FALSE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+
+
+
+
+
+TEST_CASE("Purify simple multiclass 3x4, normalize classes") {
+   constexpr IntEbm cClasses = 2;
+   const IntEbm dimensionLengths[]{3, 4};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{1, 10, 2, 4, 3, 5, 4, 6, 5, 7, 6, 8, 7, 9, 8, 10, 9, 11, 10, 12, 11, 13, 12, 14};
+   const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+   double impurities[7 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   CHECK(0.0 != residualIntercept[0]);
+   CHECK(0.0 != residualIntercept[1]);
+   const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass NaN, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{NAN, 2, 3, 1, 2, NAN, 1, NAN, NAN, NAN, NAN, NAN};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass +inf, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{INFINITY, 2, 3, 1, 2, INFINITY, 1, INFINITY, INFINITY, INFINITY, INFINITY, INFINITY};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass -inf, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{-INFINITY, 2, 3, 1, 2, -INFINITY, 1, -INFINITY, -INFINITY, -INFINITY, -INFINITY, -INFINITY};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass overflow to -inf, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{-DBL_MAX, 2, 3, 1, 2, -DBL_MAX, 1, -DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass overflow to +inf, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{DBL_MAX, 2, 3, 1, 2, DBL_MAX, 1, DBL_MAX, DBL_MAX, DBL_MAX, DBL_MAX, DBL_MAX};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass +inf and NaN, overflow-inf,-overflow+inf, inf-inf, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{
+         INFINITY, 2, NAN, DBL_MAX, DBL_MAX, -INFINITY, -DBL_MAX, -DBL_MAX, INFINITY, INFINITY, -INFINITY, INFINITY};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
+         cClasses,
+         cDimensions,
+         dimensionLengths,
+         weights,
+         scores,
+         impurities,
+         &residualIntercept[0]);
+   CHECK(Error_None == error);
+   // CHECK(0.0 != residualIntercept[0]);
+   // CHECK(0.0 != residualIntercept[1]);
+   //  const double impurity0 = MeasureImpurity(cClasses, 0, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity0 && impurity0 < 0.001);
+   //  const double impurity1 = MeasureImpurity(cClasses, 1, cDimensions, dimensionLengths, weights, scores);
+   //  CHECK(-0.001 < impurity1 && impurity1 < 0.001);
+}
+
+TEST_CASE("Purify simple multiclass overflow the shifts, normalize classes") {
+   constexpr IntEbm cClasses = 3;
+   const IntEbm dimensionLengths[]{2, 2};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+   double scores[]{DBL_MAX,
+         DBL_MAX,
+         -DBL_MAX,
+         -DBL_MAX,
+         -DBL_MAX,
+         DBL_MAX,
+         DBL_MAX * 0.9,
+         DBL_MAX * 0.9,
+         -DBL_MAX * 0.9,
+         -DBL_MAX * 0.9,
+         -DBL_MAX * 0.9,
+         DBL_MAX * 0.9};
+   const double weights[]{1, 2, 3, 4};
+   double impurities[4 * cClasses];
+   double residualIntercept[cClasses];
+
+   ErrorEbm error = Purify(k_tolerancePurityDefault,
+         k_isRandomizedDefault,
+         EBM_TRUE,
          cClasses,
          cDimensions,
          dimensionLengths,
