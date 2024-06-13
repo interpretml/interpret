@@ -1530,3 +1530,330 @@ TEST_CASE("tweedie, boosting") {
    termScore = test.GetCurrentTermScore(0, {0}, 0);
    CHECK_APPROX(termScore, 2.3025076860047466);
 }
+
+TEST_CASE("purified boosting of impure input, regression") {
+   // We give the booster a dataset with only impurity and ask it to purify the model
+   // which results in no update each iteration.
+
+   TestBoost testPure = TestBoost(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 9),
+               TestSample({0, 1}, 10),
+               TestSample({1, 0}, 11),
+               TestSample({1, 1}, 12),
+         },
+         {TestSample({0, 1}, 12)});
+
+   for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
+      for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = testPure.Boost(iTerm, TermBoostFlags_PurifyUpdate).validationMetric;
+         CHECK_APPROX(validationMetric0, 144.0);
+
+         double termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         CHECK_APPROX(termScore01, 0.0);
+         CHECK_APPROX(termScore02, 0.0);
+         CHECK_APPROX(termScore03, 0.0);
+         CHECK_APPROX(termScore04, 0.0);
+      }
+   }
+}
+
+TEST_CASE("purified boosting of impure input, multiclass") {
+   // We give the booster a dataset with only impurity and ask it to purify the model
+   // which results in no update each iteration.
+
+   TestBoost testPure = TestBoost(3,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 2),
+               TestSample({0, 1}, 2),
+               TestSample({1, 0}, 0),
+               TestSample({1, 1}, 0),
+               TestSample({0, 0}, 1),
+               TestSample({0, 1}, 0),
+               TestSample({1, 0}, 1),
+               TestSample({1, 1}, 0),
+         },
+         {TestSample({0, 1}, 1)});
+
+   for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
+      for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = testPure.Boost(iTerm, TermBoostFlags_PurifyUpdate).validationMetric;
+         CHECK_APPROX(validationMetric0, 1.0398559570312500);
+
+         double termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         CHECK(-0.00001 < termScore01 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore02 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore03 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore04 && termScore01 < 0.00001);
+
+         termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 1);
+         termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 1);
+         termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 1);
+         termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 1);
+
+         CHECK(-0.00001 < termScore01 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore02 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore03 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore04 && termScore01 < 0.00001);
+
+         termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 2);
+         termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 2);
+         termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 2);
+         termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 2);
+
+         CHECK(-0.00001 < termScore01 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore02 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore03 && termScore01 < 0.00001);
+         CHECK(-0.00001 < termScore04 && termScore01 < 0.00001);
+      }
+   }
+}
+
+TEST_CASE("purified boosting and impure boosting identical for pure input, regression") {
+   TestBoost testPure = TestBoost(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 3.5),
+               TestSample({0, 1}, -3.5),
+               TestSample({1, 0}, -3.5),
+               TestSample({1, 1}, 3.5),
+         },
+         {TestSample({0, 1}, 12)});
+
+   TestBoost testImpure = TestBoost(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 3.5),
+               TestSample({0, 1}, -3.5),
+               TestSample({1, 0}, -3.5),
+               TestSample({1, 1}, 3.5),
+         },
+         {TestSample({0, 1}, 12)});
+
+   for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
+      assert(testPure.GetCountTerms() == testImpure.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = testPure.Boost(iTerm, TermBoostFlags_PurifyUpdate).validationMetric;
+         double validationMetric1 = testImpure.Boost(iTerm, TermBoostFlags_Default).validationMetric;
+         CHECK_APPROX(validationMetric0, validationMetric1);
+
+         double termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         double termScore11 = testImpure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore12 = testImpure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore13 = testImpure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore14 = testImpure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         CHECK_APPROX(termScore11, termScore01);
+         CHECK_APPROX(termScore12, termScore02);
+         CHECK_APPROX(termScore13, termScore03);
+         CHECK_APPROX(termScore14, termScore04);
+      }
+   }
+}
+
+TEST_CASE("purified boosting and impure boosting identical for pure input, multiclass") {
+   TestBoost testPure = TestBoost(3,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 1),
+               TestSample({0, 0}, 1),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 2),
+
+               TestSample({0, 1}, 1),
+               TestSample({0, 1}, 1),
+               TestSample({0, 1}, 0),
+               TestSample({0, 1}, 2),
+               TestSample({0, 1}, 2),
+               TestSample({0, 1}, 2),
+
+               TestSample({1, 0}, 1),
+               TestSample({1, 0}, 1),
+               TestSample({1, 0}, 0),
+               TestSample({1, 0}, 2),
+               TestSample({1, 0}, 2),
+               TestSample({1, 0}, 2),
+
+               TestSample({1, 1}, 1),
+               TestSample({1, 1}, 1),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 2),
+         },
+         {TestSample({0, 1}, 1)},
+         0,
+         CreateBoosterFlags_DisableApprox,
+         AccelerationFlags_NONE);
+
+   TestBoost testImpure = TestBoost(3,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 1),
+               TestSample({0, 0}, 1),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 0),
+               TestSample({0, 0}, 2),
+
+               TestSample({0, 1}, 1),
+               TestSample({0, 1}, 1),
+               TestSample({0, 1}, 0),
+               TestSample({0, 1}, 2),
+               TestSample({0, 1}, 2),
+               TestSample({0, 1}, 2),
+
+               TestSample({1, 0}, 1),
+               TestSample({1, 0}, 1),
+               TestSample({1, 0}, 0),
+               TestSample({1, 0}, 2),
+               TestSample({1, 0}, 2),
+               TestSample({1, 0}, 2),
+
+               TestSample({1, 1}, 1),
+               TestSample({1, 1}, 1),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 0),
+               TestSample({1, 1}, 2),
+         },
+         {TestSample({0, 1}, 1)},
+         0,
+         CreateBoosterFlags_DisableApprox,
+         AccelerationFlags_NONE);
+
+   for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
+      assert(testPure.GetCountTerms() == testImpure.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = testPure
+                                          .Boost(iTerm,
+                                                TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonGain |
+                                                      TermBoostFlags_DisableNewtonUpdate)
+                                          .validationMetric;
+         double validationMetric1 =
+               testImpure.Boost(iTerm, TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate)
+                     .validationMetric;
+         CHECK_APPROX_TOLERANCE(validationMetric0, validationMetric1, 1e-2);
+
+         double termScore01_0 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore02_0 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore03_0 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore04_0 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         double termScore11_0 = testImpure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore12_0 = testImpure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore13_0 = testImpure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore14_0 = testImpure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         CHECK_APPROX(termScore11_0, termScore01_0);
+         CHECK_APPROX(termScore12_0, termScore02_0);
+         CHECK_APPROX(termScore13_0, termScore03_0);
+         CHECK_APPROX(termScore14_0, termScore04_0);
+
+         double termScore01_1 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 1);
+         double termScore02_1 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 1);
+         double termScore03_1 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 1);
+         double termScore04_1 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 1);
+
+         double termScore11_1 = testImpure.GetCurrentTermScore(iTerm, {0, 0}, 1);
+         double termScore12_1 = testImpure.GetCurrentTermScore(iTerm, {1, 0}, 1);
+         double termScore13_1 = testImpure.GetCurrentTermScore(iTerm, {0, 1}, 1);
+         double termScore14_1 = testImpure.GetCurrentTermScore(iTerm, {1, 1}, 1);
+
+         CHECK(-0.00001 < termScore01_1 && termScore01_1 < 0.00001);
+         CHECK(-0.00001 < termScore02_1 && termScore02_1 < 0.00001);
+         CHECK(-0.00001 < termScore03_1 && termScore03_1 < 0.00001);
+         CHECK(-0.00001 < termScore04_1 && termScore04_1 < 0.00001);
+
+         CHECK(-0.00001 < termScore11_1 && termScore11_1 < 0.00001);
+         CHECK(-0.00001 < termScore12_1 && termScore12_1 < 0.00001);
+         CHECK(-0.00001 < termScore13_1 && termScore13_1 < 0.00001);
+         CHECK(-0.00001 < termScore14_1 && termScore14_1 < 0.00001);
+
+         double termScore01_2 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 2);
+         double termScore02_2 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 2);
+         double termScore03_2 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 2);
+         double termScore04_2 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 2);
+
+         double termScore11_2 = testImpure.GetCurrentTermScore(iTerm, {0, 0}, 2);
+         double termScore12_2 = testImpure.GetCurrentTermScore(iTerm, {1, 0}, 2);
+         double termScore13_2 = testImpure.GetCurrentTermScore(iTerm, {0, 1}, 2);
+         double termScore14_2 = testImpure.GetCurrentTermScore(iTerm, {1, 1}, 2);
+
+         CHECK_APPROX(termScore11_2, termScore01_2);
+         CHECK_APPROX(termScore12_2, termScore02_2);
+         CHECK_APPROX(termScore13_2, termScore03_2);
+         CHECK_APPROX(termScore14_2, termScore04_2);
+      }
+   }
+}
+
+TEST_CASE("purified boosting and impure boosting different for impure input, regression") {
+   TestBoost testPure = TestBoost(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 2.0),
+               TestSample({0, 1}, -3.5),
+               TestSample({1, 0}, -3.5),
+               TestSample({1, 1}, 3.5),
+         },
+         {TestSample({0, 1}, 12)});
+
+   TestBoost testImpure = TestBoost(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 2.0),
+               TestSample({0, 1}, -3.5),
+               TestSample({1, 0}, -3.5),
+               TestSample({1, 1}, 3.5),
+         },
+         {TestSample({0, 1}, 12)});
+
+   for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
+      assert(testPure.GetCountTerms() == testImpure.GetCountTerms());
+      for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
+         double validationMetric0 = testPure.Boost(iTerm, TermBoostFlags_PurifyUpdate).validationMetric;
+         double validationMetric1 = testImpure.Boost(iTerm, TermBoostFlags_Default).validationMetric;
+         CHECK(validationMetric0 != validationMetric1);
+
+         double termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore03 = testPure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore04 = testPure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         double termScore11 = testImpure.GetCurrentTermScore(iTerm, {0, 0}, 0);
+         double termScore12 = testImpure.GetCurrentTermScore(iTerm, {1, 0}, 0);
+         double termScore13 = testImpure.GetCurrentTermScore(iTerm, {0, 1}, 0);
+         double termScore14 = testImpure.GetCurrentTermScore(iTerm, {1, 1}, 0);
+
+         CHECK(termScore11 != termScore01);
+         CHECK(termScore12 != termScore02);
+         CHECK(termScore13 != termScore03);
+         CHECK(termScore14 != termScore04);
+      }
+   }
+}
