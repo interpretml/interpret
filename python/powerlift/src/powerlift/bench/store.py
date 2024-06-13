@@ -1009,6 +1009,81 @@ def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset, None,
         yield supervised
 
 
+def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+    """Retrieves catboost regression and classification datasets that have less than 50k training instances.
+
+    Does not download adult dataset as currently there some download issues.
+
+    Args:
+        cache_dir (str, optional): Use this cache directory across calls. Defaults to None.
+
+    Yields:
+        Generator[SupervisedDataset]: Yields datasets.
+    """
+    from catboost.datasets import amazon, msrank_10k, titanic
+
+    datasets = [
+        # {
+        #     "name": "adult",
+        #     "data_fn": adult,
+        #     "problem": "classification",
+        #     "target": "income",
+        # },
+        {
+            "name": "amazon",
+            "data_fn": amazon,
+            "problem": "classification",
+            "target": "ACTION"
+        },
+        {
+            "name": "msrank_10k",
+            "data_fn": msrank_10k,
+            "problem": "regression",
+            "target": 0
+        },
+        {
+            "name": "titanic",
+            "data_fn": titanic,
+            "problem": "classification",
+            "target": "Survived"
+        },
+    ]
+
+    if cache_dir is not None:
+        cache_dir = pathlib.Path(cache_dir, "catboost_50k")
+
+    for dataset in datasets:
+        name = dataset['name']
+        X_name = f"{name}.X.parquet"
+        y_name = f"{name}.y.parquet"
+        meta_name = f"{name}.meta.json"
+
+        cached = retrieve_cache(cache_dir, [X_name, y_name, meta_name])
+        if cached is None:
+            df = dataset['data_fn']()[0]
+            target = dataset['target']
+            X = df.drop(target, axis=1)
+            y = df[target]
+            problem = dataset['problem']
+            if dataset['problem'] == "classification":
+                problem = "binary" if len(y.unique()) == 2 else "multiclass"
+            meta = {
+                "name": name,
+                "problem": problem,
+                "source": "catboost_50k",
+                "categorical_mask": [dt.kind == "O" for dt in X.dtypes],
+                "feature_names": list(X.columns),
+            }
+            supervised = SupervisedDataset(X, y, meta)
+        else:
+            supervised = SupervisedDataset.deserialize(*cached)
+            
+        if cache_dir is not None:
+            serialized = SupervisedDataset.serialize(supervised)
+            update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
+        yield supervised
+
+
 def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
     """Retrieves PMLB regression and classification datasets.
 
@@ -1053,7 +1128,6 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
             supervised = SupervisedDataset(X, y, meta)
         else:
             supervised = SupervisedDataset.deserialize(*cached)
-
         if cache_dir is not None:
             serialized = SupervisedDataset.serialize(supervised)
             update_cache(cache_dir, [X_name, y_name, meta_name], serialized)

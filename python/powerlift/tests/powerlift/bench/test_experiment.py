@@ -32,7 +32,7 @@ def _benchmark(trial):
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
 
-    if trial.task.problem == "binary" and trial.task.origin in ["openml", "pmlb"]:
+    if trial.task.problem == "binary" and trial.task.origin in ["openml", "pmlb", "catboost_50k"]:
         X, y, meta = trial.task.data(["X", "y", "meta"])
 
         # Holdout split

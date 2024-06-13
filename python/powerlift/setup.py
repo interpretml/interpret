@@ -37,6 +37,7 @@ setuptools.setup(
         "datasets": [
             "pmlb >=1.0",
             "openml >=0.12",
+            "catboost",
         ],
         "docker": [
             "docker",
