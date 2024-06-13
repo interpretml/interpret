@@ -140,7 +140,6 @@ def test_scikit_experiment_aci(populated_azure_store):
         azure_client_secret,
         subscription_id,
         resource_group,
-        # image="benchregistry.azurecr.io/powerlift:0.1.4",
         n_running_containers=5,
         num_cores=2,
         mem_size_gb=8,

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.5 - 2024-06-13
+### Added
+- Retrieval of catboost datasets that are less than 50k instances.
+### Fixed
+- Minor API fixes for docker/ACI.
+
 ## v0.1.4 - 2024-05-22
 ### Fixed
 - Docker executor was using wrong arguments (after API change).
