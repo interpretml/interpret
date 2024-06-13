@@ -58,7 +58,6 @@
     <Compile Include="interpret\glassbox\_ebm\_json.py" />
     <Compile Include="interpret\glassbox\_ebm\_multiclass.py" />
     <Compile Include="interpret\glassbox\_ebm\_research\_group_importance.py" />
-    <Compile Include="interpret\glassbox\_ebm\_research\_purify.py" />
     <Compile Include="interpret\glassbox\_ebm\_research\__init__.py" />
     <Compile Include="interpret\glassbox\_ebm\_tensor.py" />
     <Compile Include="interpret\glassbox\_ebm\_utils.py" />
@@ -114,7 +113,6 @@
     <Compile Include="tests\ext\test_examples.py" />
     <Compile Include="tests\ext\__init__.py" />
     <Compile Include="tests\glassbox\ebm\research\test_group_importance.py" />
-    <Compile Include="tests\glassbox\ebm\research\test_purify.py" />
     <Compile Include="tests\glassbox\ebm\research\__init__.py" />
     <Compile Include="tests\glassbox\ebm\test_bin.py" />
     <Compile Include="tests\glassbox\ebm\test_ebm.py" />

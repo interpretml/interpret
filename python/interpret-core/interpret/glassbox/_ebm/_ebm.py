@@ -23,6 +23,8 @@ from sklearn.base import (
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 
+from ... import develop
+
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider import JobLibProvider
@@ -866,6 +868,8 @@ class EBMModel(BaseEstimator):
             noise_scale_boosting = None
             bin_data_weights = None
             term_boost_flags = Native.TermBoostFlags_Default
+            if develop._purify_boosting:
+                term_boost_flags |= Native.TermBoostFlags_PurifyUpdate
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
             smoothing_rounds = self.smoothing_rounds

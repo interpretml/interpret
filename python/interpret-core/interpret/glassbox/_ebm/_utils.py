@@ -9,7 +9,9 @@ from math import ceil, exp, isfinite, isinf, log
 
 import numpy as np
 
+from ... import develop
 from ...utils._native import Native
+from ...utils._purify import purify
 from ._tensor import restore_missing_value_zeros
 
 _log = logging.getLogger(__name__)
@@ -162,21 +164,16 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
         intercept = np.zeros(n_classes, np.float64)
 
     for scores, weights in zip(term_scores, bin_weights):
-        if n_classes <= 2:
-            temp_scores = scores.flatten().copy()
-            temp_weights = weights.flatten().copy()
-
-            ignored = ~np.isfinite(temp_scores)
-            temp_scores[ignored] = 0.0
-            temp_weights[ignored] = 0.0
-
-            if temp_weights.sum() != 0:
-                mean = np.average(temp_scores, 0, temp_weights)
-                intercept += mean
-                scores -= mean
+        if develop._purify_result:
+            new_scores, add_impurities, add_intercept = purify(scores, weights)
+            # TODO: benchmark if it is better to add new_impurities to the existing model scores,
+            #       or better to discard them.  Discarding might be better if we assume the
+            #       non-overfit benefit of the lower dimensional interactions has already been extracted.
+            scores[:] = new_scores
+            intercept += add_intercept
         else:
-            for i in range(n_classes):
-                temp_scores = scores[..., i].flatten().copy()
+            if n_classes <= 2:
+                temp_scores = scores.flatten().copy()
                 temp_weights = weights.flatten().copy()
 
                 ignored = ~np.isfinite(temp_scores)
@@ -185,14 +182,21 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
 
                 if temp_weights.sum() != 0:
                     mean = np.average(temp_scores, 0, temp_weights)
-                    intercept[i] += mean
-                    scores[..., i] -= mean
+                    intercept += mean
+                    scores -= mean
+            else:
+                for i in range(n_classes):
+                    temp_scores = scores[..., i].flatten().copy()
+                    temp_weights = weights.flatten().copy()
 
-        # TODO: call purify() here from the glassbox\ebm\_research\_purify.py file
+                    ignored = ~np.isfinite(temp_scores)
+                    temp_scores[ignored] = 0.0
+                    temp_weights[ignored] = 0.0
 
-        # TODO: for multiclass, call a fixed version of multiclass_postprocess_RESTORE_THIS
-        #       That implementation has a bug where it always uses the simpler
-        #       method of taking the mean of the class scores.
+                    if temp_weights.sum() != 0:
+                        mean = np.average(temp_scores, 0, temp_weights)
+                        intercept[i] += mean
+                        scores[..., i] -= mean
 
         # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
