@@ -6,6 +6,9 @@ import sys
 _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
 
+_purify_boosting = False
+_purify_result = False
+
 
 def print_debug_info(file=None):
     """This function varies version-by-version, prints debug info as a pretty string.
