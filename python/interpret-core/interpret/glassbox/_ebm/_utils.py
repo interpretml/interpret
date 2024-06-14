@@ -253,9 +253,7 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
         # pick the class that we're going to zero
         zero_index = np.argmax(intercept)
         intercept = intercept - intercept[zero_index]
-        bagged_intercept = bagged_intercept - np.expand_dims(
-            bagged_intercept[..., zero_index], -1
-        )
+        bagged_intercept -= np.expand_dims(bagged_intercept[..., zero_index], -1)
 
     return intercept, term_scores, standard_deviations
 
