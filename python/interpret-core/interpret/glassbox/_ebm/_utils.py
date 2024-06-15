@@ -198,6 +198,14 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
                         intercept[i] += mean
                         scores[..., i] -= mean
 
+        # We could apply the algorithm proposed by Xuezhou Zhang here, however that algorithm doesn't work
+        # for nominal categoricals since there is no concept of adjacency, so for nominal categoricals we
+        # need some way to make the multiclass scores identifiable. Making the scores sum to zero, or alternatively
+        # choosing to zero the class that has the highest intercept class score would work. Making the scores
+        # sum to zero is less arbitrary than Xuezhou's algorithm when it comes to calculating feature/term
+        # importance values, so if we use Xuezhou's algorithm then apply it when generating an explanation
+        # instead of here which will make calculating importances faster.
+
         # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
 
@@ -241,6 +249,11 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
         # scikit-learn requires array for classification, but np.average collapses
         # to an np.float64 if input 1 dimensional, so restore to an array
         intercept = np.full(1, intercept, np.float64)
+    else:
+        # pick the class that we're going to zero
+        zero_index = np.argmax(intercept)
+        intercept = intercept - intercept[zero_index]
+        bagged_intercept -= np.expand_dims(bagged_intercept[..., zero_index], -1)
 
     return intercept, term_scores, standard_deviations
 

@@ -17,6 +17,34 @@ def _measure_impurity(scores, weights):
 
 
 def purify(scores, weights, tolerance=0.0, is_randomized=True):
+    """Purifies a score tensor into it's pure component and a series of impure components. For pairs, the
+        result will be a pair where the weighted sum along any row or column is zero, and the two main effects
+        which are the impurities from the pair. The main effects will be further purified into zero-centered graphs
+        and an intercept. This function also handles multiclass, which is detected when the scores tensor has one
+        additional dimension than the weights. For multiclass, the class scores are adjusted to sum to 0,
+        which can be done without generating any impurities.
+
+        Purification algorithm is based on the paper:
+        "Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models"
+        https://arxiv.org/abs/1911.04974
+
+    Args:
+        scores: The score tensor to be purified.
+        weights: Weights for each element in the scores tensor.
+        tolerance: If needed, a tolerance can be specified to make the algorithm exit faster at the expense of purity.
+            The algorithm will exit whenever either the tolerance is reached, or when purity stops improving.
+        is_randomized: If is_randomized is False, then purification happens in a predictable order. Using random
+            ordering removes the bias that might be introduced by always processing one dimension first.
+
+    Returns:
+        A tuple containing 3 values:
+            1) The purified tensor.
+            2) A list of tuples of the impurities generated. The first item in the tuple will
+               be a tuple of indexes which indicates which dimensions the impurity applies to. The second
+               item is the impurity tensor for those dimensions.
+            3) The intercept generated from purification.
+    """
+
     if scores.ndim != weights.ndim and scores.ndim != weights.ndim + 1:
         raise Exception("scores and weights do not match in terms of dimensionality.")
 
@@ -93,13 +121,3 @@ def purify(scores, weights, tolerance=0.0, is_randomized=True):
             impurities.append((key, level_scores))
 
     return scores, impurities, intercept
-
-
-# TODO: Apply purification to EBMs either (based on a boolean option that we can expose publicly):
-#    1) After all boosting is complete.  We can either throw away the lower dimensional contributions,
-#       or move the score contributions to the lower dimensional terms based on benchmarking results.
-#    2) During boosting, where we would throw away the impure components so that
-#       the algorithm would not overfit the lower dimensional components.
-#       - This would be especially important when we boost mains and interactions together at
-#         the same time because we don't want the model to force feed some mains that just happen
-#         to be included in an interaction.
