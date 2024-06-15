@@ -25,7 +25,7 @@ class LocalMachine(Executor):
             store (Store): Store that houses trials.
             n_cpus (int, optional): Max number of cpus to run on.. Defaults to None.
             debug_mode (bool, optional): Restricts to a single thread and raises exceptions. Good for debugging.
-            wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
+            wheel_filepaths (List[str], optional): List of wheel filepaths to install on trial run. Defaults to None.
             raise_exception (bool, optional): Raise exception on failure.
         """
         if debug_mode:

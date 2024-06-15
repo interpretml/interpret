@@ -7,6 +7,7 @@ for immediate testing.
 Currently supported:
 - PMLB
 - OpenML CC18
+- CatBoost (regression/classification for <50k instances)
 
 Near future support:
 - Ikonomovska regression datasets
@@ -972,24 +973,27 @@ def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset, None,
 
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir, "openml")
+    
+    dataset_names_filename = "dataset_names.json"
+    dataset_names_stream = retrieve_cache(cache_dir, [dataset_names_filename])
+    if dataset_names_stream is None:
+        dataset_names = []
+        suite = openml.study.get_suite(99)
+        tasks = suite.tasks.copy()
+        random.Random(1337).shuffle(tasks)
+        for task_id in tqdm(tasks, desc="openml"):
+            task = openml.tasks.get_task(task_id, download_splits=False, download_data=False, download_qualities=False, download_features_meta_data=False)
+            dataset = openml.datasets.get_dataset(task.dataset_id, download_data=True, download_qualities=True, download_features_meta_data=True)
+            name = dataset.name
+            dataset_names.append(name)
 
-    suite = openml.study.get_suite(99)
-    tasks = suite.tasks.copy()
-    random.Random(1337).shuffle(tasks)
-    for task_id in tqdm(tasks, desc="openml"):
-        task = openml.tasks.get_task(task_id)
-        dataset = openml.datasets.get_dataset(task.dataset_id, download_data=False)
-        name = dataset.name
-        X_name = f"{name}.X.parquet"
-        y_name = f"{name}.y.parquet"
-        meta_name = f"{name}.meta.json"
-        problem = (
-            "binary" if dataset.qualities["NumberOfClasses"] == 2 else "multiclass"
-        )
-
-        cached = retrieve_cache(cache_dir, [X_name, y_name, meta_name])
-        if cached is None:
-            X, y, categorical_mask, feature_names = task.get_dataset().get_data(
+            X_name = f"{name}.X.parquet"
+            y_name = f"{name}.y.parquet"
+            meta_name = f"{name}.meta.json"
+            problem = (
+                "binary" if dataset.qualities["NumberOfClasses"] == 2 else "multiclass"
+            )
+            X, y, categorical_mask, feature_names = dataset.get_data(
                 target=task.target_name, dataset_format="dataframe"
             )
             meta = {
@@ -999,14 +1003,26 @@ def retrieve_openml(cache_dir: str = None) -> Generator[SupervisedDataset, None,
                 "categorical_mask": categorical_mask,
                 "feature_names": feature_names,
             }
+
             supervised = SupervisedDataset(X, y, meta)
-        else:
-            supervised = SupervisedDataset.deserialize(*cached)
+            if cache_dir is not None:
+                serialized = SupervisedDataset.serialize(supervised)
+                update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
+            yield supervised
 
         if cache_dir is not None:
-            serialized = SupervisedDataset.serialize(supervised)
-            update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
-        yield supervised
+            _, dataset_names_stream = BytesParser.serialize({"dataset_names": dataset_names})
+            update_cache(cache_dir, [dataset_names_filename], [dataset_names_stream])
+    else:
+        dataset_names_stream = dataset_names_stream[0]
+        dataset_names = BytesParser.deserialize(MIMETYPE_JSON, dataset_names_stream)["dataset_names"]
+        for name in tqdm(dataset_names, desc="openml"):
+            X_name = f"{name}.X.parquet"
+            y_name = f"{name}.y.parquet"
+            meta_name = f"{name}.meta.json"
+            cached = retrieve_cache(cache_dir, [X_name, y_name, meta_name])
+            supervised = SupervisedDataset.deserialize(*cached)
+            yield supervised
 
 
 def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
@@ -1023,6 +1039,7 @@ def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset,
     from catboost.datasets import amazon, msrank_10k, titanic
 
     datasets = [
+        # NOTE: CatBoost uses an internal dev link for first attempt, slowing the system to a halt - ignoring adult dataset.
         # {
         #     "name": "adult",
         #     "data_fn": adult,
@@ -1052,7 +1069,7 @@ def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset,
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir, "catboost_50k")
 
-    for dataset in datasets:
+    for dataset in tqdm(datasets, desc="catboost_50k"):
         name = dataset['name']
         X_name = f"{name}.X.parquet"
         y_name = f"{name}.y.parquet"
@@ -1075,12 +1092,11 @@ def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset,
                 "feature_names": list(X.columns),
             }
             supervised = SupervisedDataset(X, y, meta)
+            if cache_dir is not None:
+                serialized = SupervisedDataset.serialize(supervised)
+                update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
         else:
             supervised = SupervisedDataset.deserialize(*cached)
-            
-        if cache_dir is not None:
-            serialized = SupervisedDataset.serialize(supervised)
-            update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
         yield supervised
 
 
@@ -1126,9 +1142,9 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
                 "feature_names": list(X.columns),
             }
             supervised = SupervisedDataset(X, y, meta)
+            if cache_dir is not None:
+                serialized = SupervisedDataset.serialize(supervised)
+                update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
         else:
             supervised = SupervisedDataset.deserialize(*cached)
-        if cache_dir is not None:
-            serialized = SupervisedDataset.serialize(supervised)
-            update_cache(cache_dir, [X_name, y_name, meta_name], serialized)
         yield supervised
