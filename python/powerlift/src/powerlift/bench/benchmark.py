@@ -181,3 +181,11 @@ class Benchmark:
             self._store.iter_available_tasks(include_measures=include_measures)
         )
         return pd.DataFrame.from_records(records)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def description(self):
+        return self._description
