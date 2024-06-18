@@ -5,4 +5,4 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 mkdir -p ../build/docker
 cp Dockerfile ../build/docker/
 cd .. && python -m build && cp dist/* build/docker/
-cd build/docker && docker build -t interpretml/powerlift:0.1.5 .
+cd build/docker && docker build -t interpretml/powerlift:0.1.6 .

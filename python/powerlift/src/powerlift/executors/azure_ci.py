@@ -126,7 +126,7 @@ class AzureContainerInstance(LocalMachine):
         azure_client_secret: str,
         subscription_id: str,
         resource_group: str,
-        image: str = "interpretml/powerlift:0.1.5",
+        image: str = "interpretml/powerlift:0.1.6",
         n_running_containers: int = 1,
         num_cores: int = 1,
         mem_size_gb: int = 2,
