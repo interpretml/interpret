@@ -58,17 +58,21 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
    EBM_ASSERT(0 == (directionVectorLow & (size_t{1} << iDimensionSweep)));
 
    TensorSumDimension aDimensions[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+   size_t directionDestroy = directionVectorLow;
    size_t iDimensionInit = 0;
    do {
-      // move data to a local variable that the compiler can reason about and then eliminate by moving to CPU registers
-
-      aDimensions[iDimensionInit].m_iPoint = aiPoint[iDimensionInit];
       aDimensions[iDimensionInit].m_cBins = acBins[iDimensionInit];
-
+      if(0 != (size_t{1} & directionDestroy)) {
+         aDimensions[iDimensionInit].m_iLow = aiPoint[iDimensionInit] + 1;
+         aDimensions[iDimensionInit].m_iHigh = acBins[iDimensionInit];
+      } else {
+         aDimensions[iDimensionInit].m_iLow = 0;
+         aDimensions[iDimensionInit].m_iHigh = aiPoint[iDimensionInit] + 1;
+      }
+      directionDestroy >>= 1;
       ++iDimensionInit;
    } while(cRealDimensions != iDimensionInit);
 
-   const size_t directionVectorHigh = directionVectorLow | size_t{1} << iDimensionSweep;
    const size_t cSweepCuts = aDimensions[iDimensionSweep].m_cBins - 1;
    EBM_ASSERT(1 <= cSweepCuts); // dimensions with 1 bin are removed earlier
 
@@ -99,11 +103,11 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
    FloatCalc bestGain = k_illegalGainFloat;
    size_t iBin = 0;
    do {
-      aDimensions[iDimensionSweep].m_iPoint = iBin;
+      aDimensions[iDimensionSweep].m_iLow = 0;
+      aDimensions[iDimensionSweep].m_iHigh = iBin + 1;
       TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
             cRealDimensions,
             aDimensions,
-            directionVectorLow,
             aBins,
             binLow,
             aGradientPairsLow
@@ -117,10 +121,11 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
          goto next;
       }
 
+      aDimensions[iDimensionSweep].m_iLow = iBin + 1;
+      aDimensions[iDimensionSweep].m_iHigh = aDimensions[iDimensionSweep].m_cBins;
       TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cRuntimeScores,
             cRealDimensions,
             aDimensions,
-            directionVectorHigh,
             aBins,
             binHigh,
             aGradientPairsHigh

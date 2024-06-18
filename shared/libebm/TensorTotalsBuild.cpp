@@ -307,9 +307,10 @@ template<bool bHessian, size_t cCompilerScores, size_t cCompilerDimensions> clas
       UNUSED(aDebugCopyBinsBase);
 #ifdef CHECK_TENSORS
 
-      auto* const pDebugBin = static_cast<Bin<FloatMain, UIntMain, bHessian, cArrayScores>*>(malloc(cBytesPerBin));
+      auto* const pDebugBin =
+            static_cast<Bin<FloatMain, UIntMain, true, true, bHessian, cArrayScores>*>(malloc(cBytesPerBin));
 
-      auto* aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, UIntMain, bHessian, cArrayScores>();
+      auto* aDebugCopyBins = aDebugCopyBinsBase->Specialize<FloatMain, UIntMain, true, true, bHessian, cArrayScores>();
 
 #endif // CHECK_TENSORS
 #endif // NDEBUG
