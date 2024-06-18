@@ -82,9 +82,9 @@ def unify_data(
                 raise ValueError(msg)
 
             mapping = np.empty(len(categories) + 1, np.object_)
-            mapping.itemset(0, np.nan)
+            mapping[0] = np.nan
             for category, idx in categories.items():
-                mapping.itemset(idx, category)
+                mapping[idx] = category
             X_unified[:, feature_idx] = mapping[X_col]
 
     return X_unified, feature_names_in, feature_types_in

@@ -113,15 +113,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                                         // something other than 2 dimensions
 
       EBM_ASSERT(2 <= aDimensions[0].m_cBins); // 1 cBins in any dimension returns an interaction score of 0
-      aDimensions[0].m_iPoint = 0;
+      size_t x = 0;
       do {
          EBM_ASSERT(2 <= aDimensions[1].m_cBins); // 1 cBins in any dimension returns an interaction score of 0
-         aDimensions[1].m_iPoint = 0;
+         size_t y = 0;
          do {
+            aDimensions[0].m_iLow = 0;
+            aDimensions[0].m_iHigh = x + 1;
+            aDimensions[1].m_iLow = 0;
+            aDimensions[1].m_iHigh = y + 1;
             TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   aDimensions,
-                  0x00,
                   aBins,
                   bin00,
                   aGradientPairs00
@@ -135,10 +138,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                goto next;
             }
 
+            aDimensions[0].m_iLow = x + 1;
+            aDimensions[0].m_iHigh = aDimensions[0].m_cBins;
+            aDimensions[1].m_iLow = 0;
+            aDimensions[1].m_iHigh = y + 1;
             TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   aDimensions,
-                  0x01,
                   aBins,
                   bin01,
                   aGradientPairs01
@@ -152,10 +158,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                goto next;
             }
 
+            aDimensions[0].m_iLow = 0;
+            aDimensions[0].m_iHigh = x + 1;
+            aDimensions[1].m_iLow = y + 1;
+            aDimensions[1].m_iHigh = aDimensions[1].m_cBins;
             TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   aDimensions,
-                  0x02,
                   aBins,
                   bin10,
                   aGradientPairs10
@@ -169,10 +178,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                goto next;
             }
 
+            aDimensions[0].m_iLow = x + 1;
+            aDimensions[0].m_iHigh = aDimensions[0].m_cBins;
+            aDimensions[1].m_iLow = y + 1;
+            aDimensions[1].m_iHigh = aDimensions[1].m_cBins;
             TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   aDimensions,
-                  0x03,
                   aBins,
                   bin11,
                   aGradientPairs11
@@ -411,10 +423,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 
          next:;
 
-            ++aDimensions[1].m_iPoint;
-         } while(aDimensions[1].m_cBins - 1 != aDimensions[1].m_iPoint);
-         ++aDimensions[0].m_iPoint;
-      } while(aDimensions[0].m_cBins - 1 != aDimensions[0].m_iPoint);
+            ++y;
+         } while(aDimensions[1].m_cBins - 1 != y);
+         ++x;
+      } while(aDimensions[0].m_cBins - 1 != x);
 
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);

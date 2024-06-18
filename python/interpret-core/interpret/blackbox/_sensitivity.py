@@ -114,7 +114,7 @@ class MorrisSensitivity(ExplainerMixin):
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx, feature in enumerate(self.feature_names_in_):
             X_col = data[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         self.unique_val_counts_ = unique_val_counts
 

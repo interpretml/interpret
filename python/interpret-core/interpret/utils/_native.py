@@ -1543,7 +1543,7 @@ class Booster(AbstractContextManager):
         dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
         for term_idx, feature_idxs in enumerate(self.term_features):
-            dimension_counts.itemset(term_idx, len(feature_idxs))
+            dimension_counts[term_idx] = len(feature_idxs)
             feature_indexes.extend(feature_idxs)
         feature_indexes = np.array(feature_indexes, ct.c_int64)
 

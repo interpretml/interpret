@@ -371,7 +371,7 @@ def _normalize_float_categorical(col, clip_low, clip_high):
 
 
 def _normalize_string_categorical(col, clip_low, clip_high):
-    col = np.array(col, np.str_, copy=False)
+    col = np.asarray(col, np.str_)
     col = np.char.rpartition(col, "_")[:, 2]
     col = col.astype(np.int64).astype(np.float64)
     col += -1.0

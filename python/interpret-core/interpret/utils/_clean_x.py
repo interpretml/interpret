@@ -730,9 +730,9 @@ def _process_continuous(X_col, nonmissings):
                         # use .astype(..) instead of float(..) to ensure identical conversion results
                         floats[idx] = one_str_array.astype(dtype=np.float64)[0]
                     except ValueError:
-                        bad.itemset(idx, one_str_array.item())
+                        bad[idx] = one_str_array.item()
                 except ValueError:
-                    bad.itemset(idx, one_item_array.item())
+                    bad[idx] = one_item_array.item()
 
             # bad.any() would fail to work if bad was allowed to be either None or False, but None
             # values in X_col should always be identified as missing by our caller, and False should be successfully
@@ -819,9 +819,9 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
         # called under: fit or predict
         X_col, categories = _process_column_initial(X_col, nonmissings, None, None)
         mapping = np.empty(len(categories) + 1, np.object_)
-        mapping.itemset(0, None)
+        mapping[0] = None
         for category, idx in categories.items():
-            mapping.itemset(idx, category)
+            mapping[idx] = category
         bad = mapping[X_col]
         return "ignore", None, None, bad
     elif isinstance(processing, str):
@@ -1051,7 +1051,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
     elif isinstance(X_col, str):
         # don't allow strings to get to the np.array conversion below
         X_col_tmp = np.empty(1, np.object_)
-        X_col_tmp.itemset(0, X_col)
+        X_col_tmp[0] = X_col
         X_col = X_col_tmp
     else:
         try:
@@ -1063,7 +1063,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
         except TypeError:
             # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
             X_col_tmp = np.empty(1, np.object_)
-            X_col_tmp.itemset(0, X_col)
+            X_col_tmp[0] = X_col
             X_col = X_col_tmp
 
     X_col = _reshape_1D_if_possible(X_col)

@@ -954,7 +954,7 @@ def test_sklearn_estimator(estimator, check, skip_sklearn):
         warnings.filterwarnings(
             "ignore",
             "Casting complex values to real discards the imaginary part",
-            category=np.ComplexWarning,
+            category=np.exceptions.ComplexWarning,
         )
         check(estimator)
 

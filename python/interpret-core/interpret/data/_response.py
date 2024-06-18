@@ -72,7 +72,7 @@ class Marginal(ExplainerMixin):
         unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
         for col_idx in range(len(feature_names)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         global_selector = gen_global_selector(
             len(feature_names),
@@ -338,7 +338,7 @@ class ClassHistogram(ExplainerMixin):
         unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
         for col_idx in range(len(feature_names)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         global_selector = gen_global_selector(
             len(feature_names),

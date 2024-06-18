@@ -43,7 +43,7 @@ def link_func(predictions, link, link_param=np.nan):
     # whether this was meant to be 2 samples or the False/True probabilities for 1
     # sample. We handle monoclassification and multiclass in the same way.
 
-    predictions = np.array(predictions, np.float64, copy=False)
+    predictions = np.asarray(predictions, np.float64)
     if link == "monoclassification":
         if predictions.ndim == 0:
             if predictions == 1.0:
@@ -138,7 +138,7 @@ def inv_link(scores, link, link_param=np.nan):
         Predictions converted by the link function.
     """
 
-    scores = np.array(scores, np.float64, copy=False)
+    scores = np.asarray(scores, np.float64)
     if link == "monoclassification":
         bools = np.isnan(scores)
         preds = np.ones(scores.shape + (1,), np.float64)
