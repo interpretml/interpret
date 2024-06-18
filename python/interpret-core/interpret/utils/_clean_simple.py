@@ -212,7 +212,7 @@ def clean_dimensions(data, param_name):
     if n_second_dim == 0:
         return np.empty(0, np.object_)
 
-    data = np.array(data, np.object_, copy=False)  # in case it was converted to list
+    data = np.asarray(data, np.object_)  # in case it was converted to list
 
     if _pandas_installed:
         # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
