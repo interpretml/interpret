@@ -74,9 +74,12 @@ class LocalMachine(Executor):
                 )
 
     def join(self):
+        results = []
         if self._pool is not None:
             for _, result in self._trial_id_to_result.items():
-                result.get()
+                res = result.get()
+                results.append(res)
+        return results
 
     def cancel(self):
         if self._pool is not None:

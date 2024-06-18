@@ -8,6 +8,7 @@ from powerlift.executors.localmachine import LocalMachine
 from powerlift.bench.store import Store
 from typing import Iterable, List
 from powerlift.executors.base import handle_err
+import random
 
 
 def _wait_for_completed_worker(results):
@@ -29,7 +30,7 @@ def _wait_for_completed_worker(results):
             time.sleep(1)
 
 
-def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete_group_container_on_complete):
+def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete_group_container_on_complete, batch_id):
     from azure.mgmt.containerinstance.models import (
         ContainerGroup,
         Container,
@@ -93,7 +94,7 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete
             os_type=OperatingSystemTypes.linux,
             restart_policy=ContainerGroupRestartPolicy.never,
         )
-        container_group_name = f"powerlift-container-group-{worker_id}"
+        container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
 
         result = aci_client.container_groups.begin_create_or_update(
             resource_group.name, container_group_name, container_group
@@ -107,7 +108,7 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete
     # Delete all container groups
     if delete_group_container_on_complete:
         for worker_id in range(n_running_containers):
-            container_group_name = f"powerlift-container-group-{worker_id}"
+            container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
             aci_client.container_groups.begin_delete(
                 resource_group_name, container_group_name
             )
@@ -168,6 +169,7 @@ class AzureContainerInstance(LocalMachine):
             "subscription_id": subscription_id,
             "resource_group": resource_group,
         }
+        self._batch_id = random.getrandbits(64)
         super().__init__(store=store, n_cpus=n_running_containers, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
 
     def delete_credentials(self):
@@ -199,7 +201,9 @@ class AzureContainerInstance(LocalMachine):
             self._mem_size_gb,
             self._n_running_containers,
             self._delete_group_container_on_complete,
+            self._batch_id,
         )
+        self._batch_id = random.getrandbits(64)
         if self._pool is None:
             try:
                 res = _run(*params)
