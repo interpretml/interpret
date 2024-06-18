@@ -346,12 +346,12 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     n_missing = len(X_col)
                     X_col = X_col[~np.isnan(X_col)]
                     n_missing = n_missing - len(X_col)
-                    missing_val_counts.itemset(feature_idx, n_missing)
-                    unique_val_counts.itemset(feature_idx, len(np.unique(X_col)))
+                    missing_val_counts[feature_idx] = n_missing
+                    unique_val_counts[feature_idx] = len(np.unique(X_col))
 
                 bins[feature_idx] = cuts
-                feature_bounds.itemset((feature_idx, 0), min_feature_val)
-                feature_bounds.itemset((feature_idx, 1), max_feature_val)
+                feature_bounds[(feature_idx, 0)] = min_feature_val
+                feature_bounds[(feature_idx, 1)] = max_feature_val
             else:
                 # categorical feature
                 if bad is not None:
@@ -397,7 +397,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     for idx, category_iter in groupby(categories, lambda x: x[0]):
                         bin_weight = keep_bins.get(idx, None)
                         if bin_weight is not None:
-                            feature_bin_weights.itemset(new_idx, bin_weight)
+                            feature_bin_weights[new_idx] = bin_weight
                             for _, category in category_iter:
                                 new_categories[category] = new_idx
                             new_idx += 1
@@ -417,10 +417,10 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     # for categoricals histograms and bin weights are the same
                     histogram_weights[feature_idx] = feature_bin_weights
 
-                    missing_val_counts.itemset(
-                        feature_idx, len(X_col) - np.count_nonzero(X_col)
+                    missing_val_counts[feature_idx] = len(X_col) - np.count_nonzero(
+                        X_col
                     )
-                    unique_val_counts.itemset(feature_idx, len(categories))
+                    unique_val_counts[feature_idx] = len(categories)
                 bins[feature_idx] = categories
             bin_weights[feature_idx] = feature_bin_weights
 

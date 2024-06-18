@@ -134,7 +134,7 @@ class PartialDependence(ExplainerMixin):
             pdps.append(pdp)
 
             X_col = data[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         # TODO: we can probably extract the data in pdps_ to be less opaque
         # to this class and construct the JSONable data later

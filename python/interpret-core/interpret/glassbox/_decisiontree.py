@@ -296,7 +296,7 @@ class BaseShallowDecisionTree:
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx in range(len(self.feature_names_in_)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         feat_imp = model.feature_importances_
         self.global_selector_ = gen_global_selector(

@@ -151,7 +151,7 @@ def _create_proportional_tensor(axis_weights):
             remainder //= len(percentages)
             frac *= percentages[bin_idx]
         val = frac * total_weight
-        tensor.itemset(cell_idx, val)
+        tensor[cell_idx] = val
     return tensor.reshape(shape)
 
 

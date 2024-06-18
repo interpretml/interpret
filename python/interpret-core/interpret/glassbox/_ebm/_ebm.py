@@ -2157,7 +2157,7 @@ class EBMModel(BaseEstimator):
             features = np.ones(len(self.bins_), np.bool_)
             for term in self.term_features_:
                 for feature_idx in term:
-                    features.itemset(feature_idx, False)
+                    features[feature_idx] = False
             self.remove_features(features)
         elif features is not False:
             msg = "features must be True or False"

@@ -96,7 +96,7 @@ def clean_dimensions(data, param_name):
         elif isinstance(data, str):
             # we have just 1 item, so re-pack it and return
             ret = np.empty(1, np.object_)
-            ret.itemset(0, data)
+            ret[0] = data
             return ret
         else:
             try:
@@ -104,7 +104,7 @@ def clean_dimensions(data, param_name):
             except TypeError:
                 # we have just 1 item, so re-pack it and return
                 ret = np.empty(1, np.object_)
-                ret.itemset(0, data)
+                ret[0] = data
                 return ret
             data = np.array(data, np.object_)
 
