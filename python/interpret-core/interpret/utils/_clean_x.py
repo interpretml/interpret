@@ -1224,9 +1224,12 @@ def unify_columns(
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
+        if not sp.sparse.isspmatrix_csc(X):
+            X = sp.sparse.csc_matrix(X, copy=False)
+
         for feature_idx, categories in requests:
             col_idx = feature_idx if col_map is None else col_map[feature_idx]
-            X_col = X.getcol(col_idx)
+            X_col = X[:, col_idx]
             feature_type = None if feature_types is None else feature_types[feature_idx]
             feature_type_in, X_col, categories, bad = _process_scipy_column(
                 X_col, categories, feature_type, min_unique_continuous
