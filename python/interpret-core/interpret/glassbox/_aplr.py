@@ -160,6 +160,9 @@ class APLRExplanation(FeatureValueExplanation):
 
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
     def explain_global(self, name=None)->APLRExplanation:
         """Provides global explanation for model.
 
@@ -188,6 +191,9 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
     def explain_global(self, name=None)->APLRExplanation:
         """Provides global explanation for model.
 
