@@ -26,7 +26,7 @@ def trial_runner(trial):
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
 
-    if trial.task.problem == "binary" and trial.task.origin == "openml":
+    if trial.task.problem == "binary":
         X, y, meta = trial.task.data(["X", "y", "meta"])
 
         # Holdout split
@@ -65,16 +65,20 @@ def trial_runner(trial):
         auc = roc_auc_score(y_te, predictions)
         trial.log("auc", auc)
 
-# Create experiment within database.
-import os
-from powerlift.bench import Benchmark
-benchmark = Benchmark(f"sqlite:///{os.getcwd()}/powerlift.db", name="SVM vs RF")
 
-# Only run this once for the database (downloads PMLB and OpenML CC18 datasets).
+import os
+from powerlift.bench import Benchmark, Store
 from powerlift.bench import populate_with_datasets
-populate_with_datasets(benchmark.store, cache_dir="~/.powerlift")
+
+# Initialize database (if needed).
+conn_str = f"sqlite:///{os.getcwd()}/powerlift.db"
+store = Store(conn_str, force_recreate=False)
+
+# This downloads datasets once and feeds into the database.
+populate_with_datasets(store, cache_dir="~/.powerlift", exist_ok=True)
 
 # Run experiment
+benchmark = Benchmark(f"sqlite:///{os.getcwd()}/powerlift.db", name="SVM vs RF")
 benchmark.run(trial_runner, trial_filter)
 benchmark.wait_until_complete()
 ```
