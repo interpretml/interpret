@@ -299,3 +299,247 @@ TEST_CASE("SuggestGraphBounds, 2 cuts, overflow diff") {
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(std::numeric_limits<double>::infinity() == highGraphBound);
 }
+
+TEST_CASE("SafeMean, 4 values") {
+   double vals[]{1.0, 2.5, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values in bag") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean[2];
+
+   const ErrorEbm error = SafeMean(cVals / 2, 2, vals, mean);
+   CHECK(Error_None == error);
+   CHECK(mean[0] == 28.375);
+   CHECK(mean[1] == -99.0);
+}
+
+TEST_CASE("SafeMean, -inf") {
+   double vals[]{1.0, -INFINITY, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == -INFINITY);
+}
+
+TEST_CASE("SafeMean, +inf") {
+   double vals[]{1.0, INFINITY, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == INFINITY);
+}
+
+TEST_CASE("SafeMean, nan") {
+   double vals[]{1.0, NAN, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(mean));
+}
+
+TEST_CASE("SafeMean, nan with others") {
+   double vals[]{1.0, INFINITY, NAN, -INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(mean));
+}
+
+TEST_CASE("SafeMean, +inf and -inf") {
+   double vals[]{1.0, INFINITY, -INFINITY, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == INFINITY);
+}
+
+TEST_CASE("SafeMean, -inf and +inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == INFINITY);
+}
+
+TEST_CASE("SafeMean, more -inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, -INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == -INFINITY);
+}
+
+TEST_CASE("SafeMean, more +inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, +INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == INFINITY);
+}
+
+TEST_CASE("SafeMean, no overflow positive") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(mean));
+}
+
+TEST_CASE("SafeMean, no overflow negative") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(mean));
+}
+
+
+
+TEST_CASE("SafeStandardDeviation, 4 values") {
+   double vals[]{1.0, 2.5, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+TEST_CASE("SafeStandardDeviation, 3 values in bag") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev[2];
+
+   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev[0], 41.493034053922834);
+   CHECK(stddev[1] == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf") {
+   double vals[]{1.0, -INFINITY, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, +inf") {
+   double vals[]{1.0, INFINITY, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, nan") {
+   double vals[]{1.0, NAN, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, nan with others") {
+   double vals[]{1.0, INFINITY, NAN, -INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, +inf and -inf") {
+   double vals[]{1.0, INFINITY, -INFINITY, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf and +inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, more -inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, -INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, more +inf") {
+   double vals[]{1.0, -INFINITY, +INFINITY, +INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow positive") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow negative") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}

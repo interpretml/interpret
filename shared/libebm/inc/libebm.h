@@ -299,6 +299,10 @@ EBM_API_INCLUDE void EBM_CALLING_CONVENTION SetTraceLevel(TraceEbm traceLevel);
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetTraceLevelString(TraceEbm traceLevel);
 
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CleanFloats(IntEbm count, double* valsInOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SafeMean(
+      IntEbm countBags, IntEbm countTensorBins, const double* vals, double* tensorOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SafeStandardDeviation(
+      IntEbm countBags, IntEbm countTensorBins, const double* vals, double* tensorOut);
 
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG(void);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void* rngOut);
