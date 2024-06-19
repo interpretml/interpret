@@ -1,4 +1,4 @@
-# Copyright (c) 2023 The InterpretML Contributors
+# Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 
 from aplr import APLRRegressor as APLRRegressorNative
