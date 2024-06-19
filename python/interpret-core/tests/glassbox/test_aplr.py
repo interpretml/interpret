@@ -46,8 +46,8 @@ def test_classification():
     native = APLRClassifierNative()
     our_aplr = APLRClassifier()
 
-    native.fit(X, y)
-    our_aplr.fit(X, y)
+    native.fit(X, y, X_names=feature_names)
+    our_aplr.fit(X, y, X_names=feature_names)
 
     native_pred = native.predict_class_probabilities(X)
     our_pred = our_aplr.predict_class_probabilities(X)
