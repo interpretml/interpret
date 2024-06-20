@@ -87,6 +87,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             if is_main_effect:
                 data_dict = {
                     "type": "univariate",
+                    "feature_name":self.feature_names[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
                     "density": {
