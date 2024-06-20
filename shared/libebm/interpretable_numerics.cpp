@@ -1249,20 +1249,52 @@ static double Stddev(const size_t cSamples,
    EBM_ASSERT(nullptr != pcNaN);
    EBM_ASSERT(nullptr != pcInf);
 
-   size_t cNaN = 0;
-   size_t cInf = 0;
-   size_t i = 0;
    const size_t iEnd = cSamples * cStride;
+
+   // use Welford's method to calculate stddev
+   // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
+   // https://www.johndcook.com/blog/standard_deviation/
+
+   double factorVal = 1.0;
+   double s;
+   size_t cNaN;
+   size_t cInf;
+
+   restart:;
+
+   cNaN = 0;
+   cInf = 0;
+
+   size_t i = 0;
+   s = 0;
+   double m = 0;
+   size_t k = 0;
    do {
-      const double val = aFeatureVals[i];
+      double val = aFeatureVals[i];
       if(std::isnan(val)) {
          ++cNaN;
       } else if(std::isinf(val)) {
          ++cInf;
+      } else {
+         val *= factorVal; // to handle overflows we scale back when necessary
+         ++k;
+         const double numerator = val - m;
+         m += numerator / static_cast<double>(k);
+         s += numerator * (val - m);
+         if(std::isnan(s) || std::isinf(s)) {
+            factorVal *= 0.5;
+            // there should be some factorVal that gives us a non-overflowing stddev
+            EBM_ASSERT(std::numeric_limits<double>::lowest() <= factorVal);
+            goto restart;
+         }
       }
       i += cStride;
    } while(iEnd != i);
+
+   EBM_ASSERT(!std::isnan(s));
+   EBM_ASSERT(!std::isinf(s));
    EBM_ASSERT(cNaN + cInf <= cSamples);
+   EBM_ASSERT(k == cSamples - cNaN - cInf);
 
    *pcNaN = cNaN;
    *pcInf = cInf;
@@ -1271,53 +1303,24 @@ static double Stddev(const size_t cSamples,
    if(cNormal <= 1) {
       return 0.0;
    }
-   const double multFactor = double{1} / static_cast<double>(cNormal);
-
-   // use Welford's method to calculate stddev
-   // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
-   // https://www.johndcook.com/blog/standard_deviation/
-
-   double factor = 1.0;
-   double s;
-   goto skip_first;
-   do {
-      factor *= 0.5;
-      // there should be some factor that gives us a non-overflowing stddev
-      EBM_ASSERT(std::numeric_limits<double>::lowest() <= factor);
-
-      skip_first:;
-
-      i = 0;
-      s = 0;
-      double m = 0;
-      size_t k = 0;
-      do {
-         double val = aFeatureVals[i];
-         if(!std::isnan(val) && !std::isinf(val)) {
-            val *= factor; // to handle overflows we scale back when necessary
-            ++k;
-            const double numerator = val - m;
-            m += numerator / static_cast<double>(k);
-            s += multFactor * numerator * (val - m);
-         }
-         i += cStride;
-      } while(iEnd != i);
-      EBM_ASSERT(k == cNormal);
-   } while(std::isnan(s) || std::isinf(s));
-
+   
+   s /= static_cast<double>(cNormal);
    if(s < std::numeric_limits<double>::lowest()) {
       // clean up subnormal numbers and handle the case where floating point noise creates a slightly negative s
-      s = 0.0;
-   } else {
-      s = std::sqrt(s) / factor;
-      // if +inf is observed, it's due to floating point noise, so change to max float
-      if(std::numeric_limits<double>::infinity() == s) {
-         s = std::numeric_limits<double>::max();
-      } else if(s < std::numeric_limits<double>::lowest()) {
-         // clean up subnormal numbers
-         s = 0.0;
-      }
+      return 0.0;
    }
+
+   s = std::sqrt(s) / factorVal;
+   if(s < std::numeric_limits<double>::lowest()) {
+      // clean up subnormal numbers
+      return 0.0;
+   }
+
+   if(std::numeric_limits<double>::infinity() == s) {
+      // if +inf is observed, it's due to floating point noise, so change to max float
+      return std::numeric_limits<double>::max();
+   }
+
    return s;
 }
 
