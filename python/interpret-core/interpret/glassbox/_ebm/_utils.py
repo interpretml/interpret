@@ -221,29 +221,18 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
 
     term_scores = []
     standard_deviations = []
-    if (bag_weights == bag_weights[0]).all():
-        # if all the bags have the same total weight we can avoid some numeracy issues
-        # by using a non-weighted standard deviation
-        bag_weights = None
     for scores in bagged_scores:
-        averaged = np.average(scores, axis=0, weights=bag_weights)
+        averaged = native.safe_mean(scores, bag_weights)
         term_scores.append(averaged)
-
-        nans = np.isnan(averaged)
         stddevs = native.safe_stddev(scores, bag_weights)
-        stddevs[np.isnan(stddevs)] = np.inf
-        stddevs[nans] = np.nan
         standard_deviations.append(stddevs)
-    intercept = np.average(bagged_intercept, axis=0, weights=bag_weights)
+    intercept = native.safe_mean(bagged_intercept, bag_weights)
 
     if n_classes < 0:
         # scikit-learn requires float for regression. We have np.float64 from average.
         intercept = float(intercept)
-    elif n_classes <= 2:
-        # scikit-learn requires array for classification, but np.average collapses
-        # to an np.float64 if input 1 dimensional, so restore to an array
-        intercept = np.full(1, intercept, np.float64)
-    else:
+    elif 3 <= n_classes:
+        # multiclass
         # pick the class that we're going to zero
         zero_index = np.argmax(intercept)
         intercept = intercept - intercept[zero_index]

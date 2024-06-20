@@ -1320,7 +1320,7 @@ static double Stddev(const size_t cSamples,
          }
          i += cStride;
       } while(iEnd != i);
-   } while(std::isnan(s) || std::isinf(s));
+   } while(std::isnan(s) || std::isinf(s) || std::numeric_limits<double>::infinity() == k);
 
    EBM_ASSERT(!std::isnan(s));
    EBM_ASSERT(!std::isinf(s));
@@ -1362,6 +1362,7 @@ static double Stddev(const size_t cSamples,
 static double Mean(const size_t cSamples,
       const size_t cStride,
       const double* const aFeatureVals,
+      const double* const aWeights,
       size_t* const pcNaN,
       size_t* const pcPosInf,
       size_t* const pcNegInf) {
@@ -1372,69 +1373,106 @@ static double Mean(const size_t cSamples,
    EBM_ASSERT(nullptr != pcPosInf);
    EBM_ASSERT(nullptr != pcNegInf);
 
-   size_t cNaN = 0;
-   size_t cPosInf = 0;
-   size_t cNegInf = 0;
-   double sum = 0;
-   size_t i = 0;
    const size_t iEnd = cSamples * cStride;
+
+   // use Welford's method to calculate mean (which is part of stddev)
+   // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
+   // https://www.johndcook.com/blog/standard_deviation/
+
+   double factor = 1.0;
+   double mean;
+   size_t cNaN;
+   size_t cPosInf;
+   size_t cNegInf;
+   double k;
+   size_t cNormal;
+
+   goto skip;
    do {
-      const double val = aFeatureVals[i];
-      if(std::isnan(val)) {
-         ++cNaN;
-      } else if(std::isinf(val)) {
-         if(std::numeric_limits<double>::infinity() == val) {
-            ++cPosInf;
+      factor *= 0.5;
+      // there should be some factor that gives us a non-overflowing stddev
+      EBM_ASSERT(std::numeric_limits<double>::min() <= factor);
+
+   skip:;
+
+      cNaN = 0;
+      cPosInf = 0;
+      cNegInf = 0;
+
+      size_t i = 0;
+      mean = 0;
+      k = 0;
+      const double* pWeight = aWeights;
+      size_t cWeightInf = 0;
+      cNormal = 0;
+      do {
+         double val = aFeatureVals[i];
+         if(std::isnan(val)) {
+            ++cNaN;
+         } else if(std::isinf(val)) {
+            if(std::numeric_limits<double>::infinity() == val) {
+               ++cPosInf;
+            } else {
+               EBM_ASSERT(-std::numeric_limits<double>::infinity() == val);
+               ++cNegInf;
+            }
          } else {
-            EBM_ASSERT(-std::numeric_limits<double>::infinity() == val);
-            ++cNegInf;
+            ++cNormal;
+            double weight = 1.0;
+            if(nullptr != pWeight) {
+               weight = *pWeight;
+               if(std::numeric_limits<double>::infinity() == weight) {
+                  k = static_cast<double>(cWeightInf);
+                  ++cWeightInf;
+                  weight = 1.0;
+               } else {
+                  weight *= factor;
+                  if(0 != cWeightInf) {
+                     weight = 0.0;
+                  }
+               }
+            }
+            k += weight;
+            val *= factor; // to handle overflows we scale back when necessary
+            const double numerator = val - mean;
+            double ratio = weight / k;
+            if(k < std::numeric_limits<double>::min()) {
+               // if all the weights are zero, then weigh them all equally
+               ratio = double{1} / static_cast<double>(cNormal);
+            }
+            mean += numerator * ratio;
          }
-      } else {
-         sum += val;
-      }
-      i += cStride;
-   } while(iEnd != i);
+         if(nullptr != pWeight) {
+            ++pWeight;
+         }
+         i += cStride;
+      } while(iEnd != i);
+   } while(std::isnan(mean) || std::isinf(mean) || std::numeric_limits<double>::infinity() == k);
+
+   EBM_ASSERT(!std::isnan(mean));
+   EBM_ASSERT(!std::isinf(mean));
    EBM_ASSERT(cNaN + cPosInf + cNegInf <= cSamples);
-   EBM_ASSERT(!std::isnan(sum)); // if it overflows to +inf or -inf it cannot leave it
+   EBM_ASSERT(cNormal == cSamples - cNaN - cPosInf - cNegInf);
 
    *pcNaN = cNaN;
    *pcPosInf = cPosInf;
    *pcNegInf = cNegInf;
 
-   const size_t cNormal = cSamples - cNaN - cPosInf - cNegInf;
-   double mean = 0.0;
-   if(0 != cNormal) {
-      const double cNormalDouble = static_cast<double>(cNormal);
-      if(!std::isinf(sum)) {
-         return sum / cNormalDouble;
+   mean /= factor;
+
+   if(std::isinf(mean)) {
+      // if +inf or -inf is observed, it's due to floating point noise, so change to max/-max floats
+      if(std::numeric_limits<double>::infinity() == mean) {
+         mean = std::numeric_limits<double>::max();
+      } else {
+         EBM_ASSERT(-std::numeric_limits<double>::infinity() == mean);
+         mean = std::numeric_limits<double>::lowest();
       }
-
-      // We overflowed. Try again but this time divide as we go. This is less accurate and slower, but whatever.
-      const double cNormalDoubleInv = double{1} / cNormalDouble;
-      i = 0;
-      do {
-         const double val = aFeatureVals[i];
-         if(!std::isnan(val) && !std::isinf(val)) {
-            mean += val * cNormalDoubleInv;
-         }
-         i += cStride;
-      } while(iEnd != i);
-
-      EBM_ASSERT(!std::isnan(mean)); // if it overflows to +inf or -inf it cannot leave it
-
-      if(std::isinf(mean)) {
-         // if +inf or -inf is observed, it's due to floating point noise, so change to max/-max floats
-         if(std::numeric_limits<double>::infinity() == mean) {
-            mean = std::numeric_limits<double>::max();
-         } else {
-            EBM_ASSERT(-std::numeric_limits<double>::infinity() == mean);
-            mean = std::numeric_limits<double>::lowest();
-         }
-      } else if(-std::numeric_limits<double>::min() < mean && mean < std::numeric_limits<double>::min()) {
-         // clean up subnormal numbers
-         mean = 0.0;
-      }
+   } else if(-std::numeric_limits<double>::min() < mean && mean < std::numeric_limits<double>::min()) {
+      // clean up subnormal numbers
+      mean = 0.0;
    }
+
    return mean;
 }
 
@@ -1443,7 +1481,7 @@ static int g_cLogEnterSafeMeanCount = 25;
 static int g_cLogExitSafeMeanCount = 25;
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SafeMean(
-      IntEbm countBags, IntEbm countTensorBins, const double* vals, double* tensorOut) {
+      IntEbm countBags, IntEbm countTensorBins, const double* vals, const double* weights, double* tensorOut) {
 
    LOG_COUNTED_N(&g_cLogEnterSafeMeanCount,
          Trace_Info,
@@ -1452,10 +1490,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SafeMean(
          "countBags=%" IntEbmPrintf ", "
          "countTensorBins=%" IntEbmPrintf ", "
          "vals=%p, "
+         "weights=%p, "
          "tensorOut=%p",
          countBags,
          countTensorBins,
          static_cast<const void*>(vals),
+         static_cast<const void*>(weights),
          static_cast<const void*>(tensorOut));
 
    if(countBags <= IntEbm{0}) {
@@ -1501,7 +1541,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SafeMean(
       size_t cNaN;
       size_t cPosInf;
       size_t cNegInf;
-      double mean = Mean(cBags, cTensorBins, pVal, &cNaN, &cPosInf, &cNegInf);
+      double mean = Mean(cBags, cTensorBins, pVal, weights, &cNaN, &cPosInf, &cNegInf);
       // we use NaN as a user indicator that the prediction is illegal, so do everything possible
       // to avoid creating new NaN values. If we have more +inf than -inf then it's +inf, else -inf
       // If we have equal numbers of +inf and -inf, use +inf because that's more likely to be noticed.
@@ -1644,7 +1684,7 @@ EBM_API_BODY IntEbm EBM_CALLING_CONVENTION GetHistogramCutCount(IntEbm countSamp
    if(double{0} < stddev) {
       const size_t cNormal = cSamples - cNaN - cInf;
       if(size_t{3} <= cNormal) {
-         const double mean = Mean(cSamples, 1, featureVals, &cNaN, &cInf, &cInf);
+         const double mean = Mean(cSamples, 1, featureVals, nullptr, &cNaN, &cInf, &cInf);
          const double cNormalDouble = static_cast<double>(cNormal);
          const double cNormalCubicRootDouble = std::cbrt(cNormalDouble);
          const double multFactor = double{1} / cNormalCubicRootDouble / stddev;

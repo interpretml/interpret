@@ -307,7 +307,7 @@ TEST_CASE("SafeMean, 4 values") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == 28.375);
 }
@@ -317,7 +317,7 @@ TEST_CASE("SafeMean, 4 values in bag") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean[2];
 
-   const ErrorEbm error = SafeMean(cVals / 2, 2, vals, mean);
+   const ErrorEbm error = SafeMean(cVals / 2, 2, vals, nullptr, mean);
    CHECK(Error_None == error);
    CHECK(mean[0] == 28.375);
    CHECK(mean[1] == -99.0);
@@ -328,7 +328,7 @@ TEST_CASE("SafeMean, -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == -INFINITY);
 }
@@ -338,7 +338,7 @@ TEST_CASE("SafeMean, +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == INFINITY);
 }
@@ -348,7 +348,7 @@ TEST_CASE("SafeMean, nan") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(std::isnan(mean));
 }
@@ -358,7 +358,7 @@ TEST_CASE("SafeMean, nan with others") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(std::isnan(mean));
 }
@@ -368,7 +368,7 @@ TEST_CASE("SafeMean, +inf and -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == INFINITY);
 }
@@ -378,7 +378,7 @@ TEST_CASE("SafeMean, -inf and +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == INFINITY);
 }
@@ -388,7 +388,7 @@ TEST_CASE("SafeMean, more -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == -INFINITY);
 }
@@ -398,7 +398,7 @@ TEST_CASE("SafeMean, more +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(mean == INFINITY);
 }
@@ -408,7 +408,7 @@ TEST_CASE("SafeMean, no overflow positive") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(std::isfinite(mean));
 }
@@ -418,10 +418,127 @@ TEST_CASE("SafeMean, no overflow negative") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double mean = -99.0;
 
-   const ErrorEbm error = SafeMean(cVals, 1, vals, &mean);
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
    CHECK(std::isfinite(mean));
 }
+
+
+
+
+
+TEST_CASE("SafeMean, 4 values, weights of 1.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 2.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.0, 2.0, 2.0, 2.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.0, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{INFINITY, INFINITY, INFINITY, INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{INFINITY, 10.0, INFINITY, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.5, 0.0, 2.5, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, 2.5, 0.0, 2.5};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, INFINITY, 9.0, INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, 2.5, 0.0, 5.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 4.0);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, DBL_MAX, 9.0, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+
+
 
 
 
@@ -726,6 +843,17 @@ TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
 TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
    double vals[]{1.0, 2.5, 10, 100};
    double weights[]{0.5, INFINITY, 2.5, INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 48.75);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, overflow weights") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, DBL_MAX, 2.5, DBL_MAX};
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
