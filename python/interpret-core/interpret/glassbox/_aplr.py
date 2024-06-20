@@ -128,6 +128,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append({})
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
+        ...
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
