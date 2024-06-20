@@ -13,8 +13,8 @@ def test_regression():
     X, y = dataset.data, dataset.target
     feature_names = dataset.feature_names
 
-    native = APLRRegressorNative()
-    our_aplr = APLRRegressor()
+    native = APLRRegressorNative(max_interaction_level=2)
+    our_aplr = APLRRegressor(max_interaction_level=2)
 
     native.fit(X, y, X_names=feature_names)
     our_aplr.fit(X, y, X_names=feature_names)
