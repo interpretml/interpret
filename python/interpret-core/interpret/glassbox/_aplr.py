@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 import numpy as np
 from typing import List, Tuple
+from warnings import warn
 import aplr
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
@@ -109,7 +110,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append(density_dict)
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
-            if is_two_way_interaction:
+            elif is_two_way_interaction:
                 feature_dict = {
                     "type": "interaction",
                     "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
@@ -128,6 +129,11 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append({})
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
+            else: # pragma: no cover
+                warn(
+                    f"Dropping term {affiliation} from explanation "
+                    "since we can't graph more than 2 dimensions."
+                )
         ...
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
