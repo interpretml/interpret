@@ -79,10 +79,10 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         feature_list = []
         density_list = []
         keep_idxs = []
-        unique_values=[]
         predictors_in_each_affiliation = (
             self.get_base_predictors_in_each_unique_term_affiliation()
         )
+        unique_values=np.full(shape=len(predictors_in_each_affiliation),fill_value=np.nan)
         for affiliation_index, affiliation in enumerate(
             self.get_unique_term_affiliations()
         ):
@@ -112,7 +112,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append(density_dict)
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
-                unique_values.append(self.unique_values_in_[predictor_indexes_used[0]])
+                unique_values[affiliation_index]=self.unique_values_in_[predictor_indexes_used[0]]
             elif is_two_way_interaction:
                 feature_dict = {
                     "type": "interaction",
@@ -132,7 +132,6 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append({})
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
-                unique_values.append(np.nan)
             else: # pragma: no cover
                 warn(
                     f"Dropping term {affiliation} from explanation "
@@ -150,12 +149,12 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             ],
         }
         term_names=[self.get_unique_term_affiliations()[i] for i in keep_idxs]
-        term_types=["continuous" for i in keep_idxs]
+        term_types=[feature_dict["type"] for feature_dict in feature_list]
         selector=gen_global_selector(
-                self.n_features_in_,
+                len(keep_idxs),
                 term_names,
                 term_types,
-                unique_values,
+                [unique_values[i] for i in keep_idxs],
                 None,
             )
         return APLRExplanation(
