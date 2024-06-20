@@ -57,7 +57,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def explain_global(self, name=None):
+    def explain_global(self, name:str=None):
         """Provides global explanation for model.
 
         Args:
@@ -74,7 +74,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 
         data_dicts = []
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X:FloatMatrix, y:FloatVector=None, name:str=None):
         """Provides local explanations for provided instances.
 
         Args:
@@ -136,7 +136,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def explain_global(self, name=None):
+    def explain_global(self, name:str=None):
         """Provides global explanation for model.
 
         Args:
@@ -148,7 +148,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         """
         ...
 
-    def explain_local(self, X, y=None, name=None):
+    def explain_local(self, X:FloatMatrix, y:FloatVector=None, name:str=None):
         """Provides local explanations for provided instances.
 
         Args:
