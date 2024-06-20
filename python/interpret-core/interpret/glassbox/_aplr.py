@@ -41,6 +41,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values = calculate_unique_values(X)
+        self.feature_names=define_feature_names(X_names,X)
         return super().fit(
             X,
             y,
@@ -126,6 +127,12 @@ def calculate_unique_values(X: FloatMatrix) -> List[int]:
     unique_values_counts = [len(np.unique(col)) for col in X.T]
     return unique_values_counts
 
+def define_feature_names(X_names: StrVector, X:FloatMatrix)->StrVector:
+    if len(X_names) == 0:
+        names = [f"X{i+1}" for i in range(X.shape[1])]
+        return names
+    else:
+        return X_names
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -147,6 +154,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values = calculate_unique_values(X)
+        self.feature_names=define_feature_names(X_names,X)
         return super().fit(
             X,
             y,
