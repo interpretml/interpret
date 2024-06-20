@@ -1,6 +1,9 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-
+import numpy as np
+from typing import List, Tuple
+from warnings import warn
+import aplr
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._explanation import (
@@ -9,7 +12,264 @@ from ..utils._explanation import (
     gen_local_selector,
     gen_perf_dicts,
 )
-import aplr
+
+FloatVector = List[float]
+FloatMatrix = List[List[float]]
+IntVector = List[int]
+IntMatrix = List[List[int]]
+StrVector = List[str]
+
+
+class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
+    def fit(
+        self,
+        X: FloatMatrix,
+        y: FloatVector,
+        sample_weight: FloatVector = [],
+        X_names: StrVector = [],
+        cv_observations: IntMatrix = [],
+        prioritized_predictors_indexes: IntVector = [],
+        monotonic_constraints: IntVector = [],
+        group: FloatVector = [],
+        interaction_constraints: List[List[int]] = [],
+        other_data: FloatMatrix = [],
+        predictor_learning_rates: FloatVector = [],
+        predictor_penalties_for_non_linearity: FloatVector = [],
+        predictor_penalties_for_interactions: FloatVector = [],
+    ):
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.unique_values_in_ = calculate_unique_values(X)
+        self.feature_names_in_ = define_feature_names(X_names, X)
+        self.n_features_in_ = X.shape[1]
+        super().fit(
+            X,
+            y,
+            sample_weight,
+            X_names,
+            cv_observations,
+            prioritized_predictors_indexes,
+            monotonic_constraints,
+            group,
+            interaction_constraints,
+            other_data,
+            predictor_learning_rates,
+            predictor_penalties_for_non_linearity,
+            predictor_penalties_for_interactions,
+        )
+
+    def explain_global(self, name: str = None):
+        """Provides global explanation for model.
+
+        Args:
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object,
+            visualizing feature-value pairs as horizontal bar chart.
+        """
+        overall_dict = {
+            "names": self.get_unique_term_affiliations(),
+            "scores": self.get_feature_importance(),
+        }
+
+        data_dicts = []
+        feature_list = []
+        density_list = []
+        keep_idxs = []
+        predictors_in_each_affiliation = (
+            self.get_base_predictors_in_each_unique_term_affiliation()
+        )
+        unique_values = []
+        for affiliation_index, affiliation in enumerate(
+            self.get_unique_term_affiliations()
+        ):
+            shape = self.get_unique_term_affiliation_shape(affiliation)
+            predictor_indexes_used = predictors_in_each_affiliation[affiliation_index]
+            is_main_effect: bool = len(predictor_indexes_used) == 1
+            is_two_way_interaction: bool = len(predictor_indexes_used) == 2
+            if is_main_effect:
+                density_dict = {
+                    "names": self.bin_edges[predictor_indexes_used[0]],
+                    "scores": self.bin_counts[predictor_indexes_used[0]],
+                }
+                feature_dict = {
+                    "type": "univariate",
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                    "names": shape[:, 0],
+                    "scores": shape[:, 1],
+                }
+                data_dict = {
+                    "type": "univariate",
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                    "names": shape[:, 0],
+                    "scores": shape[:, 1],
+                    "density": density_dict,
+                }
+                feature_list.append(feature_dict)
+                density_list.append(density_dict)
+                data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
+                unique_values.append(self.unique_values_in_[predictor_indexes_used[0]])
+            elif is_two_way_interaction:
+                feature_dict = {
+                    "type": "interaction",
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
+                    ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
+                }
+                data_dict = {
+                    "type": "interaction",
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
+                    ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
+                }
+                feature_list.append(feature_dict)
+                density_list.append({})
+                data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
+                unique_values.append(np.nan)
+            else:  # pragma: no cover
+                warn(
+                    f"Dropping term {affiliation} from explanation "
+                    "since we can't graph more than 2 dimensions."
+                )
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "aplr_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {"explanation_type": "density", "value": {"density": density_list}},
+            ],
+        }
+        term_names = [self.get_unique_term_affiliations()[i] for i in keep_idxs]
+        term_types = [feature_dict["type"] for feature_dict in feature_list]
+        selector = gen_global_selector(
+            len(keep_idxs),
+            term_names,
+            term_types,
+            unique_values,
+            None,
+        )
+        return APLRExplanation(
+            "global",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=name,
+            selector=selector,
+        )
+
+    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
+        """Provides local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
+        ...
+
+
+def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
+    bin_counts: List[List[int]] = []
+    bin_edges: List[List[float]] = []
+    for col in X.T:
+        counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
+        bin_counts.append(counts_this_col)
+        bin_edges.append(bin_edges_this_col)
+    return bin_counts, bin_edges
+
+
+def calculate_unique_values(X: FloatMatrix) -> List[int]:
+    unique_values_counts = [len(np.unique(col)) for col in X.T]
+    return unique_values_counts
+
+
+def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
+    if len(X_names) == 0:
+        names = [f"X{i+1}" for i in range(X.shape[1])]
+        return names
+    else:
+        return X_names
+
+
+class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
+    available_explanations = ["local", "global"]
+    explainer_type = "model"
+
+    def fit(
+        self,
+        X: FloatMatrix,
+        y: StrVector,
+        sample_weight: FloatVector = [],
+        X_names: StrVector = [],
+        cv_observations: IntMatrix = [],
+        prioritized_predictors_indexes: IntVector = [],
+        monotonic_constraints: IntVector = [],
+        interaction_constraints: List[List[int]] = [],
+        predictor_learning_rates: FloatVector = [],
+        predictor_penalties_for_non_linearity: FloatVector = [],
+        predictor_penalties_for_interactions: FloatVector = [],
+    ):
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.unique_values_in_ = calculate_unique_values(X)
+        self.feature_names_in_ = define_feature_names(X_names, X)
+        self.n_features_in_ = X.shape[1]
+        super().fit(
+            X,
+            y,
+            sample_weight,
+            X_names,
+            cv_observations,
+            prioritized_predictors_indexes,
+            monotonic_constraints,
+            interaction_constraints,
+            predictor_learning_rates,
+            predictor_penalties_for_non_linearity,
+            predictor_penalties_for_interactions,
+        )
+
+    def explain_global(self, name: str = None):
+        """Provides global explanation for model.
+
+        Args:
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object,
+            visualizing feature-value pairs as horizontal bar chart.
+        """
+        ...
+
+    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
+        """Provides local explanations for provided instances.
+
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
+        ...
 
 
 class APLRExplanation(FeatureValueExplanation):
@@ -157,65 +417,3 @@ class APLRExplanation(FeatureValueExplanation):
             )
 
             return figure
-
-
-class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
-    available_explanations = ["local", "global"]
-    explainer_type = "model"
-
-    def explain_global(self, name=None)->APLRExplanation:
-        """Provides global explanation for model.
-
-        Args:
-            name: User-defined explanation name.
-
-        Returns:
-            An explanation object,
-            visualizing feature-value pairs as horizontal bar chart.
-        """
-        ...
-
-    def explain_local(self, X, y=None, name=None)->APLRExplanation:
-        """Provides local explanations for provided instances.
-
-        Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
-            name: User-defined explanation name.
-
-        Returns:
-            An explanation object, visualizing feature-value pairs
-            for each instance as horizontal bar charts.
-        """
-        ...
-
-
-class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
-    available_explanations = ["local", "global"]
-    explainer_type = "model"
-
-    def explain_global(self, name=None)->APLRExplanation:
-        """Provides global explanation for model.
-
-        Args:
-            name: User-defined explanation name.
-
-        Returns:
-            An explanation object,
-            visualizing feature-value pairs as horizontal bar chart.
-        """
-        ...
-
-    def explain_local(self, X, y=None, name=None)->APLRExplanation:
-        """Provides local explanations for provided instances.
-
-        Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
-            name: User-defined explanation name.
-
-        Returns:
-            An explanation object, visualizing feature-value pairs
-            for each instance as horizontal bar charts.
-        """
-        ...
