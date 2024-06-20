@@ -17,14 +17,6 @@ from ._tensor import restore_missing_value_zeros
 _log = logging.getLogger(__name__)
 
 
-def _weighted_std(a, axis, weights):
-    if weights is None:
-        return np.std(a, axis=axis)
-    average = np.average(a, axis, weights)
-    variance = np.average((a - average) ** 2, axis, weights)
-    return np.sqrt(variance)
-
-
 def _midpoint(low: float, high: float) -> float:
     """Return midpoint between `low` and `high` with high numerical accuracy."""
     half_diff = (high - low) / 2
@@ -215,6 +207,8 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
 
 
 def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_weights):
+    native = Native.get_native_singleton()
+
     n_bags = len(bag_weights)
     n_terms = len(bin_weights)
     for bag_idx in range(n_bags):
@@ -236,7 +230,7 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
         term_scores.append(averaged)
 
         nans = np.isnan(averaged)
-        stddevs = _weighted_std(scores, axis=0, weights=bag_weights)
+        stddevs = native.safe_stddev(scores, bag_weights)
         stddevs[np.isnan(stddevs)] = np.inf
         stddevs[nans] = np.nan
         standard_deviations.append(stddevs)

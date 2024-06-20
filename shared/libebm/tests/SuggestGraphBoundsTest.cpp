@@ -430,7 +430,7 @@ TEST_CASE("SafeStandardDeviation, 4 values") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK_APPROX(stddev, 41.493034053922834);
 }
@@ -440,7 +440,7 @@ TEST_CASE("SafeStandardDeviation, 3 values in bag") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev[2];
 
-   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, nullptr, stddev);
    CHECK(Error_None == error);
    CHECK_APPROX(stddev[0], 41.493034053922834);
    CHECK(stddev[1] == 0.0);
@@ -451,7 +451,7 @@ TEST_CASE("SafeStandardDeviation, -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -461,7 +461,7 @@ TEST_CASE("SafeStandardDeviation, +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -471,7 +471,7 @@ TEST_CASE("SafeStandardDeviation, nan") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(std::isnan(stddev));
 }
@@ -481,7 +481,7 @@ TEST_CASE("SafeStandardDeviation, nan with others") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(std::isnan(stddev));
 }
@@ -491,7 +491,7 @@ TEST_CASE("SafeStandardDeviation, +inf and -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -501,7 +501,7 @@ TEST_CASE("SafeStandardDeviation, -inf and +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -511,7 +511,7 @@ TEST_CASE("SafeStandardDeviation, more -inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -521,7 +521,7 @@ TEST_CASE("SafeStandardDeviation, more +inf") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(stddev == INFINITY);
 }
@@ -531,7 +531,7 @@ TEST_CASE("SafeStandardDeviation, no overflow positive") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(std::isfinite(stddev));
 }
@@ -541,7 +541,214 @@ TEST_CASE("SafeStandardDeviation, no overflow negative") {
    const size_t cVals = sizeof(vals) / sizeof(vals[0]);
    double stddev = -99.0;
 
-   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, &stddev);
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
    CHECK(std::isfinite(stddev));
 }
+
+TEST_CASE("SafeStandardDeviation, 4 values, weighted") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.0, 2.0, 2.0, 2.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+TEST_CASE("SafeStandardDeviation, 3 values in bag, weighted") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev[2];
+
+   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, weights, stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev[0], 41.493034053922834);
+   CHECK(stddev[1] == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf, weighted") {
+   double vals[]{1.0, -INFINITY, 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, +inf, weighted") {
+   double vals[]{1.0, INFINITY, 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, nan, weighted") {
+   double vals[]{1.0, NAN, 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, nan with others, weighted") {
+   double vals[]{1.0, INFINITY, NAN, -INFINITY};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, +inf and -inf, weighted") {
+   double vals[]{1.0, INFINITY, -INFINITY, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf and +inf, weighted") {
+   double vals[]{1.0, -INFINITY, +INFINITY, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, more -inf, weighted") {
+   double vals[]{1.0, -INFINITY, +INFINITY, -INFINITY};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, more +inf, weighted") {
+   double vals[]{1.0, -INFINITY, +INFINITY, +INFINITY};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == INFINITY);
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow positive, weighted") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow negative, weighted") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, different weighted") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, 1.25, 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights at start") {
+   double vals[]{99.0, 98.0, 1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.5, 1.25, 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights at start") {
+   double vals[]{99.0, 98.0, 1.0, 2.5, 10, 97.0, 100};
+   double weights[]{0.0, 0.0, 0.5, 1.25, 2.5, 0.0, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, INFINITY, 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, INFINITY, 2.5, INFINITY};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 48.75);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.0, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+//# this function calculates the weighted standard deviation
+//def _weighted_std(a, axis, weights):
+//    if weights is None:
+//        return np.std(a, axis=axis)
+//    average = np.average(a, axis, weights)
+//    variance = np.average((a - average) ** 2, axis, weights)
+//    return np.sqrt(variance)
