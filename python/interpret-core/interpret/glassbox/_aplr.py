@@ -18,6 +18,7 @@ IntVector = List[int]
 IntMatrix = List[List[int]]
 StrVector = List[str]
 
+
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
@@ -38,8 +39,22 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_non_linearity: FloatVector = [],
         predictor_penalties_for_interactions: FloatVector = [],
     ):
-        self.bin_counts, self.bin_edges=calculate_densities(X)
-        return super().fit(X, y, sample_weight, X_names, cv_observations, prioritized_predictors_indexes, monotonic_constraints, group, interaction_constraints, other_data, predictor_learning_rates, predictor_penalties_for_non_linearity, predictor_penalties_for_interactions)
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        return super().fit(
+            X,
+            y,
+            sample_weight,
+            X_names,
+            cv_observations,
+            prioritized_predictors_indexes,
+            monotonic_constraints,
+            group,
+            interaction_constraints,
+            other_data,
+            predictor_learning_rates,
+            predictor_penalties_for_non_linearity,
+            predictor_penalties_for_interactions,
+        )
 
     def explain_global(self, name=None):
         """Provides global explanation for model.
@@ -51,10 +66,12 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             An explanation object,
             visualizing feature-value pairs as horizontal bar chart.
         """
-        overall_dict = {"names": self.get_unique_term_affiliations(),"scores": self.get_feature_importance()}
+        overall_dict = {
+            "names": self.get_unique_term_affiliations(),
+            "scores": self.get_feature_importance(),
+        }
 
         data_dicts = []
-
 
     def explain_local(self, X, y=None, name=None):
         """Provides local explanations for provided instances.
@@ -70,6 +87,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         """
         ...
 
+
 def calculate_densities(X) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
     bin_edges: List[List[float]] = []
@@ -78,6 +96,7 @@ def calculate_densities(X) -> Tuple[List[List[int]], List[List[float]]]:
         bin_counts.append(counts_this_col)
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
+
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -108,6 +127,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             for each instance as horizontal bar charts.
         """
         ...
+
 
 class APLRExplanation(FeatureValueExplanation):
     """Visualizes specifically for APLR."""
