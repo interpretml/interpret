@@ -59,11 +59,6 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             predictor_penalties_for_non_linearity,
             predictor_penalties_for_interactions,
         )
-        self.unique_values = [
-            self.unique_values_in_ if len(self.get_base_predictors_in_each_unique_term_affiliation()[index]) == 1 else np.nan
-            for index in range(len(self.get_unique_term_affiliations()))
-        ]
-
 
     def explain_global(self, name: str = None):
         """Provides global explanation for model.
@@ -84,6 +79,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         feature_list = []
         density_list = []
         keep_idxs = []
+        unique_values=[]
         predictors_in_each_affiliation = (
             self.get_base_predictors_in_each_unique_term_affiliation()
         )
@@ -157,7 +153,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 self.n_features_in_,
                 term_names,
                 term_types,
-                self.unique_values,
+                unique_values,
                 None,
             )
         return APLRExplanation(
@@ -226,8 +222,8 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        self.unique_values = calculate_unique_values(X)
-        self.feature_names = define_feature_names(X_names, X)
+        self.unique_values_in_ = calculate_unique_values(X)
+        self.feature_names_in_ = define_feature_names(X_names, X)
         self.n_features_in_=X.shape[1]
         super().fit(
             X,
