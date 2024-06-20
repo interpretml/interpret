@@ -43,7 +43,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-        self.n_features_in_=X.shape[1]
+        self.n_features_in_ = X.shape[1]
         super().fit(
             X,
             y,
@@ -82,7 +82,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictors_in_each_affiliation = (
             self.get_base_predictors_in_each_unique_term_affiliation()
         )
-        unique_values=[]
+        unique_values = []
         for affiliation_index, affiliation in enumerate(
             self.get_unique_term_affiliations()
         ):
@@ -97,13 +97,13 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 }
                 feature_dict = {
                     "type": "univariate",
-                    "feature_name":self.feature_names_in_[predictor_indexes_used[0]],
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
                 }
                 data_dict = {
                     "type": "univariate",
-                    "feature_name":self.feature_names_in_[predictor_indexes_used[0]],
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
                     "density": density_dict,
@@ -116,24 +116,28 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             elif is_two_way_interaction:
                 feature_dict = {
                     "type": "interaction",
-                    "feature_names":[self.feature_names_in_[idx] for idx in predictor_indexes_used],
-                    "left_names": shape[:,0],
-                    "right_names": shape[:,1],
-                    "scores": shape[:,2],
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
+                    ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
                 }
                 data_dict = {
                     "type": "interaction",
-                    "feature_names":[self.feature_names_in_[idx] for idx in predictor_indexes_used],
-                    "left_names": shape[:,0],
-                    "right_names": shape[:,1],
-                    "scores": shape[:,2],
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
+                    ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
                 }
                 feature_list.append(feature_dict)
                 density_list.append({})
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
                 unique_values.append(np.nan)
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 warn(
                     f"Dropping term {affiliation} from explanation "
                     "since we can't graph more than 2 dimensions."
@@ -149,15 +153,15 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 {"explanation_type": "density", "value": {"density": density_list}},
             ],
         }
-        term_names=[self.get_unique_term_affiliations()[i] for i in keep_idxs]
-        term_types=[feature_dict["type"] for feature_dict in feature_list]
-        selector=gen_global_selector(
-                len(keep_idxs),
-                term_names,
-                term_types,
-                unique_values,
-                None,
-            )
+        term_names = [self.get_unique_term_affiliations()[i] for i in keep_idxs]
+        term_types = [feature_dict["type"] for feature_dict in feature_list]
+        selector = gen_global_selector(
+            len(keep_idxs),
+            term_names,
+            term_types,
+            unique_values,
+            None,
+        )
         return APLRExplanation(
             "global",
             internal_obj,
@@ -226,7 +230,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-        self.n_features_in_=X.shape[1]
+        self.n_features_in_ = X.shape[1]
         super().fit(
             X,
             y,
