@@ -147,14 +147,7 @@ def _create_proportional_tensor(axis_weights):
     return tensor.reshape(shape)
 
 
-def process_bag_terms(n_classes, term_scores, bin_weights):
-    if n_classes == 1:
-        intercept = -np.inf
-    elif n_classes <= 2:
-        intercept = 0
-    else:
-        intercept = np.zeros(n_classes, np.float64)
-
+def process_bag_terms(intercept, term_scores, bin_weights):
     for scores, weights in zip(term_scores, bin_weights):
         if develop._purify_result:
             new_scores, add_impurities, add_intercept = purify(scores, weights)
@@ -164,7 +157,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
             scores[:] = new_scores
             intercept += add_intercept
         else:
-            if n_classes <= 2:
+            if scores.ndim == weights.ndim:
                 temp_scores = scores.flatten().copy()
                 temp_weights = weights.flatten().copy()
 
@@ -177,7 +170,7 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
                     intercept += mean
                     scores -= mean
             else:
-                for i in range(n_classes):
+                for i in range(scores.shape[-1]):
                     temp_scores = scores[..., i].flatten().copy()
                     temp_weights = weights.flatten().copy()
 
@@ -201,21 +194,19 @@ def process_bag_terms(n_classes, term_scores, bin_weights):
         # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
 
-        if n_classes != 1:
-            restore_missing_value_zeros(scores, weights)
-    return intercept
+        restore_missing_value_zeros(scores, weights)
 
 
-def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_weights):
+def process_terms(bagged_intercept, bagged_scores, bin_weights, bag_weights):
     native = Native.get_native_singleton()
 
     n_bags = len(bag_weights)
     n_terms = len(bin_weights)
     for bag_idx in range(n_bags):
         term_scores = [bagged_tensor[bag_idx] for bagged_tensor in bagged_scores]
-        bagged_intercept[bag_idx] += process_bag_terms(
-            n_classes, term_scores, bin_weights
-        )
+        intercept = np.atleast_1d(bagged_intercept[bag_idx])
+        process_bag_terms(intercept, term_scores, bin_weights)
+        bagged_intercept[bag_idx] = intercept[0] if len(intercept) == 1 else intercept
         for term_idx in range(n_terms):
             bagged_scores[term_idx][bag_idx] = term_scores[term_idx]
 
@@ -226,16 +217,14 @@ def process_terms(n_classes, bagged_intercept, bagged_scores, bin_weights, bag_w
         term_scores.append(averaged)
         stddevs = native.safe_stddev(scores, bag_weights)
         standard_deviations.append(stddevs)
+
     intercept = native.safe_mean(bagged_intercept, bag_weights)
 
-    if n_classes < 0:
-        # scikit-learn requires float for regression. We have np.float64 from average.
-        intercept = float(intercept)
-    elif 3 <= n_classes:
+    if bagged_intercept.ndim == 2:
         # multiclass
         # pick the class that we're going to zero
         zero_index = np.argmax(intercept)
-        intercept = intercept - intercept[zero_index]
+        intercept -= intercept[zero_index]
         bagged_intercept -= np.expand_dims(bagged_intercept[..., zero_index], -1)
 
     return intercept, term_scores, standard_deviations
