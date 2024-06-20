@@ -40,7 +40,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        unique_values = calculate_unique_values(X)
+        self.unique_values = calculate_unique_values(X)
         return super().fit(
             X,
             y,
@@ -73,6 +73,29 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         }
 
         data_dicts = []
+        predictors_in_each_affiliation = (
+            self.get_base_predictors_in_each_unique_term_affiliation()
+        )
+        for affiliation_index, affiliation in enumerate(
+            self.get_unique_term_affiliations()
+        ):
+            shape = self.get_unique_term_affiliation_shape(affiliation)
+            predictor_indexes_used = predictors_in_each_affiliation[affiliation_index]
+            is_main_effect: bool = len(predictor_indexes_used) == 1
+            is_two_way_interaction: bool = len(predictor_indexes_used) == 2
+            if is_main_effect:
+                data_dict = {
+                    "type": "univariate",
+                    "names": shape[:,0],
+                    "scores": shape[:,1],
+                    "density": {
+                        "names": self.bin_edges[predictor_indexes_used[0]],
+                        "scores": self.bin_counts[predictor_indexes_used[0]],
+                    },
+                }
+                data_dicts.append(data_dict)
+            if is_two_way_interaction:
+                data_dicts.append(data_dict)
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
@@ -123,7 +146,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        unique_values = calculate_unique_values(X)
+        self.unique_values = calculate_unique_values(X)
         return super().fit(
             X,
             y,
