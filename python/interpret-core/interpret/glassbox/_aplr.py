@@ -40,7 +40,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        unique_values=calculate_unique_values(X)
+        unique_values = calculate_unique_values(X)
         return super().fit(
             X,
             y,
@@ -57,7 +57,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def explain_global(self, name:str=None):
+    def explain_global(self, name: str = None):
         """Provides global explanation for model.
 
         Args:
@@ -74,7 +74,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 
         data_dicts = []
 
-    def explain_local(self, X:FloatMatrix, y:FloatVector=None, name:str=None):
+    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
 
         Args:
@@ -89,7 +89,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         ...
 
 
-def calculate_densities(X:FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
+def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
     bin_edges: List[List[float]] = []
     for col in X.T:
@@ -98,9 +98,11 @@ def calculate_densities(X:FloatMatrix) -> Tuple[List[List[int]], List[List[float
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
 
+
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
-        unique_values_counts = [len(np.unique(col)) for col in X.T]
-        return unique_values_counts
+    unique_values_counts = [len(np.unique(col)) for col in X.T]
+    return unique_values_counts
+
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -121,7 +123,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        unique_values=calculate_unique_values(X)
+        unique_values = calculate_unique_values(X)
         return super().fit(
             X,
             y,
@@ -136,7 +138,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def explain_global(self, name:str=None):
+    def explain_global(self, name: str = None):
         """Provides global explanation for model.
 
         Args:
@@ -148,7 +150,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         """
         ...
 
-    def explain_local(self, X:FloatMatrix, y:FloatVector=None, name:str=None):
+    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
 
         Args:
