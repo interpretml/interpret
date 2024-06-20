@@ -163,7 +163,39 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    def explain_global(self, name=None)->APLRExplanation:
+    def fit(
+        self,
+        X: aplr.List[aplr.List[float]],
+        y: aplr.List[float],
+        sample_weight: aplr.List[float] = ...,
+        X_names: aplr.List[str] = ...,
+        cv_observations: aplr.List[aplr.List[int]] = ...,
+        prioritized_predictors_indexes: aplr.List[int] = ...,
+        monotonic_constraints: aplr.List[int] = ...,
+        group: aplr.List[float] = ...,
+        interaction_constraints: aplr.List[aplr.List[int]] = ...,
+        other_data: aplr.List[aplr.List[float]] = ...,
+        predictor_learning_rates: aplr.List[float] = ...,
+        predictor_penalties_for_non_linearity: aplr.List[float] = ...,
+        predictor_penalties_for_interactions: aplr.List[float] = ...,
+    ):
+        return super().fit(
+            X,
+            y,
+            sample_weight,
+            X_names,
+            cv_observations,
+            prioritized_predictors_indexes,
+            monotonic_constraints,
+            group,
+            interaction_constraints,
+            other_data,
+            predictor_learning_rates,
+            predictor_penalties_for_non_linearity,
+            predictor_penalties_for_interactions,
+        )
+
+    def explain_global(self, name=None) -> APLRExplanation:
         """Provides global explanation for model.
 
         Args:
@@ -175,7 +207,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         """
         ...
 
-    def explain_local(self, X, y=None, name=None)->APLRExplanation:
+    def explain_local(self, X, y=None, name=None) -> APLRExplanation:
         """Provides local explanations for provided instances.
 
         Args:
@@ -194,7 +226,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    def explain_global(self, name=None)->APLRExplanation:
+    def explain_global(self, name=None) -> APLRExplanation:
         """Provides global explanation for model.
 
         Args:
@@ -206,7 +238,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         """
         ...
 
-    def explain_local(self, X, y=None, name=None)->APLRExplanation:
+    def explain_local(self, X, y=None, name=None) -> APLRExplanation:
         """Provides local explanations for provided instances.
 
         Args:
