@@ -42,7 +42,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values = calculate_unique_values(X)
-        self.feature_names = define_feature_names(X_names, X)
+        self.feature_names_in_ = define_feature_names(X_names, X)
         self.n_features_in_=X.shape[1]
         return super().fit(
             X,
@@ -96,13 +96,13 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 }
                 feature_dict = {
                     "type": "univariate",
-                    "feature_name":self.feature_names[predictor_indexes_used[0]],
+                    "feature_name":self.feature_names_in_[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
                 }
                 data_dict = {
                     "type": "univariate",
-                    "feature_name":self.feature_names[predictor_indexes_used[0]],
+                    "feature_name":self.feature_names_in_[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
                     "density": density_dict,
@@ -114,14 +114,14 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             elif is_two_way_interaction:
                 feature_dict = {
                     "type": "interaction",
-                    "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
+                    "feature_names":[self.feature_names_in_[idx] for idx in predictor_indexes_used],
                     "left_names": shape[:,0],
                     "right_names": shape[:,1],
                     "scores": shape[:,2],
                 }
                 data_dict = {
                     "type": "interaction",
-                    "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
+                    "feature_names":[self.feature_names_in_[idx] for idx in predictor_indexes_used],
                     "left_names": shape[:,0],
                     "right_names": shape[:,1],
                     "scores": shape[:,2],
