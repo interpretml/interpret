@@ -41,7 +41,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_interactions: FloatVector = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
-        self.unique_values = calculate_unique_values(X)
+        self.unique_values_in = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
         self.n_features_in_=X.shape[1]
         return super().fit(
@@ -152,7 +152,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 self.n_features_in_,
                 term_names,
                 term_types,
-                self.unique_values,
+                self.unique_values_in,
                 None,
             )
         return APLRExplanation(
