@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 import numpy as np
-from typing import List
+from typing import List, Tuple
 import aplr
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
@@ -17,7 +17,6 @@ FloatMatrix = List[List[float]]
 IntVector = List[int]
 IntMatrix = List[List[int]]
 StrVector = List[str]
-
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -39,13 +38,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_non_linearity: FloatVector = [],
         predictor_penalties_for_interactions: FloatVector = [],
     ):
-        self.bin_counts:List[int]=[]
-        self.bin_edges:List[float]=[]
-        for col in X.T:
-            counts,bin_edges=np.histogram(col,bins="doane")
-            self.bin_counts.append(counts)
-            self.bin_edges.append(bin_edges)
-
+        self.bin_counts, self.bin_edges=calculate_densities(X)
         return super().fit(X, y, sample_weight, X_names, cv_observations, prioritized_predictors_indexes, monotonic_constraints, group, interaction_constraints, other_data, predictor_learning_rates, predictor_penalties_for_non_linearity, predictor_penalties_for_interactions)
 
     def explain_global(self, name=None):
@@ -77,6 +70,14 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         """
         ...
 
+def calculate_densities(X) -> Tuple[List[List[int]], List[List[float]]]:
+    bin_counts: List[List[int]] = []
+    bin_edges: List[List[float]] = []
+    for col in X.T:
+        counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
+        bin_counts.append(counts_this_col)
+        bin_edges.append(bin_edges_this_col)
+    return bin_counts, bin_edges
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -107,7 +108,6 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             for each instance as horizontal bar charts.
         """
         ...
-
 
 class APLRExplanation(FeatureValueExplanation):
     """Visualizes specifically for APLR."""
