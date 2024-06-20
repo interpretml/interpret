@@ -134,6 +134,17 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                     f"Dropping term {affiliation} from explanation "
                     "since we can't graph more than 2 dimensions."
                 )
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "aplr_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {"explanation_type": "density", "value": {"density": density_list}},
+            ],
+        }
         ...
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
