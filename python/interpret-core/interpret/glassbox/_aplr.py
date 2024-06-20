@@ -102,6 +102,35 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
+    def fit(
+        self,
+        X: FloatMatrix,
+        y: StrVector,
+        sample_weight: FloatVector = [],
+        X_names: StrVector = [],
+        cv_observations: IntMatrix = [],
+        prioritized_predictors_indexes: IntVector = [],
+        monotonic_constraints: IntVector = [],
+        interaction_constraints: List[List[int]] = [],
+        predictor_learning_rates: FloatVector = [],
+        predictor_penalties_for_non_linearity: FloatVector = [],
+        predictor_penalties_for_interactions: FloatVector = [],
+    ):
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        return super().fit(
+            X,
+            y,
+            sample_weight,
+            X_names,
+            cv_observations,
+            prioritized_predictors_indexes,
+            monotonic_constraints,
+            interaction_constraints,
+            predictor_learning_rates,
+            predictor_penalties_for_non_linearity,
+            predictor_penalties_for_interactions,
+        )
+
     def explain_global(self, name=None):
         """Provides global explanation for model.
 
