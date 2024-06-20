@@ -97,6 +97,13 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 }
                 data_dicts.append(data_dict)
             if is_two_way_interaction:
+                data_dict = {
+                    "type": "interaction",
+                    "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
+                    "left_names": shape[:,0],
+                    "right_names": shape[:,1],
+                    "scores": shape[:,2],
+                }
                 data_dicts.append(data_dict)
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
