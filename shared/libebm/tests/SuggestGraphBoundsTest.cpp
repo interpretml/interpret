@@ -4,6 +4,8 @@
 
 #include "pch_test.hpp"
 
+#include <float.h>
+
 #include "libebm.h"
 #include "libebm_test.hpp"
 #include "RandomStreamTest.hpp"

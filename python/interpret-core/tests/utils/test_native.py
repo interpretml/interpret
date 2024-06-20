@@ -8,6 +8,22 @@ import numpy as np
 from scipy.stats import normaltest, shapiro
 
 
+def test_mean():
+    native = Native.get_native_singleton()
+    tensor = np.array([[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]], np.float64)
+    means = native.safe_mean(tensor)
+
+    assert np.allclose(np.average(tensor, axis=0), means)
+
+
+def test_stddev():
+    native = Native.get_native_singleton()
+    tensor = np.array([[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]], np.float64)
+    stddevs = native.safe_stddev(tensor)
+
+    assert np.allclose(np.std(tensor, axis=0), stddevs)
+
+
 def test_hist():
     np.random.seed(0)
     X_col = np.random.random_sample((1000,))
