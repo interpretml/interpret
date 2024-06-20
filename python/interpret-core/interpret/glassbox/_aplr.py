@@ -82,7 +82,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictors_in_each_affiliation = (
             self.get_base_predictors_in_each_unique_term_affiliation()
         )
-        unique_values=np.full(shape=len(predictors_in_each_affiliation),fill_value=np.nan)
+        unique_values=[]
         for affiliation_index, affiliation in enumerate(
             self.get_unique_term_affiliations()
         ):
@@ -112,7 +112,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append(density_dict)
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
-                unique_values[affiliation_index]=self.unique_values_in_[predictor_indexes_used[0]]
+                unique_values.append(self.unique_values_in_[predictor_indexes_used[0]])
             elif is_two_way_interaction:
                 feature_dict = {
                     "type": "interaction",
@@ -132,6 +132,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 density_list.append({})
                 data_dicts.append(data_dict)
                 keep_idxs.append(affiliation_index)
+                unique_values.append(np.nan)
             else: # pragma: no cover
                 warn(
                     f"Dropping term {affiliation} from explanation "
@@ -154,7 +155,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 len(keep_idxs),
                 term_names,
                 term_types,
-                [unique_values[i] for i in keep_idxs],
+                unique_values,
                 None,
             )
         return APLRExplanation(
