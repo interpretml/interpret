@@ -74,6 +74,9 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         }
 
         data_dicts = []
+        feature_list = []
+        density_list = []
+        keep_idxs = []
         predictors_in_each_affiliation = (
             self.get_base_predictors_in_each_unique_term_affiliation()
         )
@@ -85,18 +88,35 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             is_main_effect: bool = len(predictor_indexes_used) == 1
             is_two_way_interaction: bool = len(predictor_indexes_used) == 2
             if is_main_effect:
+                density_dict = {
+                    "names": self.bin_edges[predictor_indexes_used[0]],
+                    "scores": self.bin_counts[predictor_indexes_used[0]],
+                }
+                feature_dict = {
+                    "type": "univariate",
+                    "feature_name":self.feature_names[predictor_indexes_used[0]],
+                    "names": shape[:, 0],
+                    "scores": shape[:, 1],
+                }
                 data_dict = {
                     "type": "univariate",
                     "feature_name":self.feature_names[predictor_indexes_used[0]],
                     "names": shape[:, 0],
                     "scores": shape[:, 1],
-                    "density": {
-                        "names": self.bin_edges[predictor_indexes_used[0]],
-                        "scores": self.bin_counts[predictor_indexes_used[0]],
-                    },
+                    "density": density_dict,
                 }
+                feature_list.append(feature_dict)
+                density_list.append(density_dict)
                 data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
             if is_two_way_interaction:
+                feature_dict = {
+                    "type": "interaction",
+                    "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
+                    "left_names": shape[:,0],
+                    "right_names": shape[:,1],
+                    "scores": shape[:,2],
+                }
                 data_dict = {
                     "type": "interaction",
                     "feature_names":[self.feature_names[idx] for idx in predictor_indexes_used],
@@ -104,7 +124,10 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                     "right_names": shape[:,1],
                     "scores": shape[:,2],
                 }
+                feature_list.append(feature_dict)
+                density_list.append({})
                 data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
