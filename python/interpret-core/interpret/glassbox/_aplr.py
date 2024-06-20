@@ -43,6 +43,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values = calculate_unique_values(X)
         self.feature_names = define_feature_names(X_names, X)
+        self.n_features_in_=X.shape[1]
         return super().fit(
             X,
             y,
@@ -145,7 +146,23 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
                 {"explanation_type": "density", "value": {"density": density_list}},
             ],
         }
-        ...
+        term_names=[self.get_unique_term_affiliations()[i] for i in keep_idxs]
+        term_types=["continuous" for i in keep_idxs]
+        selector=gen_global_selector(
+                self.n_features_in_,
+                term_names,
+                term_types,
+                self.unique_values,
+                None,
+            )
+        return APLRExplanation(
+            "global",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=name,
+            selector=selector,
+        )
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
@@ -206,6 +223,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values = calculate_unique_values(X)
         self.feature_names = define_feature_names(X_names, X)
+        self.n_features_in_=X.shape[1]
         return super().fit(
             X,
             y,
