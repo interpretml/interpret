@@ -18,16 +18,11 @@ def _wait_for_completed_worker(results):
         return None
 
     while True:
-        completed = False
         for worker_id, result in results.items():
             if result is None or result.done():
-                completed = True
-                break
-        if completed:
-            del results[worker_id]
-            return worker_id
-        else:
-            time.sleep(1)
+                del results[worker_id]
+                return worker_id
+        time.sleep(1)
 
 
 def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete_group_container_on_complete, batch_id):
@@ -58,7 +53,10 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete
 
     # Run until completion.
     container_counter = 0
-    results = {x: None for x in range(n_running_containers)}
+    n_tasks = len(tasks)
+    n_containers = min(n_tasks, n_running_containers)
+    results = {x: None for x in range(n_containers)}
+    container_group_names = set()
     while len(tasks) != 0:
         params = tasks.pop(0)
         worker_id = _wait_for_completed_worker(results)
@@ -95,10 +93,11 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete
             restart_policy=ContainerGroupRestartPolicy.never,
         )
         container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
-
         result = aci_client.container_groups.begin_create_or_update(
             resource_group.name, container_group_name, container_group
         )
+
+        container_group_names.add(container_group_name)
         results[worker_id] = result
 
     # Wait for all container groups to complete
@@ -107,8 +106,7 @@ def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete
 
     # Delete all container groups
     if delete_group_container_on_complete:
-        for worker_id in range(n_running_containers):
-            container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
+        for container_group_name in container_group_names:
             aci_client.container_groups.begin_delete(
                 resource_group_name, container_group_name
             )
@@ -170,7 +168,7 @@ class AzureContainerInstance(LocalMachine):
             "resource_group": resource_group,
         }
         self._batch_id = random.getrandbits(64)
-        super().__init__(store=store, n_cpus=n_running_containers, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
+        super().__init__(store=store, n_cpus=1, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""
