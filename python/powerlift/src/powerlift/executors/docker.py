@@ -44,7 +44,7 @@ class InsecureDocker(LocalMachine):
     def __init__(
         self,
         store: Store,
-        image: str = "interpretml/powerlift:0.1.8",
+        image: str = "interpretml/powerlift:0.1.9",
         n_running_containers: int = None,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
