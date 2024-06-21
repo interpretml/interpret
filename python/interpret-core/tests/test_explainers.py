@@ -26,26 +26,22 @@ def test_spec_synthetic():
     regression_model.fit(data["train"]["X"], data["train"]["y"])
 
     for explainer_class, is_classification in all_explainers:
-        # if explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
+        if explainer_class.explainer_type == "model":
+            explainer = explainer_class()
+            explainer.fit(data["train"]["X"], data["train"]["y"])
+            assert_valid_model_explainer(explainer, data["test"]["X"].head())
+        # elif explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
         #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
-        if explainer_class.explainer_type == "blackbox":
+        elif explainer_class.explainer_type == "blackbox":
             if is_classification:
                 explainer = explainer_class(binary_model, data["train"]["X"])
             else:
                 explainer = explainer_class(regression_model, data["train"]["X"])
-        elif explainer_class.explainer_type == "model":
-            explainer = explainer_class()
-            explainer.fit(data["train"]["X"], data["train"]["y"])
-            assert_valid_model_explainer(explainer, data["test"]["X"].head())
         elif explainer_class.explainer_type == "specific":
-            pass
-            # TODO: Turn this back on after TreeSHAP works on numpy 2.0
-            # https://github.com/shap/shap/pull/3704
-            #
-            # if is_classification:
-            #     explainer = explainer_class(binary_model, data["train"]["X"])
-            # else:
-            #     explainer = explainer_class(regression_model, data["train"]["X"])
+            if is_classification:
+                explainer = explainer_class(binary_model, data["train"]["X"])
+            else:
+                explainer = explainer_class(regression_model, data["train"]["X"])
         elif explainer_class.explainer_type == "data":
             explainer = explainer_class()
         elif explainer_class.explainer_type == "perf":
