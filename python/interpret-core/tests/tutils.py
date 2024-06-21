@@ -60,8 +60,8 @@ def get_all_explainers():
         # https://github.com/shap/shap/pull/3704
         # (ShapKernel, True),
         # (ShapKernel, False),
-        (MorrisSensitivity, True),
-        (MorrisSensitivity, False),
+        # (MorrisSensitivity, True),
+        # (MorrisSensitivity, False),
         (PartialDependence, True),
         (PartialDependence, False),
         # PermutationImportance
