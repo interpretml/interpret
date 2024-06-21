@@ -43,8 +43,8 @@ def test_classification():
     X, y = cancer.data, cancer.target
     feature_names = cancer.feature_names
 
-    native = APLRClassifierNative()
-    our_aplr = APLRClassifier()
+    native = APLRClassifierNative(max_interaction_level=2)
+    our_aplr = APLRClassifier(max_interaction_level=2)
 
     native.fit(X, y, X_names=feature_names)
     our_aplr.fit(X, y, X_names=feature_names)
