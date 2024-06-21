@@ -43,7 +43,6 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-        self.n_features_in_ = X.shape[1]
         super().fit(
             X,
             y,
@@ -230,7 +229,6 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-        self.n_features_in_ = X.shape[1]
         super().fit(
             X,
             y,
