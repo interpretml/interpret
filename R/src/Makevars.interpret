@@ -35,6 +35,7 @@ OBJECTS = \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
+   $(NATIVEDIR)/Purify.o \
    $(NATIVEDIR)/RandomDeterministic.o \
    $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
