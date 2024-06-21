@@ -202,7 +202,15 @@ def _harmonize_tensor(
                             # had zero contribution between the new max to the old max.
                             new_high = old_high
 
-                        percentage.append((new_high - new_low) / (old_high - old_low))
+                        if old_high == old_low:
+                            # I think this only happens when all the values in the 
+                            # old one are identical so the values come from the 
+                            # min/max bounds, otherwise they would be slightly
+                            # different. If the old has only one value then all new
+                            # bins map to it, so use 1.0 / len(lookup)
+                            percentage.append(1.0 / len(lookup))
+                        else:
+                            percentage.append((new_high - new_low) / (old_high - old_low))
 
             percentage.append(1.0)
             lookup.insert(0, 0)
