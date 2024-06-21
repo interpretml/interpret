@@ -1272,9 +1272,13 @@ class EBMModel(BaseEstimator):
             # for monoclassification, cells are either NaN or -inf
             intercept[~np.isnan(intercept)] = -np.inf
             bagged_intercept[~np.isnan(bagged_intercept)] = -np.inf
-            bagged_scores = [np.where(np.isnan(s), np.nan, -np.inf) for s in bagged_scores]
+            bagged_scores = [
+                np.where(np.isnan(s), np.nan, -np.inf) for s in bagged_scores
+            ]
             term_scores = [np.where(np.isnan(s), np.nan, -np.inf) for s in term_scores]
-            standard_deviations = [np.where(np.isnan(s), np.nan, np.inf) for s in standard_deviations]
+            standard_deviations = [
+                np.where(np.isnan(s), np.nan, np.inf) for s in standard_deviations
+            ]
 
         term_names = generate_term_names(feature_names_in, term_features)
 
