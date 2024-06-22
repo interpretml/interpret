@@ -1262,8 +1262,23 @@ class EBMModel(BaseEstimator):
             bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
 
         intercept, term_scores, standard_deviations = process_terms(
-            n_classes, bagged_intercept, bagged_scores, bin_weights, bag_weights
+            bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
+
+        if n_classes < 0:
+            # scikit-learn requires intercept to be float for RegressorMixin, not numpy
+            intercept = float(intercept[0])
+        elif n_classes <= 1:
+            # for monoclassification, cells are either NaN or -inf
+            intercept[~np.isnan(intercept)] = -np.inf
+            bagged_intercept[~np.isnan(bagged_intercept)] = -np.inf
+            bagged_scores = [
+                np.where(np.isnan(s), np.nan, -np.inf) for s in bagged_scores
+            ]
+            term_scores = [np.where(np.isnan(s), np.nan, -np.inf) for s in term_scores]
+            standard_deviations = [
+                np.where(np.isnan(s), np.nan, np.inf) for s in standard_deviations
+            ]
 
         term_names = generate_term_names(feature_names_in, term_features)
 

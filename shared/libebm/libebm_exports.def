@@ -5,6 +5,8 @@ EXPORTS
   SetTraceLevel
   GetTraceLevelString
   CleanFloats
+  SafeMean
+  SafeStandardDeviation
   MeasureRNG
   InitRNG
   CopyRNG

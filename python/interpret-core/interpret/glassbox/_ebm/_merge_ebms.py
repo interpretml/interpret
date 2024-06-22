@@ -202,7 +202,17 @@ def _harmonize_tensor(
                             # had zero contribution between the new max to the old max.
                             new_high = old_high
 
-                        percentage.append((new_high - new_low) / (old_high - old_low))
+                        if old_high == old_low:
+                            # I think this only happens when all the values in the
+                            # old one are identical so the values come from the
+                            # min/max bounds, otherwise they would be slightly
+                            # different. If the old has only one value then all new
+                            # bins map to it, so use 1.0 / len(lookup)
+                            percentage.append(1.0 / len(lookup))
+                        else:
+                            percentage.append(
+                                (new_high - new_low) / (old_high - old_low)
+                            )
 
             percentage.append(1.0)
             lookup.insert(0, 0)
@@ -732,12 +742,28 @@ def merge_ebms(models):
         ebm.term_scores_,
         ebm.standard_deviations_,
     ) = process_terms(
-        n_classes,
         ebm.bagged_intercept_,
         ebm.bagged_scores_,
         ebm.bin_weights_,
         ebm.bag_weights_,
     )
+
+    if n_classes < 0:
+        # scikit-learn requires intercept to be float for RegressorMixin, not numpy
+        ebm.intercept_ = float(ebm.intercept_[0])
+    elif n_classes <= 1:
+        # for monoclassification, cells are either NaN or -inf
+        ebm.intercept_[~np.isnan(ebm.intercept_)] = -np.inf
+        ebm.bagged_intercept_[~np.isnan(ebm.bagged_intercept_)] = -np.inf
+        ebm.bagged_scores_ = [
+            np.where(np.isnan(s), np.nan, -np.inf) for s in ebm.bagged_scores_
+        ]
+        ebm.term_scores_ = [
+            np.where(np.isnan(s), np.nan, -np.inf) for s in ebm.term_scores_
+        ]
+        ebm.standard_deviations_ = [
+            np.where(np.isnan(s), np.nan, np.inf) for s in ebm.standard_deviations_
+        ]
 
     # TODO: we might be able to do these operations earlier
     remove_unused_higher_bins(ebm.term_features_, ebm.bins_)

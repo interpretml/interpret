@@ -218,6 +218,66 @@ class Native:
         )
         return val_array[0]
 
+    def safe_mean(self, tensor, weights=None):
+        n_bags = tensor.shape[0]
+        if weights is not None:
+            if weights.ndim != 1:
+                raise Exception(
+                    f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
+                )
+            if len(weights) != n_bags:
+                raise Exception(
+                    f"weights must contain the same number of items as there are bags in tensor."
+                )
+
+        n_tensor_bins = 1
+        for n_bins in tensor.shape[1:]:
+            n_tensor_bins *= n_bins
+
+        mean_result = np.empty(tensor.shape[1:] if tensor.ndim > 1 else 1, np.float64)
+
+        return_code = self._unsafe.SafeMean(
+            n_bags,
+            n_tensor_bins,
+            Native._make_pointer(tensor, np.float64, tensor.ndim),
+            Native._make_pointer(weights, np.float64, is_null_allowed=True),
+            Native._make_pointer(mean_result, np.float64, mean_result.ndim),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeMean")
+
+        return mean_result
+
+    def safe_stddev(self, tensor, weights=None):
+        n_bags = tensor.shape[0]
+        if weights is not None:
+            if weights.ndim != 1:
+                raise Exception(
+                    f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
+                )
+            if len(weights) != n_bags:
+                raise Exception(
+                    f"weights must contain the same number of items as there are bags in tensor."
+                )
+
+        n_tensor_bins = 1
+        for n_bins in tensor.shape[1:]:
+            n_tensor_bins *= n_bins
+
+        stddev_result = np.empty(tensor.shape[1:] if tensor.ndim > 1 else 1, np.float64)
+
+        return_code = self._unsafe.SafeStandardDeviation(
+            n_bags,
+            n_tensor_bins,
+            Native._make_pointer(tensor, np.float64, tensor.ndim),
+            Native._make_pointer(weights, np.float64, is_null_allowed=True),
+            Native._make_pointer(stddev_result, np.float64, stddev_result.ndim),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeStandardDeviation")
+
+        return stddev_result
+
     def create_rng(self, random_state):
         if random_state is None:
             return None  # non-deterministic
@@ -918,6 +978,34 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.CleanFloats.restype = None
+
+        self._unsafe.SafeMean.argtypes = [
+            # int64_t countBags
+            ct.c_int64,
+            # int64_t countTensorBins
+            ct.c_int64,
+            # double * vals
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * tensorOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeMean.restype = ct.c_int32
+
+        self._unsafe.SafeStandardDeviation.argtypes = [
+            # int64_t countBags
+            ct.c_int64,
+            # int64_t countTensorBins
+            ct.c_int64,
+            # double * vals
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * tensorOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeStandardDeviation.restype = ct.c_int32
 
         self._unsafe.MeasureRNG.argtypes = []
         self._unsafe.MeasureRNG.restype = ct.c_int64

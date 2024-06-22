@@ -48,16 +48,20 @@ def get_all_explainers():
     specific_explainer_classes = [
         # (TreeInterpreter, True),  # andosa/treeinterpreter no longer maintained
         # (TreeInterpreter, False),  # andosa/treeinterpreter no longer maintained
-        (ShapTree, True),
-        (ShapTree, False),
+        # TODO: Turn this back on after TreeSHAP works on numpy 2.0
+        # https://github.com/shap/shap/pull/3704
+        # (ShapTree, True),
+        # (ShapTree, False),
     ]
     blackbox_explainer_classes = [
         # (LimeTabular, True),  # lime no longer maintained
         # (LimeTabular, False),  # lime no longer maintained
-        (ShapKernel, True),
-        (ShapKernel, False),
-        (MorrisSensitivity, True),
-        (MorrisSensitivity, False),
+        # TODO: Turn this back on after SHAP works on numpy 2.0
+        # https://github.com/shap/shap/pull/3704
+        # (ShapKernel, True),
+        # (ShapKernel, False),
+        # (MorrisSensitivity, True),
+        # (MorrisSensitivity, False),
         (PartialDependence, True),
         (PartialDependence, False),
         # PermutationImportance

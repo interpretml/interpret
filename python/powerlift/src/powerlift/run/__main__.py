@@ -68,6 +68,6 @@ if __name__ == "__main__":
     trial_ids = os.getenv("TRIAL_IDS").split(",")
     db_url = os.getenv("DB_URL")
     timeout = float(os.getenv("TIMEOUT", 0.0))
-    raise_exception = os.getenv("RAISE_EXCEPTION", False)
+    raise_exception = True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
 
     run_trials(trial_ids, db_url, timeout, raise_exception)
