@@ -288,20 +288,6 @@ def create_values(
     return X_values
 
 
-def create_values(
-    X: np.ndarray,
-    explanations: np.ndarray,
-    term_names: StrVector,
-    feature_names: StrVector,
-) -> np.ndarray:
-    X_values = np.full(shape=explanations.shape, fill_value=np.nan)
-    for term_index, term_name in enumerate(term_names):
-        if term_name in feature_names:
-            feature_index = feature_names.index(term_name)
-            X_values[:, term_index] = X[:, feature_index]
-    return X_values
-
-
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
