@@ -12,6 +12,8 @@ from ..utils._explanation import (
     gen_local_selector,
     gen_perf_dicts,
 )
+from ..utils._clean_simple import clean_dimensions
+
 
 FloatVector = List[float]
 FloatMatrix = List[List[float]]
@@ -182,7 +184,71 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
-        ...
+
+        pred = self.predict(X, True)
+        term_names = self.get_unique_term_affiliations()
+        explanations = self.calculate_local_feature_contribution(X)
+
+        data_dicts = []
+        perf_list = []
+
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            y = y.astype(np.float64, copy=False)
+        X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+        perf_list = gen_perf_dicts(pred, y, False)
+
+        for data, sample_scores, perf in zip(X_values, explanations, perf_list):
+            values = ["" if np.isnan(val) else val for val in data.tolist()]
+            data_dict = {
+                "type": "univariate",
+                "names": term_names,
+                "scores": list(sample_scores),
+                "values": values,
+                "extra": {
+                    "names": ["Intercept"],
+                    "scores": [self.get_intercept()],
+                    "values": [1],
+                },
+                "perf": perf,
+            }
+            data_dicts.append(data_dict)
+
+        selector = gen_local_selector(data_dicts, is_classification=False)
+
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "ebm_local",
+                    "value": {
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
+
+        term_types = [
+            "interaction" if len(base_predictors) > 1 else "univariate"
+            for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
+        ]
+        return APLRExplanation(
+            "local",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=gen_name_from_class(self) if name is None else name,
+            selector=selector,
+        )
 
 
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
@@ -206,6 +272,20 @@ def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
         return names
     else:
         return X_names
+
+
+def create_values(
+    X: np.ndarray,
+    explanations: np.ndarray,
+    term_names: StrVector,
+    feature_names: StrVector,
+) -> np.ndarray:
+    X_values = np.full(shape=explanations.shape, fill_value=np.nan)
+    for term_index, term_name in enumerate(term_names):
+        if term_name in feature_names:
+            feature_index = feature_names.index(term_name)
+            X_values[:, term_index] = X[:, feature_index]
+    return X_values
 
 
 class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
@@ -407,7 +487,11 @@ class APLRExplanation(FeatureValueExplanation):
                 "A local explanation shows the breakdown of how much "
                 "each term contributed to the linear predictor for a single sample. "
                 "For classification, this pertains to the logit APLRRegressor model for "
-                "the category that corresponds to the predicted class of the sample."
+                "the category that corresponds to the predicted class of the sample. "
+                "By default the predict method in APLR caps predictions to min/max "
+                "of predictions/response in the training data. For observations that "
+                "where capped, the predictions will not be consistent with the "
+                "contributions to the linear predictor. "
                 "The 15 most important terms are shown."
             )
 
