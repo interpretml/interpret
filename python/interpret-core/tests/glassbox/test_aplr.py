@@ -54,8 +54,8 @@ def test_classification():
         else y.copy()
     )
 
-    native = APLRClassifierNative(max_interaction_level=2, verbosity=1)
-    our_aplr = APLRClassifier(max_interaction_level=2, verbosity=1)
+    native = APLRClassifierNative(m=500, max_interaction_level=2, verbosity=1)
+    our_aplr = APLRClassifier(m=500, max_interaction_level=2, verbosity=1)
 
     native.fit(X, y_native, X_names=feature_names)
     our_aplr.fit(X, y, X_names=feature_names)
@@ -69,12 +69,12 @@ def test_classification():
     assert native_pred == our_pred
 
     # With response
-    local_expl = our_aplr.explain_local(X[:5], y[:5])
+    local_expl = our_aplr.explain_local(X[:100], y[:100])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
     # Without response
-    local_expl = our_aplr.explain_local(X[:5])
+    local_expl = our_aplr.explain_local(X[:100])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 

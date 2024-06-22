@@ -185,7 +185,7 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             for each instance as horizontal bar charts.
         """
 
-        pred = self.predict(X, True)
+        pred = self.predict(X)
         term_names = self.get_unique_term_affiliations()
         explanations = self.calculate_local_feature_contribution(X)
 
@@ -271,7 +271,21 @@ def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
         names = [f"X{i+1}" for i in range(X.shape[1])]
         return names
     else:
-        return X_names
+        return list(X_names)
+
+
+def create_values(
+    X: np.ndarray,
+    explanations: np.ndarray,
+    term_names: StrVector,
+    feature_names: StrVector,
+) -> np.ndarray:
+    X_values = np.full(shape=explanations.shape, fill_value=np.nan)
+    for term_index, term_name in enumerate(term_names):
+        if term_name in feature_names:
+            feature_index = feature_names.index(term_name)
+            X_values[:, term_index] = X[:, feature_index]
+    return X_values
 
 
 def create_values(
@@ -356,9 +370,7 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             for affiliation_index, affiliation in enumerate(
                 model.get_unique_term_affiliations()
             ):
-                shape = model.get_unique_term_affiliation_shape(
-                    affiliation, max_rows_before_sampling=100000
-                )
+                shape = model.get_unique_term_affiliation_shape(affiliation)
                 predictor_indexes_used = predictors_in_each_affiliation[
                     affiliation_index
                 ]
@@ -465,7 +477,87 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             An explanation object, visualizing feature-value pairs
             for each instance as horizontal bar charts.
         """
-        ...
+
+        pred = self.predict(X)
+        pred_proba = self.predict_class_probabilities(X)
+        pred_max_prob = np.max(pred_proba, axis=1)
+        term_names = self.get_unique_term_affiliations()
+        explanations = self.calculate_local_feature_contribution(X)
+        classes = self.get_categories()
+
+        data_dicts = []
+        perf_list = []
+
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                raise ValueError("y must be 1 dimensional")
+            if not all(isinstance(val, str) for val in y):
+                y = [str(val) for val in y]
+        X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+        perf_list = []
+        for i in range(len(pred)):
+            di = {}
+            di["is_classification"] = True
+            di["actual"] = np.nan if y is None else classes.index(y[i])
+            di["predicted"] = classes.index(pred[i])
+            di["actual_score"] = (
+                np.nan if y is None else pred_proba[i, classes.index(y[i])]
+            )
+            di["predicted_score"] = pred_max_prob[i]
+            perf_list.append(di)
+
+        for data, sample_scores, perf in zip(X_values, explanations, perf_list):
+            model = self.get_logit_model(classes[perf["predicted"]])
+            values = ["" if np.isnan(val) else val for val in data.tolist()]
+            data_dict = {
+                "type": "univariate",
+                "names": term_names,
+                "scores": list(sample_scores),
+                "values": values,
+                "extra": {
+                    "names": ["Intercept"],
+                    "scores": [model.get_intercept()],
+                    "values": [1],
+                },
+                "perf": perf,
+                "meta": {"label_names": classes},
+            }
+            data_dicts.append(data_dict)
+
+        selector = gen_local_selector(data_dicts, is_classification=True)
+
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "ebm_local",
+                    "value": {
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
+
+        term_types = [
+            "interaction" if len(base_predictors) > 1 else "univariate"
+            for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
+        ]
+        return APLRExplanation(
+            "local",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=gen_name_from_class(self) if name is None else name,
+            selector=selector,
+        )
 
 
 class APLRExplanation(FeatureValueExplanation):
@@ -515,7 +607,6 @@ class APLRExplanation(FeatureValueExplanation):
         from ..visual.plot import (
             plot_line,
             plot_pairwise_heatmap,
-            plot_continuous_bar,
             plot_horizontal_bar,
             sort_take,
         )
@@ -593,12 +684,12 @@ class APLRExplanation(FeatureValueExplanation):
             figure._interpret_help_text = (
                 "A local explanation shows the breakdown of how much "
                 "each term contributed to the linear predictor for a single sample. "
-                "For classification, this pertains to the logit APLRRegressor model for "
-                "the category that corresponds to the predicted class of the sample. "
-                "By default the predict method in APLR caps predictions to min/max "
+                "For regression, the predict method by default caps predictions to min/max "
                 "of predictions/response in the training data. For observations that "
                 "where capped, the predictions will not be consistent with the "
                 "contributions to the linear predictor. "
+                "For classification, this pertains to the logit APLRRegressor model for "
+                "the category that corresponds to the predicted class of the sample. "
                 "The 15 most important terms are shown."
             )
 
