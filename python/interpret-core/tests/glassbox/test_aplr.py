@@ -16,12 +16,6 @@ def test_regression():
     native = APLRRegressorNative(max_interaction_level=2)
     our_aplr = APLRRegressor(max_interaction_level=2)
 
-    # from interpret.glassbox import ExplainableBoostingRegressor
-    # testmodel=ExplainableBoostingRegressor(feature_names)
-    # testmodel.fit(X,y)
-    # loc=testmodel.explain_local(X[:5])
-    # loc=testmodel.explain_local(X[:5],y[:5])
-
     native.fit(X, y, X_names=feature_names)
     our_aplr.fit(X, y, X_names=feature_names)
 
@@ -84,5 +78,5 @@ def test_classification():
 
 
 if __name__ == "__main__":
-    # test_regression()
+    test_regression()
     test_classification()
