@@ -309,6 +309,10 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
+
+        if not all(isinstance(val, str) for val in y):
+            y = [str(val) for val in y]
+
         super().fit(
             X,
             y,
@@ -333,7 +337,121 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             An explanation object,
             visualizing feature-value pairs as horizontal bar chart.
         """
-        ...
+
+        overall_dict = {
+            "names": self.get_unique_term_affiliations(),
+            "scores": self.get_feature_importance(),
+        }
+
+        data_dicts = []
+        feature_list = []
+        density_list = []
+        unique_values = []
+        categories = self.get_categories()
+        for category in categories:
+            model = self.get_logit_model(category)
+            predictors_in_each_affiliation = (
+                model.get_base_predictors_in_each_unique_term_affiliation()
+            )
+            for affiliation_index, affiliation in enumerate(
+                model.get_unique_term_affiliations()
+            ):
+                shape = model.get_unique_term_affiliation_shape(
+                    affiliation, max_rows_before_sampling=100000
+                )
+                predictor_indexes_used = predictors_in_each_affiliation[
+                    affiliation_index
+                ]
+                is_main_effect: bool = len(predictor_indexes_used) == 1
+                is_two_way_interaction: bool = len(predictor_indexes_used) == 2
+                if is_main_effect:
+                    density_dict = {
+                        "names": self.bin_edges[predictor_indexes_used[0]],
+                        "scores": self.bin_counts[predictor_indexes_used[0]],
+                    }
+                    feature_dict = {
+                        "type": "univariate",
+                        "feature_name": self.feature_names_in_[
+                            predictor_indexes_used[0]
+                        ],
+                        "term_name": f"class {category}: {affiliation}",
+                        "names": shape[:, 0],
+                        "scores": shape[:, 1],
+                    }
+                    data_dict = {
+                        "type": "univariate",
+                        "feature_name": self.feature_names_in_[
+                            predictor_indexes_used[0]
+                        ],
+                        "names": shape[:, 0],
+                        "scores": shape[:, 1],
+                        "density": density_dict,
+                    }
+                    feature_list.append(feature_dict)
+                    density_list.append(density_dict)
+                    data_dicts.append(data_dict)
+                    unique_values.append(
+                        self.unique_values_in_[predictor_indexes_used[0]]
+                    )
+                elif is_two_way_interaction:
+                    feature_dict = {
+                        "type": "interaction",
+                        "feature_names": [
+                            self.feature_names_in_[idx]
+                            for idx in predictor_indexes_used
+                        ],
+                        "term_name": f"class {category}: {affiliation}",
+                        "left_names": shape[:, 0],
+                        "right_names": shape[:, 1],
+                        "scores": shape[:, 2],
+                    }
+                    data_dict = {
+                        "type": "interaction",
+                        "feature_names": [
+                            self.feature_names_in_[idx]
+                            for idx in predictor_indexes_used
+                        ],
+                        "left_names": shape[:, 0],
+                        "right_names": shape[:, 1],
+                        "scores": shape[:, 2],
+                    }
+                    feature_list.append(feature_dict)
+                    density_list.append({})
+                    data_dicts.append(data_dict)
+                    unique_values.append(np.nan)
+                else:  # pragma: no cover
+                    warn(
+                        f"Dropping term {affiliation} from explanation "
+                        "since we can't graph more than 2 dimensions."
+                    )
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "aplr_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {"explanation_type": "density", "value": {"density": density_list}},
+            ],
+        }
+        term_names = [feature_dict["term_name"] for feature_dict in feature_list]
+        term_types = [feature_dict["type"] for feature_dict in feature_list]
+        selector = gen_global_selector(
+            len(term_names),
+            term_names,
+            term_types,
+            unique_values,
+            None,
+        )
+        return APLRExplanation(
+            "global",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=name,
+            selector=selector,
+        )
 
     def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
         """Provides local explanations for provided instances.
@@ -395,7 +513,6 @@ class APLRExplanation(FeatureValueExplanation):
             A Plotly figure.
         """
         from ..visual.plot import (
-            is_multiclass_global_data_dict,
             plot_line,
             plot_pairwise_heatmap,
             plot_continuous_bar,
@@ -440,17 +557,7 @@ class APLRExplanation(FeatureValueExplanation):
 
             if self.feature_types[key] == "univariate":
                 xtitle = self.feature_names[key]
-
-                if is_multiclass_global_data_dict(data_dict):
-                    figure = plot_continuous_bar(
-                        data_dict,
-                        multiclass=True,
-                        show_error=False,
-                        title=title,
-                        xtitle=xtitle,
-                    )
-                else:
-                    figure = plot_line(data_dict, title=title, xtitle=xtitle)
+                figure = plot_line(data_dict, title=title, xtitle=xtitle)
 
             elif self.feature_types[key] == "interaction":
                 xtitle = data_dict["feature_names"][0]

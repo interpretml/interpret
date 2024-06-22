@@ -48,11 +48,16 @@ def test_classification():
     cancer = load_breast_cancer()
     X, y = cancer.data, cancer.target
     feature_names = cancer.feature_names
+    y_native = (
+        y.astype(str).tolist()
+        if not all(isinstance(item, str) for item in y)
+        else y.copy()
+    )
 
-    native = APLRClassifierNative(max_interaction_level=2)
-    our_aplr = APLRClassifier(max_interaction_level=2)
+    native = APLRClassifierNative(max_interaction_level=2, verbosity=1)
+    our_aplr = APLRClassifier(max_interaction_level=2, verbosity=1)
 
-    native.fit(X, y, X_names=feature_names)
+    native.fit(X, y_native, X_names=feature_names)
     our_aplr.fit(X, y, X_names=feature_names)
 
     native_pred = native.predict_class_probabilities(X)
@@ -61,15 +66,15 @@ def test_classification():
 
     native_pred = native.predict(X)
     our_pred = our_aplr.predict(X)
-    assert np.allclose(native_pred, our_pred)
+    assert native_pred == our_pred
 
-    # With labels
-    local_expl = our_aplr.explain_local(X, y)
+    # With response
+    local_expl = our_aplr.explain_local(X[:5], y[:5])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
-    # Without labels
-    local_expl = our_aplr.explain_local(X)
+    # Without response
+    local_expl = our_aplr.explain_local(X[:5])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
@@ -79,5 +84,5 @@ def test_classification():
 
 
 if __name__ == "__main__":
-    test_regression()
+    # test_regression()
     test_classification()
