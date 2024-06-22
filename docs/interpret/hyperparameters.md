@@ -124,6 +124,6 @@ guidance: Altering early_stopping_tolerance is not generally recommended. Increa
 ## validation_size
 default: 0.15
 
-hyperparameters: [0.1, 0.15, 0.2]
+hyperparameters: [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
 
 guidance: The ideal amount of data to be used as validation is dataset dependent, and should be tuned when possible.
