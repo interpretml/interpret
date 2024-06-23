@@ -1,6 +1,8 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 import numpy as np
+import numpy.typing as npt
+import pandas as pd
 from typing import List, Tuple
 from warnings import warn
 import aplr
@@ -15,11 +17,11 @@ from ..utils._explanation import (
 from ..utils._clean_simple import clean_dimensions
 
 
-FloatVector = List[float]
-FloatMatrix = List[List[float]]
-IntVector = List[int]
-IntMatrix = List[List[int]]
-StrVector = List[str]
+FloatVector = npt.ArrayLike
+FloatMatrix = npt.ArrayLike
+IntVector = npt.ArrayLike
+IntMatrix = npt.ArrayLike
+StrVector = npt.ArrayLike
 
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
@@ -254,21 +256,30 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
     bin_edges: List[List[float]] = []
-    for col in X.T:
+    for col in convert_to_numpy_matrix(X).T:
         counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
         bin_counts.append(counts_this_col)
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
 
+def convert_to_numpy_matrix(X: FloatMatrix)->np.ndarray:
+    if isinstance(X, np.ndarray):
+        return X
+    elif isinstance(X, pd.DataFrame):
+        return X.values
+    elif isinstance(X, list):
+        return np.array(X)
+    else:
+        raise TypeError("X must either be a numpy matrix, a pandas dataframe or a list of float lists.")    
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
-    unique_values_counts = [len(np.unique(col)) for col in X.T]
+    unique_values_counts = [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
     return unique_values_counts
 
 
 def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
     if len(X_names) == 0:
-        names = [f"X{i+1}" for i in range(X.shape[1])]
+        names = [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
         return names
     else:
         return list(X_names)
@@ -284,7 +295,7 @@ def create_values(
     for term_index, term_name in enumerate(term_names):
         if term_name in feature_names:
             feature_index = feature_names.index(term_name)
-            X_values[:, term_index] = X[:, feature_index]
+            X_values[:, term_index] = convert_to_numpy_matrix(X)[:, feature_index]
     return X_values
 
 
