@@ -1,6 +1,7 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from typing import List, Tuple
 from warnings import warn
@@ -16,11 +17,11 @@ from ..utils._explanation import (
 from ..utils._clean_simple import clean_dimensions
 
 
-FloatVector = List[float]
-FloatMatrix = List[List[float]]
-IntVector = List[int]
-IntMatrix = List[List[int]]
-StrVector = List[str]
+FloatVector = npt.ArrayLike
+FloatMatrix = npt.ArrayLike
+IntVector = npt.ArrayLike
+IntMatrix = npt.ArrayLike
+StrVector = npt.ArrayLike
 
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
