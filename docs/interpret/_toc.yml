@@ -7,6 +7,8 @@ chapters:
     sections:
     - file: python/api/ExplainableBoostingClassifier
     - file: python/api/ExplainableBoostingRegressor
+    - file: python/api/APLRRegressor
+    - file: python/api/APLRClassifier
     - file: python/api/LogisticRegression
     - file: python/api/LinearRegression
     - file: python/api/ClassificationTree
@@ -57,6 +59,7 @@ chapters:
   - file: glassbox
     sections:
     - file: ebm
+    - file: aplr
     - file: lr
     - file: dt
   - file: blackbox

@@ -639,7 +639,9 @@ def mli_plot_horizontal_bar(
     return figure
 
 
-def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
+def plot_pairwise_heatmap(
+    data_dict, title="", xtitle="", ytitle="", transform_vals=True
+):
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
@@ -647,7 +649,8 @@ def plot_pairwise_heatmap(data_dict, title="", xtitle="", ytitle=""):
     bin_labels_right = data_dict["right_names"]
     bin_vals = data_dict["scores"]
 
-    bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1, 0)))
+    if transform_vals:
+        bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1, 0)))
 
     heatmap = go.Heatmap(z=bin_vals, x=bin_labels_left, y=bin_labels_right)
     if data_dict.get("scores_range", None) is not None:
