@@ -292,11 +292,19 @@ def create_values(
     term_names: StrVector,
     feature_names: StrVector,
 ) -> np.ndarray:
+    if isinstance(X, np.ndarray):
+        X_used=X
+    elif isinstance(X, pd.DataFrame):
+        X_used=X.values
+    elif isinstance(X, list):
+        X_used = np.array(X)
+    else:
+        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
     X_values = np.full(shape=explanations.shape, fill_value=np.nan)
     for term_index, term_name in enumerate(term_names):
         if term_name in feature_names:
             feature_index = feature_names.index(term_name)
-            X_values[:, term_index] = X[:, feature_index]
+            X_values[:, term_index] = X_used[:, feature_index]
     return X_values
 
 
