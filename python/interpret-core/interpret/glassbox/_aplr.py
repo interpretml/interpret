@@ -1,6 +1,7 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 import numpy as np
+import pandas as pd
 from typing import List, Tuple
 from warnings import warn
 import aplr
@@ -254,15 +255,25 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
     bin_edges: List[List[float]] = []
-    for col in X.T:
+    for col in transpose_float_matrix(X):
         counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
         bin_counts.append(counts_this_col)
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
 
+def transpose_float_matrix(X:FloatMatrix)->np.ndarray:
+    if isinstance(X, np.ndarray):
+        X_transposed=X.T
+    elif isinstance(X, pd.DataFrame):
+        X_transposed=X.values.T
+    elif isinstance(X, list):
+        X_transposed = np.array(X).T
+    else:
+        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
+    return X_transposed
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
-    unique_values_counts = [len(np.unique(col)) for col in X.T]
+    unique_values_counts = [len(np.unique(col)) for col in transpose_float_matrix(X)]
     return unique_values_counts
 
 
