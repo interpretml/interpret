@@ -75,8 +75,3 @@ def test_classification():
     global_expl = our_aplr.explain_global()
     global_viz = global_expl.visualize()
     assert global_viz is not None
-
-
-if __name__ == "__main__":
-    test_regression()
-    test_classification()
