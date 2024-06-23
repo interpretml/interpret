@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.2] - 2024-06-22
+### Added
+- pass optional kwargs to DecisionTreeClassifier in PR #537 by @busFred
+- support for multiclass purification
+- support for higher dimensional purification
+- allow higher levels of purification than would be supported via the tolerance parameter
+### Changed
+- numpy 2.0 support for EBMs
+- update documentation regarding monotonicity in PR #531 by @Krzys25
+- moved purification utility from "interpret/glassbox/_ebm/_research" to "interpret.utils"
+### Fixed
+- possible fix for issue #543 where merge_ebms was creating unexpected NaN values
+
 ## [v0.6.1] - 2024-04-14
 ### Fixed
 - added compatibility with numpy 2.0 thanks to @DerWeh in PR #525
