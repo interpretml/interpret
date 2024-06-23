@@ -262,7 +262,8 @@ def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[floa
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
 
-def convert_to_numpy_matrix(X: FloatMatrix)->np.ndarray:
+
+def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
     if isinstance(X, np.ndarray):
         return X
     elif isinstance(X, pd.DataFrame):
@@ -270,7 +271,10 @@ def convert_to_numpy_matrix(X: FloatMatrix)->np.ndarray:
     elif isinstance(X, list):
         return np.array(X)
     else:
-        raise TypeError("X must either be a numpy matrix, a pandas dataframe or a list of float lists.")    
+        raise TypeError(
+            "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
+        )
+
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
     unique_values_counts = [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]

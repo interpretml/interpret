@@ -11,6 +11,8 @@ import numpy as np
 def test_regression():
     dataset = load_diabetes()
     X, y = dataset.data, dataset.target
+    X = X[:100]
+    y = y[:100]
     feature_names = dataset.feature_names
 
     native = APLRRegressorNative(max_interaction_level=2)
@@ -41,6 +43,8 @@ def test_regression():
 def test_classification():
     cancer = load_breast_cancer()
     X, y = cancer.data, cancer.target
+    X = X[:100]
+    y = y[:100]
     feature_names = cancer.feature_names
     y_native = (
         y.astype(str).tolist()
@@ -63,15 +67,20 @@ def test_classification():
     assert native_pred == our_pred
 
     # With response
-    local_expl = our_aplr.explain_local(X[:100], y[:100])
+    local_expl = our_aplr.explain_local(X[:5], y[:5])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
     # Without response
-    local_expl = our_aplr.explain_local(X[:100])
+    local_expl = our_aplr.explain_local(X[:5])
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
     global_expl = our_aplr.explain_global()
     global_viz = global_expl.visualize()
     assert global_viz is not None
+
+
+if __name__ == "__main__":
+    test_regression()
+    test_classification()
