@@ -343,6 +343,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionRandomBoosting.cpp" -o "$tmp_path/PartitionRandomBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalBoosting.cpp" -o "$tmp_path/PartitionTwoDimensionalBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalInteraction.cpp" -o "$tmp_path/PartitionTwoDimensionalInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Purify.cpp" -o "$tmp_path/Purify.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/RandomDeterministic.cpp" -o "$tmp_path/RandomDeterministic.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/random.cpp" -o "$tmp_path/random.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/sampling.cpp" -o "$tmp_path/sampling.o"
@@ -380,6 +381,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/PartitionRandomBoosting.o" \
    "$tmp_path/PartitionTwoDimensionalBoosting.o" \
    "$tmp_path/PartitionTwoDimensionalInteraction.o" \
+   "$tmp_path/Purify.o" \
    "$tmp_path/RandomDeterministic.o" \
    "$tmp_path/random.o" \
    "$tmp_path/sampling.o" \
