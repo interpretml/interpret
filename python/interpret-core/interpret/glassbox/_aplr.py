@@ -279,8 +279,15 @@ def calculate_unique_values(X: FloatMatrix) -> List[int]:
 
 
 def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
+    if (isinstance(X, np.ndarray)) | (isinstance(X, pd.DataFrame)):
+        num_columns=X.shape[1]
+    elif isinstance(X, list):
+        num_columns = np.array(X).shape[1]
+    else:
+        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
+    
     if len(X_names) == 0:
-        names = [f"X{i+1}" for i in range(X.shape[1])]
+        names = [f"X{i+1}" for i in range(num_columns)]
         return names
     else:
         return list(X_names)
