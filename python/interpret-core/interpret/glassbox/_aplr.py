@@ -23,6 +23,8 @@ IntVector = npt.ArrayLike
 IntMatrix = npt.ArrayLike
 StrVector = npt.ArrayLike
 
+X_type_error_message:str = "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
+
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -270,7 +272,7 @@ def transpose_float_matrix(X:FloatMatrix)->np.ndarray:
     elif isinstance(X, list):
         X_transposed = np.array(X).T
     else:
-        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
+        raise TypeError(X_type_error_message)
     return X_transposed
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
@@ -284,7 +286,7 @@ def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
     elif isinstance(X, list):
         num_columns = np.array(X).shape[1]
     else:
-        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
+        raise TypeError(X_type_error_message)
     
     if len(X_names) == 0:
         names = [f"X{i+1}" for i in range(num_columns)]
@@ -306,7 +308,7 @@ def create_values(
     elif isinstance(X, list):
         X_used = np.array(X)
     else:
-        raise TypeError("X must either be a numpy matrix, pandas dataframe or a list of float lists.")
+        raise TypeError(X_type_error_message)
     X_values = np.full(shape=explanations.shape, fill_value=np.nan)
     for term_index, term_name in enumerate(term_names):
         if term_name in feature_names:
