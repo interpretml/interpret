@@ -23,8 +23,6 @@ IntVector = npt.ArrayLike
 IntMatrix = npt.ArrayLike
 StrVector = npt.ArrayLike
 
-X_type_error_message:str = "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
-
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
     available_explanations = ["local", "global"]
@@ -258,38 +256,30 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
     bin_edges: List[List[float]] = []
-    for col in transpose_float_matrix(X):
+    for col in convert_to_numpy_matrix(X).T:
         counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
         bin_counts.append(counts_this_col)
         bin_edges.append(bin_edges_this_col)
     return bin_counts, bin_edges
 
-def transpose_float_matrix(X:FloatMatrix)->np.ndarray:
+def convert_to_numpy_matrix(X: FloatMatrix)->np.ndarray:
     if isinstance(X, np.ndarray):
-        X_transposed=X.T
+        return X
     elif isinstance(X, pd.DataFrame):
-        X_transposed=X.values.T
+        return X.values
     elif isinstance(X, list):
-        X_transposed = np.array(X).T
+        return np.array(X)
     else:
-        raise TypeError(X_type_error_message)
-    return X_transposed
+        raise TypeError("X must either be a numpy matrix, a pandas dataframe or a list of float lists.")    
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
-    unique_values_counts = [len(np.unique(col)) for col in transpose_float_matrix(X)]
+    unique_values_counts = [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
     return unique_values_counts
 
 
 def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
-    if (isinstance(X, np.ndarray)) | (isinstance(X, pd.DataFrame)):
-        num_columns=X.shape[1]
-    elif isinstance(X, list):
-        num_columns = np.array(X).shape[1]
-    else:
-        raise TypeError(X_type_error_message)
-    
     if len(X_names) == 0:
-        names = [f"X{i+1}" for i in range(num_columns)]
+        names = [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
         return names
     else:
         return list(X_names)
@@ -301,19 +291,11 @@ def create_values(
     term_names: StrVector,
     feature_names: StrVector,
 ) -> np.ndarray:
-    if isinstance(X, np.ndarray):
-        X_used=X
-    elif isinstance(X, pd.DataFrame):
-        X_used=X.values
-    elif isinstance(X, list):
-        X_used = np.array(X)
-    else:
-        raise TypeError(X_type_error_message)
     X_values = np.full(shape=explanations.shape, fill_value=np.nan)
     for term_index, term_name in enumerate(term_names):
         if term_name in feature_names:
             feature_index = feature_names.index(term_name)
-            X_values[:, term_index] = X_used[:, feature_index]
+            X_values[:, term_index] = convert_to_numpy_matrix(X)[:, feature_index]
     return X_values
 
 
