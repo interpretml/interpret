@@ -242,6 +242,7 @@ https://github.com/interpretml/interpret
         "pandas>=0.19.2",
         "scikit-learn>=0.18.1",
         "joblib>=0.11",
+        "aplr>=10.4.6",
     ],
     extras_require={
         "debug": ["psutil>=5.6.2"],
