@@ -1,7 +1,6 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 from typing import List, Tuple
 from warnings import warn
@@ -17,11 +16,10 @@ from ..utils._explanation import (
 from ..utils._clean_simple import clean_dimensions
 
 
-FloatVector = npt.ArrayLike
-FloatMatrix = npt.ArrayLike
-IntVector = npt.ArrayLike
-IntMatrix = npt.ArrayLike
-StrVector = npt.ArrayLike
+FloatVector = np.ndarray
+FloatMatrix = np.ndarray
+IntVector = np.ndarray
+IntMatrix = np.ndarray
 
 
 class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
@@ -32,17 +30,17 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         self,
         X: FloatMatrix,
         y: FloatVector,
-        sample_weight: FloatVector = [],
-        X_names: StrVector = [],
-        cv_observations: IntMatrix = [],
-        prioritized_predictors_indexes: IntVector = [],
-        monotonic_constraints: IntVector = [],
-        group: FloatVector = [],
+        sample_weight: FloatVector = np.empty(0),
+        X_names: List[str] = [],
+        cv_observations: IntMatrix = np.empty([0, 0]),
+        prioritized_predictors_indexes: List[int] = [],
+        monotonic_constraints: List[int] = [],
+        group: FloatVector = np.empty(0),
         interaction_constraints: List[List[int]] = [],
-        other_data: FloatMatrix = [],
-        predictor_learning_rates: FloatVector = [],
-        predictor_penalties_for_non_linearity: FloatVector = [],
-        predictor_penalties_for_interactions: FloatVector = [],
+        other_data: FloatMatrix = np.empty([0, 0]),
+        predictor_learning_rates: List[float] = [],
+        predictor_penalties_for_non_linearity: List[float] = [],
+        predictor_penalties_for_interactions: List[float] = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
@@ -281,7 +279,7 @@ def calculate_unique_values(X: FloatMatrix) -> List[int]:
     return unique_values_counts
 
 
-def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
+def define_feature_names(X_names: List[str], X: FloatMatrix) -> List[str]:
     if len(X_names) == 0:
         names = [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
         return names
@@ -292,8 +290,8 @@ def define_feature_names(X_names: StrVector, X: FloatMatrix) -> StrVector:
 def create_values(
     X: np.ndarray,
     explanations: np.ndarray,
-    term_names: StrVector,
-    feature_names: StrVector,
+    term_names: List[str],
+    feature_names: List[str],
 ) -> np.ndarray:
     X_values = np.full(shape=explanations.shape, fill_value=np.nan)
     for term_index, term_name in enumerate(term_names):
@@ -310,16 +308,16 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
     def fit(
         self,
         X: FloatMatrix,
-        y: StrVector,
-        sample_weight: FloatVector = [],
-        X_names: StrVector = [],
-        cv_observations: IntMatrix = [],
-        prioritized_predictors_indexes: IntVector = [],
-        monotonic_constraints: IntVector = [],
+        y: List[str],
+        sample_weight: FloatVector = np.empty(0),
+        X_names: List[str] = [],
+        cv_observations: IntMatrix = np.empty([0, 0]),
+        prioritized_predictors_indexes: List[int] = [],
+        monotonic_constraints: List[int] = [],
         interaction_constraints: List[List[int]] = [],
-        predictor_learning_rates: FloatVector = [],
-        predictor_penalties_for_non_linearity: FloatVector = [],
-        predictor_penalties_for_interactions: FloatVector = [],
+        predictor_learning_rates: List[float] = [],
+        predictor_penalties_for_non_linearity: List[float] = [],
+        predictor_penalties_for_interactions: List[float] = [],
     ):
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
