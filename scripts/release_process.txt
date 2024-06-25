@@ -47,7 +47,7 @@
   - open anaconda console window
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
   - conda env remove --name interpret_bdist && conda create --yes --name interpret_bdist python=3.10 && conda activate interpret_bdist
-  - pip install interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+  - pip install interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]
   - cd <REPO_ROOT>
   - cd docs/interpret/python/examples
   - pip install jupyter
@@ -65,7 +65,7 @@ set_visualize_provider(InlineProvider())
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
   - conda env remove --name interpret_sdist && conda create --yes --name interpret_sdist python=3.10 && conda activate interpret_sdist
   - IN WINDOWS: get the Visual studio environment with: "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-  - pip install interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+  - pip install interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]
   - cd <REPO_ROOT>
   - cd docs/interpret/python/examples
   - pip install jupyter

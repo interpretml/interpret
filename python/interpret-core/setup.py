@@ -242,7 +242,6 @@ https://github.com/interpretml/interpret
         "pandas>=0.19.2",
         "scikit-learn>=0.18.1",
         "joblib>=0.11",
-        "aplr>=10.4.6",
     ],
     extras_require={
         "debug": ["psutil>=5.6.2"],
@@ -256,6 +255,7 @@ https://github.com/interpretml/interpret
         "linear": [],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
+        "aplr": ["aplr>=10.4.6"],
         # Dash
         "dash": [
             # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table

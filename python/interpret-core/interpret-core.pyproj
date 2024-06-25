@@ -52,6 +52,7 @@
     <Compile Include="interpret\ext\perf\__init__.py" />
     <Compile Include="interpret\ext\provider\__init__.py" />
     <Compile Include="interpret\ext\__init__.py" />
+    <Compile Include="interpret\glassbox\_aplr.py" />
     <Compile Include="interpret\glassbox\_decisiontree.py" />
     <Compile Include="interpret\glassbox\_ebm\_bin.py" />
     <Compile Include="interpret\glassbox\_ebm\_ebm.py" />
@@ -120,6 +121,7 @@
     <Compile Include="tests\glassbox\ebm\test_merge_ebms.py" />
     <Compile Include="tests\glassbox\ebm\test_multiclass.py" />
     <Compile Include="tests\glassbox\ebm\__init__.py" />
+    <Compile Include="tests\glassbox\test_aplr.py" />
     <Compile Include="tests\glassbox\test_decisiontree.py" />
     <Compile Include="tests\glassbox\test_linear.py" />
     <Compile Include="tests\glassbox\__init__.py" />

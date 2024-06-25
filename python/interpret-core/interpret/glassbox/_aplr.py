@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Tuple
 from warnings import warn
-import aplr
+from sklearn.base import ClassifierMixin, RegressorMixin
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._explanation import (
@@ -22,9 +22,22 @@ IntVector = np.ndarray
 IntMatrix = np.ndarray
 
 
-class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
+class APLRRegressor(RegressorMixin, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
+
+    def __init__(
+        self, **kwargs
+    ):
+        """Initializes class.
+
+        Args:
+            **kwargs: Kwargs pass to APLRRegressor at initialization time.
+        """
+
+        # TODO: add feature_names and feature_types to conform to glassbox API
+
+        self.kwargs = kwargs
 
     def fit(
         self,
@@ -42,10 +55,15 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
         predictor_penalties_for_non_linearity: List[float] = [],
         predictor_penalties_for_interactions: List[float] = [],
     ):
+        from aplr import APLRRegressor
+
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-        super().fit(
+
+        self.model_ = APLRRegressor(**self.kwargs)
+
+        self.model_.fit(
             X,
             y,
             sample_weight,
@@ -60,6 +78,28 @@ class APLRRegressor(aplr.APLRRegressor, ExplainerMixin):
             predictor_penalties_for_non_linearity,
             predictor_penalties_for_interactions,
         )
+
+    def predict(self, X):
+        return self.model_.predict(X)
+
+    def get_unique_term_affiliations(self):
+        return self.model_.get_unique_term_affiliations()
+
+    def calculate_local_feature_contribution(self, X):
+        return self.model_.calculate_local_feature_contribution(X)
+
+    def get_base_predictors_in_each_unique_term_affiliation(self):
+        return self.model_.get_base_predictors_in_each_unique_term_affiliation()
+
+    def get_feature_importance(self):
+        return self.model_.get_feature_importance()
+
+    def get_unique_term_affiliation_shape(self, affiliation):
+        return self.model_.get_unique_term_affiliation_shape(affiliation)
+
+    def get_intercept(self):
+        return self.model_.get_intercept()
+
 
     def explain_global(self, name: str = None):
         """Provides global explanation for model.
@@ -301,9 +341,22 @@ def create_values(
     return X_values
 
 
-class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
+class APLRClassifier(ClassifierMixin, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
+
+    def __init__(
+        self, **kwargs
+    ):
+        """Initializes class.
+
+        Args:
+            **kwargs: Kwargs pass to APLRClassifier at initialization time.
+        """
+
+        # TODO: add feature_names and feature_types to conform to glassbox API
+
+        self.kwargs = kwargs
 
     def fit(
         self,
@@ -319,6 +372,8 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         predictor_penalties_for_non_linearity: List[float] = [],
         predictor_penalties_for_interactions: List[float] = [],
     ):
+        from aplr import APLRClassifier
+
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
@@ -326,7 +381,9 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
         if not all(isinstance(val, str) for val in y):
             y = [str(val) for val in y]
 
-        super().fit(
+        self.model_ = APLRClassifier(**self.kwargs)
+
+        self.model_.fit(
             X,
             y,
             sample_weight,
@@ -339,6 +396,33 @@ class APLRClassifier(aplr.APLRClassifier, ExplainerMixin):
             predictor_penalties_for_non_linearity,
             predictor_penalties_for_interactions,
         )
+
+    def predict(self, X):
+        return self.model_.predict(X)
+
+    def predict_class_probabilities(self, X):
+        return self.model_.predict_class_probabilities(X)
+
+    def get_unique_term_affiliations(self):
+        return self.model_.get_unique_term_affiliations()
+
+    def calculate_local_feature_contribution(self, X):
+        return self.model_.calculate_local_feature_contribution(X)
+
+    def get_categories(self):
+        return self.model_.get_categories()
+
+    def get_logit_model(self, category):
+        return self.model_.get_logit_model(category)
+
+    def get_base_predictors_in_each_unique_term_affiliation(self):
+        return self.model_.get_base_predictors_in_each_unique_term_affiliation()
+
+    def get_feature_importance(self):
+        return self.model_.get_feature_importance()
+
+    def get_intercept(self):
+        return self.model_.get_intercept()
 
     def explain_global(self, name: str = None):
         """Provides global explanation for model.

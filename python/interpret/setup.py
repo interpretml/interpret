@@ -24,6 +24,7 @@ interpret_core_extra = [
     "linear",
     "dash",
     # "treeinterpreter",  # no longer maintained
+    "aplr",
 ]
 
 setup(
