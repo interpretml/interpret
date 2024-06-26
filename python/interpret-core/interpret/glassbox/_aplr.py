@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from warnings import warn
 from sklearn.base import ClassifierMixin, RegressorMixin
 from ..api.base import ExplainerMixin
@@ -26,9 +26,7 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    def __init__(
-        self, **kwargs
-    ):
+    def __init__(self, **kwargs):
         """Initializes class.
 
         Args:
@@ -37,7 +35,9 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
 
         # TODO: add feature_names and feature_types to conform to glassbox API
 
-        self.kwargs = kwargs
+        from aplr import APLRRegressor
+
+        self.model_ = APLRRegressor(**kwargs)
 
     def fit(
         self,
@@ -55,13 +55,9 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
         predictor_penalties_for_non_linearity: List[float] = [],
         predictor_penalties_for_interactions: List[float] = [],
     ):
-        from aplr import APLRRegressor
-
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
-
-        self.model_ = APLRRegressor(**self.kwargs)
 
         self.model_.fit(
             X,
@@ -79,27 +75,132 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def predict(self, X):
-        return self.model_.predict(X)
+    def predict(
+        self, X: FloatMatrix, cap_predictions_to_minmax_in_training: bool = True
+    ) -> FloatVector:
+        return self.model_.predict(X, cap_predictions_to_minmax_in_training)
 
-    def get_unique_term_affiliations(self):
-        return self.model_.get_unique_term_affiliations()
+    def set_term_names(self, X_names: List[str]):
+        self.model_.set_term_names(X_names)
 
-    def calculate_local_feature_contribution(self, X):
+    def calculate_feature_importance(
+        self, X: FloatMatrix, sample_weight: FloatVector = np.empty(0)
+    ) -> FloatVector:
+        return self.model_.calculate_feature_importance(X, sample_weight)
+
+    def calculate_term_importance(
+        self, X: FloatMatrix, sample_weight: FloatVector = np.empty(0)
+    ) -> FloatVector:
+        return self.model_.calculate_term_importance(X, sample_weight)
+
+    def calculate_local_feature_contribution(self, X: FloatMatrix) -> FloatMatrix:
         return self.model_.calculate_local_feature_contribution(X)
 
-    def get_base_predictors_in_each_unique_term_affiliation(self):
+    def calculate_local_term_contribution(self, X: FloatMatrix) -> FloatMatrix:
+        return self.model_.calculate_local_term_contribution(X)
+
+    def calculate_local_contribution_from_selected_terms(
+        self, X: FloatMatrix, predictor_indexes: List[int]
+    ) -> FloatVector:
+        return self.model_.calculate_local_contribution_from_selected_terms(
+            X, predictor_indexes
+        )
+
+    def calculate_terms(self, X: FloatMatrix) -> FloatMatrix:
+        return self.model_.calculate_terms(X)
+
+    def get_term_names(self) -> List[str]:
+        return self.model_.get_term_names()
+
+    def get_term_affiliations(self) -> List[str]:
+        return self.model_.get_term_affiliations()
+
+    def get_unique_term_affiliations(self) -> List[str]:
+        return self.model_.get_unique_term_affiliations()
+
+    def get_base_predictors_in_each_unique_term_affiliation(self) -> List[List[int]]:
         return self.model_.get_base_predictors_in_each_unique_term_affiliation()
 
-    def get_feature_importance(self):
+    def get_term_coefficients(self) -> FloatVector:
+        return self.model_.get_term_coefficients()
+
+    def get_validation_error_steps(self) -> FloatMatrix:
+        return self.model_.get_validation_error_steps()
+
+    def get_feature_importance(self) -> FloatVector:
         return self.model_.get_feature_importance()
 
-    def get_unique_term_affiliation_shape(self, affiliation):
-        return self.model_.get_unique_term_affiliation_shape(affiliation)
+    def get_term_importance(self) -> FloatVector:
+        return self.model_.get_term_importance()
 
-    def get_intercept(self):
+    def get_term_main_predictor_indexes(self) -> IntVector:
+        return self.model_.get_term_main_predictor_indexes()
+
+    def get_term_interaction_levels(self) -> IntVector:
+        return self.model_.get_term_interaction_levels()
+
+    def get_intercept(self) -> float:
         return self.model_.get_intercept()
 
+    def get_optimal_m(self) -> int:
+        return self.model_.get_optimal_m()
+
+    def get_validation_tuning_metric(self) -> str:
+        return self.model_.get_validation_tuning_metric()
+
+    def get_main_effect_shape(self, predictor_index: int) -> Dict[float, float]:
+        return self.model_.get_main_effect_shape(predictor_index)
+
+    def get_unique_term_affiliation_shape(
+        self, unique_term_affiliation: str, max_rows_before_sampling: int = 100000
+    ) -> FloatMatrix:
+        return self.model_.get_unique_term_affiliation_shape(
+            unique_term_affiliation, max_rows_before_sampling
+        )
+
+    def get_cv_error(self) -> float:
+        return self.model_.get_cv_error()
+
+    def get_params(self, deep=True):
+        return {
+            "m": self.model_.m,
+            "v": self.model_.v,
+            "random_state": self.model_.random_state,
+            "loss_function": self.model_.loss_function,
+            "link_function": self.model_.link_function,
+            "n_jobs": self.model_.n_jobs,
+            "cv_folds": self.model_.cv_folds,
+            "bins": self.model_.bins,
+            "max_interaction_level": self.model_.max_interaction_level,
+            "max_interactions": self.model_.max_interactions,
+            "verbosity": self.model_.verbosity,
+            "min_observations_in_split": self.model_.min_observations_in_split,
+            "ineligible_boosting_steps_added": self.model_.ineligible_boosting_steps_added,
+            "max_eligible_terms": self.model_.max_eligible_terms,
+            "dispersion_parameter": self.model_.dispersion_parameter,
+            "validation_tuning_metric": self.model_.validation_tuning_metric,
+            "quantile": self.model_.quantile,
+            "calculate_custom_validation_error_function": self.model_.calculate_custom_validation_error_function,
+            "calculate_custom_loss_function": self.model_.calculate_custom_loss_function,
+            "calculate_custom_negative_gradient_function": self.model_.calculate_custom_negative_gradient_function,
+            "calculate_custom_transform_linear_predictor_to_predictions_function": self.model_.calculate_custom_transform_linear_predictor_to_predictions_function,
+            "calculate_custom_differentiate_predictions_wrt_linear_predictor_function": self.model_.calculate_custom_differentiate_predictions_wrt_linear_predictor_function,
+            "boosting_steps_before_interactions_are_allowed": self.model_.boosting_steps_before_interactions_are_allowed,
+            "monotonic_constraints_ignore_interactions": self.model_.monotonic_constraints_ignore_interactions,
+            "group_mse_by_prediction_bins": self.model_.group_mse_by_prediction_bins,
+            "group_mse_cycle_min_obs_in_bin": self.model_.group_mse_cycle_min_obs_in_bin,
+            "early_stopping_rounds": self.model_.early_stopping_rounds,
+            "num_first_steps_with_linear_effects_only": self.model_.num_first_steps_with_linear_effects_only,
+            "penalty_for_non_linearity": self.model_.penalty_for_non_linearity,
+            "penalty_for_interactions": self.model_.penalty_for_interactions,
+            "max_terms": self.model_.max_terms,
+        }
+
+    def set_params(self, **parameters):
+        for parameter, value in parameters.items():
+            setattr(self.model_, parameter, value)
+        self.model_.__set_params_cpp()
+        return self
 
     def explain_global(self, name: str = None):
         """Provides global explanation for model.
@@ -345,9 +446,7 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    def __init__(
-        self, **kwargs
-    ):
+    def __init__(self, **kwargs):
         """Initializes class.
 
         Args:
@@ -356,7 +455,9 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
 
         # TODO: add feature_names and feature_types to conform to glassbox API
 
-        self.kwargs = kwargs
+        from aplr import APLRClassifier
+
+        self.model_ = APLRClassifier(**kwargs)
 
     def fit(
         self,
@@ -372,16 +473,12 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
         predictor_penalties_for_non_linearity: List[float] = [],
         predictor_penalties_for_interactions: List[float] = [],
     ):
-        from aplr import APLRClassifier
-
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
 
         if not all(isinstance(val, str) for val in y):
             y = [str(val) for val in y]
-
-        self.model_ = APLRClassifier(**self.kwargs)
 
         self.model_.fit(
             X,
@@ -397,32 +494,70 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
             predictor_penalties_for_interactions,
         )
 
-    def predict(self, X):
-        return self.model_.predict(X)
+    def predict_class_probabilities(
+        self, X: FloatMatrix, cap_predictions_to_minmax_in_training: bool = False
+    ) -> FloatMatrix:
+        return self.model_.predict_class_probabilities(
+            X, cap_predictions_to_minmax_in_training
+        )
 
-    def predict_class_probabilities(self, X):
-        return self.model_.predict_class_probabilities(X)
+    def predict(
+        self, X: FloatMatrix, cap_predictions_to_minmax_in_training: bool = False
+    ) -> List[str]:
+        return self.model_.predict(X, cap_predictions_to_minmax_in_training)
 
-    def get_unique_term_affiliations(self):
-        return self.model_.get_unique_term_affiliations()
-
-    def calculate_local_feature_contribution(self, X):
+    def calculate_local_feature_contribution(self, X: FloatMatrix) -> FloatMatrix:
         return self.model_.calculate_local_feature_contribution(X)
 
-    def get_categories(self):
+    def get_categories(self) -> List[str]:
         return self.model_.get_categories()
 
-    def get_logit_model(self, category):
+    def get_logit_model(self, category: str) -> APLRRegressor:
         return self.model_.get_logit_model(category)
 
-    def get_base_predictors_in_each_unique_term_affiliation(self):
-        return self.model_.get_base_predictors_in_each_unique_term_affiliation()
+    def get_validation_error_steps(self) -> FloatMatrix:
+        return self.model_.get_validation_error_steps()
 
-    def get_feature_importance(self):
+    def get_cv_error(self) -> float:
+        return self.model_.get_cv_error()
+
+    def get_feature_importance(self) -> FloatVector:
         return self.model_.get_feature_importance()
 
-    def get_intercept(self):
-        return self.model_.get_intercept()
+    def get_unique_term_affiliations(self) -> List[str]:
+        return self.model_.get_unique_term_affiliations()
+
+    def get_base_predictors_in_each_unique_term_affiliation(self) -> List[List[int]]:
+        return self.model_.get_base_predictors_in_each_unique_term_affiliation()
+
+    def get_params(self, deep=True):
+        return {
+            "m": self.model_.m,
+            "v": self.model_.v,
+            "random_state": self.model_.random_state,
+            "n_jobs": self.model_.n_jobs,
+            "cv_folds": self.model_.cv_folds,
+            "bins": self.model_.bins,
+            "verbosity": self.model_.verbosity,
+            "max_interaction_level": self.model_.max_interaction_level,
+            "max_interactions": self.model_.max_interactions,
+            "min_observations_in_split": self.model_.min_observations_in_split,
+            "ineligible_boosting_steps_added": self.model_.ineligible_boosting_steps_added,
+            "max_eligible_terms": self.model_.max_eligible_terms,
+            "boosting_steps_before_interactions_are_allowed": self.model_.boosting_steps_before_interactions_are_allowed,
+            "monotonic_constraints_ignore_interactions": self.model_.monotonic_constraints_ignore_interactions,
+            "early_stopping_rounds": self.model_.early_stopping_rounds,
+            "num_first_steps_with_linear_effects_only": self.model_.num_first_steps_with_linear_effects_only,
+            "penalty_for_non_linearity": self.model_.penalty_for_non_linearity,
+            "penalty_for_interactions": self.model_.penalty_for_interactions,
+            "max_terms": self.model_.max_terms,
+        }
+
+    def set_params(self, **parameters):
+        for parameter, value in parameters.items():
+            setattr(self.model_, parameter, value)
+        self.model_.__set_params_cpp()
+        return self
 
     def explain_global(self, name: str = None):
         """Provides global explanation for model.
