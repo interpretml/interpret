@@ -480,6 +480,9 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
         if not all(isinstance(val, str) for val in y):
             y = [str(val) for val in y]
 
+        if isinstance(y, pd.Series):
+            y = y.values
+
         self.model_.fit(
             X,
             y,
