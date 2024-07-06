@@ -493,6 +493,7 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
             predictor_penalties_for_non_linearity,
             predictor_penalties_for_interactions,
         )
+        self.classes_ = self.model_.classes_
 
     def predict_class_probabilities(
         self, X: FloatMatrix, cap_predictions_to_minmax_in_training: bool = False
@@ -529,6 +530,9 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
 
     def get_base_predictors_in_each_unique_term_affiliation(self) -> List[List[int]]:
         return self.model_.get_base_predictors_in_each_unique_term_affiliation()
+
+    def predict_proba(self, X: FloatMatrix) -> FloatMatrix:
+        return self.model_.predict_class_probabilities(X)
 
     def get_params(self, deep=True):
         return {

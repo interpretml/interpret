@@ -53,6 +53,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 | Interpretability Technique  | Type               |
 |-----------------------------|--------------------|
 | [Explainable Boosting](https://interpret.ml/docs/ebm.html)        | glassbox model     |
+| [APLR](https://interpret.ml/docs/aplr.html)                       | glassbox model     |
 | [Decision Tree](https://interpret.ml/docs/dt.html)                | glassbox model     |
 | [Decision Rule List](https://interpret.ml/docs/dr.html)           | glassbox model     |
 | [Linear/Logistic Regression](https://interpret.ml/docs/lr.html)   | glassbox model     |
@@ -615,6 +616,7 @@ We also build on top of many great packages. Please check them out!
 - [The right way to compute your Shapley Values](https://towardsdatascience.com/the-right-way-to-compute-your-shapley-values-cfea30509254)
 - [The Art of Sprezzatura for Machine Learning](https://towardsdatascience.com/the-art-of-sprezzatura-for-machine-learning-e2494c0db727)
 - [Mixing Art into the Science of Model Explainability](https://towardsdatascience.com/mixing-art-into-the-science-of-model-explainability-312b8216fa95)
+- [Automatic Piecewise Linear Regression](https://link.springer.com/article/10.1007/s00180-024-01475-4)
 
 # Papers that use or compare EBMs
 
