@@ -103,7 +103,7 @@ class Marginal(ExplainerMixin):
             feature_type = feature_types[feat_idx]
             if feature_type == "continuous":
                 counts, values = np.histogram(X[:, feat_idx], bins="doane")
-                corr = pearsonr(X[:, feat_idx], y)[0]
+                corr = pearsonr(X[:, feat_idx].astype(np.float64, copy=False), y)[0]
             elif feature_type == "nominal" or feature_type == "ordinal":
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
