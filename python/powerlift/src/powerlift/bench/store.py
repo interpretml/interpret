@@ -62,7 +62,7 @@ def _compile_function(src_ast):
     return locals()[func_name]
 
 
-MIMETYPE_DF = "application/vnd.interpretml/parquet-series"
+MIMETYPE_DF = "application/vnd.interpretml/parquet-df"
 MIMETYPE_SERIES = "application/vnd.interpretml/parquet-series"
 MIMETYPE_JSON = "application/json"
 MIMETYPE_FUNC = "application/vnd.interpretml/function-str"
