@@ -1006,7 +1006,7 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
                 )
 
                 # for benchmarking we do not care about the original target strings
-                y = pd.Series(pd.factorize(y)[0])
+                y = pd.Series(np.unique(y, return_inverse=True)[1])
             elif task.task_type_id == openml.tasks.TaskType.SUPERVISED_REGRESSION:
                 problem = "regression"
             else:
