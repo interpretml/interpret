@@ -859,7 +859,7 @@ class EBMModel(BaseEstimator):
             smoothing_rounds = 0
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
-            early_stopping_tolerance = 0
+            early_stopping_tolerance = 0.0
             min_samples_leaf = 0
             min_hessian = 0.0
             interactions = 0
@@ -2438,8 +2438,22 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=0.0
-        Tolerance that dictates the smallest delta required to be considered an improvement.
+    early_stopping_tolerance : float, default=1e-4
+        Tolerance that dictates the smallest delta required to be considered an 
+        improvement which prevents the algorithm from early stopping.
+        early_stopping_tolerance is expressed as a percentage of the early 
+        stopping metric. Negative values indicate that the individual 
+        models should be overfit before stopping.
+        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance 
+        to zero (or even negative), allows learning to overfit each of the individual 
+        models a little, which can improve the accuracy of the ensemble as a whole. 
+        Overfitting each of the individual models reduces the bias of each model at 
+        the expense of increasing the variance (due to overfitting) of the individual 
+        models.  But averaging the models in the ensemble reduces variance without 
+        much change in bias.  Since the goal is to find the optimum bias-variance 
+        tradeoff for the ensemble of models --- not the individual models --- a small 
+        amount of overfitting of the individual models can improve the accuracy of 
+        the ensemble as a whole.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -2595,7 +2609,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
+        early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
@@ -2759,8 +2773,22 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     early_stopping_rounds : int, default=50
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=0.0
-        Tolerance that dictates the smallest delta required to be considered an improvement.
+    early_stopping_tolerance : float, default=1e-4
+        Tolerance that dictates the smallest delta required to be considered an 
+        improvement which prevents the algorithm from early stopping.
+        early_stopping_tolerance is expressed as a percentage of the early 
+        stopping metric. Negative values indicate that the individual 
+        models should be overfit before stopping.
+        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance 
+        to zero (or even negative), allows learning to overfit each of the individual 
+        models a little, which can improve the accuracy of the ensemble as a whole. 
+        Overfitting each of the individual models reduces the bias of each model at 
+        the expense of increasing the variance (due to overfitting) of the individual 
+        models.  But averaging the models in the ensemble reduces variance without 
+        much change in bias.  Since the goal is to find the optimum bias-variance 
+        tradeoff for the ensemble of models --- not the individual models --- a small 
+        amount of overfitting of the individual models can improve the accuracy of 
+        the ensemble as a whole.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -2916,7 +2944,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 50,
-        early_stopping_tolerance: Optional[float] = 0.0,
+        early_stopping_tolerance: Optional[float] = 1e-4,
         # Trees
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
