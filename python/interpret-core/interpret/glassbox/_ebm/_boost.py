@@ -6,6 +6,7 @@ from ...utils._native import Native, Booster
 import numpy as np
 
 import heapq
+from ...utils._native import Native
 
 import logging
 
@@ -73,6 +74,7 @@ def boost(
             _log.info("Start boosting")
             native = Native.get_native_singleton()
             nominals = native.extract_nominals(dataset)
+            random_cyclic_ordering = np.empty(len(term_features), np.int64)
 
             while step_idx < max_steps:
                 term_boost_flags_local = term_boost_flags
@@ -82,7 +84,12 @@ def boost(
                         # starting a fresh cyclic round. Clear the priority queue
                         bestkey = None
                         heap = []
-                    term_idx = state_idx
+                        # if pure cyclical then only randomize at start
+                        if 0 < greedy_steps or step_idx == 0:
+                            # TODO: test if shuffling during pure cyclic is better
+                            native.shuffle(rng, random_cyclic_ordering)
+
+                    term_idx = random_cyclic_ordering[state_idx]
 
                     contains_nominals = any(
                         nominals[i] for i in term_features[term_idx]

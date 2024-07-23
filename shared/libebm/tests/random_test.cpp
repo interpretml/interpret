@@ -366,7 +366,7 @@ TEST_CASE("Shuffle") {
          Shuffle(0 == iBool ? nullptr : &rng[0], cItems, &data[0]);
          std::sort(data.begin(), data.end());
          for(IntEbm iItem = 0; iItem < cItems; ++iItem) {
-            CHECK(iItem == data[iItem]);
+            CHECK(iItem == data[static_cast<size_t>(iItem)]);
          }
       }
    }

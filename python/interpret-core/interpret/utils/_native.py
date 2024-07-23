@@ -343,6 +343,16 @@ class Native:
 
         return random_numbers
 
+    def shuffle(self, rng, vals):
+        return_code = self._unsafe.Shuffle(
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
+            len(vals),
+            Native._make_pointer(vals, np.int64),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "Shuffle")
+
     def measure_impurity(self, scores, weights):
         shape_all = scores.shape
         shape_classless = scores.shape
@@ -1053,6 +1063,16 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
+
+        self._unsafe.Shuffle.argtypes = [
+            # void * rng
+            ct.c_void_p,
+            # int64_t count
+            ct.c_int64,
+            # int64_t * randomOut
+            ct.c_void_p,
+        ]
+        self._unsafe.Shuffle.restype = ct.c_int32
 
         self._unsafe.MeasureImpurity.argtypes = [
             # int64_t countMultiScores

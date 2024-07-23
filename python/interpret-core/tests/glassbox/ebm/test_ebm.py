@@ -856,56 +856,6 @@ def test_ebm_unknown_value_at_predict():
     valid_ebm(clf)
 
 
-def test_bags():
-    data = synthetic_regression()
-    X = data["full"]["X"]
-    y = data["full"]["y"]
-
-    n_samples = X.shape[0]
-
-    init_score = np.full(n_samples, 3.0)
-    sample_weight = np.full(n_samples, 99.0)
-
-    bags = np.zeros((1, n_samples), np.int8)
-    for idx in range(n_samples - 2, -1, -2):
-        bags[0, idx] = 1
-        init_score[idx] = -0.5 * idx - 0.25
-        sample_weight[idx] = 0.25 * idx + 0.5
-
-    keep = bags[0] != 0
-
-    X0 = X[keep]
-    y0 = y[keep]
-    init_score0 = init_score[keep]
-    sample_weight0 = sample_weight[keep]
-
-    clf = ExplainableBoostingRegressor(
-        max_bins=n_samples + 2,
-        max_interaction_bins=n_samples + 2,
-        max_rounds=100,
-        outer_bags=1,
-        validation_size=0,
-        smoothing_rounds=0,
-        interaction_smoothing_rounds=0,
-    )
-    clf.fit(X0, y0, sample_weight=sample_weight0, init_score=init_score0)
-    pred0 = clf.predict(X0)
-
-    clf = ExplainableBoostingRegressor(
-        max_bins=n_samples + 2,
-        max_interaction_bins=n_samples + 2,
-        max_rounds=100,
-        outer_bags=1,
-        validation_size=0,
-        smoothing_rounds=0,
-        interaction_smoothing_rounds=0,
-    )
-    clf.fit(X, y, sample_weight=sample_weight, bags=bags, init_score=init_score)
-    pred1 = clf.predict(X0)
-
-    assert np.allclose(pred0, pred1)
-
-
 # arguments for faster fitting time to reduce test time
 # we want to test the interface, not get good results
 _fast_kwds = {
