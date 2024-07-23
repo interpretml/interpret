@@ -352,3 +352,22 @@ TEST_CASE("GenerateGaussianRandom") {
       CHECK(300 <= cNegative && cNegative <= 700);
    }
 }
+
+TEST_CASE("Shuffle") {
+   static constexpr int cIterations = 1000;
+   static constexpr IntEbm cItems = 10;
+
+   std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+   InitRNG(k_seed, &rng[0]);
+   std::vector<IntEbm> data(cItems);
+
+   for(int iBool = 0; iBool < 2; ++iBool) {
+      for(int i = 0; i < cIterations; ++i) {
+         Shuffle(0 == iBool ? nullptr : &rng[0], cItems, &data[0]);
+         std::sort(data.begin(), data.end());
+         for(IntEbm iItem = 0; iItem < cItems; ++iItem) {
+            CHECK(iItem == data[iItem]);
+         }
+      }
+   }
+}

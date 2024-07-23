@@ -164,4 +164,94 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
    return Error_None;
 }
 
+// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
+static int g_cLogEnterShuffle = 25;
+static int g_cLogExitShuffle = 25;
+
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Shuffle(void* rng, IntEbm count, IntEbm* randomOut) {
+   LOG_COUNTED_N(&g_cLogEnterShuffle,
+         Trace_Info,
+         Trace_Verbose,
+         "Entered Shuffle: "
+         "rng=%p, "
+         "count=%" IntEbmPrintf ", "
+         "randomOut=%p",
+         rng,
+         count,
+         static_cast<const void*>(randomOut));
+
+   if(UNLIKELY(count <= IntEbm{0})) {
+      if(UNLIKELY(count < IntEbm{0})) {
+         LOG_0(Trace_Error, "ERROR Shuffle count < IntEbm { 0 }");
+         return Error_IllegalParamVal;
+      } else {
+         LOG_COUNTED_0(&g_cLogExitShuffle,
+               Trace_Info,
+               Trace_Verbose,
+               "Shuffle zero items requested");
+         return Error_None;
+      }
+   }
+   if(UNLIKELY(IsConvertError<size_t>(count))) {
+      LOG_0(Trace_Error, "ERROR Shuffle IsConvertError<size_t>(count)");
+      return Error_IllegalParamVal;
+   }
+   size_t c = static_cast<size_t>(count);
+   if(UNLIKELY(IsMultiplyError(sizeof(*randomOut), c))) {
+      LOG_0(Trace_Error, "ERROR Shuffle IsMultiplyError(sizeof(*randomOut), c)");
+      return Error_IllegalParamVal;
+   }
+
+   if(UNLIKELY(nullptr == randomOut)) {
+      LOG_0(Trace_Error, "ERROR Shuffle nullptr == randomOut");
+      return Error_IllegalParamVal;
+   }
+
+   // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
+   RandomDeterministic cpuRng;
+   if(nullptr == rng) {
+      // Shuffle is not used on differentially private data, so
+      // we can use low-quality non-determinism.  Generate a non-deterministic seed
+      uint64_t seed;
+      try {
+         RandomNondeterministic<uint64_t> randomGenerator;
+         seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
+      } catch(const std::bad_alloc&) {
+         LOG_0(Trace_Warning, "WARNING Shuffle Out of memory in std::random_device");
+         return Error_OutOfMemory;
+      } catch(...) {
+         LOG_0(Trace_Warning, "WARNING Shuffle Unknown error in std::random_device");
+         return Error_UnexpectedInternal;
+      }
+      cpuRng.Initialize(seed);
+   } else {
+      const RandomDeterministic* const pRng = reinterpret_cast<RandomDeterministic*>(rng);
+      cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
+   }
+
+   size_t i = 0;
+   do {
+      randomOut[i] = static_cast<IntEbm>(i);
+      ++i;
+   } while(c != i);
+
+   // do not need to swap the last one
+   while(size_t{1} != c) {
+      const size_t iSwap = cpuRng.NextFast(c);
+      const IntEbm temp = randomOut[iSwap];
+      --c;
+      randomOut[iSwap] = randomOut[c];
+      randomOut[c] = temp;
+   }
+
+   if(nullptr != rng) {
+      RandomDeterministic* pRng = reinterpret_cast<RandomDeterministic*>(rng);
+      pRng->Initialize(cpuRng); // move the RNG from CPU registers back into memory
+   }
+
+   LOG_COUNTED_0(&g_cLogExitShuffle, Trace_Info, Trace_Verbose, "Exited Shuffle");
+
+   return Error_None;
+}
+
 } // namespace DEFINED_ZONE_NAME

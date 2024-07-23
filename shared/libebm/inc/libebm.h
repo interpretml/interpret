@@ -311,6 +311,7 @@ EBM_API_INCLUDE void EBM_CALLING_CONVENTION BranchRNG(void* rng, void* rngOut);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateSeed(void* rng, SeedEbm* seedOut);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateGaussianRandom(
       void* rng, double stddev, IntEbm count, double* randomOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION Shuffle(void* rng, IntEbm count, IntEbm* randomOut);
 
 EBM_API_INCLUDE double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScores,
       IntEbm indexMultiScore,
