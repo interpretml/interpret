@@ -86,4 +86,4 @@ typing_extensions==4.5.0
 uc-micro-py==1.0.1
 urllib3==1.26.19
 wcwidth==0.2.6
-zipp==3.15.0
+zipp==3.19.1
