@@ -1,0 +1,86 @@
+# for github runner images, see: https://github.com/actions/runner-images?tab=readme-ov-file#available-images
+
+name: interpret-CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * *"
+
+jobs:
+  bld:
+    strategy:
+      matrix:
+        include:
+          - name: linux_release_64
+            image: ubuntu-20.04
+            options: "-release_64"
+            asm: "-asm"
+            artifact_name: "libebm_ubuntu_release_64"
+          - name: linux_debug_64
+            image: ubuntu-20.04
+            options: "-debug_64"
+            asm: ""
+            artifact_name: "libebm_ubuntu_debug_64"
+          - name: mac_release_64
+            image: macos-13  # macos-13 is an intel based mac
+            options: "-release_64"
+            asm: "-asm"
+            artifact_name: "libebm_mac_release_64"
+          - name: mac_debug_64
+            image: macos-13  # macos-13 is an intel based mac
+            options: "-debug_64"
+            asm: ""
+            artifact_name: "libebm_mac_debug_64"
+          - name: mac_release_arm
+            image: macos-14  # macos-14 is an ARM based mac
+            options: "-release_arm"
+            asm: "-asm"
+            artifact_name: "libebm_mac_release_arm"
+          - name: mac_debug_arm
+            image: macos-14  # macos-14 is an ARM based mac
+            options: "-debug_arm"
+            asm: ""
+            artifact_name: "libebm_mac_debug_arm"
+          - name: win_release_64
+            image: windows-2022
+            options: "-release_64"
+            asm: ""
+            artifact_name: "libebm_win_release_64"
+          - name: win_debug_64
+            image: windows-2022
+            options: "-debug_64"
+            asm: ""
+            artifact_name: "libebm_win_debug_64"
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Build on Windows
+        if: startsWith(matrix.image, 'windows')
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          .\build.bat ${{ matrix.options }} ${{ matrix.asm }}
+      - name: Build on Linux
+        if: startsWith(matrix.image, 'ubuntu')
+        run: |
+          sudo apt --yes update
+          sudo apt --yes install nvidia-cuda-toolkit
+          /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
+      - name: Build on macOS
+        if: startsWith(matrix.image, 'macos')
+        run: |
+          /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
+      - name: Publish shared library
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: bld/lib
+      - name: Publish assembly
+        if: ${{ matrix.asm != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asm-${{ matrix.artifact_name }}
+          path: bld/asm/
