@@ -195,3 +195,107 @@ jobs:
         with:
           name: bdist
           path: bld/bdist
+
+  testC:
+    needs: [bld]
+    strategy:
+      matrix:
+        include:
+          - name: linux_release_64
+            image: ubuntu-latest
+            options: "-release_64 -existing_release_64"
+            scheduled: "-valgrind"
+            artifact_name: "libebm_ubuntu_release_64"
+          - name: linux_debug_64
+            image: ubuntu-latest
+            options: "-debug_64 -existing_debug_64"
+            scheduled: "-valgrind"
+            artifact_name: "libebm_ubuntu_debug_64"
+          - name: linux_release_32
+            image: ubuntu-latest
+            options: "-release_32"
+            scheduled: "-valgrind"
+            artifact_name: ""
+          - name: linux_debug_32
+            image: ubuntu-latest
+            options: "-debug_32"
+            scheduled: "-valgrind"
+            artifact_name: ""
+          - name: mac_release_64
+            image: macos-13  # macos-13 is an intel based mac
+            options: "-release_64 -existing_release_64"
+            scheduled: ""
+            artifact_name: "libebm_mac_release_64"
+          - name: mac_debug_64
+            image: macos-13  # macos-13 is an intel based mac
+            # don't use the existing debug library since we want to rebuild with asan
+            options: "-debug_64 -asan"
+            scheduled: ""
+            artifact_name: ""
+          - name: mac_release_arm
+            image: macos-latest
+            options: "-release_arm -existing_release_arm"
+            scheduled: ""
+            artifact_name: "libebm_mac_release_arm"
+          - name: mac_debug_arm
+            image: macos-latest
+            # don't use the existing debug library since we want to rebuild with asan
+            options: "-debug_arm -asan"
+            scheduled: ""
+            artifact_name: ""
+          - name: win_release_64
+            image: windows-latest
+            options: "-release_64 -existing_release_64"
+            scheduled: "-analysis"
+            artifact_name: "libebm_win_release_64"
+          - name: win_debug_64
+            image: windows-latest
+            options: "-debug_64 -existing_debug_64"
+            scheduled: ""
+            artifact_name: "libebm_win_debug_64"
+          - name: win_release_32
+            image: windows-latest
+            options: "-release_32"
+            scheduled: "-analysis"
+            artifact_name: ""
+          - name: win_debug_32
+            image: windows-latest
+            options: "-debug_32"
+            scheduled: ""
+            artifact_name: ""
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Download libebm artifact
+        if: ${{ matrix.artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: bld/lib
+      - name: mac test_native
+        if: ${{ startsWith(matrix.image, 'macos') }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }}
+      - name: linux test_native (CI)
+        if: ${{ startsWith(matrix.image, 'ubuntu') && github.event_name != 'schedule' }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }}
+      - name: linux test_native (Schedule)
+        if: ${{ startsWith(matrix.image, 'ubuntu') && github.event_name == 'schedule' }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.scheduled }}
+      - name: win test_native (CI)
+        if: ${{ startsWith(matrix.image, 'windows') && github.event_name != 'schedule' }}
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          .\shared\libebm\tests\libebm_test.bat ${{ matrix.options }}
+      - name: win test_native (Schedule)
+        if: ${{ startsWith(matrix.image, 'windows') && github.event_name == 'schedule' }}
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          .\shared\libebm\tests\libebm_test.bat ${{ matrix.options }} ${{ matrix.scheduled }}
