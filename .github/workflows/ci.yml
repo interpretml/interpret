@@ -84,3 +84,80 @@ jobs:
         with:
           name: asm-${{ matrix.artifact_name }}
           path: bld/asm/
+
+  vis:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Build vis
+        run: |
+          cd shared/vis
+          npm install
+          npm run build-prod
+      - name: Publish interpret-inline.js library
+        uses: actions/upload-artifact@v4
+        with:
+          name: vis
+          path: shared/vis/dist
+
+  npm:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Build npm package
+        run: |
+          cd shared/vis
+          npm install
+          npm run build-prod
+          npm pack
+          mkdir pkg
+          cp *.tgz pkg/
+      - name: Publish npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm
+          path: shared/vis/pkg
+
+  R:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Build R package
+        run: |
+          cd R
+          sudo apt --yes update
+          sudo apt --yes install texlive-latex-base texlive-fonts-extra
+          Rscript build.R
+      - name: Display errors
+        if: failure()
+        run: cat bld/tmp/R/interpret.Rcheck/00install.out
+      - name: Publish R package
+        uses: actions/upload-artifact@v4
+        with:
+          name: R
+          path: bld/R
+
+  sdist:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Build sdist package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/interpret-core
+          python setup.py sdist -d ../../bld/sdist
+          cd ../interpret
+          python setup.py sdist -d ../../bld/sdist
+      - name: Publish sdist package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: bld/sdist
