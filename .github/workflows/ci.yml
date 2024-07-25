@@ -161,3 +161,37 @@ jobs:
         with:
           name: sdist
           path: bld/sdist
+
+  bdist:
+    runs-on: ubuntu-20.04
+    needs: [bld, vis]
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Download libebm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libebm_*
+          merge-multiple: true
+          path: python/interpret-core/interpret/root/bld/lib/
+      - name: Download vis artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vis
+          path: python/interpret-core/interpret/root/bld/lib/
+      - name: Build bdist package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/interpret-core
+          python setup.py bdist_wheel -d ../../bld/bdist
+          cd ../interpret
+          python setup.py bdist_wheel -d ../../bld/bdist
+      - name: Publish bdist package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bdist
+          path: bld/bdist
