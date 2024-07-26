@@ -335,6 +335,8 @@ jobs:
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -366,15 +368,18 @@ jobs:
           cd "tmp/zqmr/t"
           $env:PATH += ";$env:GeckoWebDriver"
           python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
-      - name: Publish test results
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
+      - name: Test report
+        if: always()
+        uses: dorny/test-reporter@v1
         with:
-          name: test_results_${{ matrix.name }}
+          name: TestRS ${{ matrix.name }}
           path: tmp/zqmr/t/junit/test-results.xml
-      - name: Publish code coverage results
-        if: startsWith(matrix.image.name, 'windows')
-        uses: actions/upload-artifact@v4
+          reporter: java-junit
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
         with:
-          name: coverage_results_${{ matrix.name }}
-          path: tmp/zqmr/t/coverage.xml
+          files: tmp/zqmr/t/coverage.xml
+          flags: ${{ matrix.name }}
+          name: codecov-${{ matrix.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
