@@ -140,7 +140,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
       - name: Build sdist package
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -163,7 +163,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
       - name: Download libebm artifacts
         uses: actions/download-artifact@v4
         with:
@@ -262,7 +262,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.9"
       - name: Download libebm artifact
         if: ${{ matrix.existing != '' }}
         uses: actions/download-artifact@v4
@@ -375,11 +375,11 @@ jobs:
           name: TestRS ${{ matrix.name }}
           path: tmp/zqmr/t/junit/test-results.xml
           reporter: java-junit
-      - name: Upload coverage to Codecov
+      - name: Code coverage report
         if: always()
         uses: codecov/codecov-action@v4
         with:
           files: tmp/zqmr/t/coverage.xml
-          flags: ${{ matrix.name }}
-          name: codecov-${{ matrix.name }}
+          flags: sdist_${{ matrix.name }}
+          name: codecov_sdist_${{ matrix.name }}
           token: ${{ secrets.CODECOV_TOKEN }}
