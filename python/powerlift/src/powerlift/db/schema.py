@@ -198,7 +198,9 @@ class Task(Base):
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=task_measure_outcome_table, back_populates="tasks"
     )
-    __table_args__ = (UniqueConstraint("name", "problem", "origin", name="u_name_problem_origin"),)
+    __table_args__ = (
+        UniqueConstraint("name", "problem", "origin", name="u_name_problem_origin"),
+    )
 
 
 class Asset(Base):

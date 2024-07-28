@@ -25,7 +25,15 @@ def _wait_for_completed_worker(results):
         time.sleep(1)
 
 
-def _run(tasks, azure_json, num_cores, mem_size_gb, n_running_containers, delete_group_container_on_complete, batch_id):
+def _run(
+    tasks,
+    azure_json,
+    num_cores,
+    mem_size_gb,
+    n_running_containers,
+    delete_group_container_on_complete,
+    batch_id,
+):
     from azure.mgmt.containerinstance.models import (
         ContainerGroup,
         Container,
@@ -131,7 +139,7 @@ class AzureContainerInstance(LocalMachine):
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
         raise_exception: bool = False,
-        delete_group_container_on_complete: bool = True
+        delete_group_container_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.
 
@@ -168,7 +176,12 @@ class AzureContainerInstance(LocalMachine):
             "resource_group": resource_group,
         }
         self._batch_id = random.getrandbits(64)
-        super().__init__(store=store, n_cpus=1, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
+        super().__init__(
+            store=store,
+            n_cpus=1,
+            raise_exception=raise_exception,
+            wheel_filepaths=wheel_filepaths,
+        )
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""

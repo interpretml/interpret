@@ -32,7 +32,11 @@ def _benchmark(trial):
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
 
-    if trial.task.problem == "binary" and trial.task.origin in ["openml", "pmlb", "catboost_50k"]:
+    if trial.task.problem == "binary" and trial.task.origin in [
+        "openml",
+        "pmlb",
+        "catboost_50k",
+    ]:
         X, y, meta = trial.task.data(["X", "y", "meta"])
 
         # Holdout split
@@ -107,7 +111,9 @@ def test_scikit_experiment_local(populated_store):
 @pytest.mark.skip("Enable this when testing docker.")
 def test_scikit_experiment_docker(populated_docker_store, populated_docker_uri):
     executor = InsecureDocker(
-        populated_docker_store, n_running_containers=2, docker_db_uri=populated_docker_uri
+        populated_docker_store,
+        n_running_containers=2,
+        docker_db_uri=populated_docker_uri,
     )
     benchmark = Benchmark(populated_docker_store, name="scikit_docker")
     benchmark.run(_benchmark, _trials, timeout=60, executor=executor)
@@ -143,7 +149,7 @@ def test_scikit_experiment_aci(populated_azure_store):
         n_running_containers=5,
         num_cores=2,
         mem_size_gb=8,
-        delete_group_container_on_complete=False
+        delete_group_container_on_complete=False,
     )
     benchmark = Benchmark(store, name="scikit")
     benchmark.run(_benchmark, _trials, timeout=60, executor=executor)

@@ -185,10 +185,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Shuffle(void* rng, IntEbm count, In
          LOG_0(Trace_Error, "ERROR Shuffle count < IntEbm { 0 }");
          return Error_IllegalParamVal;
       } else {
-         LOG_COUNTED_0(&g_cLogExitShuffle,
-               Trace_Info,
-               Trace_Verbose,
-               "Shuffle zero items requested");
+         LOG_COUNTED_0(&g_cLogExitShuffle, Trace_Info, Trace_Verbose, "Shuffle zero items requested");
          return Error_None;
       }
    }

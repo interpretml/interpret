@@ -139,13 +139,13 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
          goto next;
       }
 
-      //if (0 != (TermBoostFlags_PurifyGain & flags)) {
-         // TODO: At this point we have the bin sums histogram for the tensor, so we can purify the future update 
-         // for the cuts we're currently evaluating before calculating the gain. This should give us a more accurate gain 
-         // calculation for the purified update. We need to construct the entire tensor here before purifying. 
-         // We already calculate purified gain as an option during interaction detection, since the 
-         // interaction metric we use is the gain calculation.
-         // See: Use of CalcInteractionFlags_Purify in PartitionTwoDimensionalInteraction.cpp
+      // if (0 != (TermBoostFlags_PurifyGain & flags)) {
+      //  TODO: At this point we have the bin sums histogram for the tensor, so we can purify the future update
+      //  for the cuts we're currently evaluating before calculating the gain. This should give us a more accurate gain
+      //  calculation for the purified update. We need to construct the entire tensor here before purifying.
+      //  We already calculate purified gain as an option during interaction detection, since the
+      //  interaction metric we use is the gain calculation.
+      //  See: Use of CalcInteractionFlags_Purify in PartitionTwoDimensionalInteraction.cpp
       //}
 
       {
@@ -904,7 +904,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          FloatCalc weight;
          if(bUpdateWithHessian) {
             weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            update = ComputeSinglePartitionUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            update = ComputeSinglePartitionUpdate(
+                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
             if(nullptr != aWeights) {
                aWeights[iScore] = static_cast<double>(weight);
             }

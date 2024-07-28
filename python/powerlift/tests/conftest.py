@@ -22,6 +22,7 @@ def dataset_limit():
 @pytest.fixture(scope="session")
 def uri():
     from dotenv import load_dotenv
+
     load_dotenv()
 
     pw = os.environ.get("TEST_DB_PASS", None)
@@ -34,6 +35,7 @@ def uri():
 @pytest.fixture(scope="session")
 def populated_uri():
     from dotenv import load_dotenv
+
     load_dotenv()
 
     pw = os.environ.get("TEST_DB_PASS", None)
@@ -55,6 +57,7 @@ def populated_store(populated_uri, dataset_limit):
 def populated_azure_uri():
     from dotenv import load_dotenv
     import os
+
     load_dotenv()
 
     yield os.getenv("AZURE_DB_URL")
@@ -64,6 +67,7 @@ def populated_azure_uri():
 def populated_docker_uri():
     from dotenv import load_dotenv
     import os
+
     load_dotenv()
 
     yield os.getenv("DOCKER_DB_URL")

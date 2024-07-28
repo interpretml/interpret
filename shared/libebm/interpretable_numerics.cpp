@@ -1269,7 +1269,7 @@ static double Stddev(const size_t cSamples,
       // there should be some factor that gives us a non-overflowing stddev
       EBM_ASSERT(std::numeric_limits<double>::min() <= factor);
 
-      skip:;
+   skip:;
 
       cNaN = 0;
       cInf = 0;

@@ -48,7 +48,7 @@ class InsecureDocker(LocalMachine):
         n_running_containers: int = None,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
-        raise_exception: bool = False
+        raise_exception: bool = False,
     ):
         """Runs trials in local docker containers.
 
@@ -62,7 +62,12 @@ class InsecureDocker(LocalMachine):
         """
         self._docker_db_uri = docker_db_uri
         self._image = image
-        super().__init__(store=store, n_cpus=n_running_containers, raise_exception=raise_exception, wheel_filepaths=wheel_filepaths)
+        super().__init__(
+            store=store,
+            n_cpus=n_running_containers,
+            raise_exception=raise_exception,
+            wheel_filepaths=wheel_filepaths,
+        )
 
     def submit(self, trial_run_fn, trials: Iterable, timeout=None):
         uri = (

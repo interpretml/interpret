@@ -423,10 +423,6 @@ TEST_CASE("SafeMean, no overflow negative") {
    CHECK(std::isfinite(mean));
 }
 
-
-
-
-
 TEST_CASE("SafeMean, 4 values, weights of 1.0") {
    double vals[]{1.0, 2.5, 10, 100};
    double weights[]{1.0, 1.0, 1.0, 1.0};
@@ -536,11 +532,6 @@ TEST_CASE("SafeMean, 4 values, weights of 0.0") {
    CHECK(Error_None == error);
    CHECK(mean == 5.5);
 }
-
-
-
-
-
 
 TEST_CASE("SafeStandardDeviation, 4 values") {
    double vals[]{1.0, 2.5, 10, 100};
@@ -873,10 +864,10 @@ TEST_CASE("SafeStandardDeviation, 4 values, zero weights") {
    CHECK_APPROX(stddev, 41.493034053922834);
 }
 
-//# this function calculates the weighted standard deviation
-//def _weighted_std(a, axis, weights):
-//    if weights is None:
-//        return np.std(a, axis=axis)
-//    average = np.average(a, axis, weights)
-//    variance = np.average((a - average) ** 2, axis, weights)
-//    return np.sqrt(variance)
+// # this function calculates the weighted standard deviation
+// def _weighted_std(a, axis, weights):
+//     if weights is None:
+//         return np.std(a, axis=axis)
+//     average = np.average(a, axis, weights)
+//     variance = np.average((a - average) ** 2, axis, weights)
+//     return np.sqrt(variance)

@@ -2439,20 +2439,20 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-4
-        Tolerance that dictates the smallest delta required to be considered an 
+        Tolerance that dictates the smallest delta required to be considered an
         improvement which prevents the algorithm from early stopping.
-        early_stopping_tolerance is expressed as a percentage of the early 
-        stopping metric. Negative values indicate that the individual 
+        early_stopping_tolerance is expressed as a percentage of the early
+        stopping metric. Negative values indicate that the individual
         models should be overfit before stopping.
-        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance 
-        to zero (or even negative), allows learning to overfit each of the individual 
-        models a little, which can improve the accuracy of the ensemble as a whole. 
-        Overfitting each of the individual models reduces the bias of each model at 
-        the expense of increasing the variance (due to overfitting) of the individual 
-        models.  But averaging the models in the ensemble reduces variance without 
-        much change in bias.  Since the goal is to find the optimum bias-variance 
-        tradeoff for the ensemble of models --- not the individual models --- a small 
-        amount of overfitting of the individual models can improve the accuracy of 
+        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance
+        to zero (or even negative), allows learning to overfit each of the individual
+        models a little, which can improve the accuracy of the ensemble as a whole.
+        Overfitting each of the individual models reduces the bias of each model at
+        the expense of increasing the variance (due to overfitting) of the individual
+        models.  But averaging the models in the ensemble reduces variance without
+        much change in bias.  Since the goal is to find the optimum bias-variance
+        tradeoff for the ensemble of models --- not the individual models --- a small
+        amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.
@@ -2774,20 +2774,20 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-4
-        Tolerance that dictates the smallest delta required to be considered an 
+        Tolerance that dictates the smallest delta required to be considered an
         improvement which prevents the algorithm from early stopping.
-        early_stopping_tolerance is expressed as a percentage of the early 
-        stopping metric. Negative values indicate that the individual 
+        early_stopping_tolerance is expressed as a percentage of the early
+        stopping metric. Negative values indicate that the individual
         models should be overfit before stopping.
-        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance 
-        to zero (or even negative), allows learning to overfit each of the individual 
-        models a little, which can improve the accuracy of the ensemble as a whole. 
-        Overfitting each of the individual models reduces the bias of each model at 
-        the expense of increasing the variance (due to overfitting) of the individual 
-        models.  But averaging the models in the ensemble reduces variance without 
-        much change in bias.  Since the goal is to find the optimum bias-variance 
-        tradeoff for the ensemble of models --- not the individual models --- a small 
-        amount of overfitting of the individual models can improve the accuracy of 
+        EBMs are a bagged ensemble of models. Setting the early_stopping_tolerance
+        to zero (or even negative), allows learning to overfit each of the individual
+        models a little, which can improve the accuracy of the ensemble as a whole.
+        Overfitting each of the individual models reduces the bias of each model at
+        the expense of increasing the variance (due to overfitting) of the individual
+        models.  But averaging the models in the ensemble reduces variance without
+        much change in bias.  Since the goal is to find the optimum bias-variance
+        tradeoff for the ensemble of models --- not the individual models --- a small
+        amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     min_samples_leaf : int, default=2
         Minimum number of samples allowed in the leaves.

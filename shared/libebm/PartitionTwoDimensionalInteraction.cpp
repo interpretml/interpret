@@ -280,19 +280,19 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      //
                      // TODO: We are purififying the simple 2x2 solution below using a simple system of equations
                      // but the solution below can be generalized to handle any size matrix and/or any size
-                     // of tensor for 3-way and higher interactions.  The system of equations below were solved 
-                     // using the substitution/elimination method, but to solve these in the general case we'll 
+                     // of tensor for 3-way and higher interactions.  The system of equations below were solved
+                     // using the substitution/elimination method, but to solve these in the general case we'll
                      // need to implement a system of equations solver.  First try something like the matrix or
                      // inverse matrix method, and if that fails use an iterative solution like the
                      // Jacobi or Gauss-Seidel methods. This would be a better solution than the iterative
                      // solution that we currently use in the python purify() function.
-                     // 
+                     //
                      // TODO: Once more efficient purification is done, we can use the same purification
-                     // method during boosting where we could then keep the interactions pure while we 
-                     // simultaneously boost mains and interactions togehter at the same time.  This would 
-                     // be desirable in order to keep from overboosting on mains that are also included 
+                     // method during boosting where we could then keep the interactions pure while we
+                     // simultaneously boost mains and interactions togehter at the same time.  This would
+                     // be desirable in order to keep from overboosting on mains that are also included
                      // within interactions.
-                     // 
+                     //
                      // If we have a 2x2 matrix of updates, we can purify the updates using an equation
                      // -------------------
                      // |update00|update01|

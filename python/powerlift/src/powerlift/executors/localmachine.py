@@ -17,7 +17,7 @@ class LocalMachine(Executor):
         n_cpus: int = None,
         debug_mode: bool = False,
         wheel_filepaths: List[str] = None,
-        raise_exception: bool = False
+        raise_exception: bool = False,
     ):
         """Runs trial runs on the local machine.
 
@@ -69,7 +69,12 @@ class LocalMachine(Executor):
             else:
                 self._trial_id_to_result[trial.id] = self._pool.apply_async(
                     runner.run_trials,
-                    ([trial.id], self._store.uri, timeout, self._raise_exception or self._debug_mode),
+                    (
+                        [trial.id],
+                        self._store.uri,
+                        timeout,
+                        self._raise_exception or self._debug_mode,
+                    ),
                     error_callback=handle_err,
                 )
 

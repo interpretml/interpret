@@ -4,10 +4,9 @@
 
 // Purification algorithm from: https://arxiv.org/abs/1911.04974
 //@article {lengerich2019purifying,
-//  title={Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable Additive Models},
-//  author={Lengerich, Benjamin and Tan, Sarah and Chang, Chun-Hao and Hooker, Giles and Caruana, Rich},
-//  journal={arXiv preprint arXiv:1911.04974},
-//  year={2019}
+//  title={Purifying Interaction Effects with the Functional ANOVA: An Efficient Algorithm for Recovering Identifiable
+//  Additive Models}, author={Lengerich, Benjamin and Tan, Sarah and Chang, Chun-Hao and Hooker, Giles and Caruana,
+//  Rich}, journal={arXiv preprint arXiv:1911.04974}, year={2019}
 //}
 
 #include "pch.hpp"
@@ -215,7 +214,6 @@ EBM_API_BODY double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScor
 
    return impurityTotal;
 }
-
 
 extern ErrorEbm PurifyInternal(const double tolerance,
       const size_t cScores,
@@ -1060,11 +1058,10 @@ static void NormalizeClasses(const size_t cScores, double* const aScores) {
    } while(pScoresEnd != pScore);
 }
 
-static ErrorEbm PurifyNormalizedMulticlass(
-      const size_t cScores,
+static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
       const size_t cTensorBins,
       const size_t cSurfaceBins,
-      RandomDeterministic * const pRng,
+      RandomDeterministic* const pRng,
       size_t* const aRandomize,
       const size_t* const aDimensionLengths,
       const double* const aWeights,
@@ -1845,17 +1842,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    //   [-DBL_MAX, -DBL_MAX, DBL_MAX] which purifies to [2/3 * -DBL_MAX, 2/3 * -DBL_MAX, 4/3 * DBL_MAX]
    // - On the first purification, we cannot overflow the intercept or purification surface cell since we're taking
    //   a weighted average the average cannot be larger than any value
-   // - On subsequent purification steps, we can overflow the intercept or purification surface cell, however I 
+   // - On subsequent purification steps, we can overflow the intercept or purification surface cell, however I
    //   think if the algorithm was allowed to converge and there were no floating point noise issues the
    //   purified cell and/or intercept would not overflow to an infinity
    // - we can prevent the impurities and/or intercept from overflowing by limiting the amount of purification in
-   //   the step to a value that does not overflow and I think the algorithm is still guaranteed to make forward 
+   //   the step to a value that does not overflow and I think the algorithm is still guaranteed to make forward
    //   progress
    // - eventually though, even the impurities can get infinities since we later purified the impurities until we reach
    //   the intercept, so the only guarantee we could get in theory was that we don't overflow the intercept
    // - But even for the intercept, since there is an existing intercept we can't guarantee that the purified intercept
    //   will not overflow to an infinity, so there can be no guarantees in the EBM as a whole
-   // 
+   //
    // We do take the following precautions:
    // - when we move impurity from the original tensor to the impurity tensor, we limit the purification at that step
    //   to a number that will not overflow the impurity cell

@@ -16,4 +16,11 @@ from powerlift.bench.store import Store
 from powerlift.bench.benchmark import Benchmark
 
 from powerlift.bench.store import populate_with_datasets, DatasetAlreadyExistsError
-from powerlift.bench.store import retrieve_openml_automl_regression, retrieve_openml_automl_classification, retrieve_openml_cc18, retrieve_openml, retrieve_catboost_50k, retrieve_pmlb
+from powerlift.bench.store import (
+    retrieve_openml_automl_regression,
+    retrieve_openml_automl_classification,
+    retrieve_openml_cc18,
+    retrieve_openml,
+    retrieve_catboost_50k,
+    retrieve_pmlb,
+)

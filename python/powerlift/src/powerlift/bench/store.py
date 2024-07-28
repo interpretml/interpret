@@ -150,7 +150,6 @@ class BytesParser:
             mimetype = MIMETYPE_WHEEL
         else:
             return None, None
-        
 
         return mimetype, bstream
 
@@ -923,7 +922,9 @@ class SupervisedDataset(Dataset):
 
 class DatasetAlreadyExistsError(Exception):
     """Raised when dataset already exists in store."""
+
     pass
+
 
 def populate_with_datasets(
     store: Store,
@@ -947,7 +948,8 @@ def populate_with_datasets(
 
     if dataset_iter is None:
         dataset_iter = chain(
-            retrieve_openml_automl_regression(cache_dir=cache_dir), retrieve_openml_automl_classification(cache_dir=cache_dir)
+            retrieve_openml_automl_regression(cache_dir=cache_dir),
+            retrieve_openml_automl_classification(cache_dir=cache_dir),
         )
 
     for dataset in dataset_iter:
@@ -963,7 +965,9 @@ def populate_with_datasets(
     return True
 
 
-def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str = "openml") -> Generator[SupervisedDataset, None, None]:
+def retrieve_openml(
+    cache_dir: str = None, suite_id: int | str = 99, source: str = "openml"
+) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML datasets.
 
     Args:
@@ -978,7 +982,7 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
 
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir, source)
-    
+
     dataset_names_filename = "dataset_names.json"
     dataset_names_stream = retrieve_cache(cache_dir, [dataset_names_filename])
     if dataset_names_stream is None:
@@ -987,8 +991,19 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
         tasks = suite.tasks.copy()
         random.Random(1337).shuffle(tasks)
         for task_id in tqdm(tasks, desc=source):
-            task = openml.tasks.get_task(task_id, download_splits=False, download_data=False, download_qualities=False, download_features_meta_data=False)
-            dataset = openml.datasets.get_dataset(task.dataset_id, download_data=True, download_qualities=True, download_features_meta_data=True)
+            task = openml.tasks.get_task(
+                task_id,
+                download_splits=False,
+                download_data=False,
+                download_qualities=False,
+                download_features_meta_data=False,
+            )
+            dataset = openml.datasets.get_dataset(
+                task.dataset_id,
+                download_data=True,
+                download_qualities=True,
+                download_features_meta_data=True,
+            )
             name = dataset.name
             dataset_names.append(name)
 
@@ -1002,7 +1017,9 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
 
             if task.task_type_id == openml.tasks.TaskType.SUPERVISED_CLASSIFICATION:
                 problem = (
-                    "binary" if dataset.qualities["NumberOfClasses"] == 2 else "multiclass"
+                    "binary"
+                    if dataset.qualities["NumberOfClasses"] == 2
+                    else "multiclass"
                 )
 
                 # for benchmarking we do not care about the original target strings
@@ -1019,20 +1036,26 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
                     col = col.sparse.to_dense()
                     X[col_name] = col
 
-                if col.dtype.name == 'category':
+                if col.dtype.name == "category":
                     if not cat:
-                        raise Exception(f"Categorical type mismatch. Was CategoricalDtype but indicated non-categorical.")
+                        raise Exception(
+                            f"Categorical type mismatch. Was CategoricalDtype but indicated non-categorical."
+                        )
                     if col.cat.ordered:
                         # OpenMl incorrectly is indicating these as ordered
                         X[col_name] = col.cat.as_unordered()
-                elif col.dtype.name == 'object':
+                elif col.dtype.name == "object":
                     if cat:
                         X[col_name] = col.astype(pd.CategoricalDtype(ordered=False))
                     else:
                         X[col_name] = col.astype(float)
-                elif np.issubdtype(col.dtype, np.floating) or np.issubdtype(col.dtype, np.integer):
+                elif np.issubdtype(col.dtype, np.floating) or np.issubdtype(
+                    col.dtype, np.integer
+                ):
                     if cat:
-                        raise Exception(f"Categorical type mismatch. Was continuous but indicated categorical.")
+                        raise Exception(
+                            f"Categorical type mismatch. Was continuous but indicated categorical."
+                        )
                 else:
                     raise Exception(f"Unrecognized data type {col.dtype.name}.")
 
@@ -1051,11 +1074,15 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
             yield supervised
 
         if cache_dir is not None:
-            _, dataset_names_stream = BytesParser.serialize({"dataset_names": dataset_names})
+            _, dataset_names_stream = BytesParser.serialize(
+                {"dataset_names": dataset_names}
+            )
             update_cache(cache_dir, [dataset_names_filename], [dataset_names_stream])
     else:
         dataset_names_stream = dataset_names_stream[0]
-        dataset_names = BytesParser.deserialize(MIMETYPE_JSON, dataset_names_stream)["dataset_names"]
+        dataset_names = BytesParser.deserialize(MIMETYPE_JSON, dataset_names_stream)[
+            "dataset_names"
+        ]
         for name in tqdm(dataset_names, desc=source):
             X_name = f"{name}.X.parquet"
             y_name = f"{name}.y.parquet"
@@ -1064,7 +1091,10 @@ def retrieve_openml(cache_dir: str = None, suite_id: int | str = 99, source: str
             supervised = SupervisedDataset.deserialize(*cached)
             yield supervised
 
-def retrieve_openml_automl_regression(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+
+def retrieve_openml_automl_regression(
+    cache_dir: str = None,
+) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML regression datasets.
 
     Args:
@@ -1076,7 +1106,10 @@ def retrieve_openml_automl_regression(cache_dir: str = None) -> Generator[Superv
 
     return retrieve_openml(cache_dir, 269, "openml_automl_regression")
 
-def retrieve_openml_automl_classification(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+
+def retrieve_openml_automl_classification(
+    cache_dir: str = None,
+) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML classification datasets.
 
     Args:
@@ -1088,7 +1121,10 @@ def retrieve_openml_automl_classification(cache_dir: str = None) -> Generator[Su
 
     return retrieve_openml(cache_dir, 271, "openml_automl_classification")
 
-def retrieve_openml_cc18(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+
+def retrieve_openml_cc18(
+    cache_dir: str = None,
+) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML CC18 datasets.
 
     Args:
@@ -1100,7 +1136,10 @@ def retrieve_openml_cc18(cache_dir: str = None) -> Generator[SupervisedDataset, 
 
     return retrieve_openml(cache_dir, 99, "openml_cc18")
 
-def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+
+def retrieve_catboost_50k(
+    cache_dir: str = None,
+) -> Generator[SupervisedDataset, None, None]:
     """Retrieves catboost regression and classification datasets that have less than 50k training instances.
 
     Does not download adult dataset as currently there some download issues.
@@ -1125,19 +1164,19 @@ def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset,
             "name": "amazon",
             "data_fn": amazon,
             "problem": "classification",
-            "target": "ACTION"
+            "target": "ACTION",
         },
         {
             "name": "msrank_10k",
             "data_fn": msrank_10k,
             "problem": "regression",
-            "target": 0
+            "target": 0,
         },
         {
             "name": "titanic",
             "data_fn": titanic,
             "problem": "classification",
-            "target": "Survived"
+            "target": "Survived",
         },
     ]
 
@@ -1145,19 +1184,19 @@ def retrieve_catboost_50k(cache_dir: str = None) -> Generator[SupervisedDataset,
         cache_dir = pathlib.Path(cache_dir, "catboost_50k")
 
     for dataset in tqdm(datasets, desc="catboost_50k"):
-        name = dataset['name']
+        name = dataset["name"]
         X_name = f"{name}.X.parquet"
         y_name = f"{name}.y.parquet"
         meta_name = f"{name}.meta.json"
 
         cached = retrieve_cache(cache_dir, [X_name, y_name, meta_name])
         if cached is None:
-            df = dataset['data_fn']()[0]
-            target = dataset['target']
+            df = dataset["data_fn"]()[0]
+            target = dataset["target"]
             X = df.drop(target, axis=1)
             y = df[target]
-            problem = dataset['problem']
-            if dataset['problem'] == "classification":
+            problem = dataset["problem"]
+            if dataset["problem"] == "classification":
                 problem = "binary" if len(y.unique()) == 2 else "multiclass"
             meta = {
                 "name": name,

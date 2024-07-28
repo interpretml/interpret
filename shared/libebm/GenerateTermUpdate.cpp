@@ -434,7 +434,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    }
 
    if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
-      Tensor * const pTensor = pBoosterShell->GetInnerTermUpdate();
+      Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
 
       size_t cDimensions = pTerm->GetCountDimensions();
       size_t cTensorBinsPurify = 1;
@@ -488,7 +488,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
          pWeights += cTensorBinsPurify;
          ++pScores;
       } while(pScoreMulticlassEnd != pScores);
-   
+
       free(aWeights);
    }
 
