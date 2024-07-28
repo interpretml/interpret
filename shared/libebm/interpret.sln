@@ -16,6 +16,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-A
 		..\..\build.sh = ..\..\build.sh
 		..\..\CHANGELOG.md = ..\..\CHANGELOG.md
 		..\..\.github\workflows\ci.yml = ..\..\.github\workflows\ci.yml
+		..\..\codecov.yml = ..\..\codecov.yml
 		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
 		..\..\docs\interpret\hyperparameters.md = ..\..\docs\interpret\hyperparameters.md
 		..\..\README.md = ..\..\README.md
