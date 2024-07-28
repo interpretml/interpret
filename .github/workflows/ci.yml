@@ -240,6 +240,26 @@ jobs:
           name: bdist
           path: bld/bdist
 
+  powerlift:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Build powerlift package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/powerlift
+          python setup.py bdist_wheel -d ../../bld/bdist
+      - name: Publish bdist package
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerlift
+          path: bld/bdist
+
   testC:
     needs: [bld]
     strategy:
