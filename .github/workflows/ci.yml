@@ -489,8 +489,8 @@ jobs:
         id: check_cpp
         continue-on-error: true
         run: |
+          wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-jammy-16.list
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
           sudo apt --yes update
           sudo apt --yes install clang-format-16
           find shared/libebm \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" \) | xargs clang-format-16 -i -style=file
