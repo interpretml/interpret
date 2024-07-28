@@ -590,7 +590,7 @@ jobs:
         id: check_python
         continue-on-error: true
         run: |
-          cd python/interpret-core
+          cd python
           python -m pip install --upgrade black
           black --check .
       - name: Mark step with a warning
