@@ -54,6 +54,13 @@ jobs:
         if: startsWith(matrix.image, 'windows')
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:CudaToolkitDir = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
+          python -c "from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')"
+          ./cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "cuda_11.2.2_win10_network.exe FAILED"
+              exit 201
+          }
           ./build.bat ${{ matrix.options }} ${{ matrix.asm }}
       - name: Build on Linux
         if: startsWith(matrix.image, 'ubuntu')
