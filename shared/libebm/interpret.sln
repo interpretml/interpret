@@ -19,6 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-A
 		..\..\codecov.yml = ..\..\codecov.yml
 		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
 		..\..\docs\interpret\hyperparameters.md = ..\..\docs\interpret\hyperparameters.md
+		..\..\.github\workflows\pr.yml = ..\..\.github\workflows\pr.yml
 		..\..\README.md = ..\..\README.md
 		..\..\scripts\release_process.txt = ..\..\scripts\release_process.txt
 		..\..\python\interpret\setup.py = ..\..\python\interpret\setup.py
