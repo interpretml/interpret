@@ -1,0 +1,29 @@
+name: publish_release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  publish_packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find workflow run by commit ID
+        id: find_workflow
+        run: |
+          commit_id="${{ github.event.release.target_commitish }}"
+          echo "Commit ID: ${commit_id}"
+          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?event=push&status=success" -q '.workflow_runs[] | select(.head_commit.id=="'${commit_id}'")')
+          run_id=$(echo "$workflow_runs" | jq -r '.id')
+          echo "Run ID: ${run_id}"
+          echo "::set-output name=run_id::${run_id}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download npm artifact
+        uses: actions/download-artifact@v4
+        with:
+          workflow: interpret-CI
+          run-id: ${{ steps.find_workflow.outputs.run_id }}
+          name: npm
+          path: bld/npm
