@@ -4,26 +4,72 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      commit_id:
+        description: 'Commit ID (required for manual trigger)'
+        required: true
 
 jobs:
   publish_packages:
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
     steps:
-      - name: Find workflow run by commit ID
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Find CI workflow run by commit ID
         id: find_workflow
         run: |
-          commit_id="${{ github.event.release.target_commitish }}"
+          if [ "${{ github.event_name }}" == "release" ]; then
+            commit_id="${{ github.event.release.target_commitish }}"
+          else
+            commit_id="${{ github.event.inputs.commit_id }}"
+          fi
+          if [ -z "$commit_id" ]; then
+            echo "Error: commit_id is empty."
+            exit 1
+          fi
           echo "Commit ID: ${commit_id}"
-          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?event=push&status=success" -q '.workflow_runs[] | select(.head_commit.id=="'${commit_id}'")')
+          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'")) | sort_by(.created_at) | reverse | .[0]')
           run_id=$(echo "$workflow_runs" | jq -r '.id')
           echo "Run ID: ${run_id}"
-          echo "::set-output name=run_id::${run_id}"
+          echo "run_id=${run_id}" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Download npm artifact
         uses: actions/download-artifact@v4
         with:
-          workflow: interpret-CI
-          run-id: ${{ steps.find_workflow.outputs.run_id }}
+          run-id: ${{ env.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           name: npm
           path: bld/npm
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ env.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: sdist
+          path: dist
+      - name: Download bdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ env.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: bdist
+          path: dist
+      - name: Publish NPM
+        run: |
+          cd bld/npm
+          npm publish interpretml-interpret-inline-*.tgz
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
