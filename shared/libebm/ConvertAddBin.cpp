@@ -57,7 +57,7 @@ extern void ConvertAddBin(const size_t cScores,
                if(bHessian) {
                   typedef Bin<TFloatSpecific, TUIntSpecific, true, true, true> BinSpecific;
 
-                  iSrcSamples = offsetof(BinSpecific, m_cSamples);
+                  iSrcSamples =    offsetof    (   BinSpecific,     m_cSamples   );
                   iSrcWeight = offsetof(BinSpecific, m_weight);
                   iSrcArray = offsetof(BinSpecific, m_aGradientPairs);
                   cSrcArrayItemBytes = sizeof(BinSpecific::m_aGradientPairs[0]);
