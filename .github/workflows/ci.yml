@@ -6,6 +6,10 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      commit_id:
+        description: 'Commit ID (optional)'
+        required: false
   schedule:
     - cron: "0 12 * * *"
 
@@ -50,6 +54,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Build on Windows
         if: startsWith(matrix.image, 'windows')
         run: |
@@ -89,6 +95,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '18.x'
@@ -108,6 +116,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '18.x'
@@ -130,6 +140,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Build R package
         run: |
           cd R
@@ -150,6 +162,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -173,6 +187,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -218,6 +234,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -251,6 +269,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -337,6 +357,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -415,6 +437,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -509,6 +533,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -563,6 +589,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Check C++ code formatting with clang-format
         id: check_cpp
         continue-on-error: true
@@ -592,6 +620,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Check python matches black format
         id: check_python
         continue-on-error: true
