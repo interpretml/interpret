@@ -458,7 +458,7 @@ jobs:
           mkdir -p "tmp/zqmr/t"
           tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
           cd "tmp/zqmr/t"
-          python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: pytest (win)
         if: ${{ startsWith(matrix.image, 'windows') }}
         run: |
@@ -471,14 +471,7 @@ jobs:
           tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
           cd "tmp/zqmr/t"
           $env:PATH += ";$env:GeckoWebDriver"
-          python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
-      - name: Test report
-        if: always()
-        uses: dorny/test-reporter@v1
-        with:
-          name: TestRS ${{ matrix.name }}
-          path: tmp/zqmr/t/junit/test-results.xml
-          reporter: java-junit
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
         uses: codecov/codecov-action@v4
@@ -554,7 +547,7 @@ jobs:
           mkdir -p "tmp/zqmr/t"
           cp -R "python/interpret-core/tests/" "tmp/zqmr/t/"
           cd "tmp/zqmr/t"
-          python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: pytest (win)
         if: ${{ startsWith(matrix.image, 'windows') }}
         run: |
@@ -567,14 +560,7 @@ jobs:
           xcopy /E "python\interpret-core\tests\*" "tmp\zqmr\t\"
           cd "tmp/zqmr/t"
           $env:PATH += ";$env:GeckoWebDriver"
-          python -m pytest -vv -n auto --junitxml=junit/test-results.xml --cov=interpret --cov-report=xml --cov-report=html
-      - name: Test report
-        if: always()
-        uses: dorny/test-reporter@v1
-        with:
-          name: TestRB ${{ matrix.name }}
-          path: tmp/zqmr/t/junit/test-results.xml
-          reporter: java-junit
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
         uses: codecov/codecov-action@v4
