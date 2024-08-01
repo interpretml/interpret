@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
           echo "Commit ID: ${commit_id}"
-          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'")) | sort_by(.created_at) | reverse | .[0]')
+          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'" and .name == "interpret-CI")) | sort_by(.created_at) | reverse | .[0]')
           run_id=$(echo "$workflow_runs" | jq -r '.id')
           echo "Run ID: ${run_id}"
           echo "run_id=${run_id}" >> $GITHUB_ENV
