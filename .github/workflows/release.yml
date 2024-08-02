@@ -13,7 +13,6 @@ on:
 jobs:
   publish_packages:
     runs-on: ubuntu-latest
-    environment: release
     permissions:
       id-token: write
     steps:
