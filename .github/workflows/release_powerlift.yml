@@ -1,0 +1,43 @@
+name: release_powerlift
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_id:
+        description: 'Commit ID (required for manual trigger)'
+        required: true
+
+jobs:
+  publish_packages:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Find CI workflow run by commit ID
+        id: find_workflow
+        run: |
+          commit_id="${{ github.event.inputs.commit_id }}"
+          if [ -z "$commit_id" ]; then
+            echo "Error: commit_id is empty."
+            exit 1
+          fi
+          echo "Commit ID: ${commit_id}"
+          workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'" and .name == "interpret-CI")) | sort_by(.created_at) | reverse | .[0]')
+          run_id=$(echo "$workflow_runs" | jq -r '.id')
+          echo "Run ID: ${run_id}"
+          echo "run_id=${run_id}" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download powerlift artifact
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ env.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: powerlift
+          path: dist
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
