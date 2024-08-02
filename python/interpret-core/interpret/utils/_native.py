@@ -110,7 +110,7 @@ class Native:
         if not array.flags.c_contiguous:  # pragma: no cover
             raise ValueError("array should be a contiguous ndarray")
 
-        if array.ndim != ndim:  # pragma: no cover
+        if ndim is not None and array.ndim != ndim:  # pragma: no cover
             raise ValueError(f"array should have {ndim} dimensions")
 
         # ctypes.data will return an interor pointer when given an array that is sliced,
@@ -239,9 +239,9 @@ class Native:
         return_code = self._unsafe.SafeMean(
             n_bags,
             n_tensor_bins,
-            Native._make_pointer(tensor, np.float64, tensor.ndim),
+            Native._make_pointer(tensor, np.float64, None),
             Native._make_pointer(weights, np.float64, is_null_allowed=True),
-            Native._make_pointer(mean_result, np.float64, mean_result.ndim),
+            Native._make_pointer(mean_result, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SafeMean")
@@ -269,9 +269,9 @@ class Native:
         return_code = self._unsafe.SafeStandardDeviation(
             n_bags,
             n_tensor_bins,
-            Native._make_pointer(tensor, np.float64, tensor.ndim),
+            Native._make_pointer(tensor, np.float64, None),
             Native._make_pointer(weights, np.float64, is_null_allowed=True),
-            Native._make_pointer(stddev_result, np.float64, stddev_result.ndim),
+            Native._make_pointer(stddev_result, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "SafeStandardDeviation")
@@ -382,8 +382,8 @@ class Native:
                 i,
                 len(shape_classless),
                 Native._make_pointer(shape_array, np.int64),
-                Native._make_pointer(weights, np.float64, len(shape_classless)),
-                Native._make_pointer(scores, np.float64, len(shape_all)),
+                Native._make_pointer(weights, np.float64, None),
+                Native._make_pointer(scores, np.float64, None),
             )
 
             if impurity < 0.0:  # pragma: no cover
@@ -445,8 +445,8 @@ class Native:
             n_multi_scores,
             len(shape_classless),
             Native._make_pointer(shape_array, np.int64),
-            Native._make_pointer(weights, np.float64, len(shape_classless)),
-            Native._make_pointer(scores, np.float64, len(shape_all)),
+            Native._make_pointer(weights, np.float64, None),
+            Native._make_pointer(scores, np.float64, None),
             Native._make_pointer(impurity, np.float64, is_null_allowed=True),
             Native._make_pointer(intercept, np.float64),
         )
@@ -1722,7 +1722,7 @@ class Booster(AbstractContextManager):
         return_code = native._unsafe.CreateBooster(
             Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
             Native._make_pointer(self.dataset, np.ubyte),
-            Native._make_pointer(self.bag, np.int8, 1, True),
+            Native._make_pointer(self.bag, np.int8, is_null_allowed=True),
             Native._make_pointer(
                 init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
             ),
@@ -1733,7 +1733,9 @@ class Booster(AbstractContextManager):
             flags,
             native.acceleration,
             self.objective.encode("ascii"),
-            Native._make_pointer(self.experimental_params, np.float64, 1, True),
+            Native._make_pointer(
+                self.experimental_params, np.float64, is_null_allowed=True
+            ),
             ct.byref(booster_handle),
         )
         if return_code:  # pragma: no cover
@@ -1811,7 +1813,7 @@ class Booster(AbstractContextManager):
             min_samples_leaf,
             min_hessian,
             Native._make_pointer(max_leaves_arr, np.int64),
-            Native._make_pointer(monotone_constraints, np.int32, 1, True),
+            Native._make_pointer(monotone_constraints, np.int32, is_null_allowed=True),
             ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover
@@ -1895,7 +1897,7 @@ class Booster(AbstractContextManager):
         return_code = native._unsafe.GetBestTermScores(
             self._booster_handle,
             term_idx,
-            Native._make_pointer(term_scores, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestTermScores")
@@ -1921,7 +1923,7 @@ class Booster(AbstractContextManager):
         return_code = native._unsafe.GetCurrentTermScores(
             self._booster_handle,
             term_idx,
-            Native._make_pointer(term_scores, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentTermScores")
@@ -1960,7 +1962,7 @@ class Booster(AbstractContextManager):
 
         return_code = native._unsafe.GetTermUpdate(
             self._booster_handle,
-            Native._make_pointer(update_scores, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetTermUpdate")
