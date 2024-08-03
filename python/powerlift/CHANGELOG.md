@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.10 - 2024-08-02
+### Added
+- Support for OpenML AutoML regression and classification datasets.
+- Densify sparse data.
+- For classification datasets, convert y to unique integers.
+- Change CategoricalDType values to be unordered for data returned by OpenML.
+- Convert object data into either CategoricalDType or float data.
+
 ## v0.1.9 - 2024-06-21
 ### Fixed
 - Performance improvements to Azure CI executor.

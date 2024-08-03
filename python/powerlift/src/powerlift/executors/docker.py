@@ -44,7 +44,7 @@ class InsecureDocker(LocalMachine):
     def __init__(
         self,
         store: Store,
-        image: str = "interpretml/powerlift:0.1.9",
+        image: str = "interpretml/powerlift:0.1.10",
         n_running_containers: int = None,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
@@ -54,7 +54,7 @@ class InsecureDocker(LocalMachine):
 
         Args:
             store (Store): Store that houses trials.
-            image (str, optional): Image to execute in container. Defaults to "interpretml/powerlift:0.1.4".
+            image (str, optional): Image to execute in container. Defaults to "interpretml/powerlift:0.0.1".
             n_running_containers (int, optional): Max number of containers running simultaneously. Defaults to None.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on docker trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
