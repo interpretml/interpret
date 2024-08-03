@@ -6,8 +6,15 @@ import sys
 _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
 
+# Global options
 _purify_boosting = False
 _purify_result = False
+_randomize_initial_feature_order = True
+# TODO: investigate if _randomize_feature_order actually decreases accuracy
+# https://github.com/interpretml/interpret/issues/563#issuecomment-2240820952
+# this seems to decrease accuracy slightly, but helps with collinearity
+_randomize_greedy_feature_order = True  # randomize feature order only if greedy enabled
+_randomize_feature_order = False  # randomize feature order always
 
 
 def print_debug_info(file=None):
