@@ -267,5 +267,6 @@ POWERLIFT:
   scripts\build-docker.sh
   scripts\Dockerfile (in 2 places)
   setup.py
-  src\powerlift\executors\azure_ci.py
-  src\powerlift\executors\docker.py
+  powerlift\executors\azure_ci.py
+  powerlift\executors\docker.py
+  powerlift\_version.py

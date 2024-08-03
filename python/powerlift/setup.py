@@ -20,8 +20,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    package_dir={"": "src"},
-    packages=setuptools.find_namespace_packages(where="src", include=["powerlift.*"]),
+    packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.7",
     install_requires=[
         "SQLAlchemy >=1.4",
@@ -61,6 +60,7 @@ setuptools.setup(
             "pytest-cov",
             "scikit-learn",
             "python-dotenv",
+            "pytest-xdist",
         ],
     },
 )
