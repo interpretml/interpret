@@ -1,4 +1,4 @@
-name: publish_release
+name: release_interpret
 
 on:
   release:

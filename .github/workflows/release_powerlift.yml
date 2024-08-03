@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  publish_packages:
+  publish_powerlift:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
