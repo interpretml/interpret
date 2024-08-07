@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.3] - 2024-08-07
+### Added
+- visualizations for the APRL (Automatic Piecewise Linear Regression) package by @mathias-von-ottenbreit
+### Changed
+- early_stopping_tolerance default changed to 1e-5 to reduce EBMs fitting time slightly
+- shuffle initial feature order within each bag and during greedy boosting
+### Fixed
+- fixed numpy 2.0 issue in the Marginal class
+
 ## [v0.6.2] - 2024-06-22
 ### Added
 - pass optional kwargs to DecisionTreeClassifier in PR #537 by @busFred
