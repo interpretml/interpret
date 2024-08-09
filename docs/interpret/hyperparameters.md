@@ -118,6 +118,7 @@ guidance: We typically do not advise changing early_stopping_rounds. The default
 
 ## early_stopping_tolerance
 default: 1e-5
+
 hyperparameters: [1e-5, 1e-7, 0.0]
 
 guidance: early_stopping_tolerance is set to 1e-5 because it decreases the fitting time by 25%, however setting early_stopping_tolerance to 0.0, or even a negative value sometimes yields slightly higher accuracy. EBMs are a bagged ensemble model, so overfitting each individual bag a little can be beneficial because after the models are averaged together in the ensemble averaging decreases the variance due to overfitting. Using a negative value for early_stopping_tolerance allows the individual models to be overfit.

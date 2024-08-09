@@ -11,8 +11,11 @@ jobs:
   publish_powerlift:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -24,6 +27,10 @@ jobs:
           if [ -z "$commit_id" ]; then
             echo "Error: commit_id is empty."
             exit 1
+          fi
+          if git show-ref --verify --quiet refs/heads/${commit_id}; then
+            # If it's a valid branch, resolve it to a commit ID
+            commit_id=$(git rev-parse ${commit_id})
           fi
           echo "Commit ID: ${commit_id}"
           workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'" and .name == "interpret-CI")) | sort_by(.created_at) | reverse | .[0]')
