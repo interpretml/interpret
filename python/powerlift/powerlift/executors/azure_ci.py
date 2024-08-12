@@ -28,6 +28,7 @@ def _wait_for_completed_worker(results):
 def _run(
     tasks,
     azure_json,
+    credential,
     num_cores,
     mem_size_gb,
     n_running_containers,
@@ -47,11 +48,13 @@ def _run(
     from azure.mgmt.resource import ResourceManagementClient
     from azure.identity import ClientSecretCredential
 
-    credential = ClientSecretCredential(
-        tenant_id=azure_json["tenant_id"],
-        client_id=azure_json["client_id"],
-        client_secret=azure_json["client_secret"],
-    )
+    if credential is None:
+        credential = ClientSecretCredential(
+            tenant_id=azure_json["tenant_id"],
+            client_id=azure_json["client_id"],
+            client_secret=azure_json["client_secret"],
+        )
+
     resource_group_name = azure_json["resource_group"]
     aci_client = ContainerInstanceManagementClient(
         credential, azure_json["subscription_id"]
@@ -132,6 +135,7 @@ class AzureContainerInstance(LocalMachine):
         azure_client_secret: str,
         subscription_id: str,
         resource_group: str,
+        credential=None,
         image: str = "interpretml/powerlift:0.1.10",
         n_running_containers: int = 1,
         num_cores: int = 1,
@@ -161,6 +165,7 @@ class AzureContainerInstance(LocalMachine):
         """
         from multiprocessing import Manager
 
+        self._credential = credential
         self._image = image
         self._n_running_containers = n_running_containers
         self._num_cores = num_cores
@@ -208,6 +213,7 @@ class AzureContainerInstance(LocalMachine):
         params = (
             tasks,
             self._azure_json,
+            self._credential,
             self._num_cores,
             self._mem_size_gb,
             self._n_running_containers,
