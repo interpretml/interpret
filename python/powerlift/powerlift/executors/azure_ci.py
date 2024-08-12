@@ -7,124 +7,12 @@ https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?vi
 from powerlift.executors.localmachine import LocalMachine
 from powerlift.bench.store import Store
 from typing import Iterable, List
-from powerlift.executors.base import handle_err
+from powerlift.executors.base import Executor, handle_err
 import random
+from multiprocessing import Pool
 
 
-def _wait_for_completed_worker(results):
-    import time
-
-    if len(results) == 0:
-        return None
-
-    while True:
-        for worker_id, result in results.items():
-            if result is None or result.done():
-                del results[worker_id]
-                return worker_id
-        time.sleep(1)
-
-
-def _run(
-    tasks,
-    azure_json,
-    credential,
-    num_cores,
-    mem_size_gb,
-    n_running_containers,
-    delete_group_container_on_complete,
-    batch_id,
-):
-    from azure.mgmt.containerinstance.models import (
-        ContainerGroup,
-        Container,
-        ContainerGroupRestartPolicy,
-        EnvironmentVariable,
-        ResourceRequests,
-        ResourceRequirements,
-        OperatingSystemTypes,
-    )
-    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
-    from azure.mgmt.resource import ResourceManagementClient
-    from azure.identity import ClientSecretCredential
-
-    if credential is None:
-        credential = ClientSecretCredential(
-            tenant_id=azure_json["tenant_id"],
-            client_id=azure_json["client_id"],
-            client_secret=azure_json["client_secret"],
-        )
-
-    resource_group_name = azure_json["resource_group"]
-    aci_client = ContainerInstanceManagementClient(
-        credential, azure_json["subscription_id"]
-    )
-    res_client = ResourceManagementClient(credential, azure_json["subscription_id"])
-    resource_group = res_client.resource_groups.get(resource_group_name)
-
-    # Run until completion.
-    container_counter = 0
-    n_tasks = len(tasks)
-    n_containers = min(n_tasks, n_running_containers)
-    results = {x: None for x in range(n_containers)}
-    container_group_names = set()
-    while len(tasks) != 0:
-        params = tasks.pop(0)
-        worker_id = _wait_for_completed_worker(results)
-
-        trial_ids, uri, timeout, raise_exception, image = params
-        env_vars = [
-            EnvironmentVariable(
-                name="TRIAL_IDS", value=",".join([str(x) for x in trial_ids])
-            ),
-            EnvironmentVariable(name="DB_URL", secure_value=uri),
-            EnvironmentVariable(name="TIMEOUT", value=timeout),
-            EnvironmentVariable(name="RAISE_EXCEPTION", value=raise_exception),
-        ]
-        container_resource_requests = ResourceRequests(
-            cpu=num_cores,
-            memory_in_gb=mem_size_gb,
-        )
-        container_resource_requirements = ResourceRequirements(
-            requests=container_resource_requests
-        )
-        container_name = f"powerlift-container-{container_counter}"
-        container_counter += 1
-        container = Container(
-            name=container_name,
-            image=image,
-            resources=container_resource_requirements,
-            command=["python", "-m", "powerlift.run"],
-            environment_variables=env_vars,
-        )
-        container_group = ContainerGroup(
-            location=resource_group.location,
-            containers=[container],
-            os_type=OperatingSystemTypes.linux,
-            restart_policy=ContainerGroupRestartPolicy.never,
-        )
-        container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
-        result = aci_client.container_groups.begin_create_or_update(
-            resource_group.name, container_group_name, container_group
-        )
-
-        container_group_names.add(container_group_name)
-        results[worker_id] = result
-
-    # Wait for all container groups to complete
-    while _wait_for_completed_worker(results) is not None:
-        pass
-
-    # Delete all container groups
-    if delete_group_container_on_complete:
-        for container_group_name in container_group_names:
-            aci_client.container_groups.begin_delete(
-                resource_group_name, container_group_name
-            )
-    return None
-
-
-class AzureContainerInstance(LocalMachine):
+class AzureContainerInstance(Executor):
     """Runs trials on Azure Container Instances."""
 
     def __init__(
@@ -181,18 +69,24 @@ class AzureContainerInstance(LocalMachine):
             "resource_group": resource_group,
         }
         self._batch_id = random.getrandbits(64)
-        super().__init__(
-            store=store,
-            n_cpus=1,
-            raise_exception=raise_exception,
-            wheel_filepaths=wheel_filepaths,
-        )
+
+        self._pool = Pool()
+        self._trial_id_to_result = {}
+        self._store = store
+        self._wheel_filepaths = wheel_filepaths
+        self._raise_exception = raise_exception
+
+    def __del__(self):
+        if self._pool is not None:
+            self._pool.close()
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""
         del self._azure_json
 
     def submit(self, trial_run_fn, trials: Iterable, timeout=None):
+        from powerlift.run_azure import __main__ as runner
+
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
@@ -223,13 +117,33 @@ class AzureContainerInstance(LocalMachine):
         self._batch_id = random.getrandbits(64)
         if self._pool is None:
             try:
-                res = _run(*params)
+                res = runner.run_trials(*params)
                 self._trial_id_to_result[0] = res
             except Exception as e:
                 self._trial_id_to_result[0] = e
         else:
             self._trial_id_to_result[0] = self._pool.apply_async(
-                _run,
+                runner.run_trials,
                 params,
                 error_callback=handle_err,
             )
+
+    def join(self):
+        results = []
+        if self._pool is not None:
+            for _, result in self._trial_id_to_result.items():
+                res = result.get()
+                results.append(res)
+        return results
+
+    def cancel(self):
+        if self._pool is not None:
+            self._pool.terminate()
+
+    @property
+    def store(self):
+        return self._store
+
+    @property
+    def wheel_filepaths(self):
+        return self._wheel_filepaths
