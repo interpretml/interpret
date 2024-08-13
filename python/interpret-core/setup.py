@@ -255,7 +255,7 @@ https://github.com/interpretml/interpret
         "linear": [],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
-        "aplr": ["aplr>=10.7.0"],
+        "aplr": ["aplr>=10.5.1"],
         # Dash
         "dash": [
             # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
