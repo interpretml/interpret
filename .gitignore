@@ -27,3 +27,5 @@ __pycache__
 *.csv
 *.db
 dist/
+*.env
+*.whl

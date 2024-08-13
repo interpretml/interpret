@@ -118,7 +118,9 @@ class BytesParser:
             orig_close = bstream.close
             bstream.close = lambda: None
             try:
-                obj.astype(dtype=object).to_frame(name="Target").to_parquet(bstream)
+                obj.astype(dtype=object).to_frame(name="Target").to_parquet(
+                    bstream, compression="Brotli", index=False
+                )
             finally:
                 bstream.close = orig_close
             mimetype = MIMETYPE_SERIES
@@ -126,7 +128,7 @@ class BytesParser:
             orig_close = bstream.close
             bstream.close = lambda: None
             try:
-                obj.to_parquet(bstream)
+                obj.to_parquet(bstream, compression="Brotli", index=False)
             finally:
                 bstream.close = orig_close
             mimetype = MIMETYPE_DF
@@ -167,6 +169,10 @@ class Store:
             uri (str): Database URI to connect store to.
             force_recreate (bool, optional): This will delete and create the database associated with the uri if set to true. Defaults to False.
         """
+
+        # TODO: include support for Azure passwordless credentials:
+        # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
+
         self._engine = create_db(uri, **create_engine_kwargs)
         if force_recreate:
             drop_tables(self._engine)
