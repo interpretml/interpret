@@ -17,7 +17,13 @@ class Executor:
         A tuple containing (response, duration, timed_out as boolean).
     """
 
-    def submit(self, trial_run_fn: FunctionType, trials: Iterable, timeout: int = None):
+    def submit(
+        self,
+        experiment_id,
+        trial_run_fn: FunctionType,
+        trials: Iterable,
+        timeout: int = None,
+    ):
         """Submits and executes trials by trial run function asynchronously.
 
         Args:

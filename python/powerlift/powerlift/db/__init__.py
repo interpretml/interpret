@@ -22,7 +22,7 @@ from .schema import (
     MeasureOutcome,
     Asset,
 )
-from .schema import NAME_LEN, PROBLEM_LEN, ERROR_LEN, MEASURE_STR_LEN, DESCRIPTION_LEN
+from .schema import NAME_LEN, PROBLEM_LEN, MEASURE_STR_LEN, DESCRIPTION_LEN
 from .schema import URI_LEN, MIMETYPE_LEN, TypeEnum, StatusEnum
 
 from .actions import create_db, delete_db

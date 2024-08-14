@@ -84,7 +84,7 @@ class AzureContainerInstance(Executor):
         """Deletes credentials in object for accessing Azure Resources."""
         del self._azure_json
 
-    def submit(self, trial_run_fn, trials: Iterable, timeout=None):
+    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
         from powerlift.run_azure import __main__ as runner
 
         uri = (
@@ -96,6 +96,7 @@ class AzureContainerInstance(Executor):
         )
         for trial in trials:
             params = (
+                experiment_id,
                 [trial.id],
                 uri,
                 timeout,

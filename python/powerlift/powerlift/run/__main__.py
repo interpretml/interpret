@@ -1,7 +1,9 @@
 """ This is called to run a trial by worker nodes (local / remote). """
 
 
-def run_trials(trial_ids, db_url, timeout, raise_exception, debug_fn=None):
+def run_trials(
+    experiment_id, trial_ids, db_url, timeout, raise_exception, debug_fn=None
+):
     """Runs trials. Includes wheel installation and timeouts."""
     from powerlift.bench.store import Store
     import traceback
@@ -65,9 +67,10 @@ def run_trials(trial_ids, db_url, timeout, raise_exception, debug_fn=None):
 if __name__ == "__main__":
     import os
 
+    experiment_id = os.getenv("EXPERIMENT_ID")
     trial_ids = os.getenv("TRIAL_IDS").split(",")
     db_url = os.getenv("DB_URL")
     timeout = float(os.getenv("TIMEOUT", 0.0))
     raise_exception = True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
 
-    run_trials(trial_ids, db_url, timeout, raise_exception)
+    run_trials(experiment_id, trial_ids, db_url, timeout, raise_exception)

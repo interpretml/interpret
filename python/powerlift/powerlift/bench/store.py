@@ -344,8 +344,13 @@ class Store:
     def from_db_experiment(self, experiment_orm):
         from powerlift.bench.experiment import Experiment
 
+        trials = list(self.iter_experiment_trials(experiment_orm.id))
         return Experiment(
-            self, experiment_orm.name, experiment_orm.description, experiment_orm.id
+            experiment_orm.id,
+            experiment_orm.name,
+            experiment_orm.description,
+            experiment_orm.script,
+            trials,
         )
 
     def from_db_method(self, method_orm):
@@ -403,20 +408,22 @@ class Store:
         else:
             return exp_orm.id
 
-    def get_or_create_experiment(self, name: str, description: str) -> Tuple[int, bool]:
+    def get_or_create_experiment(
+        self, name: str, description: str, script: str = None
+    ) -> Tuple[int, bool]:
         """Get or create experiment keyed by name."""
         created = False
         exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             created = True
-            exp_orm = db.Experiment(name=name, description=description)
+            exp_orm = db.Experiment(name=name, description=description, script=script)
             try:
                 self._session.add(exp_orm)
                 self._session.commit()
             except IntegrityError:
                 self._session.rollback()
                 exp_orm = self._session.query(db.Experiment).filter_by(name=name).one()
-        return exp_orm.id, created
+        return exp_orm.id, exp_orm.script, created
 
     def create_trials(self, trial_params: List[Dict[str, Any]]):
         trial_orms = []

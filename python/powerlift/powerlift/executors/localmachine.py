@@ -44,7 +44,7 @@ class LocalMachine(Executor):
         if self._pool is not None:
             self._pool.close()
 
-    def submit(self, trial_run_fn, trials: Iterable, timeout=None):
+    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
         from powerlift.run import __main__ as runner
 
         self._store.add_trial_run_fn(
@@ -55,6 +55,7 @@ class LocalMachine(Executor):
                 try:
                     debug_fn = trial_run_fn if self._debug_mode else None
                     res = runner.run_trials(
+                        experiment_id,
                         [trial.id],
                         self._store.uri,
                         timeout,
@@ -70,6 +71,7 @@ class LocalMachine(Executor):
                 self._trial_id_to_result[trial.id] = self._pool.apply_async(
                     runner.run_trials,
                     (
+                        experiment_id,
                         [trial.id],
                         self._store.uri,
                         timeout,

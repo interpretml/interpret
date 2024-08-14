@@ -25,6 +25,16 @@ def run_trials(
     delete_group_container_on_complete,
     batch_id,
 ):
+    startup_script = """
+        if ! command -v psql >/dev/null 2>&1; then
+            apt --yes update
+            apt --yes install postgresql-client
+        fi
+        result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        printf "%s" "$result" > "startup.py"
+        python startup.py
+    """
+
     from azure.mgmt.containerinstance.models import (
         ContainerGroup,
         Container,
@@ -62,8 +72,9 @@ def run_trials(
         params = tasks.pop(0)
         worker_id = _wait_for_completed_worker(results)
 
-        trial_ids, uri, timeout, raise_exception, image = params
+        experiment_id, trial_ids, uri, timeout, raise_exception, image = params
         env_vars = [
+            EnvironmentVariable(name="EXPERIMENT_ID", value=str(experiment_id)),
             EnvironmentVariable(
                 name="TRIAL_IDS", value=",".join([str(x) for x in trial_ids])
             ),
@@ -84,7 +95,7 @@ def run_trials(
             name=container_name,
             image=image,
             resources=container_resource_requirements,
-            command=["python", "-m", "powerlift.run"],
+            command=["/bin/sh", "-c", startup_script.replace("\r\n", "\n")],
             environment_variables=env_vars,
         )
         container_group = ContainerGroup(

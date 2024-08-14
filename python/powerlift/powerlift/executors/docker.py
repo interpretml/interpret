@@ -69,7 +69,7 @@ class InsecureDocker(LocalMachine):
             wheel_filepaths=wheel_filepaths,
         )
 
-    def submit(self, trial_run_fn, trials: Iterable, timeout=None):
+    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )

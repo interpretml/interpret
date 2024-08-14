@@ -133,6 +133,7 @@ class Experiment:
     id: Optional[int]
     name: str
     description: str
+    script: str
     trials: List
 
 

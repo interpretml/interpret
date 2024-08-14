@@ -49,10 +49,16 @@ class Benchmark:
         n_replicates: int = 1,
         executor: Optional[Executor] = None,
     ) -> Executor:
+        script_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "run", "__main__.py"
+        )
+        with open(script_file, "r") as file:
+            script_contents = file.read()
+
         # Create experiment
         if self._experiment_id is None:
-            self._experiment_id, _ = self._store.get_or_create_experiment(
-                self._name, self._description
+            self._experiment_id, _, _ = self._store.get_or_create_experiment(
+                self._name, self._description, script_contents
             )
 
         # Create trials
@@ -113,7 +119,9 @@ class Benchmark:
         if executor is None:
             executor = LocalMachine(self._store)
         self._executors.add(executor)
-        executor.submit(trial_run_fn, pending_trials, timeout=timeout)
+        executor.submit(
+            self._experiment_id, trial_run_fn, pending_trials, timeout=timeout
+        )
         return executor
 
     def wait_until_complete(self):
@@ -133,12 +141,12 @@ class Benchmark:
         if self._experiment_id is None:
             return None
 
-        self._experiment_id, _ = self._store.get_or_create_experiment(
+        self._experiment_id, script, _ = self._store.get_or_create_experiment(
             self._name, self._description
         )
         trials = list(self._store.iter_experiment_trials(self._experiment_id))
         experiment = Experiment(
-            self._experiment_id, self._name, self._description, trials
+            self._experiment_id, self._name, self._description, script, trials
         )
         return experiment
 

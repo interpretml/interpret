@@ -8,6 +8,7 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
+    Text,
     ForeignKey,
     JSON,
     DateTime,
@@ -22,9 +23,6 @@ from sqlalchemy.sql.sqltypes import Boolean, Numeric, LargeBinary
 PROBLEM_LEN = 64
 NAME_LEN = 256
 VERSION_LEN = 256
-
-# Diagnostic fields, length can be long.
-ERROR_LEN = 10000
 
 # Measure related fields.
 MEASURE_STR_LEN = None
@@ -96,6 +94,7 @@ class Experiment(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(NAME_LEN), unique=True)
     description = Column(String(DESCRIPTION_LEN))
+    script = Column(Text)
 
     trials = relationship("Trial", back_populates="experiment")
 
@@ -116,7 +115,7 @@ class Trial(Base):
     meta = Column(JSON)
 
     status = Column(Enum(StatusEnum))
-    errmsg = Column(String(ERROR_LEN), nullable=True)
+    errmsg = Column(Text, nullable=True)
     create_time = Column(DateTime)
     start_time = Column(DateTime, nullable=True)
     end_time = Column(DateTime, nullable=True)
