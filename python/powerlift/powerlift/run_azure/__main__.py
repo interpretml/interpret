@@ -1,7 +1,7 @@
 """ This is called to run a trial by worker nodes (local / remote). """
 
 
-def _wait_for_completed_worker(results):
+def _wait_for_completed_worker(aci_client, resource_group_name, results):
     import time
 
     if len(results) == 0:
@@ -9,9 +9,18 @@ def _wait_for_completed_worker(results):
 
     while True:
         for worker_id, result in results.items():
-            if result is None or result.done():
+            if result is None:
                 del results[worker_id]
                 return worker_id
+        for worker_id, result in results.items():
+            container_group = aci_client.container_groups.get(resource_group_name, result)
+            container = container_group.containers[0]
+            iview = container.instance_view
+            if iview is not None:
+                state = iview.current_state.state
+                if state == "Terminated":
+                    del results[worker_id]
+                    return worker_id
         time.sleep(1)
 
 
@@ -86,7 +95,7 @@ def run_trials(
     container_group_names = set()
     while len(tasks) != 0:
         params = tasks.pop(0)
-        worker_id = _wait_for_completed_worker(results)
+        worker_id = _wait_for_completed_worker(aci_client, resource_group_name, results)
 
         experiment_id, trial_ids, uri, timeout, raise_exception, image = params
         env_vars = [
@@ -121,15 +130,18 @@ def run_trials(
             restart_policy=ContainerGroupRestartPolicy.never,
         )
         container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
-        result = aci_client.container_groups.begin_create_or_update(
+        
+        # begin_create_or_update returns LROPoller, 
+        # but this is only indicates when the containter is started
+        aci_client.container_groups.begin_create_or_update(
             resource_group.name, container_group_name, container_group
         )
 
         container_group_names.add(container_group_name)
-        results[worker_id] = result
+        results[worker_id] = container_group_name
 
     # Wait for all container groups to complete
-    while _wait_for_completed_worker(results) is not None:
+    while _wait_for_completed_worker(aci_client, resource_group_name, results) is not None:
         pass
 
     # Delete all container groups
