@@ -133,6 +133,8 @@ class Experiment:
     id: Optional[int]
     name: str
     description: str
+    shell_install: str
+    pip_install: str
     script: str
     trials: List
 

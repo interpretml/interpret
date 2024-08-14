@@ -94,6 +94,8 @@ class Experiment(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(NAME_LEN), unique=True)
     description = Column(String(DESCRIPTION_LEN))
+    shell_install = Column(Text)
+    pip_install = Column(Text)
     script = Column(Text)
 
     trials = relationship("Trial", back_populates="experiment")

@@ -25,6 +25,8 @@ class AzureContainerInstance(Executor):
         resource_group: str,
         credential=None,
         image: str = "interpretml/powerlift:0.1.10",
+        shell_install: str = None,
+        pip_install: str = None,
         n_running_containers: int = 1,
         num_cores: int = 1,
         mem_size_gb: int = 2,
@@ -55,6 +57,8 @@ class AzureContainerInstance(Executor):
 
         self._credential = credential
         self._image = image
+        self._shell_install = shell_install
+        self._pip_install = pip_install
         self._n_running_containers = n_running_containers
         self._num_cores = num_cores
         self._mem_size_gb = mem_size_gb

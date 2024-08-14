@@ -55,10 +55,22 @@ class Benchmark:
         with open(script_file, "r") as file:
             script_contents = file.read()
 
+        shell_install = None
+        if hasattr(executor, "_shell_install"):
+            shell_install = executor._shell_install
+        if shell_install is None:
+            shell_install = ""
+
+        pip_install = None
+        if hasattr(executor, "_pip_install"):
+            pip_install = executor._pip_install
+        if pip_install is None:
+            pip_install = ""
+
         # Create experiment
         if self._experiment_id is None:
-            self._experiment_id, _, _ = self._store.get_or_create_experiment(
-                self._name, self._description, script_contents
+            self._experiment_id, _, _, _, _ = self._store.get_or_create_experiment(
+                self._name, self._description, shell_install, pip_install, script_contents
             )
 
         # Create trials
@@ -141,12 +153,12 @@ class Benchmark:
         if self._experiment_id is None:
             return None
 
-        self._experiment_id, script, _ = self._store.get_or_create_experiment(
+        self._experiment_id, shell_install, pip_install, script, _ = self._store.get_or_create_experiment(
             self._name, self._description
         )
         trials = list(self._store.iter_experiment_trials(self._experiment_id))
         experiment = Experiment(
-            self._experiment_id, self._name, self._description, script, trials
+            self._experiment_id, self._name, self._description, shell_install, pip_install, script, trials
         )
         return experiment
 

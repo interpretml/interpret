@@ -26,9 +26,25 @@ def run_trials(
     batch_id,
 ):
     startup_script = """
+        is_updated=0
         if ! command -v psql >/dev/null 2>&1; then
-            apt --yes update
-            apt --yes install postgresql-client
+            is_updated=1
+            apt-get --yes update
+            apt-get --yes install postgresql-client
+        fi
+        shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        if [ -n "$shell_install" ]; then
+            if [ "$is_updated" -eq 0 ]; then
+                is_updated=1
+                apt-get --yes update
+            fi
+            cmd="apt-get --yes install $shell_install"
+            eval $cmd
+        fi
+        pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        if [ -n "$pip_install" ]; then
+            cmd="python -m pip install $pip_install"
+            eval $cmd
         fi
         result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
         printf "%s" "$result" > "startup.py"

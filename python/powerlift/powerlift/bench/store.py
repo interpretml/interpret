@@ -349,6 +349,8 @@ class Store:
             experiment_orm.id,
             experiment_orm.name,
             experiment_orm.description,
+            experiment_orm.shell_install,
+            experiment_orm.pip_install,
             experiment_orm.script,
             trials,
         )
@@ -409,21 +411,21 @@ class Store:
             return exp_orm.id
 
     def get_or_create_experiment(
-        self, name: str, description: str, script: str = None
+        self, name: str, description: str, shell_install: str = None, pip_install: str = None, script: str = None
     ) -> Tuple[int, bool]:
         """Get or create experiment keyed by name."""
         created = False
         exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             created = True
-            exp_orm = db.Experiment(name=name, description=description, script=script)
+            exp_orm = db.Experiment(name=name, description=description, shell_install=shell_install, pip_install=pip_install, script=script)
             try:
                 self._session.add(exp_orm)
                 self._session.commit()
             except IntegrityError:
                 self._session.rollback()
                 exp_orm = self._session.query(db.Experiment).filter_by(name=name).one()
-        return exp_orm.id, exp_orm.script, created
+        return exp_orm.id, exp_orm.shell_install, exp_orm.pip_install, exp_orm.script, created
 
     def create_trials(self, trial_params: List[Dict[str, Any]]):
         trial_orms = []
