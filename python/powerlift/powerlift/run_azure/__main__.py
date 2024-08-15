@@ -3,16 +3,23 @@
 
 def _wait_for_completed_worker(aci_client, resource_group_name, results):
     import time
+    import numpy as np
 
     if len(results) == 0:
         return None
 
+    # if we always start from the beginning we'll eventually fill the first
+    # couple of indexes with long running jobs and then have to go through the same
+    # ones at the start each time as we look for an opening.  It's better to randomly
+    # shuffle the order so we touch all indexes first with equal probability.
+    order = np.array(list(results.keys()))[np.random.permutation(len(results))]
     while True:
         for worker_id, result in results.items():
             if result is None:
                 del results[worker_id]
                 return worker_id
-        for worker_id, result in results.items():
+        for worker_id in order:
+            result = results[worker_id]
             container_group = aci_client.container_groups.get(
                 resource_group_name, result
             )
