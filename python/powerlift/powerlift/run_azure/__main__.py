@@ -13,7 +13,9 @@ def _wait_for_completed_worker(aci_client, resource_group_name, results):
                 del results[worker_id]
                 return worker_id
         for worker_id, result in results.items():
-            container_group = aci_client.container_groups.get(resource_group_name, result)
+            container_group = aci_client.container_groups.get(
+                resource_group_name, result
+            )
             container = container_group.containers[0]
             iview = container.instance_view
             if iview is not None:
@@ -130,8 +132,8 @@ def run_trials(
             restart_policy=ContainerGroupRestartPolicy.never,
         )
         container_group_name = f"powerlift-container-group-{worker_id}-{batch_id}"
-        
-        # begin_create_or_update returns LROPoller, 
+
+        # begin_create_or_update returns LROPoller,
         # but this is only indicates when the containter is started
         aci_client.container_groups.begin_create_or_update(
             resource_group.name, container_group_name, container_group
@@ -141,7 +143,9 @@ def run_trials(
         results[worker_id] = container_group_name
 
     # Wait for all container groups to complete
-    while _wait_for_completed_worker(aci_client, resource_group_name, results) is not None:
+    while (
+        _wait_for_completed_worker(aci_client, resource_group_name, results) is not None
+    ):
         pass
 
     # Delete all container groups

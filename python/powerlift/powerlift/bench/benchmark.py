@@ -70,7 +70,11 @@ class Benchmark:
         # Create experiment
         if self._experiment_id is None:
             self._experiment_id, _, _, _, _ = self._store.get_or_create_experiment(
-                self._name, self._description, shell_install, pip_install, script_contents
+                self._name,
+                self._description,
+                shell_install,
+                pip_install,
+                script_contents,
             )
 
         # Create trials
@@ -153,12 +157,18 @@ class Benchmark:
         if self._experiment_id is None:
             return None
 
-        self._experiment_id, shell_install, pip_install, script, _ = self._store.get_or_create_experiment(
-            self._name, self._description
+        self._experiment_id, shell_install, pip_install, script, _ = (
+            self._store.get_or_create_experiment(self._name, self._description)
         )
         trials = list(self._store.iter_experiment_trials(self._experiment_id))
         experiment = Experiment(
-            self._experiment_id, self._name, self._description, shell_install, pip_install, script, trials
+            self._experiment_id,
+            self._name,
+            self._description,
+            shell_install,
+            pip_install,
+            script,
+            trials,
         )
         return experiment
 
