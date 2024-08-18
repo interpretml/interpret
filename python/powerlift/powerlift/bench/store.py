@@ -26,7 +26,7 @@ import random
 import random
 from powerlift.db.actions import drop_tables, create_db, create_tables
 from powerlift.measures import class_stats, data_stats, regression_stats
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from tqdm import tqdm
 from itertools import chain
 from sqlalchemy.orm import Session
@@ -39,6 +39,7 @@ import pathlib
 import numpy as np
 import pandas as pd
 import ast
+import time
 
 
 @dataclass
@@ -181,7 +182,6 @@ class Store:
         self._conn = self._engine.connect()
         self._session = Session(bind=self._conn)
 
-        self._declared_measures_cache = {}
         self._measure_counts = {}
         self._uri = uri
 
@@ -197,26 +197,48 @@ class Store:
         self._session.rollback()
 
     def start_trial(self, trial_id):
-        trial_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
-        start_time = datetime.now(pytz.utc)
-        trial_orm.start_time = start_time
-        trial_orm.status = db.StatusEnum.RUNNING
-        self._session.add(trial_orm)
-        self._session.commit()
+        n_attempts = 5
+        while True:
+            try:
+                with self._session.begin():
+                    trial_orm = (
+                        self._session.query(db.Trial).filter_by(id=trial_id).one()
+                    )
+                    start_time = datetime.now(pytz.utc)
+                    trial_orm.start_time = start_time
+                    trial_orm.status = db.StatusEnum.RUNNING
+                    self._session.add(trial_orm)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
         return start_time
 
     def end_trial(self, trial_id, errmsg=None):
-        trial_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
-        end_time = datetime.now(pytz.utc)
-        trial_orm.end_time = end_time
-        if errmsg is not None:
-            trial_orm.errmsg = errmsg
-            trial_orm.status = db.StatusEnum.ERROR
-        else:
-            trial_orm.status = db.StatusEnum.COMPLETE
+        n_attempts = 5
+        while True:
+            try:
+                with self._session.begin():
+                    trial_orm = (
+                        self._session.query(db.Trial).filter_by(id=trial_id).one()
+                    )
+                    end_time = datetime.now(pytz.utc)
+                    trial_orm.end_time = end_time
+                    if errmsg is not None:
+                        trial_orm.errmsg = errmsg
+                        trial_orm.status = db.StatusEnum.ERROR
+                    else:
+                        trial_orm.status = db.StatusEnum.COMPLETE
 
-        self._session.add(trial_orm)
-        self._session.commit()
+                    self._session.add(trial_orm)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
         return end_time
 
     def add_trial_run_fn(self, trial_ids, trial_run_fn, wheel_filepaths=None):
@@ -249,17 +271,28 @@ class Store:
                 )
                 wheel_asset_orms.append(wheel_asset_orm)
 
-        trial_orms = self._session.query(db.Trial).filter(db.Trial.id.in_(trial_ids))
-        for trial_orm in trial_orms:
-            trial_orm.input_assets.append(trial_run_fn_asset_orm)
-            if len(wheel_asset_orms) > 0:
-                trial_orm.input_assets.extend(wheel_asset_orms)
+        n_attempts = 5
+        while True:
+            try:
+                with self._session.begin():
+                    trial_orms = self._session.query(db.Trial).filter(
+                        db.Trial.id.in_(trial_ids)
+                    )
+                    for trial_orm in trial_orms:
+                        trial_orm.input_assets.append(trial_run_fn_asset_orm)
+                        if len(wheel_asset_orms) > 0:
+                            trial_orm.input_assets.extend(wheel_asset_orms)
 
-        if trial_orms.first() is not None:
-            orms = [trial_run_fn_asset_orm]
-            orms.extend(wheel_asset_orms)
-            self._session.bulk_save_objects(orms, return_defaults=True)
-            self._session.commit()
+                    if trial_orms.first() is not None:
+                        orms = [trial_run_fn_asset_orm]
+                        orms.extend(wheel_asset_orms)
+                        self._session.bulk_save_objects(orms, return_defaults=True)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
         return None
 
     def measure_from_db_task(self, task_orm):
@@ -398,10 +431,24 @@ class Store:
         return self.from_db_task(task_orm)
 
     def find_trial_by_id(self, _id: int):
-        trial_orm = self._session.query(db.Trial).filter_by(id=_id).one_or_none()
-        if trial_orm is None:
-            return None
-        return self.from_db_trial(trial_orm)
+        n_attempts = 5
+        while True:
+            try:
+                with self._session.begin():
+                    trial_orm = (
+                        self._session.query(db.Trial).filter_by(id=_id).one_or_none()
+                    )
+                    if trial_orm is None:
+                        trial = None
+                    else:
+                        trial = self.from_db_trial(trial_orm)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
+        return trial
 
     def get_experiment(self, name: str) -> Optional[int]:
         exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
@@ -430,12 +477,9 @@ class Store:
                 pip_install=pip_install,
                 script=script,
             )
-            try:
-                self._session.add(exp_orm)
-                self._session.commit()
-            except IntegrityError:
-                self._session.rollback()
-                exp_orm = self._session.query(db.Experiment).filter_by(name=name).one()
+            self._session.add(exp_orm)
+            self._session.flush()
+
         return (
             exp_orm.id,
             exp_orm.shell_install,
@@ -454,7 +498,7 @@ class Store:
             )
             trial_orms.append(trial_orm)
         self._session.bulk_save_objects(trial_orms, return_defaults=True)
-        self._session.commit()
+        self._session.flush()
         return [x.id for x in trial_orms]
 
     def create_trial(
@@ -500,7 +544,7 @@ class Store:
                 env=env,
             )
             self._session.add(method_orm)
-            self._session.commit()
+            self._session.flush()
         return method_orm.id, created
 
     def iter_experiment_trials(self, experiment_id: int):
@@ -590,6 +634,7 @@ class Store:
         trial_or_task_type: Type,
         name,
         value,
+        declared_measures_cache=None,
         description=None,
         type_=None,
         lower_is_better=True,
@@ -611,8 +656,9 @@ class Store:
             type_ = db.TypeEnum[type_.upper()]
 
         # Create measure description if needed
-        is_declared = name in self._declared_measures_cache
-        if not is_declared:
+        if declared_measures_cache is not None and name in declared_measures_cache:
+            measure_description_orm = declared_measures_cache[name]
+        else:
             if description is None:
                 description = f"Measure: {name}"
 
@@ -628,19 +674,10 @@ class Store:
                     type=type_,
                     lower_is_better=lower_is_better,
                 )
-                try:
-                    self._session.add(measure_description_orm)
-                    self._session.commit()
-                except IntegrityError:
-                    self._session.rollback()
-                    measure_description_orm = (
-                        self._session.query(db.MeasureDescription)
-                        .filter_by(name=name)
-                        .one()
-                    )
-            self._declared_measures_cache[name] = measure_description_orm
-        else:
-            measure_description_orm = self._declared_measures_cache[name]
+                self._session.add(measure_description_orm)
+                self._session.flush()
+                if declared_measures_cache is not None:
+                    declared_measures_cache[name] = measure_description_orm
 
         # Create measure
         seq_num = self._measure_counts[name] = self._measure_counts.get(name, -1) + 1
@@ -672,9 +709,7 @@ class Store:
             self._session.query(db_type).filter_by(id=trial_or_task_id).one()
         )
         trial_or_task_orm.measure_outcomes.append(measure_outcome_orm)
-        if not is_declared:
-            self._session.add(measure_description_orm)
-        self._session.commit()
+        self._session.flush()
         return measure_outcome_orm.id
 
     def create_task_with_data(self, data, version="0.0.1"):
@@ -739,7 +774,7 @@ class Store:
         self._session.add(X_orm)
         self._session.add(y_orm)
         self._session.add(task_orm)
-        self._session.commit()
+        self._session.flush()
 
         return task_orm.id
 
@@ -797,7 +832,7 @@ class Store:
         self._session.add(inputs_orm)
         self._session.add(outputs_orm)
         self._session.add(task_orm)
-        self._session.commit()
+        self._session.flush()
 
         return task_orm.id
 
@@ -829,6 +864,7 @@ def populate_task_measures(store, task_id, data):
         unprocessed_measures.extend(inputs_data_stats)
         unprocessed_measures.extend(outputs_data_stats)
 
+    declared_measures_cache = {}
     for unprocessed_measure in unprocessed_measures:
         name, description, value, lower_is_better = unprocessed_measure
         store.add_measure(
@@ -836,6 +872,7 @@ def populate_task_measures(store, task_id, data):
             Task,
             name,
             value,
+            declared_measures_cache,
             description=description,
             lower_is_better=lower_is_better,
         )
@@ -985,15 +1022,26 @@ def populate_with_datasets(
         )
 
     for dataset in dataset_iter:
-        try:
-            task_id = store.create_task_with_data(dataset)
-            populate_task_measures(store, task_id, dataset)
-        except IntegrityError as e:
-            store.rollback()
-            if not exist_ok:
-                raise DatasetAlreadyExistsError("Dataset already in store") from e
-            else:
-                return False
+        n_attempts = 5
+        while True:
+            try:
+                with store._session.begin():
+                    try:
+                        task_id = store.create_task_with_data(dataset)
+                    except IntegrityError as e:
+                        if not exist_ok:
+                            raise DatasetAlreadyExistsError(
+                                "Dataset already in store"
+                            ) from e
+                        else:
+                            return False
+                    populate_task_measures(store, task_id, dataset)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
     return True
 
 

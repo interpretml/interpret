@@ -9,6 +9,8 @@ from typing import Type, TypeVar
 from typing import Union, Optional, List
 from dataclasses import dataclass
 from numbers import Number
+from sqlalchemy.exc import SQLAlchemyError
+import time
 
 from powerlift.bench.store import Store
 
@@ -186,9 +188,27 @@ class Trial:
             type_ (Union[None, Type, str], optional): Type of measure. Defaults to None.
             lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
-        self._store.add_measure(
-            self._id, type(self), name, value, description, type_, lower_is_better
-        )
+
+        n_attempts = 5
+        while True:
+            try:
+                with self._store._session.begin():
+                    self._store.add_measure(
+                        self._id,
+                        type(self),
+                        name,
+                        value,
+                        None,
+                        description,
+                        type_,
+                        lower_is_better,
+                    )
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
 
     @property
     def store(self):

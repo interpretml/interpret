@@ -66,7 +66,7 @@ class LocalMachine(Executor):
                 except Exception as e:
                     self._trial_id_to_result[trial.id] = e
                     if self._raise_exception or self._debug_mode:
-                        raise e
+                        raise
             else:
                 self._trial_id_to_result[trial.id] = self._pool.apply_async(
                     runner.run_trials,

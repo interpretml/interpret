@@ -9,6 +9,8 @@ from powerlift.executors.base import Executor
 from powerlift.executors import LocalMachine
 import pandas as pd
 import random
+from sqlalchemy.exc import SQLAlchemyError
+import time
 
 import os
 
@@ -67,67 +69,90 @@ class Benchmark:
         if pip_install is None:
             pip_install = ""
 
-        # Create experiment
-        if self._experiment_id is None:
-            self._experiment_id, _, _, _, _ = self._store.get_or_create_experiment(
-                self._name,
-                self._description,
-                shell_install,
-                pip_install,
-                script_contents,
-            )
+        n_attempts = 5
+        while True:
+            try:
+                with self._store._session.begin():
+                    # Create experiment
+                    if self._experiment_id is None:
+                        self._experiment_id, _, _, _, _ = (
+                            self._store.get_or_create_experiment(
+                                self._name,
+                                self._description,
+                                shell_install,
+                                pip_install,
+                                script_contents,
+                            )
+                        )
 
-        # Create trials
-        trial_params = []
-        pending_trials = []
-        for task in self._store.iter_tasks():
-            generated_trials = trial_gen_fn(task)
-            for generated_trial in generated_trials:
-                if isinstance(generated_trial, tuple):
-                    # Response: (method, meta)
-                    method = generated_trial[0]
-                    meta = generated_trial[1]
-                else:
-                    # Response: method
-                    method = generated_trial
-                    meta = {}
-                if isinstance(method, str):
-                    method = Method.from_name(method)
-                elif isinstance(method, Method):
-                    pass
-                else:
-                    raise TypeError(f"Cannot handle method type: {type(method)}")
-                method_id, _ = self._store.get_or_create_method(
-                    method.name,
-                    method.description,
-                    method.version,
-                    method.params,
-                    method.env,
-                )
-                method = Method(
-                    method_id,
-                    method.name,
-                    method.description,
-                    method.version,
-                    method.params,
-                    method.env,
-                )
+                    # Create trials
+                    trial_params = []
+                    pending_trials = []
+                    for task in self._store.iter_tasks():
+                        generated_trials = trial_gen_fn(task)
+                        for generated_trial in generated_trials:
+                            if isinstance(generated_trial, tuple):
+                                # Response: (method, meta)
+                                method = generated_trial[0]
+                                meta = generated_trial[1]
+                            else:
+                                # Response: method
+                                method = generated_trial
+                                meta = {}
+                            if isinstance(method, str):
+                                method = Method.from_name(method)
+                            elif isinstance(method, Method):
+                                pass
+                            else:
+                                raise TypeError(
+                                    f"Cannot handle method type: {type(method)}"
+                                )
+                            method_id, _ = self._store.get_or_create_method(
+                                method.name,
+                                method.description,
+                                method.version,
+                                method.params,
+                                method.env,
+                            )
+                            method = Method(
+                                method_id,
+                                method.name,
+                                method.description,
+                                method.version,
+                                method.params,
+                                method.env,
+                            )
 
-                for replicate_num in range(n_replicates):
-                    trial_param = {
-                        "experiment_id": self._experiment_id,
-                        "task_id": task.id,
-                        "method_id": method.id,
-                        "replicate_num": replicate_num,
-                        "meta": meta,
-                    }
-                    trial_params.append(trial_param)
-                    pending_trials.append(
-                        Trial(None, self._store, task, method, replicate_num, meta, [])
-                    )
+                            for replicate_num in range(n_replicates):
+                                trial_param = {
+                                    "experiment_id": self._experiment_id,
+                                    "task_id": task.id,
+                                    "method_id": method.id,
+                                    "replicate_num": replicate_num,
+                                    "meta": meta,
+                                }
+                                trial_params.append(trial_param)
+                                pending_trials.append(
+                                    Trial(
+                                        None,
+                                        self._store,
+                                        task,
+                                        method,
+                                        replicate_num,
+                                        meta,
+                                        [],
+                                    )
+                                )
 
-        # Save to store
-        trial_ids = self._store.create_trials(trial_params)
+                    # Save to store
+                    trial_ids = self._store.create_trials(trial_params)
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
+
         for _id, trial in zip(trial_ids, pending_trials):
             trial._id = _id
 
