@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.11 - 2024-08-20
+### Added
+- eliminate need for private container registries
+- add shell and pip remote dependency installation
+### Fixed
+- use explicit transactions and retries on database connections in the remote runners
+- retry Azure commands if they fail
+- fix issue that was causing long running containers to be terminated prematurely
+- fix multiprocessing on Windows
+
 ## v0.1.10 - 2024-08-02
 ### Added
 - Support for OpenML AutoML regression and classification datasets.

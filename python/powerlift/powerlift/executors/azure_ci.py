@@ -27,7 +27,7 @@ class AzureContainerInstance(Executor):
         # other images available at:
         # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
         # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
-        image: str = "interpretml/powerlift:0.1.10",
+        image: str = "interpretml/powerlift:0.1.11",
         shell_install: str = None,
         pip_install: str = None,
         n_running_containers: int = 1,
