@@ -47,9 +47,7 @@ class LocalMachine(Executor):
     def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
         from powerlift.run import __main__ as runner
 
-        self._store.add_trial_run_fn(
-            [x.id for x in trials], trial_run_fn, self._wheel_filepaths
-        )
+        self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
         for trial in trials:
             if self._pool is None:
                 try:

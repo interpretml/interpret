@@ -98,6 +98,9 @@ class Experiment(Base):
     pip_install = Column(Text)
     script = Column(Text)
 
+    # TODO: consider removing the wheel relationship since it means we
+    # spend time downloading the wheels each time we query the experiment
+    wheels = relationship("Wheel", back_populates="experiment")
     trials = relationship("Trial", back_populates="experiment")
 
 
@@ -226,3 +229,15 @@ class Asset(Base):
         "Trial", secondary=trial_output_asset_table, back_populates="output_assets"
     )
     tasks = relationship("Task", secondary=task_asset_table, back_populates="assets")
+
+
+class Wheel(Base):
+    """Wheel assets for experiments."""
+
+    __tablename__ = "wheel"
+    experiment_id = Column(
+        Integer, ForeignKey("experiment.id"), primary_key=True, nullable=False
+    )
+    name = Column(String(NAME_LEN), primary_key=True, nullable=False)
+    embedded = Column(LargeBinary, nullable=False)
+    experiment = relationship("Experiment", back_populates="wheels")

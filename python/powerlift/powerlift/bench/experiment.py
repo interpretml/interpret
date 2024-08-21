@@ -30,6 +30,15 @@ class Asset:
 
 
 @dataclass(frozen=True)
+class Wheel:
+    """Represents a wheel asset that is used by experiment objects."""
+
+    experiment_id: int
+    name: str
+    embedded: bytes
+
+
+@dataclass(frozen=True)
 class Measure:
     """Represents a measure emitted by a trial or task.
 
@@ -138,6 +147,7 @@ class Experiment:
     shell_install: str
     pip_install: str
     script: str
+    wheels: List[Wheel]
     trials: List
 
 

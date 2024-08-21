@@ -98,9 +98,7 @@ class AzureContainerInstance(Executor):
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
         tasks = []
-        self._store.add_trial_run_fn(
-            [x.id for x in trials], trial_run_fn, self._wheel_filepaths
-        )
+        self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
         for trial in trials:
             params = (
                 experiment_id,

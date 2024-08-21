@@ -73,9 +73,7 @@ class InsecureDocker(LocalMachine):
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
-        self._store.add_trial_run_fn(
-            [x.id for x in trials], trial_run_fn, self._wheel_filepaths
-        )
+        self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
         for trial in trials:
             self._trial_id_to_result[trial.id] = self._pool.apply_async(
                 _run_docker,

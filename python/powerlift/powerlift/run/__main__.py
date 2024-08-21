@@ -8,7 +8,7 @@ def run_trials(
     from powerlift.bench.store import Store
     import traceback
     from powerlift.executors.base import timed_run
-    from powerlift.bench.store import MIMETYPE_FUNC, MIMETYPE_WHEEL, BytesParser
+    from powerlift.bench.store import MIMETYPE_FUNC, BytesParser
     from powerlift.bench.experiment import Store
     import subprocess
     import tempfile
@@ -23,24 +23,13 @@ def run_trials(
 
         # Handle input assets
         trial_run_fn = None
-        with tempfile.TemporaryDirectory() as dirpath:
-            for input_asset in trial.input_assets:
-                if input_asset.mimetype == MIMETYPE_WHEEL:
-                    wheel = BytesParser.deserialize(
-                        input_asset.mimetype, input_asset.embedded
-                    )
-                    filepath = Path(dirpath, input_asset.name)
-                    with open(filepath, "wb") as f:
-                        f.write(wheel.content)
-                    subprocess.check_call(
-                        [sys.executable, "-m", "pip", "install", filepath]
-                    )
-                elif input_asset.mimetype == MIMETYPE_FUNC:
-                    trial_run_fn = BytesParser.deserialize(
-                        MIMETYPE_FUNC, input_asset.embedded
-                    )
-                else:
-                    continue
+        for input_asset in trial.input_assets:
+            if input_asset.mimetype == MIMETYPE_FUNC:
+                trial_run_fn = BytesParser.deserialize(
+                    MIMETYPE_FUNC, input_asset.embedded
+                )
+            else:
+                continue
         if debug_fn is not None:
             trial_run_fn = debug_fn
 

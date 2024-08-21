@@ -64,6 +64,15 @@ def run_trials(
             cmd="python -m pip install $pip_install"
             eval $cmd
         fi
+        filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id='$EXPERIMENT_ID';" -t -A)
+        if [ -n "$filenames" ]; then
+            echo "$filenames" | while IFS= read -r filename; do
+                echo "Processing filename: $filename"
+                psql "$DB_URL" -c "COPY (SELECT embedded FROM wheel WHERE experiment_id='$EXPERIMENT_ID' AND name='$filename') TO STDOUT WITH BINARY;" > "$filename"
+                cmd="python -m pip install $filename"
+                eval $cmd
+            done
+        fi
         result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
         printf "%s" "$result" > "startup.py"
         python startup.py

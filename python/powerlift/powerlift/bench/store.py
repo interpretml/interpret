@@ -42,14 +42,6 @@ import ast
 import time
 
 
-@dataclass
-class Wheel:
-    """Python wheel with its name and content as bytes."""
-
-    name: str
-    content: bytes
-
-
 def _parse_function(src):
     src_ast = ast.parse(src)
     if isinstance(src_ast, ast.Module) and isinstance(src_ast.body[0], ast.FunctionDef):
@@ -70,7 +62,6 @@ MIMETYPE_DF = "application/vnd.interpretml/parquet-df"
 MIMETYPE_SERIES = "application/vnd.interpretml/parquet-series"
 MIMETYPE_JSON = "application/json"
 MIMETYPE_FUNC = "application/vnd.interpretml/function-str"
-MIMETYPE_WHEEL = "application/vnd.interpretml/python-wheel"
 
 
 class BytesParser:
@@ -98,10 +89,6 @@ class BytesParser:
                 raise RuntimeError("Serialized code not valid.")
             compiled_func = _compile_function(src_ast)
             return compiled_func
-        elif mimetype == MIMETYPE_WHEEL:
-            json_record = json.load(bstream)
-            content = base64.b64decode(json_record["content"].encode("ascii"))
-            return Wheel(json_record["name"], content)
         else:
             return None
 
@@ -143,14 +130,6 @@ class BytesParser:
                 raise RuntimeError("Serialized code not valid.")
             bstream.write(src.encode("utf-8"))
             mimetype = MIMETYPE_FUNC
-        elif isinstance(obj, Wheel):
-            content = base64.b64encode(obj.content).decode("ascii")
-            json_record = {
-                "name": obj.name,
-                "content": content,
-            }
-            bstream.write(json.dumps(json_record).encode())
-            mimetype = MIMETYPE_WHEEL
         else:
             return None, None
 
@@ -241,7 +220,7 @@ class Store:
                 time.sleep(5)
         return end_time
 
-    def add_trial_run_fn(self, trial_ids, trial_run_fn, wheel_filepaths=None):
+    def add_trial_run_fn(self, trial_ids, trial_run_fn):
         import sys
 
         mimetype, bstream = BytesParser.serialize(trial_run_fn)
@@ -253,23 +232,6 @@ class Store:
             embedded=bstream.getvalue(),
             mimetype=mimetype,
         )
-        wheel_asset_orms = []
-        if wheel_filepaths is not None:
-            for wheel_filepath in wheel_filepaths:
-                with open(wheel_filepath, "rb") as f:
-                    content = f.read()
-                name = pathlib.Path(wheel_filepath).name
-                wheel = Wheel(name, content)
-                mimetype, bstream = BytesParser.serialize(wheel)
-                wheel_asset_orm = db.Asset(
-                    name=name,
-                    description=f"Wheel: {name}",
-                    version=sys.version,
-                    is_embedded=True,
-                    embedded=bstream.getvalue(),
-                    mimetype=mimetype,
-                )
-                wheel_asset_orms.append(wheel_asset_orm)
 
         n_attempts = 5
         while True:
@@ -280,12 +242,9 @@ class Store:
                     )
                     for trial_orm in trial_orms:
                         trial_orm.input_assets.append(trial_run_fn_asset_orm)
-                        if len(wheel_asset_orms) > 0:
-                            trial_orm.input_assets.extend(wheel_asset_orms)
 
                     if trial_orms.first() is not None:
                         orms = [trial_run_fn_asset_orm]
-                        orms.extend(wheel_asset_orms)
                         self._session.bulk_save_objects(orms, return_defaults=True)
                 break
             except SQLAlchemyError:
@@ -360,6 +319,15 @@ class Store:
             measures,
         )
 
+    def from_db_wheel(self, wheel_orm):
+        from powerlift.bench.experiment import Wheel
+
+        return Wheel(
+            wheel_orm.experiment_id,
+            wheel_orm.name,
+            wheel_orm.embedded,
+        )
+
     def from_db_asset(self, asset_orm):
         from powerlift.bench.experiment import Asset
 
@@ -377,6 +345,7 @@ class Store:
     def from_db_experiment(self, experiment_orm):
         from powerlift.bench.experiment import Experiment
 
+        wheels = [self.from_db_wheel(wheel) for wheel in experiment_orm.wheels]
         trials = list(self.iter_experiment_trials(experiment_orm.id))
         return Experiment(
             experiment_orm.id,
@@ -385,6 +354,7 @@ class Store:
             experiment_orm.shell_install,
             experiment_orm.pip_install,
             experiment_orm.script,
+            wheels,
             trials,
         )
 
@@ -457,36 +427,32 @@ class Store:
         else:
             return exp_orm.id
 
-    def get_or_create_experiment(
+    def create_experiment(
         self,
         name: str,
         description: str,
         shell_install: str = None,
         pip_install: str = None,
         script: str = None,
+        wheels=None,
     ) -> Tuple[int, bool]:
-        """Get or create experiment keyed by name."""
-        created = False
-        exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
-        if exp_orm is None:
-            created = True
-            exp_orm = db.Experiment(
-                name=name,
-                description=description,
-                shell_install=shell_install,
-                pip_install=pip_install,
-                script=script,
-            )
-            self._session.add(exp_orm)
-            self._session.flush()
-
-        return (
-            exp_orm.id,
-            exp_orm.shell_install,
-            exp_orm.pip_install,
-            exp_orm.script,
-            created,
+        """Create experiment keyed by name."""
+        exp_orm = db.Experiment(
+            name=name,
+            description=description,
+            shell_install=shell_install,
+            pip_install=pip_install,
+            script=script,
         )
+
+        if wheels is not None:
+            for wheel in wheels:
+                self._session.add(wheel)
+                exp_orm.wheels.append(wheel)
+
+        self._session.add(exp_orm)
+        self._session.flush()
+        return exp_orm.id
 
     def create_trials(self, trial_params: List[Dict[str, Any]]):
         trial_orms = []

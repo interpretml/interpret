@@ -11,6 +11,8 @@ import pandas as pd
 import random
 from sqlalchemy.exc import SQLAlchemyError
 import time
+import pathlib
+from powerlift.db import schema as db
 
 import os
 
@@ -69,20 +71,29 @@ class Benchmark:
         if pip_install is None:
             pip_install = ""
 
+        wheels = []
+        wheel_filepaths = executor._wheel_filepaths
+        if wheel_filepaths is not None:
+            for wheel_filepath in wheel_filepaths:
+                with open(wheel_filepath, "rb") as f:
+                    content = f.read()
+                name = pathlib.Path(wheel_filepath).name
+                wheel = db.Wheel(name=name, embedded=content)
+                wheels.append(wheel)
+
         n_attempts = 5
         while True:
             try:
                 with self._store._session.begin():
                     # Create experiment
                     if self._experiment_id is None:
-                        self._experiment_id, _, _, _, _ = (
-                            self._store.get_or_create_experiment(
-                                self._name,
-                                self._description,
-                                shell_install,
-                                pip_install,
-                                script_contents,
-                            )
+                        experiment_id = self._store.create_experiment(
+                            self._name,
+                            self._description,
+                            shell_install,
+                            pip_install,
+                            script_contents,
+                            wheels,
                         )
 
                     # Create trials
@@ -125,7 +136,7 @@ class Benchmark:
 
                             for replicate_num in range(n_replicates):
                                 trial_param = {
-                                    "experiment_id": self._experiment_id,
+                                    "experiment_id": experiment_id,
                                     "task_id": task.id,
                                     "method_id": method.id,
                                     "replicate_num": replicate_num,
@@ -146,6 +157,7 @@ class Benchmark:
 
                     # Save to store
                     trial_ids = self._store.create_trials(trial_params)
+                self._experiment_id = experiment_id
                 break
             except SQLAlchemyError:
                 n_attempts -= 1
