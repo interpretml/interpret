@@ -31,6 +31,7 @@ from tqdm import tqdm
 from itertools import chain
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from sqlalchemy import create_engine
 import io
 import os
 from powerlift.db import schema as db
@@ -154,6 +155,7 @@ class Store:
         # TODO: include support for Azure passwordless credentials:
         # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
 
+        self._create_engine_kwargs = create_engine_kwargs
         self._engine = create_db(uri, **create_engine_kwargs)
         if force_recreate:
             drop_tables(self._engine)
@@ -172,6 +174,39 @@ class Store:
     def __del__(self):
         self._session.close()
         self._conn.close()
+        self._engine.dispose()
+
+    def reconnect(self, wait_secs=30.0):
+        time.sleep(wait_secs)
+        try:
+            self._session.close()
+        except:
+            pass
+        self._session = None
+        try:
+            self._conn.close()
+        except:
+            pass
+        self._conn = None
+        try:
+            self._engine.dispose()
+        except:
+            pass
+        self._engine = None
+        try:
+            self._engine = create_engine(self._uri, **self._create_engine_kwargs)
+        except:
+            pass
+        if self._engine is not None:
+            try:
+                self._conn = self._engine.connect()
+            except:
+                pass
+            if self._conn is not None:
+                try:
+                    self._session = Session(bind=self._conn)
+                except:
+                    pass
 
     def rollback(self):
         self._session.rollback()
@@ -193,7 +228,7 @@ class Store:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self.reconnect()
         return start_time
 
     def end_trial(self, trial_id, errmsg=None):
@@ -218,7 +253,7 @@ class Store:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self.reconnect()
         return end_time
 
     def add_trial_run_fn(self, trial_ids, trial_run_fn):
@@ -252,7 +287,7 @@ class Store:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self.reconnect()
         return None
 
     def measure_from_db_task(self, task_orm):
@@ -409,7 +444,9 @@ class Store:
                     rowcount = 0
                     while rowcount != 1:
                         trial_id = self._session.execute(
-                            text("SELECT id FROM trial WHERE start_time IS NULL LIMIT 1")
+                            text(
+                                "SELECT id FROM trial WHERE start_time IS NULL LIMIT 1"
+                            )
                         ).scalar()
                         if trial_id is None:
                             break
@@ -424,7 +461,7 @@ class Store:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self.reconnect()
         return trial_id
 
     def find_trial_by_id(self, _id: int):
@@ -444,7 +481,7 @@ class Store:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self.reconnect()
         return trial
 
     def get_experiment(self, name: str) -> Optional[int]:
@@ -1034,7 +1071,7 @@ def populate_with_datasets(
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                store.reconnect()
     return True
 
 

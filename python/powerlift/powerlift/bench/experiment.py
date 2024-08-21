@@ -217,7 +217,7 @@ class Trial:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self._store.reconnect()
 
     @property
     def store(self):

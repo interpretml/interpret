@@ -162,7 +162,7 @@ class Benchmark:
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
-                time.sleep(5)
+                self._store.reconnect()
 
         for _id, trial in zip(trial_ids, pending_trials):
             trial._id = _id
