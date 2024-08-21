@@ -30,6 +30,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from tqdm import tqdm
 from itertools import chain
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
 import io
 import os
 from powerlift.db import schema as db
@@ -399,6 +400,32 @@ class Store:
         if task_orm is None:
             return None
         return self.from_db_task(task_orm)
+
+    def pick_trial(self):
+        n_attempts = 50
+        while True:
+            try:
+                with self._session.begin():
+                    rowcount = 0
+                    while rowcount != 1:
+                        trial_id = self._session.execute(
+                            text("SELECT id FROM trial WHERE start_time IS NULL")
+                        ).scalar()
+                        if trial_id is None:
+                            break
+                        result = self._session.execute(
+                            text(
+                                f"UPDATE trial SET start_time = CURRENT_TIMESTAMP WHERE id={trial_id} AND start_time is NULL"
+                            )
+                        )
+                        rowcount = result.rowcount
+                break
+            except SQLAlchemyError:
+                n_attempts -= 1
+                if n_attempts <= 0:
+                    raise
+                time.sleep(5)
+        return trial_id
 
     def find_trial_by_id(self, _id: int):
         n_attempts = 5

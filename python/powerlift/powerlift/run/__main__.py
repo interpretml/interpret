@@ -16,7 +16,12 @@ def run_trials(
     import sys
 
     store = Store(db_url)
-    for trial_id in trial_ids:
+    while True:
+        # TODO: remove the trial_ids that we no longer use.
+        trial_id = store.pick_trial()
+        if trial_id is None:
+            break  # no more work left
+
         trial = store.find_trial_by_id(trial_id)
         if trial is None:
             raise RuntimeError(f"No trial found for id {trial_id}")
@@ -37,7 +42,6 @@ def run_trials(
             raise RuntimeError("No trial run function found.")
 
         # Run trial
-        store.start_trial(trial.id)
         errmsg = None
         try:
             _, duration, timed_out = timed_run(
