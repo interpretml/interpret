@@ -26,7 +26,7 @@ import random
 import random
 from powerlift.db.actions import drop_tables, create_db, create_tables
 from powerlift.measures import class_stats, data_stats, regression_stats
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 from tqdm import tqdm
 from itertools import chain
 from sqlalchemy.orm import Session
@@ -189,7 +189,7 @@ class Store:
                     trial_orm.status = db.StatusEnum.RUNNING
                     self._session.add(trial_orm)
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
@@ -214,7 +214,7 @@ class Store:
 
                     self._session.add(trial_orm)
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
@@ -248,7 +248,7 @@ class Store:
                         orms = [trial_run_fn_asset_orm]
                         self._session.bulk_save_objects(orms, return_defaults=True)
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
@@ -409,18 +409,18 @@ class Store:
                     rowcount = 0
                     while rowcount != 1:
                         trial_id = self._session.execute(
-                            text("SELECT id FROM trial WHERE start_time IS NULL")
+                            text("SELECT id FROM trial WHERE start_time IS NULL LIMIT 1")
                         ).scalar()
                         if trial_id is None:
                             break
                         result = self._session.execute(
                             text(
-                                f"UPDATE trial SET start_time = CURRENT_TIMESTAMP WHERE id={trial_id} AND start_time is NULL"
+                                f"UPDATE trial SET start_time = CURRENT_TIMESTAMP, status='RUNNING' WHERE id={trial_id} AND start_time is NULL"
                             )
                         )
                         rowcount = result.rowcount
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
@@ -440,7 +440,7 @@ class Store:
                     else:
                         trial = self.from_db_trial(trial_orm)
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
@@ -1030,7 +1030,7 @@ def populate_with_datasets(
                             return False
                     populate_task_measures(store, task_id, dataset)
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise

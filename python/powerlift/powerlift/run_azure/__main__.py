@@ -18,18 +18,18 @@ def _wait_for_completed_worker(aci_client, resource_group_name, results):
             if result is None:
                 del results[worker_id]
                 return worker_id
-        for worker_id in order:
-            result = results[worker_id]
-            container_group = aci_client.container_groups.get(
-                resource_group_name, result
-            )
-            container = container_group.containers[0]
-            iview = container.instance_view
-            if iview is not None:
-                state = iview.current_state.state
-                if state == "Terminated":
-                    del results[worker_id]
-                    return worker_id
+        # for worker_id in order:
+        #     result = results[worker_id]
+        #     container_group = aci_client.container_groups.get(
+        #         resource_group_name, result
+        #     )
+        #     container = container_group.containers[0]
+        #     iview = container.instance_view
+        #     if iview is not None:
+        #         state = iview.current_state.state
+        #         if state == "Terminated":
+        #             del results[worker_id]
+        #             return worker_id
         time.sleep(1)
 
 
@@ -109,6 +109,10 @@ def run_trials(
     resource_group = None
     worker_id = None
     while len(tasks) != 0:
+        # TODO PK: this entire section has to change because the runners themselves now
+        # choose what tasks to work on and this section is no longer responsible
+        # for starting new containers
+
         experiment_id, trial_ids, uri, timeout, raise_exception, image = tasks.pop(0)
         while True:
             try:

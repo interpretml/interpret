@@ -9,7 +9,6 @@ from typing import Type, TypeVar
 from typing import Union, Optional, List
 from dataclasses import dataclass
 from numbers import Number
-from sqlalchemy.exc import SQLAlchemyError
 import time
 
 from powerlift.bench.store import Store
@@ -214,7 +213,7 @@ class Trial:
                         lower_is_better,
                     )
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise

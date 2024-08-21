@@ -9,7 +9,6 @@ from powerlift.executors.base import Executor
 from powerlift.executors import LocalMachine
 import pandas as pd
 import random
-from sqlalchemy.exc import SQLAlchemyError
 import time
 import pathlib
 from powerlift.db import schema as db
@@ -159,7 +158,7 @@ class Benchmark:
                     trial_ids = self._store.create_trials(trial_params)
                 self._experiment_id = experiment_id
                 break
-            except SQLAlchemyError:
+            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
                 n_attempts -= 1
                 if n_attempts <= 0:
                     raise
