@@ -80,89 +80,83 @@ class Benchmark:
                 wheel = db.Wheel(name=name, embedded=content)
                 wheels.append(wheel)
 
-        n_attempts = 5
         while True:
-            try:
-                with self._store._session.begin():
-                    # Create experiment
-                    if self._experiment_id is None:
-                        experiment_id = self._store.create_experiment(
-                            self._name,
-                            self._description,
-                            shell_install,
-                            pip_install,
-                            script_contents,
-                            wheels,
+            with self._store:
+                # Create experiment
+                if self._experiment_id is None:
+                    experiment_id = self._store.create_experiment(
+                        self._name,
+                        self._description,
+                        shell_install,
+                        pip_install,
+                        script_contents,
+                        wheels,
+                    )
+
+                # Create trials
+                trial_params = []
+                pending_trials = []
+                for task in self._store.iter_tasks():
+                    generated_trials = trial_gen_fn(task)
+                    for generated_trial in generated_trials:
+                        if isinstance(generated_trial, tuple):
+                            # Response: (method, meta)
+                            method = generated_trial[0]
+                            meta = generated_trial[1]
+                        else:
+                            # Response: method
+                            method = generated_trial
+                            meta = {}
+                        if isinstance(method, str):
+                            method = Method.from_name(method)
+                        elif isinstance(method, Method):
+                            pass
+                        else:
+                            raise TypeError(
+                                f"Cannot handle method type: {type(method)}"
+                            )
+                        method_id, _ = self._store.get_or_create_method(
+                            method.name,
+                            method.description,
+                            method.version,
+                            method.params,
+                            method.env,
+                        )
+                        method = Method(
+                            method_id,
+                            method.name,
+                            method.description,
+                            method.version,
+                            method.params,
+                            method.env,
                         )
 
-                    # Create trials
-                    trial_params = []
-                    pending_trials = []
-                    for task in self._store.iter_tasks():
-                        generated_trials = trial_gen_fn(task)
-                        for generated_trial in generated_trials:
-                            if isinstance(generated_trial, tuple):
-                                # Response: (method, meta)
-                                method = generated_trial[0]
-                                meta = generated_trial[1]
-                            else:
-                                # Response: method
-                                method = generated_trial
-                                meta = {}
-                            if isinstance(method, str):
-                                method = Method.from_name(method)
-                            elif isinstance(method, Method):
-                                pass
-                            else:
-                                raise TypeError(
-                                    f"Cannot handle method type: {type(method)}"
+                        for replicate_num in range(n_replicates):
+                            trial_param = {
+                                "experiment_id": experiment_id,
+                                "task_id": task.id,
+                                "method_id": method.id,
+                                "replicate_num": replicate_num,
+                                "meta": meta,
+                            }
+                            trial_params.append(trial_param)
+                            pending_trials.append(
+                                Trial(
+                                    None,
+                                    self._store,
+                                    task,
+                                    method,
+                                    replicate_num,
+                                    meta,
+                                    [],
                                 )
-                            method_id, _ = self._store.get_or_create_method(
-                                method.name,
-                                method.description,
-                                method.version,
-                                method.params,
-                                method.env,
-                            )
-                            method = Method(
-                                method_id,
-                                method.name,
-                                method.description,
-                                method.version,
-                                method.params,
-                                method.env,
                             )
 
-                            for replicate_num in range(n_replicates):
-                                trial_param = {
-                                    "experiment_id": experiment_id,
-                                    "task_id": task.id,
-                                    "method_id": method.id,
-                                    "replicate_num": replicate_num,
-                                    "meta": meta,
-                                }
-                                trial_params.append(trial_param)
-                                pending_trials.append(
-                                    Trial(
-                                        None,
-                                        self._store,
-                                        task,
-                                        method,
-                                        replicate_num,
-                                        meta,
-                                        [],
-                                    )
-                                )
-
-                    # Save to store
-                    trial_ids = self._store.create_trials(trial_params)
+                # Save to store
+                trial_ids = self._store.create_trials(trial_params)
+            if self._store.succeeded:
                 self._experiment_id = experiment_id
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self._store.reconnect()
 
         for _id, trial in zip(trial_ids, pending_trials):
             trial._id = _id
@@ -214,11 +208,15 @@ class Benchmark:
         Returns:
             Trial statuses (Optional[pandas.DataFrame]): Experiment's trials' status.
         """
-        self._experiment_id = self._store.get_experiment(self._name)
-        if self._experiment_id is None:
-            return None
+        while True:
+            with self._store:
+                self._experiment_id = self._store.get_experiment(self._name)
+                if self._experiment_id is None:
+                    return None
 
-        records = list(self._store.iter_status(self._experiment_id))
+                records = list(self._store.iter_status(self._experiment_id))
+            if self._store.succeeded:
+                break
         return pd.DataFrame.from_records(records)
 
     def results(self) -> Optional[pd.DataFrame]:
@@ -227,11 +225,16 @@ class Benchmark:
         Returns:
             Results (pandas.DataFrame): Measures of an experiment in long form.
         """
-        self._experiment_id = self._store.get_experiment(self._name)
-        if self._experiment_id is None:
-            return None
 
-        records = list(self._store.iter_results(self._experiment_id))
+        while True:
+            with self._store:
+                self._experiment_id = self._store.get_experiment(self._name)
+                if self._experiment_id is None:
+                    return None
+
+                records = list(self._store.iter_results(self._experiment_id))
+            if self._store.succeeded:
+                break
         return pd.DataFrame.from_records(records)
 
     def available_tasks(self, include_measures=False) -> Optional[pd.DataFrame]:

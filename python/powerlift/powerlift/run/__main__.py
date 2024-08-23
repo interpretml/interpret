@@ -2,7 +2,13 @@
 
 
 def run_trials(
-    experiment_id, trial_ids, db_url, timeout, raise_exception, debug_fn=None
+    experiment_id,
+    trial_ids,
+    db_url,
+    timeout,
+    raise_exception,
+    debug_fn=None,
+    is_remote=False,
 ):
     """Runs trials. Includes wheel installation and timeouts."""
     from powerlift.bench.store import Store
@@ -15,10 +21,17 @@ def run_trials(
     from pathlib import Path
     import sys
 
-    store = Store(db_url)
+    if is_remote:
+        print_exceptions = True
+        max_attempts = None
+    else:
+        print_exceptions = False
+        max_attempts = 5
+
+    store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
     while True:
         # TODO: remove the trial_ids that we no longer use.
-        trial_id = store.pick_trial()
+        trial_id = store.pick_trial(experiment_id)
         if trial_id is None:
             break  # no more work left
 
@@ -66,4 +79,6 @@ if __name__ == "__main__":
     timeout = float(os.getenv("TIMEOUT", 0.0))
     raise_exception = True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
 
-    run_trials(experiment_id, trial_ids, db_url, timeout, raise_exception)
+    run_trials(
+        experiment_id, trial_ids, db_url, timeout, raise_exception, is_remote=True
+    )

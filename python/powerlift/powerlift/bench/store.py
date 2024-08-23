@@ -144,7 +144,15 @@ class Store:
     Apart from initialization, the user should not be using its methods normally.
     """
 
-    def __init__(self, uri: str, force_recreate: bool = False, **create_engine_kwargs):
+    def __init__(
+        self,
+        uri: str,
+        force_recreate: bool = False,
+        print_exceptions=False,
+        max_attempts=10,
+        wait_secs=30.0,
+        **create_engine_kwargs,
+    ):
         """Initializes.
 
         Args:
@@ -156,104 +164,249 @@ class Store:
         # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
 
         self._create_engine_kwargs = create_engine_kwargs
+        # TODO: eventually we should move the call to create_engine which is
+        # inside create_db to the start of a context where we can retry failures
         self._engine = create_db(uri, **create_engine_kwargs)
         if force_recreate:
             drop_tables(self._engine)
         create_tables(self._engine)
 
-        self._conn = self._engine.connect()
-        self._session = Session(bind=self._conn)
+        self._conn = None
+        self._session = None
 
         self._measure_counts = {}
         self._uri = uri
+
+        self._print_exceptions = print_exceptions
+        self._max_attempts = max_attempts
+        self._wait_secs = wait_secs
+
+        self._in_context = False
+        self._session_transaction = None
+        self._attempts = 0
 
     @property
     def uri(self):
         return self._uri
 
     def __del__(self):
-        self._session.close()
-        self._conn.close()
-        self._engine.dispose()
-
-    def reconnect(self, wait_secs=30.0):
-        time.sleep(wait_secs)
-        try:
-            self._session.close()
-        except:
-            pass
-        self._session = None
-        try:
-            self._conn.close()
-        except:
-            pass
-        self._conn = None
-        try:
-            self._engine.dispose()
-        except:
-            pass
-        self._engine = None
-        try:
-            self._engine = create_engine(self._uri, **self._create_engine_kwargs)
-        except:
-            pass
-        if self._engine is not None:
+        if self._session is not None:
             try:
-                self._conn = self._engine.connect()
+                self._session.close()
             except:
                 pass
-            if self._conn is not None:
-                try:
-                    self._session = Session(bind=self._conn)
-                except:
-                    pass
-
-    def rollback(self):
-        self._session.rollback()
-
-    def start_trial(self, trial_id):
-        n_attempts = 5
-        while True:
+            self._session = None
+        if self._conn is not None:
             try:
-                with self._session.begin():
-                    trial_orm = (
-                        self._session.query(db.Trial).filter_by(id=trial_id).one()
-                    )
-                    start_time = datetime.now(pytz.utc)
-                    trial_orm.start_time = start_time
-                    trial_orm.status = db.StatusEnum.RUNNING
-                    self._session.add(trial_orm)
-                break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
+                self._conn.close()
+            except:
+                pass
+            self._conn = None
+        if self._engine is not None:
+            try:
+                self._engine.dispose()
+            except:
+                pass
+            self._engine = None
+
+    def __enter__(self):
+        if self._in_context:
+            raise Exception("Already inside a database transaction.")
+        self._in_context = True
+
+        if 0 < self._attempts:
+            assert self._session is None
+            assert self._conn is None
+            assert self._engine is None
+
+            time.sleep(self._wait_secs)
+
+        if self._engine is None:
+            try:
+                self._engine = create_engine(self._uri, **self._create_engine_kwargs)
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+
+        if self._conn is None and self._engine is not None:
+            try:
+                self._conn = self._engine.connect()
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+
+        if self._session is None and self._conn is not None:
+            try:
+                self._session = Session(bind=self._conn)
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+
+        assert self._session_transaction is None
+        if self._session is not None:
+            try:
+                self._session_transaction = self._session.begin()
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if not self._in_context:
+            raise Exception("Not in Store context.")
+        self._in_context = False
+
+        is_supress = False
+        if self._session_transaction is not None:
+            try:
+                is_supress = self._session_transaction.__exit__(
+                    exc_type, exc_value, traceback
+                )
+            except Exception as e:
+                self._session_transaction = None
+
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+
+                if self._session is not None:
+                    try:
+                        self._session.close()
+                    except Exception as e:
+                        if self._print_exceptions:
+                            try:
+                                print(e)
+                            except:
+                                pass
+                    self._session = None
+
+                if self._conn is not None:
+                    try:
+                        self._conn.close()
+                    except Exception as e:
+                        if self._print_exceptions:
+                            try:
+                                print(e)
+                            except:
+                                pass
+                    self._conn = None
+
+                if self._engine is not None:
+                    try:
+                        self._engine.dispose()
+                    except Exception as e:
+                        if self._print_exceptions:
+                            try:
+                                print(e)
+                            except:
+                                pass
+                    self._engine = None
+
+                self._attempts += 1
+                if (
+                    self._max_attempts is not None
+                    and self._max_attempts <= self._attempts
+                ):
                     raise
-                self.reconnect()
-        return start_time
+
+                # swallow the exception and any exception inside the
+                # with block if we haven't reached max_attempts
+                return exc_type is not None
+            self._session_transaction = None
+
+        if exc_type is None:
+            self._attempts = 0
+            return False
+
+        if self._print_exceptions:
+            try:
+                print(exc_value)
+            except:
+                pass
+
+        if self._session is not None:
+            try:
+                self._session.close()
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+            self._session = None
+
+        if self._conn is not None:
+            try:
+                self._conn.close()
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+            self._conn = None
+
+        if self._engine is not None:
+            try:
+                self._engine.dispose()
+            except Exception as e:
+                if self._print_exceptions:
+                    try:
+                        print(e)
+                    except:
+                        pass
+            self._engine = None
+
+        self._attempts += 1
+        return (
+            is_supress
+            or self._max_attempts is None
+            or self._attempts < self._max_attempts
+        )
+
+    @property
+    def succeeded(self):
+        if self._in_context:
+            raise Exception("Must exit a Store context for succeeded to be valid")
+        return self._attempts == 0
+
+    def check_allowed(self):
+        if not self._in_context:
+            raise Exception("Must be inside a Store context to call this function.")
+
+        if self._session_transaction is None:
+            raise Exception("Failed to create Transaction.")
 
     def end_trial(self, trial_id, errmsg=None):
-        n_attempts = 5
         while True:
-            try:
-                with self._session.begin():
-                    trial_orm = (
-                        self._session.query(db.Trial).filter_by(id=trial_id).one()
-                    )
-                    end_time = datetime.now(pytz.utc)
-                    trial_orm.end_time = end_time
-                    if errmsg is not None:
-                        trial_orm.errmsg = errmsg
-                        trial_orm.status = db.StatusEnum.ERROR
-                    else:
-                        trial_orm.status = db.StatusEnum.COMPLETE
+            with self:
+                trial_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
+                end_time = datetime.now(pytz.utc)
+                trial_orm.end_time = end_time
+                if errmsg is not None:
+                    trial_orm.errmsg = errmsg
+                    trial_orm.status = db.StatusEnum.ERROR
+                else:
+                    trial_orm.status = db.StatusEnum.COMPLETE
 
-                    self._session.add(trial_orm)
+                self._session.add(trial_orm)
+            if self.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self.reconnect()
         return end_time
 
     def add_trial_run_fn(self, trial_ids, trial_run_fn):
@@ -269,28 +422,23 @@ class Store:
             mimetype=mimetype,
         )
 
-        n_attempts = 5
         while True:
-            try:
-                with self._session.begin():
-                    trial_orms = self._session.query(db.Trial).filter(
-                        db.Trial.id.in_(trial_ids)
-                    )
-                    for trial_orm in trial_orms:
-                        trial_orm.input_assets.append(trial_run_fn_asset_orm)
+            with self:
+                trial_orms = self._session.query(db.Trial).filter(
+                    db.Trial.id.in_(trial_ids)
+                )
+                for trial_orm in trial_orms:
+                    trial_orm.input_assets.append(trial_run_fn_asset_orm)
 
-                    if trial_orms.first() is not None:
-                        orms = [trial_run_fn_asset_orm]
-                        self._session.bulk_save_objects(orms, return_defaults=True)
+                if trial_orms.first() is not None:
+                    orms = [trial_run_fn_asset_orm]
+                    self._session.bulk_save_objects(orms, return_defaults=True)
+            if self.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self.reconnect()
         return None
 
     def measure_from_db_task(self, task_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Measure
         from collections import defaultdict
 
@@ -339,6 +487,7 @@ class Store:
         return desc_name_to_measure
 
     def from_db_task(self, task_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Task
 
         assets = [self.from_db_asset(asset) for asset in task_orm.assets]
@@ -356,6 +505,7 @@ class Store:
         )
 
     def from_db_wheel(self, wheel_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Wheel
 
         return Wheel(
@@ -365,6 +515,7 @@ class Store:
         )
 
     def from_db_asset(self, asset_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Asset
 
         return Asset(
@@ -379,6 +530,7 @@ class Store:
         )
 
     def from_db_experiment(self, experiment_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Experiment
 
         wheels = [self.from_db_wheel(wheel) for wheel in experiment_orm.wheels]
@@ -395,6 +547,7 @@ class Store:
         )
 
     def from_db_method(self, method_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Method
 
         return Method(
@@ -407,6 +560,7 @@ class Store:
         )
 
     def from_db_trial(self, trial_orm):
+        self.check_allowed()
         from powerlift.bench.experiment import Trial
 
         input_assets = [self.from_db_asset(asset) for asset in trial_orm.input_assets]
@@ -423,6 +577,7 @@ class Store:
         )
 
     def find_experiment_by_id(self, _id: int):
+        self.check_allowed()
         experiment_orm = (
             self._session.query(db.Experiment).filter_by(id=_id).one_or_none()
         )
@@ -431,60 +586,50 @@ class Store:
         return self.from_db_experiment(experiment_orm)
 
     def find_task_by_id(self, _id: int):
+        self.check_allowed()
         task_orm = self._session.query(db.Task).filter_by(id=_id).one_or_none()
         if task_orm is None:
             return None
         return self.from_db_task(task_orm)
 
-    def pick_trial(self):
-        n_attempts = 50
+    def pick_trial(self, experiment_id):
         while True:
-            try:
-                with self._session.begin():
-                    rowcount = 0
-                    while rowcount != 1:
-                        trial_id = self._session.execute(
-                            text(
-                                "SELECT id FROM trial WHERE start_time IS NULL LIMIT 1"
-                            )
-                        ).scalar()
-                        if trial_id is None:
-                            break
-                        result = self._session.execute(
-                            text(
-                                f"UPDATE trial SET start_time = CURRENT_TIMESTAMP, status='RUNNING' WHERE id={trial_id} AND start_time is NULL"
-                            )
+            with self:
+                rowcount = 0
+                while rowcount != 1:
+                    trial_id = self._session.execute(
+                        text(
+                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND start_time IS NULL LIMIT 1"
                         )
-                        rowcount = result.rowcount
+                    ).scalar()
+                    if trial_id is None:
+                        break
+                    result = self._session.execute(
+                        text(
+                            f"UPDATE trial SET start_time = CURRENT_TIMESTAMP, status='RUNNING' WHERE id={trial_id} AND start_time is NULL"
+                        )
+                    )
+                    rowcount = result.rowcount
+            if self.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self.reconnect()
         return trial_id
 
     def find_trial_by_id(self, _id: int):
-        n_attempts = 5
         while True:
-            try:
-                with self._session.begin():
-                    trial_orm = (
-                        self._session.query(db.Trial).filter_by(id=_id).one_or_none()
-                    )
-                    if trial_orm is None:
-                        trial = None
-                    else:
-                        trial = self.from_db_trial(trial_orm)
+            with self:
+                trial_orm = (
+                    self._session.query(db.Trial).filter_by(id=_id).one_or_none()
+                )
+                if trial_orm is None:
+                    trial = None
+                else:
+                    trial = self.from_db_trial(trial_orm)
+            if self.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self.reconnect()
         return trial
 
     def get_experiment(self, name: str) -> Optional[int]:
+        self.check_allowed()
         exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             return None
@@ -501,6 +646,9 @@ class Store:
         wheels=None,
     ) -> Tuple[int, bool]:
         """Create experiment keyed by name."""
+
+        self.check_allowed()
+
         exp_orm = db.Experiment(
             name=name,
             description=description,
@@ -519,6 +667,7 @@ class Store:
         return exp_orm.id
 
     def create_trials(self, trial_params: List[Dict[str, Any]]):
+        self.check_allowed()
         trial_orms = []
         for trial_param in trial_params:
             trial_orm = db.Trial(
@@ -539,6 +688,7 @@ class Store:
         replicate_num: int,
         meta: dict,
     ):
+        self.check_allowed()
         trial_orm = db.Trial(
             experiment_id=experiment_id,
             task_id=task_id,
@@ -562,6 +712,8 @@ class Store:
     ):
         """Get or create method keyed by name."""
 
+        self.check_allowed()
+
         created = False
         method_orm = self._session.query(db.Method).filter_by(name=name).one_or_none()
         if method_orm is None:
@@ -578,6 +730,7 @@ class Store:
         return method_orm.id, created
 
     def iter_experiment_trials(self, experiment_id: int):
+        self.check_allowed()
         trial_orms = self._session.query(db.Trial).filter_by(
             experiment_id=experiment_id
         )
@@ -587,6 +740,7 @@ class Store:
 
     def iter_status(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
         # TODO(nopdive): Should this be in the store?
+        self.check_allowed()
         trial_orms = self._session.query(db.Trial).filter_by(
             experiment_id=experiment_id
         )
@@ -606,6 +760,7 @@ class Store:
             yield record
 
     def iter_results(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
+        self.check_allowed()
         trial_orms = self._session.query(db.Trial).filter_by(
             experiment_id=experiment_id
         )
@@ -629,6 +784,7 @@ class Store:
     def iter_available_tasks(
         self, include_measures: bool = False
     ) -> Iterable[Mapping[str, object]]:
+        self.check_allowed()
         task_orms = self._session.query(db.Task)
         for task_orm in task_orms:
             record = {
@@ -654,6 +810,7 @@ class Store:
             yield record
 
     def iter_tasks(self):
+        self.check_allowed()
         for task_orm in self._session.query(db.Task).all():
             task = self.from_db_task(task_orm)
             yield task
@@ -670,6 +827,8 @@ class Store:
         lower_is_better=True,
     ):
         from powerlift.bench.experiment import Task, Trial
+
+        self.check_allowed()
 
         if type_ is None:
             if isinstance(value, str):
@@ -751,6 +910,8 @@ class Store:
             raise ValueError(f"Does not support {type(data)}")
 
     def _create_task_with_supervised(self, supervised, version):
+        self.check_allowed()
+
         X_bstream, y_bstream, meta_bstream = SupervisedDataset.serialize(supervised)
         X_name, y_name, meta_name = supervised.asset_names()
         X_mimetype, y_mimetype, meta_mimetype = supervised.mimetypes()
@@ -809,6 +970,7 @@ class Store:
         return task_orm.id
 
     def _create_task_with_dataframe(self, data, version):
+        self.check_allowed()
         inputs_bstream, outputs_bstream, meta_bstream = DataFrameDataset.serialize(data)
         inputs_name, outputs_name, meta_name = data.asset_names()
         inputs_mimetype, outputs_mimetype, meta_mimetype = data.mimetypes()
@@ -1052,26 +1214,20 @@ def populate_with_datasets(
         )
 
     for dataset in dataset_iter:
-        n_attempts = 5
         while True:
-            try:
-                with store._session.begin():
-                    try:
-                        task_id = store.create_task_with_data(dataset)
-                    except IntegrityError as e:
-                        if not exist_ok:
-                            raise DatasetAlreadyExistsError(
-                                "Dataset already in store"
-                            ) from e
-                        else:
-                            return False
-                    populate_task_measures(store, task_id, dataset)
+            with store:
+                try:
+                    task_id = store.create_task_with_data(dataset)
+                except IntegrityError as e:
+                    if not exist_ok:
+                        raise DatasetAlreadyExistsError(
+                            "Dataset already in store"
+                        ) from e
+                    else:
+                        return False
+                populate_task_measures(store, task_id, dataset)
+            if store.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                store.reconnect()
     return True
 
 

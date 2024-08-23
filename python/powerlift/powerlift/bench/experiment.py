@@ -198,26 +198,20 @@ class Trial:
             lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
 
-        n_attempts = 5
         while True:
-            try:
-                with self._store._session.begin():
-                    self._store.add_measure(
-                        self._id,
-                        type(self),
-                        name,
-                        value,
-                        None,
-                        description,
-                        type_,
-                        lower_is_better,
-                    )
+            with self._store:
+                self._store.add_measure(
+                    self._id,
+                    type(self),
+                    name,
+                    value,
+                    None,
+                    description,
+                    type_,
+                    lower_is_better,
+                )
+            if self._store.succeeded:
                 break
-            except:  # sqlalchemy.exc.SQLAlchemyError, psycopg2.OperationalError, etc..
-                n_attempts -= 1
-                if n_attempts <= 0:
-                    raise
-                self._store.reconnect()
 
     @property
     def store(self):
