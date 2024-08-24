@@ -3,7 +3,7 @@
 
 def run_trials(
     experiment_id,
-    trial_ids,
+    runner_id,
     db_url,
     timeout,
     raise_exception,
@@ -30,7 +30,6 @@ def run_trials(
 
     store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
     while True:
-        # TODO: remove the trial_ids that we no longer use.
         trial_id = store.pick_trial(experiment_id)
         if trial_id is None:
             if is_remote:
@@ -76,11 +75,11 @@ if __name__ == "__main__":
     import os
 
     experiment_id = os.getenv("EXPERIMENT_ID")
-    trial_ids = os.getenv("TRIAL_IDS").split(",")
+    runner_id = os.getenv("RUNNER_ID")
     db_url = os.getenv("DB_URL")
     timeout = float(os.getenv("TIMEOUT", 0.0))
     raise_exception = True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
 
     run_trials(
-        experiment_id, trial_ids, db_url, timeout, raise_exception, is_remote=True
+        experiment_id, runner_id, db_url, timeout, raise_exception, is_remote=True
     )

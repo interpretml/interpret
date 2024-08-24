@@ -6,7 +6,7 @@ https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?vi
 
 from powerlift.executors.localmachine import LocalMachine
 from powerlift.bench.store import Store
-from typing import Iterable, List
+from typing import List
 from powerlift.executors.base import Executor, handle_err
 import random
 from multiprocessing import Pool
@@ -78,7 +78,7 @@ class AzureContainerInstance(Executor):
         self._batch_id = random.getrandbits(64)
 
         self._pool = Pool()
-        self._trial_id_to_result = {}
+        self._runner_id_to_result = {}
         self._store = store
         self._wheel_filepaths = wheel_filepaths
         self._raise_exception = raise_exception
@@ -91,27 +91,22 @@ class AzureContainerInstance(Executor):
         """Deletes credentials in object for accessing Azure Resources."""
         del self._azure_json
 
-    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
-        from powerlift.run_azure import __main__ as runner
+    def submit(self, experiment_id, trial_run_fn, trials: List, timeout=None):
+        from powerlift.run_azure import __main__ as remote_process
 
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
-        tasks = []
         self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
-        for trial in trials:
-            params = (
-                experiment_id,
-                [trial.id],
-                uri,
-                timeout,
-                self._raise_exception,
-                self._image,
-            )
-            tasks.append(params)
 
+        n_runners = min(len(trials), self._n_running_containers)
         params = (
-            tasks,
+            experiment_id,
+            n_runners,
+            uri,
+            timeout,
+            self._raise_exception,
+            self._image,
             self._azure_json,
             self._credential,
             self._num_cores,
@@ -123,13 +118,13 @@ class AzureContainerInstance(Executor):
         self._batch_id = random.getrandbits(64)
         if self._pool is None:
             try:
-                res = runner.run_trials(*params)
-                self._trial_id_to_result[0] = res
+                res = remote_process.run_azure_process(*params)
+                self._runner_id_to_result[0] = res
             except Exception as e:
-                self._trial_id_to_result[0] = e
+                self._runner_id_to_result[0] = e
         else:
-            self._trial_id_to_result[0] = self._pool.apply_async(
-                runner.run_trials,
+            self._runner_id_to_result[0] = self._pool.apply_async(
+                remote_process.run_azure_process,
                 params,
                 error_callback=handle_err,
             )
@@ -137,7 +132,7 @@ class AzureContainerInstance(Executor):
     def join(self):
         results = []
         if self._pool is not None:
-            for _, result in self._trial_id_to_result.items():
+            for _, result in self._runner_id_to_result.items():
                 res = result.get()
                 results.append(res)
         return results

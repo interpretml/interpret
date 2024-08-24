@@ -3,7 +3,7 @@
 from numbers import Number
 import time
 from types import FunctionType
-from typing import Any, Iterable, Tuple
+from typing import Any, List, Tuple
 from stopit import ThreadingTimeout as Timeout
 
 
@@ -21,14 +21,14 @@ class Executor:
         self,
         experiment_id,
         trial_run_fn: FunctionType,
-        trials: Iterable,
+        trials: List,
         timeout: int = None,
     ):
         """Submits and executes trials by trial run function asynchronously.
 
         Args:
             trial_run_fn (FunctionType): Trial run function that takes tasks as arg.
-            trials (Iterable): Trial objects that are to be run.
+            trials (List): Trial objects that are to be run.
             timeout (int, optional): Timeout in seconds for trial run. Defaults to None.
 
         Raises:

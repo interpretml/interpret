@@ -33,8 +33,13 @@ def _wait_for_completed_worker(aci_client, resource_group_name, results):
         time.sleep(1)
 
 
-def run_trials(
-    tasks,
+def run_azure_process(
+    experiment_id,
+    n_runners,
+    uri,
+    timeout,
+    raise_exception,
+    image,
     azure_json,
     credential,
     num_cores,
@@ -102,18 +107,15 @@ def run_trials(
     resource_group_name = azure_json["resource_group"]
 
     # Run until completion.
-    n_tasks = len(tasks)
-    n_containers = min(n_tasks, n_running_containers)
-    results = {x: None for x in range(n_containers)}
+    results = {x: None for x in range(n_runners)}
     container_group_names = set()
     resource_group = None
     worker_id = None
-    while len(tasks) != 0:
+    for runner_id in range(n_runners):
         # TODO PK: this entire section has to change because the runners themselves now
         # choose what tasks to work on and this section is no longer responsible
         # for starting new containers
 
-        experiment_id, trial_ids, uri, timeout, raise_exception, image = tasks.pop(0)
         while True:
             try:
                 if resource_group is None:
@@ -151,9 +153,7 @@ def run_trials(
 
                 env_vars = [
                     EnvironmentVariable(name="EXPERIMENT_ID", value=str(experiment_id)),
-                    EnvironmentVariable(
-                        name="TRIAL_IDS", value=",".join([str(x) for x in trial_ids])
-                    ),
+                    EnvironmentVariable(name="RUNNER_ID", value=str(runner_id)),
                     EnvironmentVariable(name="DB_URL", secure_value=uri),
                     EnvironmentVariable(name="TIMEOUT", value=timeout),
                     EnvironmentVariable(name="RAISE_EXCEPTION", value=raise_exception),

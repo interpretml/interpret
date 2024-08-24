@@ -8,9 +8,10 @@ from powerlift.bench.store import Store
 from powerlift.executors.localmachine import LocalMachine
 from powerlift.executors.base import handle_err
 from typing import Iterable, List
+import multiprocessing
 
 
-def _run_docker(trial_ids, db_url, timeout, raise_exception, image):
+def _run_docker(experiment_id, runner_id, db_url, timeout, raise_exception, image):
     import docker
 
     client = docker.from_env()
@@ -19,7 +20,8 @@ def _run_docker(trial_ids, db_url, timeout, raise_exception, image):
         image,
         "python -m powerlift.run",
         environment={
-            "TRIAL_IDS": ",".join([str(x) for x in trial_ids]),
+            "EXPERIMENT_ID": experiment_id,
+            "RUNNER_ID": runner_id,
             "DB_URL": db_url,
             "TIMEOUT": timeout,
             "RAISE_EXCEPTION": raise_exception,
@@ -69,15 +71,27 @@ class InsecureDocker(LocalMachine):
             wheel_filepaths=wheel_filepaths,
         )
 
-    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
+    def submit(self, experiment_id, trial_run_fn, trials: List, timeout=None):
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
         self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
-        for trial in trials:
-            self._trial_id_to_result[trial.id] = self._pool.apply_async(
+
+        n_runners = min(
+            len(trials),
+            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus,
+        )
+        for runner_id in range(n_runners):
+            self._runner_id_to_result[runner_id] = self._pool.apply_async(
                 _run_docker,
-                ([trial.id], uri, timeout, self._raise_exception, self._image),
+                (
+                    experiment_id,
+                    runner_id,
+                    uri,
+                    timeout,
+                    self._raise_exception,
+                    self._image,
+                ),
                 error_callback=handle_err,
             )
 

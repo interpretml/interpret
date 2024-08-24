@@ -6,8 +6,9 @@ This currently uses multiprocessing pools to handle parallelism.
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor
 from multiprocessing import Pool
-from typing import Iterable, List
+from typing import List
 from powerlift.executors.base import handle_err
+import multiprocessing
 
 
 class LocalMachine(Executor):
@@ -33,7 +34,7 @@ class LocalMachine(Executor):
         else:
             self._pool = Pool(processes=n_cpus)
 
-        self._trial_id_to_result = {}
+        self._runner_id_to_result = {}
         self._store = store
         self._n_cpus = n_cpus
         self._debug_mode = debug_mode
@@ -44,33 +45,37 @@ class LocalMachine(Executor):
         if self._pool is not None:
             self._pool.close()
 
-    def submit(self, experiment_id, trial_run_fn, trials: Iterable, timeout=None):
+    def submit(self, experiment_id, trial_run_fn, trials: List, timeout=None):
         from powerlift.run import __main__ as runner
 
         self._store.add_trial_run_fn([x.id for x in trials], trial_run_fn)
-        for trial in trials:
+        n_runners = min(
+            len(trials),
+            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus,
+        )
+        for runner_id in range(n_runners):
             if self._pool is None:
                 try:
                     debug_fn = trial_run_fn if self._debug_mode else None
                     res = runner.run_trials(
                         experiment_id,
-                        [trial.id],
+                        runner_id,
                         self._store.uri,
                         timeout,
                         self._raise_exception or self._debug_mode,
                         debug_fn=debug_fn,
                     )
-                    self._trial_id_to_result[trial.id] = res
+                    self._runner_id_to_result[runner_id] = res
                 except Exception as e:
-                    self._trial_id_to_result[trial.id] = e
+                    self._runner_id_to_result[runner_id] = e
                     if self._raise_exception or self._debug_mode:
                         raise
             else:
-                self._trial_id_to_result[trial.id] = self._pool.apply_async(
+                self._runner_id_to_result[runner_id] = self._pool.apply_async(
                     runner.run_trials,
                     (
                         experiment_id,
-                        [trial.id],
+                        runner_id,
                         self._store.uri,
                         timeout,
                         self._raise_exception or self._debug_mode,
@@ -81,7 +86,7 @@ class LocalMachine(Executor):
     def join(self):
         results = []
         if self._pool is not None:
-            for _, result in self._trial_id_to_result.items():
+            for _, result in self._runner_id_to_result.items():
                 res = result.get()
                 results.append(res)
         return results
