@@ -33,7 +33,9 @@ def run_trials(
         # TODO: remove the trial_ids that we no longer use.
         trial_id = store.pick_trial(experiment_id)
         if trial_id is None:
-            break  # no more work left
+            if is_remote:
+                print("No more work to start!")
+            break
 
         trial = store.find_trial_by_id(trial_id)
         if trial is None:
@@ -63,7 +65,7 @@ def run_trials(
             if timed_out:
                 raise RuntimeError(f"Timeout failure ({duration})")
         except Exception as e:
-            errmsg = traceback.format_exc()
+            errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method.name}\n{traceback.format_exc()}"
             if raise_exception:
                 raise e
         finally:

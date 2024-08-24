@@ -23,7 +23,6 @@ import base64
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type, Mapping
 import random
-import random
 from powerlift.db.actions import drop_tables, create_db, create_tables
 from powerlift.measures import class_stats, data_stats, regression_stats
 from sqlalchemy.exc import IntegrityError
@@ -151,6 +150,7 @@ class Store:
         print_exceptions=False,
         max_attempts=10,
         wait_secs=30.0,
+        wait_lengthing=1.1,
         **create_engine_kwargs,
     ):
         """Initializes.
@@ -180,6 +180,9 @@ class Store:
         self._print_exceptions = print_exceptions
         self._max_attempts = max_attempts
         self._wait_secs = wait_secs
+        if wait_lengthing < 1.0:
+            raise Exception("wait_lengthing must be equal to or above 1.0")
+        self._wait_lengthing = wait_lengthing
 
         self._in_context = False
         self._session_transaction = None
@@ -219,7 +222,20 @@ class Store:
             assert self._conn is None
             assert self._engine is None
 
-            time.sleep(self._wait_secs)
+            sleep_time = (
+                self._wait_secs
+                * (self._wait_lengthing**self._attempts)
+                * random.uniform(0.5, 2.0)
+            )
+            if self._print_exceptions:
+                try:
+                    print(
+                        f"Sleeping: {sleep_time} seconds on attempt {self._attempts}."
+                    )
+                except:
+                    pass
+
+            time.sleep(sleep_time)
 
         if self._engine is None:
             try:
