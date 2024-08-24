@@ -235,7 +235,14 @@ class Benchmark:
                 records = list(self._store.iter_results(self._experiment_id))
             if self._store.succeeded:
                 break
-        return pd.DataFrame.from_records(records)
+        df = pd.DataFrame.from_records(records)
+        # sometimes logs are written twice when a runner attempts a DB transaction
+        # and the result is commited in the DB, but the response to the runner fails
+        # so remove the duplicates here
+        idx = df.groupby(["trial_id", "name"])["seq_num"].idxmin()
+        df = df.loc[idx]
+        df = df.drop_duplicates(subset=["trial_id", "name"])
+        return df
 
     def available_tasks(self, include_measures=False) -> Optional[pd.DataFrame]:
         """Retrieves available tasks to run a benchmark against.
