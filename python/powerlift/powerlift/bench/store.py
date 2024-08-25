@@ -410,9 +410,9 @@ class Store:
 
     def end_trial(self, trial_id, errmsg=None):
         if errmsg is not None:
-            status = db.StatusEnum.ERROR
+            status = "ERROR"
         else:
-            status = db.StatusEnum.COMPLETE
+            status = "COMPLETE"
         while True:
             with self:
                 rowcount = 0
@@ -429,7 +429,7 @@ class Store:
                     )
 
                     params = {
-                        "status": str(status),
+                        "status": status,
                         "errmsg": errmsg,
                         "trial_id": trial_id,
                     }
