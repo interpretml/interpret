@@ -41,6 +41,7 @@ import numpy as np
 import pandas as pd
 import ast
 import time
+import traceback as tb
 
 
 def _parse_function(src):
@@ -243,7 +244,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
 
@@ -253,7 +254,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
 
@@ -263,7 +264,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
 
@@ -274,7 +275,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
 
@@ -296,7 +297,7 @@ class Store:
 
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
 
@@ -306,7 +307,7 @@ class Store:
                     except Exception as e:
                         if self._print_exceptions:
                             try:
-                                print(e)
+                                print(str(e))
                             except:
                                 pass
                     self._session = None
@@ -317,7 +318,7 @@ class Store:
                     except Exception as e:
                         if self._print_exceptions:
                             try:
-                                print(e)
+                                print(str(e))
                             except:
                                 pass
                     self._conn = None
@@ -328,7 +329,7 @@ class Store:
                     except Exception as e:
                         if self._print_exceptions:
                             try:
-                                print(e)
+                                print(str(e))
                             except:
                                 pass
                     self._engine = None
@@ -351,7 +352,7 @@ class Store:
 
         if self._print_exceptions:
             try:
-                print(exc_value)
+                print("".join(tb.format_exception(exc_type, exc_value, traceback)))
             except:
                 pass
 
@@ -361,7 +362,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
             self._session = None
@@ -372,7 +373,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
             self._conn = None
@@ -383,7 +384,7 @@ class Store:
             except Exception as e:
                 if self._print_exceptions:
                     try:
-                        print(e)
+                        print(str(e))
                     except:
                         pass
             self._engine = None
@@ -1067,20 +1068,28 @@ def populate_task_measures(store, task_id, data):
     if isinstance(data, SupervisedDataset):
         if meta["problem"] == "regression":
             unprocessed_measures.extend(regression_stats(data.y))
+            is_classification = False
         elif meta["problem"] in ["binary", "multiclass"]:
             unprocessed_measures.extend(class_stats(data.y))
-        unprocessed_measures.extend(data_stats(data.X, meta["categorical_mask"]))
+            is_classification = True
+        unprocessed_measures.extend(
+            data_stats(data.X, data.y, is_classification, meta["categorical_mask"])
+        )
     elif isinstance(data, DataFrameDataset):
+        if meta["problem"] == "regression":
+            is_classification = False
+        elif meta["problem"] in ["binary", "multiclass"]:
+            is_classification = True
         inputs_data_stats = [
             (f"inputs_{x1}", x2, x3, x4)
             for x1, x2, x3, x4 in data_stats(
-                data.inputs, meta["inputs_categorical_mask"]
+                data.inputs, None, is_classification, meta["inputs_categorical_mask"]
             )
         ]
         outputs_data_stats = [
             (f"outputs_{x1}", x2, x3, x4)
             for x1, x2, x3, x4 in data_stats(
-                data.outputs, meta["outputs_categorical_mask"]
+                data.outputs, None, is_classification, meta["outputs_categorical_mask"]
             )
         ]
         unprocessed_measures.extend(inputs_data_stats)

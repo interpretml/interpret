@@ -98,12 +98,13 @@ def regression_stats(y: pd.Series) -> List[Tuple[str, str, float, bool]]:
 
 
 def data_stats(
-    X: pd.DataFrame, categorical_mask: Iterable[bool]
+    X: pd.DataFrame, y, is_classification, categorical_mask: Iterable[bool]
 ) -> List[Tuple[str, str, float, bool]]:
     """Computes data statistics on instances.
 
     Args:
         X (pd.DataFrame): Instances.
+        y (pd.DataFrame or pd.Series): outputs
         categorical_mask (Iterable[bool]): Boolean mask on which columns are categorical.
 
     Returns:
@@ -126,12 +127,17 @@ def data_stats(
         avg_prop_special_values += prop_special_values
     avg_prop_special_values /= X.shape[1]
 
+    n_classes = 0
+    if is_classification and y is not None:
+        n_classes = len(np.unique(y))
+
     prop_cat_cols = float(sum([int(x) for x in categorical_mask]))
     prop_cat_cols /= len(categorical_mask)
 
     return [
         ("n_rows", "Number of rows.", float(X.shape[0]), False),
         ("n_cols", "Number of columns.", float(X.shape[1]), True),
+        ("n_classes", "Number of classes or 0.", float(n_classes), True),
         (
             "prop_cat_cols",
             "Proportion of categorical columns",

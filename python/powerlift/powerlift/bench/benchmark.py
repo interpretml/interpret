@@ -156,7 +156,12 @@ class Benchmark:
                 trials = sorted(
                     trials,
                     reverse=True,
-                    key=lambda x: x[1].task.scalar_measure("n_cols")
+                    key=lambda x: (
+                        1
+                        if x[1].task.scalar_measure("n_classes") < 3
+                        else x[1].task.scalar_measure("n_classes")
+                    )
+                    * x[1].task.scalar_measure("n_cols")
                     * x[1].task.scalar_measure("n_rows"),
                 )
                 trials = np.array(trials, dtype=object)
@@ -164,7 +169,7 @@ class Benchmark:
                 n_true = int(n_fastest * 0.25)
                 take = [True] * n_true + [False] * (n_fastest - n_true)
                 random.shuffle(take)
-                take = np.array([False] * (len(trials) - n_fastest) + take)
+                take = np.array([False] * (len(trials) - n_fastest) + take, dtype=bool)
                 trials = np.concatenate([trials[take][::-1], trials[~take]])
                 trial_params, pending_trials = zip(*trials)
 
