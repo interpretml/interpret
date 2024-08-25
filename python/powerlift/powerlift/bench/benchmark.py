@@ -14,6 +14,7 @@ import pathlib
 from powerlift.db import schema as db
 
 import os
+import numpy as np
 
 
 class Benchmark:
@@ -94,8 +95,7 @@ class Benchmark:
                     )
 
                 # Create trials
-                trial_params = []
-                pending_trials = []
+                trials = []
                 for task in self._store.iter_tasks():
                     generated_trials = trial_gen_fn(task)
                     for generated_trial in generated_trials:
@@ -139,18 +139,34 @@ class Benchmark:
                                 "replicate_num": replicate_num,
                                 "meta": meta,
                             }
-                            trial_params.append(trial_param)
-                            pending_trials.append(
-                                Trial(
-                                    None,
-                                    self._store,
-                                    task,
-                                    method,
-                                    replicate_num,
-                                    meta,
-                                    [],
-                                )
+                            trial = Trial(
+                                None,
+                                self._store,
+                                task,
+                                method,
+                                replicate_num,
+                                meta,
+                                [],
                             )
+                            trials.append((trial_param, trial))
+
+                # Do the hardest datasets first so that we can slip
+                # the faster ones into the cracks, but do some easy
+                # ones first just to verify everything works.
+                trials = sorted(
+                    trials,
+                    reverse=True,
+                    key=lambda x: x[1].task.scalar_measure("n_cols")
+                    * x[1].task.scalar_measure("n_rows"),
+                )
+                trials = np.array(trials, dtype=object)
+                n_fastest = int(len(trials) * 0.25)
+                n_true = int(n_fastest * 0.25)
+                take = [True] * n_true + [False] * (n_fastest - n_true)
+                random.shuffle(take)
+                take = np.array([False] * (len(trials) - n_fastest) + take)
+                trials = np.concatenate([trials[take][::-1], trials[~take]])
+                trial_params, pending_trials = zip(*trials)
 
                 # Save to store
                 trial_ids = self._store.create_trials(trial_params)

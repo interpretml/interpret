@@ -108,7 +108,7 @@ class Trial(Base):
     """A single trial replicate, consists primarily of task, method and its results."""
 
     __tablename__ = "trial"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, nullable=False)
 
     experiment_id = Column(Integer, ForeignKey("experiment.id"))
     experiment = relationship("Experiment", back_populates="trials")
@@ -124,6 +124,7 @@ class Trial(Base):
     create_time = Column(DateTime)
     start_time = Column(DateTime, nullable=True)
     end_time = Column(DateTime, nullable=True)
+    runner_id = Column(Integer, nullable=True)
 
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=trial_measure_outcome_table, back_populates="trials"

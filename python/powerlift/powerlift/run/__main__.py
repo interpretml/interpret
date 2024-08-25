@@ -30,7 +30,7 @@ def run_trials(
 
     store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
     while True:
-        trial_id = store.pick_trial(experiment_id)
+        trial_id = store.pick_trial(experiment_id, runner_id)
         if trial_id is None:
             if is_remote:
                 print("No more work to start!")

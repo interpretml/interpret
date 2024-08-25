@@ -409,21 +409,34 @@ class Store:
             raise Exception("Failed to create Transaction.")
 
     def end_trial(self, trial_id, errmsg=None):
+        if errmsg is not None:
+            status = db.StatusEnum.ERROR
+        else:
+            status = db.StatusEnum.COMPLETE
         while True:
             with self:
-                trial_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
-                end_time = datetime.now(pytz.utc)
-                trial_orm.end_time = end_time
-                if errmsg is not None:
-                    trial_orm.errmsg = errmsg
-                    trial_orm.status = db.StatusEnum.ERROR
-                else:
-                    trial_orm.status = db.StatusEnum.COMPLETE
+                rowcount = 0
+                while rowcount != 1:
+                    query = text(
+                        """
+                        UPDATE trial
+                        SET end_time = CURRENT_TIMESTAMP,
+                            status = :status,
+                            errmsg = :errmsg,
+                            runner_id = NULL
+                        WHERE id = :trial_id
+                    """
+                    )
 
-                self._session.add(trial_orm)
+                    params = {
+                        "status": str(status),
+                        "errmsg": errmsg,
+                        "trial_id": trial_id,
+                    }
+                    result = self._session.execute(query, params)
+                    rowcount = result.rowcount
             if self.succeeded:
                 break
-        return end_time
 
     def add_trial_run_fn(self, trial_ids, trial_run_fn):
         import sys
@@ -608,21 +621,21 @@ class Store:
             return None
         return self.from_db_task(task_orm)
 
-    def pick_trial(self, experiment_id):
+    def pick_trial(self, experiment_id, runner_id):
         while True:
             with self:
                 rowcount = 0
                 while rowcount != 1:
                     trial_id = self._session.execute(
                         text(
-                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND start_time IS NULL LIMIT 1"
+                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND (start_time IS NULL OR runner_id={runner_id}) ORDER BY runner_id, id NULLS LAST LIMIT 1"
                         )
                     ).scalar()
                     if trial_id is None:
                         break
                     result = self._session.execute(
                         text(
-                            f"UPDATE trial SET start_time = CURRENT_TIMESTAMP, status='RUNNING' WHERE id={trial_id} AND start_time is NULL"
+                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status='RUNNING', runner_id={runner_id} WHERE id={trial_id} AND (start_time is NULL OR runner_id={runner_id})"
                         )
                     )
                     rowcount = result.rowcount
@@ -772,6 +785,7 @@ class Store:
                 "create_time": trial_orm.create_time,
                 "start_time": trial_orm.start_time,
                 "end_time": trial_orm.end_time,
+                "runner_id": trial_orm.runner_id,
             }
             yield record
 
