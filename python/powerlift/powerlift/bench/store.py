@@ -175,7 +175,6 @@ class Store:
         self._conn = None
         self._session = None
 
-        self._measure_counts = {}
         self._uri = uri
 
         self._print_exceptions = print_exceptions
@@ -806,6 +805,7 @@ class Store:
         for trial_orm in trial_orms:
             for measure_outcome in trial_orm.measure_outcomes:
                 record = {
+                    "id": measure_outcome.id,
                     "trial_id": trial_orm.id,
                     "replicate_num": trial_orm.replicate_num,
                     "meta": trial_orm.meta,
@@ -860,6 +860,7 @@ class Store:
         trial_or_task_type: Type,
         name,
         value,
+        seq_num,
         declared_measures_cache=None,
         description=None,
         type_=None,
@@ -908,7 +909,6 @@ class Store:
                     declared_measures_cache[name] = measure_description_orm
 
         # Create measure
-        seq_num = self._measure_counts[name] = self._measure_counts.get(name, -1) + 1
         timestamp = datetime.now(pytz.utc)
         measure_outcome_orm = db.MeasureOutcome(
             measure_description=measure_description_orm,
@@ -1111,6 +1111,7 @@ def populate_task_measures(store, task_id, data):
             Task,
             name,
             value,
+            0,
             declared_measures_cache,
             description=description,
             lower_is_better=lower_is_better,

@@ -179,6 +179,7 @@ class Trial:
         self._replicate_num = replicate_num
         self._meta = meta
         self._input_assets = input_assets
+        self._measure_counts = {}
 
     def log(
         self,
@@ -198,6 +199,7 @@ class Trial:
             lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
 
+        seq_num = self._measure_counts[name] = self._measure_counts.get(name, -1) + 1
         self._store.reset()
         while self._store.do:
             with self._store:
@@ -206,6 +208,7 @@ class Trial:
                     type(self),
                     name,
                     value,
+                    seq_num,
                     None,
                     description,
                     type_,
