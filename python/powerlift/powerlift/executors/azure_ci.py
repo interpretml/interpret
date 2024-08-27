@@ -111,7 +111,6 @@ class AzureContainerInstance(Executor):
             self._credential,
             self._num_cores,
             self._mem_size_gb,
-            self._n_running_containers,
             self._delete_group_container_on_complete,
             self._batch_id,
         )
