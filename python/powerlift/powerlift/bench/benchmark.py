@@ -81,7 +81,8 @@ class Benchmark:
                 wheel = db.Wheel(name=name, embedded=content)
                 wheels.append(wheel)
 
-        while True:
+        self._store.reset()
+        while self._store.do:
             with self._store:
                 # Create experiment
                 if self._experiment_id is None:
@@ -175,9 +176,7 @@ class Benchmark:
 
                 # Save to store
                 trial_ids = self._store.create_trials(trial_params)
-            if self._store.succeeded:
-                self._experiment_id = experiment_id
-                break
+        self._experiment_id = experiment_id
 
         for _id, trial in zip(trial_ids, pending_trials):
             trial._id = _id
@@ -229,15 +228,14 @@ class Benchmark:
         Returns:
             Trial statuses (Optional[pandas.DataFrame]): Experiment's trials' status.
         """
-        while True:
+        self._store.reset()
+        while self._store.do:
             with self._store:
                 self._experiment_id = self._store.get_experiment(self._name)
                 if self._experiment_id is None:
                     return None
 
                 records = list(self._store.iter_status(self._experiment_id))
-            if self._store.succeeded:
-                break
         return pd.DataFrame.from_records(records)
 
     def results(self) -> Optional[pd.DataFrame]:
@@ -247,15 +245,14 @@ class Benchmark:
             Results (pandas.DataFrame): Measures of an experiment in long form.
         """
 
-        while True:
+        self._store.reset()
+        while self._store.do:
             with self._store:
                 self._experiment_id = self._store.get_experiment(self._name)
                 if self._experiment_id is None:
                     return None
 
                 records = list(self._store.iter_results(self._experiment_id))
-            if self._store.succeeded:
-                break
         df = pd.DataFrame.from_records(records)
         # sometimes logs are written twice when a runner attempts a DB transaction
         # and the result is commited in the DB, but the response to the runner fails

@@ -198,7 +198,8 @@ class Trial:
             lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
 
-        while True:
+        self._store.reset()
+        while self._store.do:
             with self._store:
                 self._store.add_measure(
                     self._id,
@@ -210,8 +211,6 @@ class Trial:
                     type_,
                     lower_is_better,
                 )
-            if self._store.succeeded:
-                break
 
     @property
     def store(self):

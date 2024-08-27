@@ -188,6 +188,7 @@ class Store:
         self._in_context = False
         self._session_transaction = None
         self._attempts = 0
+        self._reset = False
 
     @property
     def uri(self):
@@ -216,7 +217,9 @@ class Store:
     def __enter__(self):
         if self._in_context:
             raise Exception("Already inside a database transaction.")
-        self._in_context = True
+
+        if not self._reset and self._attempts == 0:
+            raise Exception("Must reset before entering the Store context.")
 
         if 0 < self._attempts:
             assert self._session is None
@@ -278,6 +281,9 @@ class Store:
                         print(str(e))
                     except:
                         pass
+
+        self._in_context = True
+        self._reset = False
 
         return self
 
@@ -396,11 +402,17 @@ class Store:
             or self._attempts < self._max_attempts
         )
 
-    @property
-    def succeeded(self):
+    def reset(self):
         if self._in_context:
-            raise Exception("Must exit a Store context for succeeded to be valid")
-        return self._attempts == 0
+            raise Exception("Cannot reset while inside a Store context.")
+        self._reset = True
+        self._attempts = 0
+
+    @property
+    def do(self):
+        if self._in_context:
+            raise Exception("Must exit a Store context for do to be valid")
+        return self._reset or self._attempts != 0
 
     def check_allowed(self):
         if not self._in_context:
@@ -414,7 +426,8 @@ class Store:
             status = "ERROR"
         else:
             status = "COMPLETE"
-        while True:
+        self.reset()
+        while self.do:
             with self:
                 rowcount = 0
                 while rowcount != 1:
@@ -436,8 +449,6 @@ class Store:
                     }
                     result = self._session.execute(query, params)
                     rowcount = result.rowcount
-            if self.succeeded:
-                break
 
     def add_trial_run_fn(self, trial_ids, trial_run_fn):
         import sys
@@ -452,7 +463,8 @@ class Store:
             mimetype=mimetype,
         )
 
-        while True:
+        self.reset()
+        while self.do:
             with self:
                 trial_orms = self._session.query(db.Trial).filter(
                     db.Trial.id.in_(trial_ids)
@@ -463,8 +475,6 @@ class Store:
                 if trial_orms.first() is not None:
                     orms = [trial_run_fn_asset_orm]
                     self._session.bulk_save_objects(orms, return_defaults=True)
-            if self.succeeded:
-                break
         return None
 
     def measure_from_db_task(self, task_orm):
@@ -623,7 +633,8 @@ class Store:
         return self.from_db_task(task_orm)
 
     def pick_trial(self, experiment_id, runner_id):
-        while True:
+        self.reset()
+        while self.do:
             with self:
                 rowcount = 0
                 while rowcount != 1:
@@ -640,12 +651,11 @@ class Store:
                         )
                     )
                     rowcount = result.rowcount
-            if self.succeeded:
-                break
         return trial_id
 
     def find_trial_by_id(self, _id: int):
-        while True:
+        self.reset()
+        while self.do:
             with self:
                 trial_orm = (
                     self._session.query(db.Trial).filter_by(id=_id).one_or_none()
@@ -654,8 +664,6 @@ class Store:
                     trial = None
                 else:
                     trial = self.from_db_trial(trial_orm)
-            if self.succeeded:
-                break
         return trial
 
     def get_experiment(self, name: str) -> Optional[int]:
@@ -1253,7 +1261,8 @@ def populate_with_datasets(
         )
 
     for dataset in dataset_iter:
-        while True:
+        store.reset()
+        while store.do:
             with store:
                 try:
                     task_id = store.create_task_with_data(dataset)
@@ -1265,8 +1274,6 @@ def populate_with_datasets(
                     else:
                         return False
                 populate_task_measures(store, task_id, dataset)
-            if store.succeeded:
-                break
     return True
 
 
