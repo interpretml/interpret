@@ -63,20 +63,27 @@ def run_azure_process(
     from azure.mgmt.containerinstance import ContainerInstanceManagementClient
     from azure.mgmt.resource import ResourceManagementClient
     from azure.identity import ClientSecretCredential
+    from azure.mgmt.authorization import AuthorizationManagementClient
+    from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
+    from azure.core.exceptions import HttpResponseError
+    from multiprocessing.pool import MaybeEncodingError
+
+    import uuid
+
+    client_id = azure_json["client_id"]
 
     if credential is None:
         credential = ClientSecretCredential(
             tenant_id=azure_json["tenant_id"],
-            client_id=azure_json["client_id"],
+            client_id=client_id,
             client_secret=azure_json["client_secret"],
         )
 
     resource_group_name = azure_json["resource_group"]
+    subscription_id = azure_json["subscription_id"]
 
-    aci_client = ContainerInstanceManagementClient(
-        credential, azure_json["subscription_id"]
-    )
-    res_client = ResourceManagementClient(credential, azure_json["subscription_id"])
+    aci_client = ContainerInstanceManagementClient(credential, subscription_id)
+    res_client = ResourceManagementClient(credential, subscription_id)
     resource_group = res_client.resource_groups.get(resource_group_name)
 
     container_resource_requests = ResourceRequests(
@@ -98,6 +105,11 @@ def run_azure_process(
             EnvironmentVariable(name="DB_URL", secure_value=uri),
             EnvironmentVariable(name="TIMEOUT", value=timeout),
             EnvironmentVariable(name="RAISE_EXCEPTION", value=raise_exception),
+            EnvironmentVariable(name="RESOURCE_GROUP_NAME", value=resource_group_name),
+            EnvironmentVariable(
+                name="CONTAINER_GROUP_NAME", value=container_group_name
+            ),
+            EnvironmentVariable(name="SUBSCRIPTION_ID", value=subscription_id),
         ]
 
         container = Container(
@@ -112,6 +124,7 @@ def run_azure_process(
             containers=[container],
             os_type=OperatingSystemTypes.linux,
             restart_policy=ContainerGroupRestartPolicy.never,
+            identity={"type": "SystemAssigned"},
         )
 
         # begin_create_or_update returns LROPoller,
@@ -129,23 +142,57 @@ def run_azure_process(
             time.sleep(1)
 
     if delete_group_container_on_complete:
+        auth_client = AuthorizationManagementClient(credential, subscription_id)
+
+        # Contributor Role
+        role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+
+        for container_group_name in container_group_names:
+            container_group = aci_client.container_groups.get(
+                resource_group_name, container_group_name
+            )
+            scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.ContainerInstance/containerGroups/{container_group_name}"
+            role_assignment_params = RoleAssignmentCreateParameters(
+                role_definition_id=role_definition_id,
+                principal_id=container_group.identity.principal_id,
+                principal_type="ServicePrincipal",
+            )
+            auth_client.role_assignments.create(
+                scope, str(uuid.uuid4()), role_assignment_params
+            )
+
+            role_assignment_params = RoleAssignmentCreateParameters(
+                role_definition_id=role_definition_id,
+                principal_id=client_id,
+                principal_type="User",
+            )
+            auth_client.role_assignments.create(
+                scope, str(uuid.uuid4()), role_assignment_params
+            )
+
         deletes = []
         while len(container_group_names) != 0:
             remove_after = []
             for container_group_name in container_group_names:
-                container_group = aci_client.container_groups.get(
-                    resource_group_name, container_group_name
-                )
-                container = container_group.containers[0]
-                iview = container.instance_view
-                if iview is not None:
-                    state = iview.current_state.state
-                    if state == "Terminated":
-                        remove_after.append(container_group_name)
-                        deleted = aci_client.container_groups.begin_delete(
-                            resource_group_name, container_group_name
-                        )
-                        deletes.append(deleted)
+                try:
+                    container_group = aci_client.container_groups.get(
+                        resource_group_name, container_group_name
+                    )
+                    container = container_group.containers[0]
+                    iview = container.instance_view
+                    if iview is not None:
+                        state = iview.current_state.state
+                        if state == "Terminated":
+                            # TODO: begin_delete can delete on server but fail
+                            # so we should handle the exception that the resource
+                            # does not exist
+                            deleted = aci_client.container_groups.begin_delete(
+                                resource_group_name, container_group_name
+                            )
+                            deletes.append(deleted)
+                            remove_after.append(container_group_name)
+                except (HttpResponseError, MaybeEncodingError):
+                    pass
 
             for container_group_name in remove_after:
                 container_group_names.remove(container_group_name)

@@ -73,13 +73,35 @@ def run_trials(
 
 if __name__ == "__main__":
     import os
+    import time
 
     experiment_id = os.getenv("EXPERIMENT_ID")
     runner_id = os.getenv("RUNNER_ID")
     db_url = os.getenv("DB_URL")
     timeout = float(os.getenv("TIMEOUT", 0.0))
     raise_exception = True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
-
     run_trials(
         experiment_id, runner_id, db_url, timeout, raise_exception, is_remote=True
     )
+
+    # below here is Azure specific. Make optional in the future
+
+    from azure.identity import ManagedIdentityCredential
+    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
+
+    subscription_id = os.getenv("SUBSCRIPTION_ID")
+    resource_group_name = os.getenv("RESOURCE_GROUP_NAME")
+    container_group_name = os.getenv("CONTAINER_GROUP_NAME")
+
+    credential = ManagedIdentityCredential()
+    aci_client = ContainerInstanceManagementClient(credential, subscription_id)
+
+    # self-delete the container that we're running on
+    delete_poller = aci_client.container_groups.begin_delete(
+        resource_group_name, container_group_name
+    )
+    while not delete_poller.done():
+        print("Waiting to be deleted..")
+        time.sleep(60)
+
+    print("THIS LINE SHOULD NEVER EXECUTE SINCE THIS CONTAINER SHOULD BE DELETED.")

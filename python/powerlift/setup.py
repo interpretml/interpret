@@ -53,6 +53,7 @@ setuptools.setup(
             "azure-mgmt-sql",
             "azure-mgmt-resource",
             "azure-mgmt-containerinstance",
+            "azure-mgmt-authorization",
             "azure-identity",
         ],
         "testing": [
