@@ -245,21 +245,20 @@ class Benchmark:
             Results (pandas.DataFrame): Measures of an experiment in long form.
         """
 
-        self._store.reset()
-        while self._store.do:
-            with self._store:
-                self._experiment_id = self._store.get_experiment(self._name)
-                if self._experiment_id is None:
-                    return None
+        df = self._store.get_results(self._name)
+        df["meta"] = df["meta"].apply(lambda x: str(x))
 
-                records = list(self._store.iter_results(self._experiment_id))
-        df = pd.DataFrame.from_records(records)
         # sometimes logs are written twice when a runner attempts a DB transaction
         # and the result is commited in the DB, but the response to the runner fails
         # so remove the duplicates here
-        idx = df.groupby(["trial_id", "name", "seq_num"])["id"].idxmin()
+        idx = df.groupby(
+            ["task", "method", "meta", "replicate_num", "name", "seq_num"]
+        )["id"].idxmin()
         df = df.loc[idx]
         df = df.drop(["id"], axis=1)
+        df = df.sort_values(
+            by=["task", "method", "meta", "replicate_num", "name", "seq_num"]
+        )
         return df
 
     def available_tasks(self, include_measures=False) -> Optional[pd.DataFrame]:

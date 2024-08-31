@@ -797,28 +797,48 @@ class Store:
             }
             yield record
 
-    def iter_results(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
-        self.check_allowed()
-        trial_orms = self._session.query(db.Trial).filter_by(
-            experiment_id=experiment_id
+    def get_results(self, experiment_name: str):
+        sql = text(
+            f"""
+            SELECT
+                mo.id AS id,
+                ta.name AS task,
+                m.name AS method,
+                t.meta AS meta,
+                t.replicate_num AS replicate_num,
+                md.name AS name,
+                mo.seq_num AS seq_num,
+                md.type AS type,
+                mo.num_val AS num_val,
+                mo.str_val AS str_val,
+                mo.json_val AS json_val
+            FROM
+                experiment e
+            JOIN
+                trial t on e.id = t.experiment_id
+            JOIN
+                task ta ON t.task_id = ta.id
+            JOIN
+                method m ON t.method_id = m.id
+            JOIN
+                trial_measure_outcome tmo ON t.id = tmo.trial_id
+            JOIN
+                measure_outcome mo ON tmo.measure_outcome_id = mo.id
+            JOIN
+                measure_description md ON mo.measure_description_id = md.id
+            WHERE
+                e.name = '{experiment_name}'
+        """
         )
-        for trial_orm in trial_orms:
-            for measure_outcome in trial_orm.measure_outcomes:
-                record = {
-                    "id": measure_outcome.id,
-                    "trial_id": trial_orm.id,
-                    "replicate_num": trial_orm.replicate_num,
-                    "meta": trial_orm.meta,
-                    "method": trial_orm.method.name,
-                    "task": trial_orm.task.name,
-                    "name": measure_outcome.measure_description.name,
-                    "seq_num": measure_outcome.seq_num,
-                    "type": measure_outcome.measure_description.type.name,
-                    "num_val": measure_outcome.num_val,
-                    "str_val": measure_outcome.str_val,
-                    "json_val": measure_outcome.json_val,
-                }
-                yield record
+
+        self.reset()
+        while self.do:
+            with self:
+                result = self._session.execute(sql)
+                records = result.all()
+                columns = result.keys()
+        df = pd.DataFrame.from_records(records, columns=columns)
+        return df
 
     def iter_available_tasks(
         self, include_measures: bool = False
