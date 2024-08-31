@@ -44,26 +44,9 @@ import time
 import traceback as tb
 
 
-def _parse_function(src):
-    src_ast = ast.parse(src)
-    if isinstance(src_ast, ast.Module) and isinstance(src_ast.body[0], ast.FunctionDef):
-        return src_ast
-    return None
-
-
-def _compile_function(src_ast):
-    func_name = r"wired_function"
-    src_ast.body[0].name = func_name
-    compiled = compile(src_ast, "<string>", "exec")
-    scope = locals()
-    exec(compiled, scope, scope)
-    return locals()[func_name]
-
-
 MIMETYPE_DF = "application/vnd.interpretml/parquet-df"
 MIMETYPE_SERIES = "application/vnd.interpretml/parquet-series"
 MIMETYPE_JSON = "application/json"
-MIMETYPE_FUNC = "application/vnd.interpretml/function-str"
 
 
 class BytesParser:
@@ -84,13 +67,6 @@ class BytesParser:
             return pd.read_parquet(bstream)
         elif mimetype == MIMETYPE_SERIES:
             return pd.read_parquet(bstream)["Target"]
-        elif mimetype == MIMETYPE_FUNC:
-            src = bstream.getvalue().decode("utf-8")
-            src_ast = _parse_function(src)
-            if src_ast is None:
-                raise RuntimeError("Serialized code not valid.")
-            compiled_func = _compile_function(src_ast)
-            return compiled_func
         else:
             return None
 
@@ -125,13 +101,6 @@ class BytesParser:
         elif isinstance(obj, dict):
             bstream.write(json.dumps(obj).encode())
             mimetype = MIMETYPE_JSON
-        elif isinstance(obj, FunctionType):
-            src = inspect.getsource(obj)
-            src_ast = _parse_function(src)
-            if src_ast is None:
-                raise RuntimeError("Serialized code not valid.")
-            bstream.write(src.encode("utf-8"))
-            mimetype = MIMETYPE_FUNC
         else:
             return None, None
 
@@ -449,33 +418,6 @@ class Store:
                     result = self._session.execute(query, params)
                     rowcount = result.rowcount
 
-    def add_trial_run_fn(self, trial_ids, trial_run_fn):
-        import sys
-
-        mimetype, bstream = BytesParser.serialize(trial_run_fn)
-        trial_run_fn_asset_orm = db.Asset(
-            name="trial_run_fn",
-            description="Serialized trial run function.",
-            version=sys.version,
-            is_embedded=True,
-            embedded=bstream.getvalue(),
-            mimetype=mimetype,
-        )
-
-        self.reset()
-        while self.do:
-            with self:
-                trial_orms = self._session.query(db.Trial).filter(
-                    db.Trial.id.in_(trial_ids)
-                )
-                for trial_orm in trial_orms:
-                    trial_orm.input_assets.append(trial_run_fn_asset_orm)
-
-                if trial_orms.first() is not None:
-                    orms = [trial_run_fn_asset_orm]
-                    self._session.bulk_save_objects(orms, return_defaults=True)
-        return None
-
     def measure_from_db_task(self, task_orm):
         self.check_allowed()
         from powerlift.bench.experiment import Measure
@@ -581,6 +523,7 @@ class Store:
             experiment_orm.shell_install,
             experiment_orm.pip_install,
             experiment_orm.script,
+            experiment_orm.trial_fn,
             wheels,
             trials,
         )
@@ -631,6 +574,15 @@ class Store:
             return None
         return self.from_db_task(task_orm)
 
+    def get_trial_fn(self, experiment_id) -> str:
+        self.reset()
+        while self.do:
+            with self:
+                trial_fn = self._session.execute(
+                    text(f"SELECT trial_fn FROM experiment WHERE id={experiment_id}")
+                ).scalar()
+        return trial_fn
+
     def pick_trial(self, experiment_id, runner_id):
         self.reset()
         while self.do:
@@ -680,6 +632,7 @@ class Store:
         shell_install: str = None,
         pip_install: str = None,
         script: str = None,
+        trial_fn: str = None,
         wheels=None,
     ) -> Tuple[int, bool]:
         """Create experiment keyed by name."""
@@ -692,6 +645,7 @@ class Store:
             shell_install=shell_install,
             pip_install=pip_install,
             script=script,
+            trial_fn=trial_fn,
         )
 
         if wheels is not None:

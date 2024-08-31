@@ -47,6 +47,7 @@ def run_azure_process(
         fi
         result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
         printf "%s" "$result" > "startup.py"
+        echo "Running startup.py"
         python startup.py
     """
 

@@ -146,6 +146,7 @@ class Experiment:
     shell_install: str
     pip_install: str
     script: str
+    trial_fn: str
     wheels: List[Wheel]
     trials: List
 

@@ -91,12 +91,13 @@ class Experiment(Base):
     """The overall experiment, includes access to trials."""
 
     __tablename__ = "experiment"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(NAME_LEN), unique=True)
+    id = Column(Integer, primary_key=True, nullable=False)
+    name = Column(String(NAME_LEN), unique=True, nullable=False)
     description = Column(String(DESCRIPTION_LEN))
     shell_install = Column(Text)
     pip_install = Column(Text)
-    script = Column(Text)
+    script = Column(Text, nullable=False)
+    trial_fn = Column(Text, nullable=False)
 
     # TODO: consider removing the wheel relationship since it means we
     # spend time downloading the wheels each time we query the experiment

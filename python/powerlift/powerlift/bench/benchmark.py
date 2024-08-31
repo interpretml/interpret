@@ -15,6 +15,7 @@ from powerlift.db import schema as db
 
 import os
 import numpy as np
+import inspect
 
 
 class Benchmark:
@@ -81,6 +82,8 @@ class Benchmark:
                 wheel = db.Wheel(name=name, embedded=content)
                 wheels.append(wheel)
 
+        trial_fn = inspect.getsource(trial_run_fn)
+
         self._store.reset()
         while self._store.do:
             with self._store:
@@ -92,6 +95,7 @@ class Benchmark:
                         shell_install,
                         pip_install,
                         script_contents,
+                        trial_fn,
                         wheels,
                     )
 
@@ -185,9 +189,7 @@ class Benchmark:
         if executor is None:
             executor = LocalMachine(self._store)
         self._executors.add(executor)
-        executor.submit(
-            self._experiment_id, trial_run_fn, pending_trials, timeout=timeout
-        )
+        executor.submit(self._experiment_id, pending_trials, timeout=timeout)
         return executor
 
     def wait_until_complete(self):
