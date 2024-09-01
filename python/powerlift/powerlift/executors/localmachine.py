@@ -55,14 +55,12 @@ class LocalMachine(Executor):
         for runner_id in range(n_runners):
             if self._pool is None:
                 try:
-                    debug_fn = trial_run_fn if self._debug_mode else None
                     res = runner.run_trials(
                         experiment_id,
                         runner_id,
                         self._store.uri,
                         timeout,
                         self._raise_exception or self._debug_mode,
-                        debug_fn=debug_fn,
                     )
                     self._runner_id_to_result[runner_id] = res
                 except Exception as e:

@@ -189,11 +189,8 @@ class Store:
         if not self._reset and self._attempts == 0:
             raise Exception("Must reset before entering the Store context.")
 
-        if 0 < self._attempts:
-            assert self._session is None
-            assert self._conn is None
-            assert self._engine is None
-
+        # on first re-attempt, do not sleep
+        if 2 <= self._attempts:
             sleep_time = (
                 self._wait_secs
                 * (self._wait_lengthing**self._attempts)
@@ -729,27 +726,41 @@ class Store:
             trial = self.from_db_trial(trial_orm)
             yield trial
 
-    def iter_status(self, experiment_id: int) -> Iterable[Mapping[str, object]]:
-        # TODO(nopdive): Should this be in the store?
-        self.check_allowed()
-        trial_orms = self._session.query(db.Trial).filter_by(
-            experiment_id=experiment_id
+    def get_status(self, experiment_name: str):
+        sql = text(
+            f"""
+            SELECT
+                t.id AS trial_id,
+                ta.name AS task,
+                m.name AS method,
+                t.meta AS meta,
+                t.replicate_num AS replicate_num,
+                t.status AS status,
+                t.errmsg AS errmsg,
+                t.create_time AS create_time,
+                t.start_time AS start_time,
+                t.end_time AS end_time,
+                t.runner_id AS runner_id
+            FROM
+                experiment e
+            JOIN
+                trial t on e.id = t.experiment_id
+            JOIN
+                task ta ON t.task_id = ta.id
+            JOIN
+                method m ON t.method_id = m.id
+            WHERE
+                e.name = '{experiment_name}'
+        """
         )
-        for trial_orm in trial_orms:
-            record = {
-                "trial_id": trial_orm.id,
-                "replicate_num": trial_orm.replicate_num,
-                "meta": trial_orm.meta,
-                "method": trial_orm.method.name,
-                "task": trial_orm.task.name,
-                "status": trial_orm.status.name,
-                "errmsg": trial_orm.errmsg,
-                "create_time": trial_orm.create_time,
-                "start_time": trial_orm.start_time,
-                "end_time": trial_orm.end_time,
-                "runner_id": trial_orm.runner_id,
-            }
-            yield record
+        self.reset()
+        while self.do:
+            with self:
+                result = self._session.execute(sql)
+                records = result.all()
+                columns = result.keys()
+        df = pd.DataFrame.from_records(records, columns=columns)
+        return df
 
     def get_results(self, experiment_name: str):
         sql = text(
@@ -784,7 +795,6 @@ class Store:
                 e.name = '{experiment_name}'
         """
         )
-
         self.reset()
         while self.do:
             with self:
@@ -945,7 +955,6 @@ class Store:
             mimetype=y_mimetype,
             embedded=y_bstream.getvalue(),
         )
-
         meta_orm = db.Asset(
             name=meta_name,
             description=f"Metadata for {supervised.name()}",
@@ -1004,7 +1013,6 @@ class Store:
             mimetype=outputs_mimetype,
             embedded=outputs_bstream.getvalue(),
         )
-
         meta_orm = db.Asset(
             name=meta_name,
             description=f"Metadata for {data.name()}",
@@ -1231,8 +1239,8 @@ def populate_with_datasets(
 
     if dataset_iter is None:
         dataset_iter = chain(
+            retrieve_openml_cc18(cache_dir=cache_dir),
             retrieve_openml_automl_regression(cache_dir=cache_dir),
-            retrieve_openml_automl_classification(cache_dir=cache_dir),
         )
 
     for dataset in dataset_iter:

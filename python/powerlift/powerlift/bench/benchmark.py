@@ -230,15 +230,10 @@ class Benchmark:
         Returns:
             Trial statuses (Optional[pandas.DataFrame]): Experiment's trials' status.
         """
-        self._store.reset()
-        while self._store.do:
-            with self._store:
-                self._experiment_id = self._store.get_experiment(self._name)
-                if self._experiment_id is None:
-                    return None
-
-                records = list(self._store.iter_status(self._experiment_id))
-        return pd.DataFrame.from_records(records)
+        df = self._store.get_status(self._name)
+        df["meta"] = df["meta"].apply(lambda x: str(x))
+        df = df.sort_values(by=["task", "method", "meta", "replicate_num"])
+        return df
 
     def results(self) -> Optional[pd.DataFrame]:
         """Retrieves trial measures of an experiment in long form.
