@@ -19,21 +19,21 @@ class AzureContainerInstance(Executor):
         self,
         store: Store,
         azure_tenant_id: str,
-        azure_client_id: str,
-        azure_client_secret: str,
         subscription_id: str,
-        resource_group: str,
+        azure_client_id: str,
         credential=None,
+        azure_client_secret: str = None,
+        resource_group: str = "powerlift_rg",
+        shell_install: str = None,
+        pip_install: str = None,
+        wheel_filepaths: List[str] = None,
+        n_running_containers: int = 1,
+        num_cores: int = 4,
+        mem_size_gb: int = 16,
         # other images available at:
         # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
         # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
-        image: str = "interpretml/powerlift:0.1.11",
-        shell_install: str = None,
-        pip_install: str = None,
-        n_running_containers: int = 1,
-        num_cores: int = 1,
-        mem_size_gb: int = 2,
-        wheel_filepaths: List[str] = None,
+        image: str = "mcr.microsoft.com/devcontainers/python:latest",
         docker_db_uri: str = None,
         raise_exception: bool = False,
         delete_group_container_on_complete: bool = True,
@@ -43,15 +43,18 @@ class AzureContainerInstance(Executor):
         Args:
             store (Store): Store that houses trials.
             azure_tenant_id (str): Azure tentant ID.
-            azure_client_id (str): Azure client ID.
-            azure_client_secret (str): Azure client secret.
             subscription_id (str): Azure subscription ID.
+            azure_client_id (str): Azure client ID.
+            credential: Azure credential
+            azure_client_secret (str): Azure client secret.
             resource_group (str): Azure resource group.
-            image (str, optional): Image to execute. Defaults to "interpretml/powerlift:0.0.1".
+            shell_install (str): apt-get install parameters.
+            pip_install (str): pip install parameters.
+            wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             n_running_containers (int, optional): Max number of containers to run simultaneously. Defaults to 1.
             num_cores (int, optional): Number of cores per container. Defaults to 1.
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
-            wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
+            image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             raise_exception (bool, optional): Raise exception on failure.
             delete_group_container_on_complete (bool, optional): Delete group containers after completion. Defaults to True.

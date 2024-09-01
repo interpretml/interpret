@@ -87,24 +87,21 @@ This can also be run on Azure Container Instances where needed.
 ```python
 # Run experiment (but in ACI).
 from powerlift.executors import AzureContainerInstance
+store = Store(os.getenv("AZURE_DB_URL"))
 azure_tenant_id = os.getenv("AZURE_TENANT_ID")
+subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
 azure_client_id = os.getenv("AZURE_CLIENT_ID")
 azure_client_secret = os.getenv("AZURE_CLIENT_SECRET")
-subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
 resource_group = os.getenv("AZURE_RESOURCE_GROUP")
-store = Store(os.getenv("AZURE_DB_URL"))
 
 executor = AzureContainerInstance(
     store,
     azure_tenant_id,
-    azure_client_id,
-    azure_client_secret,
     subscription_id,
-    resource_group,
-    n_running_containers=5,
-    num_cores=1,
-    mem_size_gb=2,
-    raise_exception=True,
+    azure_client_id,
+    azure_client_secret=azure_client_secret,
+    resource_group=resource_group,
+    n_running_containers=5
 )
 benchmark = Benchmark(store, name="SVM vs RF")
 benchmark.run(trial_runner, trial_filter, timeout=10, executor=executor)

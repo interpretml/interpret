@@ -145,10 +145,10 @@ def test_scikit_experiment_aci(populated_azure_store):
     executor = AzureContainerInstance(
         store,
         azure_tenant_id,
-        azure_client_id,
-        azure_client_secret,
         subscription_id,
-        resource_group,
+        azure_client_id,
+        azure_client_secret=azure_client_secret,
+        resource_group=resource_group,
         n_running_containers=5,
         num_cores=2,
         mem_size_gb=8,
