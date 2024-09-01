@@ -84,7 +84,7 @@ class BytesParser:
             orig_close = bstream.close
             bstream.close = lambda: None
             try:
-                obj.astype(dtype=object).to_frame(name="Target").to_parquet(
+                obj.to_frame(name="Target").to_parquet(
                     bstream, compression="Brotli", index=False
                 )
             finally:
@@ -1277,6 +1277,7 @@ def retrieve_openml(
         suite = openml.study.get_suite(suite_id)
         tasks = suite.tasks.copy()
         random.Random(1337).shuffle(tasks)
+        cat_type = pd.CategoricalDtype(ordered=False)
         for task_id in tqdm(tasks, desc=source):
             task = openml.tasks.get_task(
                 task_id,
@@ -1303,48 +1304,23 @@ def retrieve_openml(
             )
 
             if task.task_type_id == openml.tasks.TaskType.SUPERVISED_CLASSIFICATION:
-                problem = (
-                    "binary"
-                    if dataset.qualities["NumberOfClasses"] == 2
-                    else "multiclass"
-                )
+                classes, y = np.unique(y.values, return_inverse=True)
+                problem = "binary" if len(classes) == 2 else "multiclass"
 
                 # for benchmarking we do not care about the original target strings
-                y = pd.Series(np.unique(y, return_inverse=True)[1])
+                y = pd.Series(y, dtype=np.int16)
             elif task.task_type_id == openml.tasks.TaskType.SUPERVISED_REGRESSION:
                 problem = "regression"
+                y = pd.Series(y, dtype=np.float64)
             else:
                 raise Exception(f"Unrecognized task_type_id {task.task_type_id}.")
 
             for col_name, cat in zip(X.columns, categorical_mask):
                 col = X[col_name]
-
-                if pd.api.types.is_sparse(col):
-                    col = col.sparse.to_dense()
-                    X[col_name] = col
-
-                if col.dtype.name == "category":
-                    if not cat:
-                        raise Exception(
-                            f"Categorical type mismatch. Was CategoricalDtype but indicated non-categorical."
-                        )
-                    if col.cat.ordered:
-                        # OpenMl incorrectly is indicating these as ordered
-                        X[col_name] = col.cat.as_unordered()
-                elif col.dtype.name == "object":
-                    if cat:
-                        X[col_name] = col.astype(pd.CategoricalDtype(ordered=False))
-                    else:
-                        X[col_name] = col.astype(float)
-                elif np.issubdtype(col.dtype, np.floating) or np.issubdtype(
-                    col.dtype, np.integer
-                ):
-                    if cat:
-                        raise Exception(
-                            f"Categorical type mismatch. Was continuous but indicated categorical."
-                        )
+                if cat:
+                    X[col_name] = pd.Series(col, dtype=cat_type, name=col.name)
                 else:
-                    raise Exception(f"Unrecognized data type {col.dtype.name}.")
+                    X[col_name] = pd.Series(col, dtype=np.float64, name=col.name)
 
             meta = {
                 "name": name,
@@ -1470,6 +1446,7 @@ def retrieve_catboost_50k(
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir, "catboost_50k")
 
+    cat_type = pd.CategoricalDtype(ordered=False)
     for dataset in tqdm(datasets, desc="catboost_50k"):
         name = dataset["name"]
         X_name = f"{name}.X.parquet"
@@ -1482,14 +1459,34 @@ def retrieve_catboost_50k(
             target = dataset["target"]
             X = df.drop(target, axis=1)
             y = df[target]
-            problem = dataset["problem"]
-            if dataset["problem"] == "classification":
-                problem = "binary" if len(y.unique()) == 2 else "multiclass"
+            problem_type = dataset["problem"]
+
+            if problem_type == "classification":
+                classes, y = np.unique(y.values, return_inverse=True)
+                problem = "binary" if len(classes) == 2 else "multiclass"
+
+                # for benchmarking we do not care about the original target strings
+                y = pd.Series(y, dtype=np.int16)
+            elif problem_type == "regression":
+                problem = "regression"
+                y = pd.Series(y, dtype=np.float64)
+            else:
+                raise Exception(f"Unrecognized problem {problem_type}.")
+
+            categorical_mask = [dt.kind == "O" for dt in X.dtypes]
+
+            for col_name, cat in zip(X.columns, categorical_mask):
+                col = X[col_name]
+                if cat:
+                    X[col_name] = pd.Series(col, dtype=cat_type, name=col.name)
+                else:
+                    X[col_name] = pd.Series(col, dtype=np.float64, name=col.name)
+
             meta = {
                 "name": name,
                 "problem": problem,
                 "source": "catboost_50k",
-                "categorical_mask": [dt.kind == "O" for dt in X.dtypes],
+                "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }
             supervised = SupervisedDataset(X, y, meta)
@@ -1521,6 +1518,7 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
     )
     dataset_names.extend([("regression", name) for name in regression_dataset_names])
 
+    cat_type = pd.CategoricalDtype(ordered=False)
     for problem_type, dataset_name in tqdm(dataset_names, desc="pmlb"):
         name = dataset_name
         X_name = f"{name}.X.parquet"
@@ -1532,14 +1530,32 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
             df = fetch_data(dataset_name)
             X = df.drop("target", axis=1)
             y = df["target"]
-            problem = problem_type
             if problem_type == "classification":
-                problem = "binary" if len(y.unique()) == 2 else "multiclass"
+                classes, y = np.unique(y.values, return_inverse=True)
+                problem = "binary" if len(classes) == 2 else "multiclass"
+
+                # for benchmarking we do not care about the original target strings
+                y = pd.Series(y, dtype=np.int16)
+            elif problem_type == "regression":
+                problem = "regression"
+                y = pd.Series(y, dtype=np.float64)
+            else:
+                raise Exception(f"Unrecognized problem_type {problem_type}.")
+
+            categorical_mask = [dt.kind == "O" for dt in X.dtypes]
+
+            for col_name, cat in zip(X.columns, categorical_mask):
+                col = X[col_name]
+                if cat:
+                    X[col_name] = pd.Series(col, dtype=cat_type, name=col.name)
+                else:
+                    X[col_name] = pd.Series(col, dtype=np.float64, name=col.name)
+
             meta = {
                 "name": name,
                 "problem": problem,
                 "source": "pmlb",
-                "categorical_mask": [dt.kind == "O" for dt in X.dtypes],
+                "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }
             supervised = SupervisedDataset(X, y, meta)

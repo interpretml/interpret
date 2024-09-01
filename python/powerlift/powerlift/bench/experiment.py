@@ -4,6 +4,7 @@ The experiment and its associate classes.
 """
 
 import pandas as pd
+import numpy as np
 from typing import Dict, Iterable
 from typing import Type, TypeVar
 from typing import Union, Optional, List
@@ -11,7 +12,7 @@ from dataclasses import dataclass
 from numbers import Number
 import time
 
-from powerlift.bench.store import Store
+from powerlift.bench.store import Store, MIMETYPE_SERIES
 
 
 @dataclass(frozen=True)
@@ -105,6 +106,8 @@ class Task:
             name = alias_map[alias]
             asset = name_to_asset[name]
             parsed = BytesParser.deserialize(asset.mimetype, asset.embedded)
+            if asset.mimetype == MIMETYPE_SERIES:
+                parsed = np.array(parsed)
             outputs.append(parsed)
         return outputs
 
