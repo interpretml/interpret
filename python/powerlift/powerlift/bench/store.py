@@ -484,7 +484,6 @@ class Store:
         self.check_allowed()
         from powerlift.bench.experiment import Task
 
-        assets = [self.from_db_asset(asset) for asset in task_orm.assets]
         measures = self.measure_from_db_task(task_orm)
         return Task(
             task_orm.id,
@@ -494,7 +493,9 @@ class Store:
             task_orm.problem,
             task_orm.origin,
             task_orm.config,
-            assets,
+            task_orm.x,
+            task_orm.y,
+            task_orm.meta,
             measures,
         )
 
@@ -506,21 +507,6 @@ class Store:
             wheel_orm.experiment_id,
             wheel_orm.name,
             wheel_orm.embedded,
-        )
-
-    def from_db_asset(self, asset_orm):
-        self.check_allowed()
-        from powerlift.bench.experiment import Asset
-
-        return Asset(
-            asset_orm.id,
-            asset_orm.name,
-            asset_orm.description,
-            asset_orm.version,
-            asset_orm.is_embedded,
-            asset_orm.embedded,
-            asset_orm.uri,
-            asset_orm.mimetype,
         )
 
     def from_db_experiment(self, experiment_orm):
@@ -966,34 +952,7 @@ class Store:
     def _create_task_with_supervised(self, supervised, version):
         self.check_allowed()
 
-        X_bstream, y_bstream, meta_bstream = SupervisedDataset.serialize(supervised)
-        X_name, y_name, meta_name = supervised.asset_names()
-        X_mimetype, y_mimetype, meta_mimetype = supervised.mimetypes()
-
-        X_orm = db.Asset(
-            name=X_name,
-            description=f"Training data for {supervised.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=X_mimetype,
-            embedded=X_bstream.getvalue(),
-        )
-        y_orm = db.Asset(
-            name=y_name,
-            description=f"Labels for {supervised.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=y_mimetype,
-            embedded=y_bstream.getvalue(),
-        )
-        meta_orm = db.Asset(
-            name=meta_name,
-            description=f"Metadata for {supervised.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=meta_mimetype,
-            embedded=meta_bstream.getvalue(),
-        )
+        X_bstream, y_bstream, _ = SupervisedDataset.serialize(supervised)
 
         meta = supervised.meta
         task_orm = db.Task(
@@ -1004,54 +963,19 @@ class Store:
             origin=meta["source"],
             config={
                 "type": "data_supervised",
-                "aliases": {
-                    "X": X_name,
-                    "y": y_name,
-                    "meta": meta_name,
-                },
             },
+            x=X_bstream.getvalue(),
+            y=y_bstream.getvalue(),
+            meta=supervised.meta,
         )
-        task_orm.assets.append(X_orm)
-        task_orm.assets.append(y_orm)
-        task_orm.assets.append(meta_orm)
 
-        self._session.add(X_orm)
-        self._session.add(y_orm)
         self._session.add(task_orm)
         self._session.flush()
-
         return task_orm.id
 
     def _create_task_with_dataframe(self, data, version):
         self.check_allowed()
-        inputs_bstream, outputs_bstream, meta_bstream = DataFrameDataset.serialize(data)
-        inputs_name, outputs_name, meta_name = data.asset_names()
-        inputs_mimetype, outputs_mimetype, meta_mimetype = data.mimetypes()
-
-        inputs_orm = db.Asset(
-            name=inputs_name,
-            description=f"Inputs for {data.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=inputs_mimetype,
-            embedded=inputs_bstream.getvalue(),
-        )
-        outputs_orm = db.Asset(
-            name=outputs_name,
-            description=f"Outputs for {data.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=outputs_mimetype,
-            embedded=outputs_bstream.getvalue(),
-        )
-        meta_orm = db.Asset(
-            name=meta_name,
-            description=f"Metadata for {data.name()}",
-            version=version,
-            is_embedded=True,
-            mimetype=meta_mimetype,
-            embedded=meta_bstream.getvalue(),
-        )
+        inputs_bstream, outputs_bstream, _ = DataFrameDataset.serialize(data)
 
         meta = data.meta
         task_orm = db.Task(
@@ -1062,22 +986,14 @@ class Store:
             origin=meta["source"],
             config={
                 "type": "data_dataframe",
-                "aliases": {
-                    "inputs": inputs_name,
-                    "outputs": outputs_name,
-                    "meta": meta_name,
-                },
             },
+            x=inputs_bstream.getvalue(),
+            y=outputs_bstream.getvalue(),
+            meta=data.meta,
         )
-        task_orm.assets.append(inputs_orm)
-        task_orm.assets.append(outputs_orm)
-        task_orm.assets.append(meta_orm)
 
-        self._session.add(inputs_orm)
-        self._session.add(outputs_orm)
         self._session.add(task_orm)
         self._session.flush()
-
         return task_orm.id
 
 

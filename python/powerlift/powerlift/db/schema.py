@@ -30,14 +30,6 @@ MEASURE_STR_LEN = None
 # These descriptions shouldn't be much longer than a tweet (use links for more verbosity).
 DESCRIPTION_LEN = 300
 
-# Maximum limit URI length set based on the below link:
-# https://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers
-URI_LEN = 2000
-
-# Media type length based on below link:
-# https://datatracker.ietf.org/doc/html/rfc4288#section-4.2
-MIMETYPE_LEN = 127
-
 Base = declarative_base()
 
 
@@ -55,12 +47,6 @@ class StatusEnum(enum.Enum):
     SUSPENDED = 4
 
 
-task_asset_table = Table(
-    "task_asset",
-    Base.metadata,
-    Column("task_id", ForeignKey("task.id"), primary_key=True),
-    Column("asset_id", ForeignKey("asset.id"), primary_key=True),
-)
 trial_measure_outcome_table = Table(
     "trial_measure_outcome",
     Base.metadata,
@@ -181,32 +167,17 @@ class Task(Base):
     origin = Column(String(NAME_LEN))
     config = Column(JSON)
 
+    x = Column(LargeBinary, nullable=False)
+    y = Column(LargeBinary, nullable=False)
+    meta = Column(JSON, nullable=False)
+
     trials = relationship("Trial", back_populates="task")
-    assets = relationship("Asset", secondary=task_asset_table, back_populates="tasks")
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=task_measure_outcome_table, back_populates="tasks"
     )
     __table_args__ = (
         UniqueConstraint("name", "problem", "origin", name="u_name_problem_origin"),
     )
-
-
-class Asset(Base):
-    """An asset with its associated mimetype and uri."""
-
-    __tablename__ = "asset"
-    id = Column(Integer, primary_key=True)
-
-    name = Column(String(NAME_LEN))
-    description = Column(String(DESCRIPTION_LEN))
-    version = Column(String(VERSION_LEN))
-
-    is_embedded = Column(Boolean)
-    embedded = Column(LargeBinary, nullable=True)
-    uri = Column(String(URI_LEN), nullable=True)
-    mimetype = Column(String(MIMETYPE_LEN))
-
-    tasks = relationship("Task", secondary=task_asset_table, back_populates="assets")
 
 
 class Wheel(Base):

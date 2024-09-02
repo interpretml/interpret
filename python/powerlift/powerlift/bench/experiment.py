@@ -16,20 +16,6 @@ from powerlift.bench.store import Store, MIMETYPE_SERIES
 
 
 @dataclass(frozen=True)
-class Asset:
-    """Represents an asset (including mimetype) that is produced or used by trial and task objects."""
-
-    id: Optional[int]
-    name: str
-    description: str
-    version: str
-    is_embedded: bool
-    embedded: Optional[bytes]
-    uri: bool
-    mimetype: str
-
-
-@dataclass(frozen=True)
 class Wheel:
     """Represents a wheel asset that is used by experiment objects."""
 
@@ -63,7 +49,9 @@ class Task:
     problem: str
     origin: str
     config: dict
-    assets: List[Asset]
+    x: bytes
+    y: bytes
+    meta: Dict[str, object]
     measures: Dict[str, Measure]
 
     def measure(self, name: str) -> pd.DataFrame:
@@ -88,28 +76,23 @@ class Task:
         """
         return self.measures[name].values["val"].iloc[0]
 
-    def data(self, aliases: Iterable[str]) -> List[object]:
-        """Returns assets as a list of objects that maps to the aliases provided.
-
-        Args:
-            aliases (Iterable[str]): Aliases of assets to be retrieved.
+    def data(self) -> List[object]:
+        """Returns assets.
 
         Returns:
-            List[object]: List of objects retrieved by aliases.
+            List[object]: List of assets retrieved.
         """
         from powerlift.bench.store import BytesParser
 
-        outputs = []
-        alias_map = self.config["aliases"]
-        name_to_asset = {asset.name: asset for asset in self.assets}
-        for alias in aliases:
-            name = alias_map[alias]
-            asset = name_to_asset[name]
-            parsed = BytesParser.deserialize(asset.mimetype, asset.embedded)
-            if asset.mimetype == MIMETYPE_SERIES:
-                parsed = np.array(parsed)
-            outputs.append(parsed)
-        return outputs
+        return [
+            BytesParser.deserialize("application/vnd.interpretml/parquet-df", self.x),
+            np.array(
+                BytesParser.deserialize(
+                    "application/vnd.interpretml/parquet-series", self.y
+                )
+            ),
+            self.meta,
+        ]
 
 
 T = TypeVar("T", bound="Method")
