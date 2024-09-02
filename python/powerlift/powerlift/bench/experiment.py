@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from numbers import Number
 import time
 
-from powerlift.bench.store import Store, MIMETYPE_SERIES
+from powerlift.bench.store import Store, MIMETYPE_DF, MIMETYPE_SERIES
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,7 @@ class Measure:
 class Task:
     """Represents a problem and its associated data. For instance, binary classification on the adult dataset."""
 
+    store: Store
     id: Optional[int]
     name: str
     description: str
@@ -49,8 +50,6 @@ class Task:
     problem: str
     origin: str
     config: dict
-    x: bytes
-    y: bytes
     meta: Dict[str, object]
     measures: Dict[str, Measure]
 
@@ -84,15 +83,11 @@ class Task:
         """
         from powerlift.bench.store import BytesParser
 
-        return [
-            BytesParser.deserialize("application/vnd.interpretml/parquet-df", self.x),
-            np.array(
-                BytesParser.deserialize(
-                    "application/vnd.interpretml/parquet-series", self.y
-                )
-            ),
-            self.meta,
-        ]
+        x, y = self.store.get_assets(self.id)
+        x = BytesParser.deserialize(MIMETYPE_DF, x)
+        y = np.array(BytesParser.deserialize(MIMETYPE_SERIES, y))
+
+        return (x, y, self.meta)
 
 
 T = TypeVar("T", bound="Method")

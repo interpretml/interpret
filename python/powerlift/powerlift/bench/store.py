@@ -486,6 +486,7 @@ class Store:
 
         measures = self.measure_from_db_task(task_orm)
         return Task(
+            self,
             task_orm.id,
             task_orm.name,
             task_orm.description,
@@ -493,8 +494,6 @@ class Store:
             task_orm.problem,
             task_orm.origin,
             task_orm.config,
-            task_orm.x,
-            task_orm.y,
             task_orm.meta,
             measures,
         )
@@ -820,6 +819,14 @@ class Store:
                 columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
         return df
+
+    def get_assets(self, task_id: int):
+        sql = text(f"SELECT x, y FROM task WHERE id = {task_id}")
+        self.reset()
+        while self.do:
+            with self:
+                result = self._session.execute(sql).fetchone()
+        return tuple(result)
 
     def iter_available_tasks(
         self, include_measures: bool = False
