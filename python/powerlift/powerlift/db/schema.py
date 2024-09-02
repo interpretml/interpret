@@ -61,18 +61,6 @@ task_asset_table = Table(
     Column("task_id", ForeignKey("task.id"), primary_key=True),
     Column("asset_id", ForeignKey("asset.id"), primary_key=True),
 )
-trial_input_asset_table = Table(
-    "trial_input_asset",
-    Base.metadata,
-    Column("trial_id", ForeignKey("trial.id"), primary_key=True),
-    Column("asset_id", ForeignKey("asset.id"), primary_key=True),
-)
-trial_output_asset_table = Table(
-    "trial_output_asset",
-    Base.metadata,
-    Column("trial_id", ForeignKey("trial.id"), primary_key=True),
-    Column("asset_id", ForeignKey("asset.id"), primary_key=True),
-)
 trial_measure_outcome_table = Table(
     "trial_measure_outcome",
     Base.metadata,
@@ -129,12 +117,6 @@ class Trial(Base):
 
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=trial_measure_outcome_table, back_populates="trials"
-    )
-    input_assets = relationship(
-        "Asset", secondary=trial_input_asset_table, back_populates="trial_inputs"
-    )
-    output_assets = relationship(
-        "Asset", secondary=trial_output_asset_table, back_populates="trial_outputs"
     )
 
 
@@ -224,12 +206,6 @@ class Asset(Base):
     uri = Column(String(URI_LEN), nullable=True)
     mimetype = Column(String(MIMETYPE_LEN))
 
-    trial_inputs = relationship(
-        "Trial", secondary=trial_input_asset_table, back_populates="input_assets"
-    )
-    trial_outputs = relationship(
-        "Trial", secondary=trial_output_asset_table, back_populates="output_assets"
-    )
     tasks = relationship("Task", secondary=task_asset_table, back_populates="assets")
 
 

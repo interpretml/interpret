@@ -558,7 +558,6 @@ class Store:
         self.check_allowed()
         from powerlift.bench.experiment import Trial
 
-        input_assets = [self.from_db_asset(asset) for asset in trial_orm.input_assets]
         task = self.from_db_task(trial_orm.task)
         method = self.from_db_method(trial_orm.method)
         return Trial(
@@ -568,7 +567,6 @@ class Store:
             method,
             trial_orm.replicate_num,
             trial_orm.meta,
-            input_assets,
         )
 
     def find_experiment_by_id(self, _id: int):

@@ -163,7 +163,6 @@ class Trial:
         method: Method,
         replicate_num: int,
         meta: dict,
-        input_assets: List[Asset],
     ):
         """Represents a single trial within an experiment.
 
@@ -174,7 +173,6 @@ class Trial:
             method (Method): Method of trial.
             replicate_num (int): Replicate number of trial (when a trial is repeated many times).
             meta (dict): Metadata associated with the trial.
-            input_assets (List[Asset]): Input assets that are available on trial run.
         """
         self._id = _id
         self._store = store
@@ -182,7 +180,6 @@ class Trial:
         self._method = method
         self._replicate_num = replicate_num
         self._meta = meta
-        self._input_assets = input_assets
         self._measure_counts = {}
 
     def log(
@@ -238,10 +235,6 @@ class Trial:
     @property
     def meta(self):
         return self._meta
-
-    @property
-    def input_assets(self):
-        return self._input_assets
 
     @property
     def id(self):

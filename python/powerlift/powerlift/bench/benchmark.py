@@ -151,7 +151,6 @@ class Benchmark:
                                 method,
                                 replicate_num,
                                 meta,
-                                [],
                             )
                             trials.append((trial_param, trial))
 
