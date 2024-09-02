@@ -57,28 +57,7 @@ def run_azure_process(
                 exit 63
             fi
         fi
-        retry_count=0
-        while true; do
-            pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
-            if [ $? -eq 0 ]; then
-                break
-            fi
-            if [ $retry_count -ge 300 ]; then
-                echo "Maximum number of retries reached. Command failed."
-                exit 67
-            fi
-            retry_count=$((retry_count + 1))
-            echo "Sleeping."
-            sleep 300
-            echo "Retrying."
-        done
-        if [ -n "$pip_install" ]; then
-            cmd="python -m pip install $pip_install"
-            eval $cmd
-            if [ $? -ne 0 ]; then
-                exit 63
-            fi
-        fi
+
         retry_count=0
         while true; do
             filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id='$EXPERIMENT_ID';" -t -A)
@@ -119,6 +98,35 @@ def run_azure_process(
                 fi
             done
         fi
+
+        retry_count=0
+        while true; do
+            pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Command failed."
+                exit 67
+            fi
+            retry_count=$((retry_count + 1))
+            echo "Sleeping."
+            sleep 300
+            echo "Retrying."
+        done
+        if [ -n "$pip_install" ]; then
+            cmd="python -m pip install $pip_install"
+            eval $cmd
+            if [ $? -ne 0 ]; then
+                exit 63
+            fi
+        fi
+
+        python -m pip install psycopg2-binary powerlift
+        if [ $? -ne 0 ]; then
+            exit 63
+        fi
+
         retry_count=0
         while true; do
             result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
@@ -153,7 +161,7 @@ def run_azure_process(
 
         # wait 10 mintues to allow inspection of the logs
         sleep 600
-        
+
         retry_count=0
         while true; do
             echo "Deleting this container."
