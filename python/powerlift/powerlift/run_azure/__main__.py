@@ -20,35 +20,124 @@ def run_azure_process(
         if ! command -v psql >/dev/null 2>&1; then
             is_updated=1
             apt-get --yes update
+            if [ $? -ne 0 ]; then
+                exit 63
+            fi
             apt-get --yes install postgresql-client
+            if [ $? -ne 0 ]; then
+                exit 63
+            fi
         fi
-        shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        retry_count=0
+        while true; do
+            shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Command failed."
+                exit 67
+            fi
+            retry_count=$((retry_count + 1))
+            echo "Sleeping."
+            sleep 300
+            echo "Retrying."
+        done
         if [ -n "$shell_install" ]; then
             if [ "$is_updated" -eq 0 ]; then
                 is_updated=1
                 apt-get --yes update
+                if [ $? -ne 0 ]; then
+                    exit 63
+                fi
             fi
             cmd="apt-get --yes install $shell_install"
             eval $cmd
+            if [ $? -ne 0 ]; then
+                exit 63
+            fi
         fi
-        pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        retry_count=0
+        while true; do
+            pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Command failed."
+                exit 67
+            fi
+            retry_count=$((retry_count + 1))
+            echo "Sleeping."
+            sleep 300
+            echo "Retrying."
+        done
         if [ -n "$pip_install" ]; then
             cmd="python -m pip install $pip_install"
             eval $cmd
+            if [ $? -ne 0 ]; then
+                exit 63
+            fi
         fi
-        filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id='$EXPERIMENT_ID';" -t -A)
+        retry_count=0
+        while true; do
+            filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id='$EXPERIMENT_ID';" -t -A)
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Command failed."
+                exit 67
+            fi
+            retry_count=$((retry_count + 1))
+            echo "Sleeping."
+            sleep 300
+            echo "Retrying."
+        done
         if [ -n "$filenames" ]; then
             echo "$filenames" | while IFS= read -r filename; do
                 echo "Processing filename: $filename"
-                psql "$DB_URL" -c "COPY (SELECT embedded FROM wheel WHERE experiment_id='$EXPERIMENT_ID' AND name='$filename') TO STDOUT WITH BINARY;" > "$filename"
+                retry_count=0
+                while true; do
+                    psql "$DB_URL" -c "COPY (SELECT embedded FROM wheel WHERE experiment_id='$EXPERIMENT_ID' AND name='$filename') TO STDOUT WITH BINARY;" > "$filename"
+                    if [ $? -eq 0 ]; then
+                        break
+                    fi
+                    if [ $retry_count -ge 300 ]; then
+                        echo "Maximum number of retries reached. Command failed."
+                        exit 67
+                    fi
+                    retry_count=$((retry_count + 1))
+                    echo "Sleeping."
+                    sleep 300
+                    echo "Retrying."
+                done
                 cmd="python -m pip install $filename"
                 eval $cmd
+                if [ $? -ne 0 ]; then
+                    exit 63
+                fi
             done
         fi
-        result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+        retry_count=0
+        while true; do
+            result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Command failed."
+                exit 67
+            fi
+            retry_count=$((retry_count + 1))
+            echo "Sleeping."
+            sleep 300
+            echo "Retrying."
+        done
         printf "%s" "$result" > "startup.py"
         echo "Running startup.py"
         python startup.py
+        exit 68  # startup.py should self-kill by deleting the container we are running on
     """
 
     import time

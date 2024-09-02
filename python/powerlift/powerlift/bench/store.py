@@ -133,13 +133,31 @@ class Store:
         # TODO: include support for Azure passwordless credentials:
         # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
 
+        if wait_lengthing < 1.0:
+            raise Exception("wait_lengthing must be equal to or above 1.0")
+
         self._create_engine_kwargs = create_engine_kwargs
-        # TODO: eventually we should move the call to create_engine which is
-        # inside create_db to the start of a context where we can retry failures
-        self._engine = create_db(uri, **create_engine_kwargs)
-        if force_recreate:
-            drop_tables(self._engine)
-        create_tables(self._engine)
+        attempts = 0
+        while True:
+            try:
+                self._engine = create_db(uri, **create_engine_kwargs)
+                if force_recreate:
+                    drop_tables(self._engine)
+                create_tables(self._engine)
+                break
+            except Exception as e:
+                if print_exceptions:
+                    try:
+                        print(str(e))
+                    except:
+                        pass
+                attempts += 1
+                if max_attempts is not None and max_attempts <= attempts:
+                    raise
+                sleep_time = (
+                    wait_secs * (wait_lengthing**attempts) * random.uniform(0.5, 2.0)
+                )
+                time.sleep(sleep_time)
 
         self._conn = None
         self._session = None
@@ -149,8 +167,6 @@ class Store:
         self._print_exceptions = print_exceptions
         self._max_attempts = max_attempts
         self._wait_secs = wait_secs
-        if wait_lengthing < 1.0:
-            raise Exception("wait_lengthing must be equal to or above 1.0")
         self._wait_lengthing = wait_lengthing
 
         self._in_context = False
