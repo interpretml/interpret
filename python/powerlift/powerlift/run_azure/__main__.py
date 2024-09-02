@@ -137,7 +137,37 @@ def run_azure_process(
         printf "%s" "$result" > "startup.py"
         echo "Running startup.py"
         python startup.py
-        exit 68  # startup.py should self-kill by deleting the container we are running on
+        exit_code=$?
+        echo "Powerlift startup.py script exited with code: $exit_code"
+        if [ exit_code -ne 0 ]; then
+            # Do not delete the container so that the log can be inspected.
+            exit $exit_code
+        fi
+
+        # Attempt to self-delete the container group that we are running in.
+        curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+        SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
+        RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
+        CONTAINER_GROUP_NAME=${CONTAINER_GROUP_NAME}
+
+        # wait 10 mintues to allow inspection of the logs
+        sleep 600
+        
+        retry_count=0
+        while true; do
+            echo "Deleting this container."
+            az login --identity
+            az container delete --subscription $SUBSCRIPTION_ID --resource-group $RESOURCE_GROUP_NAME --name $CONTAINER_GROUP_NAME --yes
+            echo "Waiting to be deleted."
+            sleep 300
+            if [ $retry_count -ge 300 ]; then
+                echo "Maximum number of retries reached. Cannot self-delete this container group."
+                break
+            fi
+            retry_count=$((retry_count + 1))
+        done
+        exit 61  # failed to self-kill the container we are running this on.
     """
 
     import time

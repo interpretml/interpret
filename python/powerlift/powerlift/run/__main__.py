@@ -70,10 +70,10 @@ def run_trials(
 
 
 if __name__ == "__main__":
-    print("STARTING RUNNER")
+    print("STARTING POWERLIFT RUNNER")
 
-    import time
     import traceback
+    import sys
 
     try:
         import os
@@ -88,31 +88,8 @@ if __name__ == "__main__":
         run_trials(
             experiment_id, runner_id, db_url, timeout, raise_exception, is_remote=True
         )
-
-        # below here is Azure specific. Make optional in the future
-
-        from azure.identity import ManagedIdentityCredential
-        from azure.mgmt.containerinstance import ContainerInstanceManagementClient
-
-        subscription_id = os.getenv("SUBSCRIPTION_ID")
-        resource_group_name = os.getenv("RESOURCE_GROUP_NAME")
-        container_group_name = os.getenv("CONTAINER_GROUP_NAME")
-
-        credential = ManagedIdentityCredential()
-        aci_client = ContainerInstanceManagementClient(credential, subscription_id)
-
-        # self-delete the container that we're running on
-        delete_poller = aci_client.container_groups.begin_delete(
-            resource_group_name, container_group_name
-        )
-        while not delete_poller.done():
-            print("Waiting to be deleted..")
-            time.sleep(60)
-
-        print("THIS LINE SHOULD NEVER EXECUTE SINCE THIS CONTAINER SHOULD BE DELETED.")
+        sys.exit(0)
     except Exception as e:
         print("EXCEPTION:")
         print("".join(traceback.format_exception(type(e), e, e.__traceback__)))
-        for _ in range(60 * 60 * 24):  # wait 24 hours
-            time.sleep(1)
-            print("Unandled exception.")
+        sys.exit(65)

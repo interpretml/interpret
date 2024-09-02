@@ -602,13 +602,30 @@ class Store:
             with self:
                 rowcount = 0
                 while rowcount != 1:
+                    # trials are inserted in the order we want them processed
+                    # (biggest to smallest) so ordering by ascending "id"
+                    # orders the work in our desired processing order.
+                    #
+                    # It is possible for the DB to successfully commit the
+                    # transaction, but then subsequently have the network
+                    # communication fail, which puts us in a state where
+                    # the DB thinks this runner is assigned some work
+                    # but the runnder does not know this. When retrying
+                    # we include our runner id, and select any trials that
+                    # the DB believes are already assigned to us, thus we eventually
+                    # re-aquire orphaned work provided the runners do not fail.
+
                     trial_id = self._session.execute(
                         text(
                             f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND (start_time IS NULL OR runner_id={runner_id}) ORDER BY runner_id, id NULLS LAST LIMIT 1"
                         )
                     ).scalar()
+
                     if trial_id is None:
                         break
+
+                    # If another runner grabs the work we tentatively wanted, then 0
+                    # rows will be updated, and we attempt to aquire a different trial.
                     result = self._session.execute(
                         text(
                             f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status='RUNNING', runner_id={runner_id} WHERE id={trial_id} AND (start_time is NULL OR runner_id={runner_id})"
