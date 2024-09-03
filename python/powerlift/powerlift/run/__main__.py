@@ -15,6 +15,7 @@ def run_trials(
     import traceback
     from powerlift.executors.base import timed_run
     import ast
+    import gc
 
     if is_remote:
         print_exceptions = True
@@ -56,6 +57,8 @@ def run_trials(
         # Run trial
         errmsg = None
         try:
+            # if the previous trial function created cyclic garbage, clear it.
+            gc.collect()
             _, duration, timed_out = timed_run(
                 lambda: trial_run_fn(trial), timeout_seconds=timeout
             )
