@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Index,
     ForeignKey,
     JSON,
     DateTime,
@@ -103,6 +104,18 @@ class Trial(Base):
 
     measure_outcomes = relationship(
         "MeasureOutcome", secondary=trial_measure_outcome_table, back_populates="trials"
+    )
+    __table_args__ = (
+        # We select work by exact runner_id match, or when both runner_id and
+        # start_time are NULL. Both ways are fast to find with this index.
+        # experiment_id is included in the index for the WHERE clause in queries.
+        Index(
+            "ix_order",
+            experiment_id,
+            runner_id,
+            start_time,
+            id,
+        ),
     )
 
 

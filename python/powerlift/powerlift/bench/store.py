@@ -597,10 +597,14 @@ class Store:
                     # we include our runner id, and select any trials that
                     # the DB believes are already assigned to us, thus we eventually
                     # re-aquire orphaned work provided the runners do not fail.
+                    #
+                    # Include the start_time in the ORDER BY clause because we have
+                    # a table index that it can use to quickly order the results,
+                    # The index cannot be used without start_time in the ORDER BY.
 
                     trial_id = self._session.execute(
                         text(
-                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND (start_time IS NULL OR runner_id={runner_id}) ORDER BY runner_id, id NULLS LAST LIMIT 1"
+                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL) ORDER BY runner_id, start_time, id NULLS LAST LIMIT 1"
                         )
                     ).scalar()
 
@@ -609,9 +613,12 @@ class Store:
 
                     # If another runner grabs the work we tentatively wanted, then 0
                     # rows will be updated, and we attempt to aquire a different trial.
+                    #
+                    # Include experiment_id in the WHERE clause so the DB
+                    # can search via primary key or by the index in parallel.
                     result = self._session.execute(
                         text(
-                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status='RUNNING', runner_id={runner_id} WHERE id={trial_id} AND (start_time is NULL OR runner_id={runner_id})"
+                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status='RUNNING', runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
                         )
                     )
                     rowcount = result.rowcount
