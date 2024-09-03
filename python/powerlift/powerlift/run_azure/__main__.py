@@ -212,6 +212,8 @@ def run_azure_process(
 
     aci_client = ContainerInstanceManagementClient(credential, subscription_id)
     res_client = ResourceManagementClient(credential, subscription_id)
+
+    # If this first call fails, then allow the Exception to propagate.
     resource_group = res_client.resource_groups.get(resource_group_name)
 
     container_resource_requests = ResourceRequests(
@@ -255,19 +257,30 @@ def run_azure_process(
             identity={"type": "SystemAssigned"},
         )
 
-        # begin_create_or_update returns LROPoller,
-        # but this is only indicates when the containter is started
-        started = aci_client.container_groups.begin_create_or_update(
-            resource_group.name, container_group_name, container_group
-        )
+        while True:
+            try:
+                # begin_create_or_update returns LROPoller,
+                # but this is only indicates when the containter is started
+                started = aci_client.container_groups.begin_create_or_update(
+                    resource_group.name, container_group_name, container_group
+                )
+                break
+            except HttpResponseError:
+                time.sleep(1)
+
         starts.append(started)
 
         container_group_names.add(container_group_name)
 
     # make sure they have all started before exiting the process
     for started in starts:
-        while not started.done():
-            time.sleep(1)
+        while True:
+            try:
+                while not started.done():
+                    time.sleep(1)
+                break
+            except HttpResponseError:
+                time.sleep(1)
 
     if delete_group_container_on_complete:
         auth_client = AuthorizationManagementClient(credential, subscription_id)
@@ -276,27 +289,45 @@ def run_azure_process(
         role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
 
         for container_group_name in container_group_names:
-            container_group = aci_client.container_groups.get(
-                resource_group_name, container_group_name
-            )
+            while True:
+                try:
+                    container_group = aci_client.container_groups.get(
+                        resource_group_name, container_group_name
+                    )
+                    break
+                except HttpResponseError:
+                    time.sleep(1)
+
             scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.ContainerInstance/containerGroups/{container_group_name}"
             role_assignment_params = RoleAssignmentCreateParameters(
                 role_definition_id=role_definition_id,
                 principal_id=container_group.identity.principal_id,
                 principal_type="ServicePrincipal",
             )
-            auth_client.role_assignments.create(
-                scope, str(uuid.uuid4()), role_assignment_params
-            )
+
+            while True:
+                try:
+                    auth_client.role_assignments.create(
+                        scope, str(uuid.uuid4()), role_assignment_params
+                    )
+                    break
+                except HttpResponseError:
+                    time.sleep(1)
 
             role_assignment_params = RoleAssignmentCreateParameters(
                 role_definition_id=role_definition_id,
                 principal_id=client_id,
                 principal_type="User",
             )
-            auth_client.role_assignments.create(
-                scope, str(uuid.uuid4()), role_assignment_params
-            )
+
+            while True:
+                try:
+                    auth_client.role_assignments.create(
+                        scope, str(uuid.uuid4()), role_assignment_params
+                    )
+                    break
+                except HttpResponseError:
+                    time.sleep(1)
 
         deletes = []
         while len(container_group_names) != 0:
@@ -328,7 +359,12 @@ def run_azure_process(
             time.sleep(1)
 
         for deleted in deletes:
-            while not deleted.done():
-                time.sleep(1)
+            while True:
+                try:
+                    while not deleted.done():
+                        time.sleep(1)
+                    break
+                except HttpResponseError:
+                    time.sleep(1)
 
     return None

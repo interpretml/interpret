@@ -212,7 +212,7 @@ class Trial:
 
     @property
     def meta(self):
-        return self._meta
+        return self._meta.copy()
 
     @property
     def id(self):
