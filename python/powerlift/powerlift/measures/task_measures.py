@@ -44,7 +44,7 @@ def entropy(labels: Iterable, base: Number = None, normalized: bool = False) -> 
         return ent
 
 
-def class_stats(y: pd.Series) -> List[Tuple[str, str, float, bool]]:
+def class_stats(y: pd.Series, meta):
     """Compute classification label statistics.
 
     Args:
@@ -58,26 +58,14 @@ def class_stats(y: pd.Series) -> List[Tuple[str, str, float, bool]]:
     labels_min_cnt = np.min(labels_unique[1])
     labels_max_cnt = np.max(labels_unique[1])
 
-    return [
-        (
-            "class_normalized_entropy",
-            "Normalized entropy of classes.",
-            float(entropy(labels, normalized=True)),
-            False,
-        ),
-        ("num_classes", "Number of distinct classes.", float(len(labels_unique)), True),
-        ("min_class_count", "Minimum class count.", float(labels_min_cnt), False),
-        ("max_class_count", "Maximum class count.", float(labels_max_cnt), False),
-        (
-            "avg_class_count",
-            "Average class count.",
-            float(np.average(labels_unique[1])),
-            False,
-        ),
-    ]
+    meta["class_normalized_entropy"] = float(entropy(labels, normalized=True))
+    meta["num_classes"] = int(len(labels_unique))
+    meta["min_class_count"] = int(labels_min_cnt)
+    meta["max_class_count"] = int(labels_max_cnt)
+    meta["avg_class_count"] = float(np.average(labels_unique[1]))
 
 
-def regression_stats(y: pd.Series) -> List[Tuple[str, str, float, bool]]:
+def regression_stats(y: pd.Series, meta):
     """Computes regression statistics on response.
 
     Args:
@@ -90,16 +78,14 @@ def regression_stats(y: pd.Series) -> List[Tuple[str, str, float, bool]]:
     labels_avg = np.average(labels)
     labels_max = max(labels)
     labels_min = min(labels)
-    return [
-        ("response_min_val", "Minimum value of response.", float(labels_min), True),
-        ("response_avg_val", "Average value of response.", float(labels_avg), True),
-        ("response_max_val", "Maximum value of response.", float(labels_max), True),
-    ]
+    meta["response_min_val"] = float(labels_min)
+    meta["response_avg_val"] = float(labels_avg)
+    meta["response_max_val"] = float(labels_max)
 
 
 def data_stats(
-    X: pd.DataFrame, y, is_classification, categorical_mask: Iterable[bool]
-) -> List[Tuple[str, str, float, bool]]:
+    X: pd.DataFrame, y, is_classification, categorical_mask: Iterable[bool], meta
+):
     """Computes data statistics on instances.
 
     Args:
@@ -134,21 +120,9 @@ def data_stats(
     prop_cat_cols = float(sum([int(x) for x in categorical_mask]))
     prop_cat_cols /= len(categorical_mask)
 
-    return [
-        ("n_rows", "Number of rows.", float(X.shape[0]), False),
-        ("n_cols", "Number of columns.", float(X.shape[1]), True),
-        ("n_classes", "Number of classes or 0.", float(n_classes), True),
-        (
-            "prop_cat_cols",
-            "Proportion of categorical columns",
-            float(prop_cat_cols),
-            True,
-        ),
-        ("row_col_ratio", "Row to column ratio", float(X.shape[0] / X.shape[1]), True),
-        (
-            "avg_prop_special_values",
-            "Average number of special value proportion per column.",
-            float(avg_prop_special_values),
-            True,
-        ),
-    ]
+    meta["n_rows"] = int(X.shape[0])
+    meta["n_cols"] = int(X.shape[1])
+    meta["n_classes"] = int(n_classes)
+    meta["prop_cat_cols"] = float(prop_cat_cols)
+    meta["row_col_ratio"] = float(X.shape[0]) / float(X.shape[1])
+    meta["avg_prop_special_values"] = float(avg_prop_special_values)

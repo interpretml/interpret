@@ -54,12 +54,6 @@ trial_measure_outcome_table = Table(
     Column("trial_id", ForeignKey("trial.id"), primary_key=True),
     Column("measure_outcome_id", ForeignKey("measure_outcome.id"), primary_key=True),
 )
-task_measure_outcome_table = Table(
-    "task_measure_outcome",
-    Base.metadata,
-    Column("task_id", ForeignKey("task.id"), primary_key=True),
-    Column("measure_outcome_id", ForeignKey("measure_outcome.id"), primary_key=True),
-)
 
 
 class Experiment(Base):
@@ -149,31 +143,21 @@ class MeasureOutcome(Base):
         secondary=trial_measure_outcome_table,
         back_populates="measure_outcomes",
     )
-    tasks = relationship(
-        "Task", secondary=task_measure_outcome_table, back_populates="measure_outcomes"
-    )
 
 
 class Task(Base):
     """A problem tied with a dataset. I.e. regression on Boston data."""
 
     __tablename__ = "task"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(NAME_LEN))
-    description = Column(String(DESCRIPTION_LEN))
-    version = Column(String(VERSION_LEN))
-    problem = Column(String(PROBLEM_LEN))
-    origin = Column(String(NAME_LEN))
-    config = Column(JSON)
-
+    id = Column(Integer, primary_key=True, nullable=False)
+    name = Column(String(NAME_LEN), nullable=False)
+    problem = Column(String(PROBLEM_LEN), nullable=False)
+    origin = Column(String(NAME_LEN), nullable=False)
+    meta = Column(JSON, nullable=False)
     x = Column(LargeBinary, nullable=False)
     y = Column(LargeBinary, nullable=False)
-    meta = Column(JSON, nullable=False)
 
     trials = relationship("Trial", back_populates="task")
-    measure_outcomes = relationship(
-        "MeasureOutcome", secondary=task_measure_outcome_table, back_populates="tasks"
-    )
     __table_args__ = (
         UniqueConstraint("name", "problem", "origin", name="u_name_problem_origin"),
     )

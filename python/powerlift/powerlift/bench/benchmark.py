@@ -138,11 +138,11 @@ class Benchmark:
                     reverse=True,
                     key=lambda x: (
                         1
-                        if x[1].task.scalar_measure("n_classes") < 3
-                        else x[1].task.scalar_measure("n_classes")
+                        if x[1].task.meta["n_classes"] < 3
+                        else x[1].task.meta["n_classes"]
                     )
-                    * x[1].task.scalar_measure("n_cols")
-                    * x[1].task.scalar_measure("n_rows"),
+                    * x[1].task.meta["n_cols"]
+                    * x[1].task.meta["n_rows"],
                 )
                 trials = np.array(trials, dtype=object)
                 n_fastest = int(len(trials) * 0.25)

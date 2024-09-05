@@ -45,35 +45,9 @@ class Task:
     store: Store
     id: Optional[int]
     name: str
-    description: str
-    version: str
     problem: str
     origin: str
-    config: dict
     meta: Dict[str, object]
-    measures: Dict[str, Measure]
-
-    def measure(self, name: str) -> pd.DataFrame:
-        """Returns a named measure as a dataframe with sequence number, timestamp and value for entries.
-
-        Args:
-            name (str): Name of measure.
-
-        Returns:
-            pd.DataFrame: A dataframe with values associated with named measure.
-        """
-        return self.measures[name].values
-
-    def scalar_measure(self, name: str) -> Union[Number, str, dict]:
-        """Returns a named measure as a scalar value.
-
-        Args:
-            name (str): Name of measure.
-
-        Returns:
-            Union[Number, str, dict]: Scalar value associated with named measure.
-        """
-        return self.measures[name].values["val"].iloc[0]
 
     def data(self) -> List[object]:
         """Returns assets.
@@ -87,7 +61,7 @@ class Task:
         x = BytesParser.deserialize(MIMETYPE_DF, x)
         y = np.array(BytesParser.deserialize(MIMETYPE_SERIES, y))
 
-        return (x, y, self.meta)
+        return (x, y)
 
 
 @dataclass(frozen=True)
@@ -157,7 +131,6 @@ class Trial:
             with self._store:
                 self._store.add_measure(
                     self._id,
-                    type(self),
                     name,
                     value,
                     seq_num,

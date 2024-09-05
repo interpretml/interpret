@@ -431,71 +431,17 @@ class Store:
                     result = self._session.execute(query, params)
                     rowcount = result.rowcount
 
-    def measure_from_db_task(self, task_orm):
-        self.check_allowed()
-        from powerlift.bench.experiment import Measure
-        from collections import defaultdict
-
-        measure_outcomes_orm = task_orm.measure_outcomes
-        desc_id_to_measure_description_orm = {}
-        desc_id_to_values = defaultdict(list)
-        desc_name_to_measure = {}
-
-        for measure_outcome_orm in measure_outcomes_orm:
-            desc_id = measure_outcome_orm.measure_description_id
-            if desc_id not in desc_id_to_measure_description_orm:
-                measure_description_orm = measure_outcome_orm.measure_description
-                desc_id_to_measure_description_orm[desc_id] = measure_description_orm
-            measure_description_orm = desc_id_to_measure_description_orm[desc_id]
-            _type = measure_description_orm.type
-            if _type == db.TypeEnum.NUMBER:
-                val = measure_outcome_orm.num_val
-            elif _type == db.TypeEnum.STR:
-                val = measure_outcome_orm.str_val
-            elif _type == db.TypeEnum.JSON:
-                val = measure_outcome_orm.json_val
-            else:
-                raise RuntimeError("Code branch should be unreachable")
-
-            desc_id_to_values[desc_id].append(
-                {
-                    "seq_num": measure_outcome_orm.seq_num,
-                    "timestamp": measure_outcome_orm.timestamp,
-                    "val": val,
-                }
-            )
-
-        for desc_id in desc_id_to_values.keys():
-            values_df = pd.DataFrame.from_records(
-                desc_id_to_values[desc_id], index="seq_num"
-            )
-            measure_description_orm = desc_id_to_measure_description_orm[desc_id]
-            measure = Measure(
-                measure_description_orm.name,
-                measure_description_orm.description,
-                measure_description_orm.type,
-                measure_description_orm.lower_is_better,
-                values_df,
-            )
-            desc_name_to_measure[measure.name] = measure
-        return desc_name_to_measure
-
     def from_db_task(self, task_orm):
         self.check_allowed()
         from powerlift.bench.experiment import Task
 
-        measures = self.measure_from_db_task(task_orm)
         return Task(
             self,
             task_orm.id,
             task_orm.name,
-            task_orm.description,
-            task_orm.version,
             task_orm.problem,
             task_orm.origin,
-            task_orm.config,
             task_orm.meta,
-            measures,
         )
 
     def from_db_wheel(self, wheel_orm):
@@ -826,8 +772,7 @@ class Store:
 
     def add_measure(
         self,
-        trial_or_task_id: int,
-        trial_or_task_type: Type,
+        trial_id: int,
         name,
         value,
         seq_num,
@@ -896,53 +841,50 @@ class Store:
         else:
             raise RuntimeError(f"Value type {type(value)} is not supported for measure")
 
-        if trial_or_task_type == Task:
-            db_type = db.Task
-        elif trial_or_task_type == Trial:
-            db_type = db.Trial
-        else:
-            raise RuntimeError(f"Type {trial_or_task_type} is not Task nor Trial")
-
-        trial_or_task_orm = (
-            self._session.query(db_type).filter_by(id=trial_or_task_id).one()
-        )
+        trial_or_task_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
         trial_or_task_orm.measure_outcomes.append(measure_outcome_orm)
         self._session.flush()
         return measure_outcome_orm.id
 
-    def create_task_with_data(self, data, version="0.0.1"):
+    def create_task_with_data(self, data, exist_ok):
         if isinstance(data, SupervisedDataset):
-            return self._create_task_with_supervised(data, version)
+            return self._create_task_with_supervised(data, exist_ok)
         elif isinstance(data, DataFrameDataset):
-            return self._create_task_with_dataframe(data, version)
+            return self._create_task_with_dataframe(data, exist_ok)
         else:  # pragma: no cover
             raise ValueError(f"Does not support {type(data)}")
 
-    def _create_task_with_supervised(self, supervised, version):
-        self.check_allowed()
-
+    def _create_task_with_supervised(self, supervised, exist_ok):
         X_bstream, y_bstream, _ = SupervisedDataset.serialize(supervised)
 
         meta = supervised.meta
         task_orm = db.Task(
             name=meta["name"],
-            description=f"Dataset {meta['name']} for {meta['problem']}",
-            version=version,
             problem=meta["problem"],
             origin=meta["source"],
-            config={
-                "type": "data_supervised",
-            },
+            meta=supervised.meta,
             x=X_bstream.getvalue(),
             y=y_bstream.getvalue(),
-            meta=supervised.meta,
         )
 
-        self._session.add(task_orm)
-        self._session.flush()
-        return task_orm.id
+        self.reset()
+        while self.do:
+            with self:
+                try:
+                    self._session.add(task_orm)
+                    # we need to flush here to get the exception if it exists
+                    self._session.flush()
+                except IntegrityError as e:
+                    if not exist_ok:
+                        raise DatasetAlreadyExistsError(
+                            "Dataset already in store"
+                        ) from e
+                    else:
+                        return False
+        return True
 
     def _create_task_with_dataframe(self, data, version):
+        # WARNING: obsolete
         self.check_allowed()
         inputs_bstream, outputs_bstream, _ = DataFrameDataset.serialize(data)
 
@@ -964,56 +906,6 @@ class Store:
         self._session.add(task_orm)
         self._session.flush()
         return task_orm.id
-
-
-def populate_task_measures(store, task_id, data):
-    from powerlift.bench.experiment import Task
-
-    meta = data.meta
-    unprocessed_measures = []
-    if isinstance(data, SupervisedDataset):
-        if meta["problem"] == "regression":
-            unprocessed_measures.extend(regression_stats(data.y))
-            is_classification = False
-        elif meta["problem"] in ["binary", "multiclass"]:
-            unprocessed_measures.extend(class_stats(data.y))
-            is_classification = True
-        unprocessed_measures.extend(
-            data_stats(data.X, data.y, is_classification, meta["categorical_mask"])
-        )
-    elif isinstance(data, DataFrameDataset):
-        if meta["problem"] == "regression":
-            is_classification = False
-        elif meta["problem"] in ["binary", "multiclass"]:
-            is_classification = True
-        inputs_data_stats = [
-            (f"inputs_{x1}", x2, x3, x4)
-            for x1, x2, x3, x4 in data_stats(
-                data.inputs, None, is_classification, meta["inputs_categorical_mask"]
-            )
-        ]
-        outputs_data_stats = [
-            (f"outputs_{x1}", x2, x3, x4)
-            for x1, x2, x3, x4 in data_stats(
-                data.outputs, None, is_classification, meta["outputs_categorical_mask"]
-            )
-        ]
-        unprocessed_measures.extend(inputs_data_stats)
-        unprocessed_measures.extend(outputs_data_stats)
-
-    declared_measures_cache = {}
-    for unprocessed_measure in unprocessed_measures:
-        name, description, value, lower_is_better = unprocessed_measure
-        store.add_measure(
-            task_id,
-            Task,
-            name,
-            value,
-            0,
-            declared_measures_cache,
-            description=description,
-            lower_is_better=lower_is_better,
-        )
 
 
 def retrieve_cache(
@@ -1160,19 +1052,8 @@ def populate_with_datasets(
         )
 
     for dataset in dataset_iter:
-        store.reset()
-        while store.do:
-            with store:
-                try:
-                    task_id = store.create_task_with_data(dataset)
-                except IntegrityError as e:
-                    if not exist_ok:
-                        raise DatasetAlreadyExistsError(
-                            "Dataset already in store"
-                        ) from e
-                    else:
-                        return False
-                populate_task_measures(store, task_id, dataset)
+        if not store.create_task_with_data(dataset, exist_ok):
+            return False
     return True
 
 
@@ -1253,6 +1134,14 @@ def retrieve_openml(
                 "categorical_mask": categorical_mask,
                 "feature_names": feature_names,
             }
+
+            if problem == "regression":
+                regression_stats(y, meta)
+                is_classification = False
+            elif problem in ["binary", "multiclass"]:
+                class_stats(y, meta)
+                is_classification = True
+            data_stats(X, y, is_classification, categorical_mask, meta)
 
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
@@ -1413,6 +1302,14 @@ def retrieve_catboost_50k(
                 "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }
+            if problem == "regression":
+                regression_stats(y, meta)
+                is_classification = False
+            elif problem in ["binary", "multiclass"]:
+                class_stats(y, meta)
+                is_classification = True
+            data_stats(X, y, is_classification, categorical_mask, meta)
+
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
                 serialized = SupervisedDataset.serialize(supervised)
@@ -1482,6 +1379,14 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
                 "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }
+            if problem == "regression":
+                regression_stats(y, meta)
+                is_classification = False
+            elif problem in ["binary", "multiclass"]:
+                class_stats(y, meta)
+                is_classification = True
+            data_stats(X, y, is_classification, categorical_mask, meta)
+
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
                 serialized = SupervisedDataset.serialize(supervised)
