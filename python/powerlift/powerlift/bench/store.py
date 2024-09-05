@@ -526,30 +526,16 @@ class Store:
             trials,
         )
 
-    def from_db_method(self, method_orm):
-        self.check_allowed()
-        from powerlift.bench.experiment import Method
-
-        return Method(
-            method_orm.id,
-            method_orm.name,
-            method_orm.description,
-            method_orm.version,
-            method_orm.params,
-            method_orm.env,
-        )
-
     def from_db_trial(self, trial_orm):
         self.check_allowed()
         from powerlift.bench.experiment import Trial
 
         task = self.from_db_task(trial_orm.task)
-        method = self.from_db_method(trial_orm.method)
         return Trial(
             trial_orm.id,
             self,
             task,
-            method,
+            trial_orm.method,
             trial_orm.replicate_num,
             trial_orm.meta,
         )
@@ -695,7 +681,7 @@ class Store:
         self,
         experiment_id: int,
         task_id: int,
-        method_id: int,
+        method: str,
         replicate_num: int,
         meta: dict,
     ):
@@ -703,7 +689,7 @@ class Store:
         trial_orm = db.Trial(
             experiment_id=experiment_id,
             task_id=task_id,
-            method_id=method_id,
+            method=method,
             replicate_num=replicate_num,
             meta=meta,
             status=db.StatusEnum.READY,
@@ -712,33 +698,6 @@ class Store:
         self._session.add(trial_orm)
         self._session.commit()
         return trial_orm.id
-
-    def get_or_create_method(
-        self,
-        name: str,
-        description: str,
-        version: str,
-        params: dict,
-        env: dict,
-    ):
-        """Get or create method keyed by name."""
-
-        self.check_allowed()
-
-        created = False
-        method_orm = self._session.query(db.Method).filter_by(name=name).one_or_none()
-        if method_orm is None:
-            created = True
-            method_orm = db.Method(
-                name=name,
-                description=description,
-                version=version,
-                params=params,
-                env=env,
-            )
-            self._session.add(method_orm)
-            self._session.flush()
-        return method_orm.id, created
 
     def iter_experiment_trials(self, experiment_id: int):
         self.check_allowed()
@@ -755,7 +714,7 @@ class Store:
             SELECT
                 t.id AS trial_id,
                 ta.name AS task,
-                m.name AS method,
+                t.method AS method,
                 t.meta AS meta,
                 t.replicate_num AS replicate_num,
                 t.status AS status,
@@ -770,8 +729,6 @@ class Store:
                 trial t on e.id = t.experiment_id
             JOIN
                 task ta ON t.task_id = ta.id
-            JOIN
-                method m ON t.method_id = m.id
             WHERE
                 e.name = '{experiment_name}'
         """
@@ -791,7 +748,7 @@ class Store:
             SELECT
                 mo.id AS id,
                 ta.name AS task,
-                m.name AS method,
+                t.method AS method,
                 t.meta AS meta,
                 t.replicate_num AS replicate_num,
                 md.name AS name,
@@ -806,8 +763,6 @@ class Store:
                 trial t on e.id = t.experiment_id
             JOIN
                 task ta ON t.task_id = ta.id
-            JOIN
-                method m ON t.method_id = m.id
             JOIN
                 trial_measure_outcome tmo ON t.id = tmo.trial_id
             JOIN

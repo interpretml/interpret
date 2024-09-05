@@ -63,7 +63,7 @@ def _benchmark(trial):
             ]
         )
         # Connect preprocessor with target learner
-        if trial.method.name == "svm":
+        if trial.method == "svm":
             clf = Pipeline([("ct", ct), ("est", CalibratedClassifierCV(LinearSVC()))])
         else:
             clf = Pipeline([("ct", ct), ("est", RandomForestClassifier())])

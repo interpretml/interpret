@@ -90,8 +90,7 @@ class Trial(Base):
     experiment = relationship("Experiment", back_populates="trials")
     task_id = Column(Integer, ForeignKey("task.id"))
     task = relationship("Task", back_populates="trials")
-    method_id = Column(Integer, ForeignKey("method.id"))
-    method = relationship("Method", back_populates="trials")
+    method = Column(String(NAME_LEN), nullable=False)
     replicate_num = Column(Integer)
     meta = Column(JSON)
 
@@ -153,19 +152,6 @@ class MeasureOutcome(Base):
     tasks = relationship(
         "Task", secondary=task_measure_outcome_table, back_populates="measure_outcomes"
     )
-
-
-class Method(Base):
-    """A method/technique/treatment that is being studied in a trial."""
-
-    __tablename__ = "method"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(NAME_LEN), unique=True)
-    description = Column(String(DESCRIPTION_LEN))
-    version = Column(String(VERSION_LEN))
-    params = Column(JSON)
-    env = Column(JSON)
-    trials = relationship("Trial", back_populates="method")
 
 
 class Task(Base):

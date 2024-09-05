@@ -17,7 +17,6 @@ from .schema import (
     Experiment,
     Trial,
     Task,
-    Method,
     MeasureDescription,
     MeasureOutcome,
 )

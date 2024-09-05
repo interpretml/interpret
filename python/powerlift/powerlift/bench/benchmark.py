@@ -3,7 +3,7 @@
 from types import FunctionType
 from typing import Optional, Union
 
-from powerlift.bench.experiment import Experiment, Method, Trial
+from powerlift.bench.experiment import Experiment, Trial
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor
 from powerlift.executors import LocalMachine
@@ -112,35 +112,11 @@ class Benchmark:
                             # Response: method
                             method = generated_trial
                             meta = {}
-                        if isinstance(method, str):
-                            method = Method.from_name(method)
-                        elif isinstance(method, Method):
-                            pass
-                        else:
-                            raise TypeError(
-                                f"Cannot handle method type: {type(method)}"
-                            )
-                        method_id, _ = self._store.get_or_create_method(
-                            method.name,
-                            method.description,
-                            method.version,
-                            method.params,
-                            method.env,
-                        )
-                        method = Method(
-                            method_id,
-                            method.name,
-                            method.description,
-                            method.version,
-                            method.params,
-                            method.env,
-                        )
-
                         for replicate_num in range(n_replicates):
                             trial_param = {
                                 "experiment_id": experiment_id,
                                 "task_id": task.id,
-                                "method_id": method.id,
+                                "method": method,
                                 "replicate_num": replicate_num,
                                 "meta": meta,
                             }

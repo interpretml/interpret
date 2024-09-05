@@ -90,33 +90,6 @@ class Task:
         return (x, y, self.meta)
 
 
-T = TypeVar("T", bound="Method")
-
-
-@dataclass(frozen=True)
-class Method:
-    """Represents a method that is ran for a given trial. I.e. support vector machine for a binary classification task."""
-
-    id: Optional[int]
-    name: str
-    description: str
-    version: str
-    params: dict
-    env: dict
-
-    @classmethod
-    def from_name(cls: Type[T], name: str) -> T:
-        """Produces Method object from name.
-
-        Args:
-            name (str): Name of method to be created.
-
-        Returns:
-            Method: Created method.
-        """
-        return cls(None, name, f"Method: {name}", "0.0.1", {}, {})
-
-
 @dataclass(frozen=True)
 class Experiment:
     """Represents an experiment with its trials."""
@@ -138,7 +111,7 @@ class Trial:
         _id: Optional[int],
         store: Store,
         task: Task,
-        method: Method,
+        method: str,
         replicate_num: int,
         meta: dict,
     ):
@@ -148,7 +121,7 @@ class Trial:
             _id (Optional[int]): ID of trial or None.
             store (Store): Store to persist measures.
             task (Task): Task of trial.
-            method (Method): Method of trial.
+            method (str): Method of trial.
             replicate_num (int): Replicate number of trial (when a trial is repeated many times).
             meta (dict): Metadata associated with the trial.
         """
