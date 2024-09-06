@@ -16,6 +16,7 @@ from powerlift.db import schema as db
 import os
 import numpy as np
 import inspect
+import json
 
 
 class Benchmark:
@@ -206,7 +207,6 @@ class Benchmark:
             Trial statuses (Optional[pandas.DataFrame]): Experiment's trials' status.
         """
         df = self._store.get_status(self._name)
-        df["meta"] = df["meta"].apply(lambda x: str(x))
         df = df.sort_values(by=["task", "method", "meta", "replicate_num"])
         return df
 
@@ -218,7 +218,6 @@ class Benchmark:
         """
 
         df = self._store.get_results(self._name)
-        df["meta"] = df["meta"].apply(lambda x: str(x))
 
         # sometimes logs are written twice when a runner attempts a DB transaction
         # and the result is commited in the DB, but the response to the runner fails

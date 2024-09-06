@@ -17,10 +17,9 @@ from .schema import (
     Experiment,
     Trial,
     Task,
-    MeasureDescription,
     MeasureOutcome,
 )
-from .schema import NAME_LEN, PROBLEM_LEN, MEASURE_STR_LEN, DESCRIPTION_LEN
+from .schema import NAME_LEN, PROBLEM_LEN, DESCRIPTION_LEN
 from .schema import TypeEnum, StatusEnum
 
 from .actions import create_db, delete_db

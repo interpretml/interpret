@@ -111,34 +111,21 @@ class Trial:
         self,
         name: str,
         value: Union[Number, str, dict],
-        description: Optional[str] = None,
-        type_: Union[None, Type, str] = None,
-        lower_is_better: bool = True,
     ):
         """Records a measure for the trial. This should be called in the trial run function.
 
         Args:
             name (str): Name of measure.
             value (Union[Number, str, dict]): Value of measure.
-            description (Optional[str], optional): Description of measure. Defaults to None.
-            type_ (Union[None, Type, str], optional): Type of measure. Defaults to None.
-            lower_is_better (bool, optional): Whether the measure is considered better at a lower value. Defaults to True.
         """
 
         seq_num = self._measure_counts[name] = self._measure_counts.get(name, -1) + 1
-        self._store.reset()
-        while self._store.do:
-            with self._store:
-                self._store.add_measure(
-                    self._id,
-                    name,
-                    value,
-                    seq_num,
-                    None,
-                    description,
-                    type_,
-                    lower_is_better,
-                )
+        self._store.add_measure(
+            self._id,
+            name,
+            value,
+            seq_num,
+        )
 
     @property
     def store(self):

@@ -42,6 +42,7 @@ import pandas as pd
 import ast
 import time
 import traceback as tb
+import json
 
 
 MIMETYPE_DF = "application/vnd.interpretml/parquet-df"
@@ -697,24 +698,18 @@ class Store:
                 t.method AS method,
                 t.meta AS meta,
                 t.replicate_num AS replicate_num,
-                md.name AS name,
+                mo.name AS name,
                 mo.seq_num AS seq_num,
-                md.type AS type,
-                mo.num_val AS num_val,
-                mo.str_val AS str_val,
-                mo.json_val AS json_val
+                mo.type AS type,
+                mo.val AS val
             FROM
                 experiment e
             JOIN
-                trial t on e.id = t.experiment_id
+                trial t ON e.id = t.experiment_id
             JOIN
                 task ta ON t.task_id = ta.id
             JOIN
-                trial_measure_outcome tmo ON t.id = tmo.trial_id
-            JOIN
-                measure_outcome mo ON tmo.measure_outcome_id = mo.id
-            JOIN
-                measure_description md ON mo.measure_description_id = md.id
+                measure_outcome mo ON t.id = mo.trial_id
             WHERE
                 e.name = '{experiment_name}'
         """
@@ -726,6 +721,21 @@ class Store:
                 records = result.all()
                 columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
+
+        df["num_val"] = np.nan
+        df["str_val"] = None
+        df["json_val"] = None
+
+        for index, row in df.iterrows():
+            if row["type"] == db.TypeEnum.NUMBER.name:
+                df.at[index, "num_val"] = float(row["val"])
+            elif row["type"] == db.TypeEnum.STR.name:
+                df.at[index, "str_val"] = row["val"]
+            elif row["type"] == db.TypeEnum.JSON.name:
+                df.at[index, "json_val"] = json.loads(row["val"])
+            else:
+                raise Exception(f"Bad DB type {row['type']}")
+
         return df
 
     def get_assets(self, task_id: int):
@@ -776,75 +786,33 @@ class Store:
         name,
         value,
         seq_num,
-        declared_measures_cache=None,
-        description=None,
-        type_=None,
-        lower_is_better=True,
     ):
-        from powerlift.bench.experiment import Task, Trial
-
-        self.check_allowed()
-
-        if type_ is None:
-            if isinstance(value, str):
-                type_ = db.TypeEnum.STR
-            elif isinstance(value, dict):
-                type_ = db.TypeEnum.JSON
-            elif isinstance(value, numbers.Number):
-                type_ = db.TypeEnum.NUMBER
-            else:
-                raise RuntimeError(
-                    f"Value type {type(value)} is not supported for measure"
-                )
-        elif isinstance(type_, str):
-            type_ = db.TypeEnum[type_.upper()]
-
-        # Create measure description if needed
-        if declared_measures_cache is not None and name in declared_measures_cache:
-            measure_description_orm = declared_measures_cache[name]
+        if isinstance(value, str):
+            type_ = db.TypeEnum.STR
+        elif isinstance(value, dict):
+            type_ = db.TypeEnum.JSON
+            value = json.dumps(value)
+        elif isinstance(value, numbers.Number):
+            type_ = db.TypeEnum.NUMBER
+            value = repr(value)
         else:
-            if description is None:
-                description = f"Measure: {name}"
-
-            measure_description_orm = (
-                self._session.query(db.MeasureDescription)
-                .filter_by(name=name)
-                .one_or_none()
-            )
-            if measure_description_orm is None:
-                measure_description_orm = db.MeasureDescription(
-                    name=name,
-                    description=description,
-                    type=type_,
-                    lower_is_better=lower_is_better,
-                )
-                self._session.add(measure_description_orm)
-                self._session.flush()
-                if declared_measures_cache is not None:
-                    declared_measures_cache[name] = measure_description_orm
+            raise RuntimeError(f"Value type {type(value)} is not supported for measure")
 
         # Create measure
         timestamp = datetime.now(pytz.utc)
         measure_outcome_orm = db.MeasureOutcome(
-            measure_description=measure_description_orm,
+            name=name,
+            type=type_,
             timestamp=timestamp,
             seq_num=seq_num,
+            val=value,
+            trial_id=trial_id,
         )
-        self._session.add(measure_outcome_orm)
 
-        if type_ == db.TypeEnum.STR:
-            measure_outcome_orm.str_val = value
-        elif type_ == db.TypeEnum.JSON:
-            measure_outcome_orm.json_val = value
-        elif type_ == db.TypeEnum.NUMBER:
-            measure_outcome_orm.num_val = value
-        else:
-            raise RuntimeError(f"Value type {type(value)} is not supported for measure")
-
-        trial_or_task_orm = self._session.query(db.Trial).filter_by(id=trial_id).one()
-        trial_or_task_orm.measure_outcomes.append(measure_outcome_orm)
-        self._session.flush()
-        return measure_outcome_orm.id
+        self.reset()
+        while self.do:
+            with self:
+                self._session.add(measure_outcome_orm)
 
     def create_task_with_data(self, data, exist_ok):
         if isinstance(data, SupervisedDataset):
