@@ -408,27 +408,29 @@ class Store:
             status = "ERROR"
         else:
             status = "COMPLETE"
+
+        query = text(
+            """
+            UPDATE trial
+            SET end_time = CURRENT_TIMESTAMP,
+                status = :status,
+                errmsg = :errmsg,
+                runner_id = NULL
+            WHERE id = :trial_id
+        """
+        )
+
+        params = {
+            "status": status,
+            "errmsg": errmsg,
+            "trial_id": trial_id,
+        }
+
         self.reset()
         while self.do:
             with self:
                 rowcount = 0
                 while rowcount != 1:
-                    query = text(
-                        """
-                        UPDATE trial
-                        SET end_time = CURRENT_TIMESTAMP,
-                            status = :status,
-                            errmsg = :errmsg,
-                            runner_id = NULL
-                        WHERE id = :trial_id
-                    """
-                    )
-
-                    params = {
-                        "status": status,
-                        "errmsg": errmsg,
-                        "trial_id": trial_id,
-                    }
                     result = self._session.execute(query, params)
                     rowcount = result.rowcount
 
@@ -514,6 +516,9 @@ class Store:
         return trial_fn
 
     def pick_trial(self, experiment_id, runner_id):
+        from powerlift.bench.experiment import Task
+        from powerlift.bench.experiment import Trial
+
         self.reset()
         while self.do:
             with self:
@@ -543,7 +548,8 @@ class Store:
                     ).scalar()
 
                     if trial_id is None:
-                        break
+                        # work is all done
+                        return None
 
                     # If another runner grabs the work we tentatively wanted, then 0
                     # rows will be updated, and we attempt to aquire a different trial.
@@ -556,20 +562,46 @@ class Store:
                         )
                     )
                     rowcount = result.rowcount
-        return trial_id
 
-    def find_trial_by_id(self, _id: int):
-        self.reset()
-        while self.do:
-            with self:
-                trial_orm = (
-                    self._session.query(db.Trial).filter_by(id=_id).one_or_none()
+                sql = text(
+                    f"""
+                    SELECT
+                        ta.id AS task_id,
+                        ta.name AS name,
+                        ta.problem AS problem,
+                        ta.origin AS origin,
+                        ta.meta AS task_meta,
+                        t.id AS trial_id,
+                        t.method AS method,
+                        t.replicate_num AS replicate_num,
+                        t.meta AS trial_meta
+                    FROM
+                        trial t
+                    JOIN
+                        task ta ON t.task_id = ta.id
+                    WHERE
+                        t.id = '{trial_id}'
+                """
                 )
-                if trial_orm is None:
-                    trial = None
-                else:
-                    trial = self.from_db_trial(trial_orm)
-        return trial
+
+                result = self._session.execute(sql).fetchone()
+
+        task = Task(
+            self,
+            result[0],
+            result[1],
+            result[2],
+            result[3],
+            json.loads(result[4]),
+        )
+        return Trial(
+            result[5],
+            self,
+            task,
+            result[6],
+            result[7],
+            json.loads(result[8]),
+        )
 
     def get_experiment(self, name: str) -> Optional[int]:
         self.check_allowed()
@@ -687,8 +719,8 @@ class Store:
         while self.do:
             with self:
                 result = self._session.execute(sql)
-                records = result.all()
-                columns = result.keys()
+        records = result.all()
+        columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
         return df
 
@@ -721,8 +753,8 @@ class Store:
         while self.do:
             with self:
                 result = self._session.execute(sql)
-                records = result.all()
-                columns = result.keys()
+        records = result.all()
+        columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
 
         df["num_val"] = np.nan
@@ -861,14 +893,14 @@ class Store:
                     self._session.add(task_orm)
                     # we need to flush here to get the exception if it exists
                     self._session.flush()
+                    ret = True
                 except IntegrityError as e:
-                    if not exist_ok:
-                        raise DatasetAlreadyExistsError(
-                            "Dataset already in store"
-                        ) from e
-                    else:
-                        return False
-        return True
+                    ret = False
+
+        if ret is False and not exist_ok:
+            raise DatasetAlreadyExistsError("Dataset already in store") from e
+
+        return ret
 
     def _create_task_with_dataframe(self, data, version):
         # WARNING: obsolete

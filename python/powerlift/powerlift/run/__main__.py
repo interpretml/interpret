@@ -44,15 +44,11 @@ def run_trials(
         trial_run_fn = locals()[func_name]
 
     while True:
-        trial_id = store.pick_trial(experiment_id, runner_id)
-        if trial_id is None:
+        trial = store.pick_trial(experiment_id, runner_id)
+        if trial is None:
             if is_remote:
                 print("No more work to start!")
             break
-
-        trial = store.find_trial_by_id(trial_id)
-        if trial is None:
-            raise RuntimeError(f"No trial found for id {trial_id}")
 
         # Run trial
         errmsg = None
