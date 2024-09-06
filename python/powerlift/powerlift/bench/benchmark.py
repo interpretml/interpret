@@ -3,7 +3,7 @@
 from types import FunctionType
 from typing import Optional, Union
 
-from powerlift.bench.experiment import Experiment, Trial
+from powerlift.bench.experiment import Experiment
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor
 from powerlift.executors import LocalMachine

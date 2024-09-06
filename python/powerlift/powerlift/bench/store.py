@@ -405,9 +405,9 @@ class Store:
 
     def end_trial(self, trial_id, errmsg=None):
         if errmsg is not None:
-            status = "ERROR"
+            status = db.StatusEnum.ERROR
         else:
-            status = "COMPLETE"
+            status = db.StatusEnum.COMPLETE
 
         query = text(
             """
@@ -421,7 +421,7 @@ class Store:
         )
 
         params = {
-            "status": status,
+            "status": status.value,
             "errmsg": errmsg,
             "trial_id": trial_id,
         }
@@ -558,7 +558,7 @@ class Store:
                     # can search via primary key or by the index in parallel.
                     result = self._session.execute(
                         text(
-                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status='RUNNING', runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
+                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status={db.StatusEnum.RUNNING.value}, runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
                         )
                     )
                     rowcount = result.rowcount
@@ -648,8 +648,6 @@ class Store:
         trial_orms = []
         for trial_param in trial_params:
             trial_orm = db.Trial(
-                status=db.StatusEnum.READY,
-                create_time=datetime.now(pytz.utc),
                 experiment_id=trial_param["experiment_id"],
                 task_id=trial_param["task_id"],
                 method=trial_param["method"],
@@ -678,8 +676,6 @@ class Store:
             method=method,
             replicate_num=replicate_num,
             meta=json.dumps(meta),
-            status=db.StatusEnum.READY,
-            create_time=datetime.now(pytz.utc),
         )
         self._session.add(trial_orm)
         self._session.flush()
@@ -726,6 +722,7 @@ class Store:
         records = result.all()
         columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
+        df["status"] = df["status"].apply(lambda x: db.StatusEnum(x).name)
         return df
 
     def get_results(self, experiment_name: str):
@@ -766,14 +763,16 @@ class Store:
         df["json_val"] = None
 
         for index, row in df.iterrows():
-            if row["type"] == db.TypeEnum.NUMBER.name:
+            if row["type"] == db.TypeEnum.NUMBER.value:
                 df.at[index, "num_val"] = float(row["val"])
-            elif row["type"] == db.TypeEnum.STR.name:
+            elif row["type"] == db.TypeEnum.STR.value:
                 df.at[index, "str_val"] = row["val"]
-            elif row["type"] == db.TypeEnum.JSON.name:
+            elif row["type"] == db.TypeEnum.JSON.value:
                 df.at[index, "json_val"] = row["val"]
             else:
                 raise Exception(f"Bad DB type {row['type']}")
+
+        df["type"] = df["type"].apply(lambda x: db.TypeEnum(x).name)
 
         return df
 
@@ -849,16 +848,14 @@ class Store:
             value = json.dumps(value)
         elif isinstance(value, numbers.Number):
             type_ = db.TypeEnum.NUMBER
-            value = repr(value)
+            value = repr(float(value))
         else:
             raise RuntimeError(f"Value type {type(value)} is not supported for measure")
 
         # Create measure
-        timestamp = datetime.now(pytz.utc)
         measure_outcome_orm = db.MeasureOutcome(
             name=name,
-            type=type_,
-            timestamp=timestamp,
+            type=type_.value,
             seq_num=seq_num,
             val=value,
             trial_id=trial_id,

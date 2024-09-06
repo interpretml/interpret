@@ -15,6 +15,7 @@ from sqlalchemy import (
     Enum,
     Table,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.sql.expression import null
 from sqlalchemy.sql.sqltypes import Boolean, Numeric, LargeBinary
@@ -47,7 +48,7 @@ class Experiment(Base):
     """The overall experiment, includes access to trials."""
 
     __tablename__ = "experiment"
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name = Column(String(NAME_LEN), unique=True, nullable=False)
     description = Column(String(DESCRIPTION_LEN), nullable=True)
     shell_install = Column(Text, nullable=True)
@@ -65,7 +66,7 @@ class Trial(Base):
     """A single trial replicate, consists primarily of task, method and its results."""
 
     __tablename__ = "trial"
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
     experiment_id = Column(Integer, ForeignKey("experiment.id"), nullable=False)
     experiment = relationship("Experiment", back_populates="trials")
@@ -74,8 +75,12 @@ class Trial(Base):
     start_time = Column(DateTime, nullable=True)
     end_time = Column(DateTime, nullable=True)
 
-    create_time = Column(DateTime, nullable=False)
-    status = Column(Enum(StatusEnum), nullable=False)
+    create_time = Column(
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
+    status = Column(
+        Integer, nullable=False, server_default=text(str(StatusEnum.READY.value))
+    )
     errmsg = Column(Text, nullable=True)
 
     task_id = Column(Integer, ForeignKey("task.id"), nullable=False)
@@ -104,7 +109,7 @@ class MeasureOutcome(Base):
     """The recording of a measure generated in a trial."""
 
     __tablename__ = "measure_outcome"
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
     # Do not include an index for trial_id to speed insertion from multiple runners.
     # We would only use the index when querying in the get_status but that can use
@@ -112,10 +117,12 @@ class MeasureOutcome(Base):
     # rows anyways.
     trial_id = Column(Integer, ForeignKey("trial.id"), nullable=False)
 
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     name = Column(String(NAME_LEN), nullable=False)
-    type = Column(Enum(TypeEnum), nullable=False)
+    type = Column(Integer, nullable=False)
     seq_num = Column(Integer, nullable=False)
     val = Column(Text, nullable=False)
 
@@ -129,7 +136,7 @@ class Task(Base):
     """A problem tied with a dataset. I.e. regression on Boston data."""
 
     __tablename__ = "task"
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     name = Column(String(NAME_LEN), nullable=False)
     problem = Column(String(PROBLEM_LEN), nullable=False)
     origin = Column(String(NAME_LEN), nullable=False)
