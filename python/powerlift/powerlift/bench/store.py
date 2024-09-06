@@ -433,8 +433,9 @@ class Store:
                     rowcount = result.rowcount
 
     def from_db_task(self, task_orm):
-        self.check_allowed()
         from powerlift.bench.experiment import Task
+
+        self.check_allowed()
 
         return Task(
             self,
@@ -590,8 +591,6 @@ class Store:
     ) -> Tuple[int, bool]:
         """Create experiment keyed by name."""
 
-        self.check_allowed()
-
         exp_orm = db.Experiment(
             name=name,
             description=description,
@@ -603,15 +602,17 @@ class Store:
 
         if wheels is not None:
             for wheel in wheels:
-                self._session.add(wheel)
                 exp_orm.wheels.append(wheel)
 
-        self._session.add(exp_orm)
-        self._session.flush()
-        return exp_orm.id
+        self.reset()
+        while self.do:
+            with self:
+                self._session.add(exp_orm)
+                self._session.flush()
+                experiment_id = exp_orm.id
+        return experiment_id
 
     def create_trials(self, trial_params: List[Dict[str, Any]]):
-        self.check_allowed()
         trial_orms = []
         for trial_param in trial_params:
             trial_orm = db.Trial(
@@ -620,7 +621,11 @@ class Store:
                 **trial_param,
             )
             trial_orms.append(trial_orm)
-        self._session.bulk_save_objects(trial_orms)
+
+        self.reset()
+        while self.do:
+            with self:
+                self._session.bulk_save_objects(trial_orms)
 
     def create_trial(
         self,
@@ -641,7 +646,7 @@ class Store:
             create_time=datetime.now(pytz.utc),
         )
         self._session.add(trial_orm)
-        self._session.commit()
+        self._session.flush()
         return trial_orm.id
 
     def iter_experiment_trials(self, experiment_id: int):
@@ -772,11 +777,27 @@ class Store:
                     )
             yield record
 
-    def iter_tasks(self):
-        self.check_allowed()
-        for task_orm in self._session.query(db.Task).all():
-            task = self.from_db_task(task_orm)
-            yield task
+    def get_tasks(self):
+        from powerlift.bench.experiment import Task
+
+        sql = text(
+            f"""
+            SELECT
+                ta.id as id,
+                ta.name as name,
+                ta.problem as problem,
+                ta.origin as origin,
+                ta.meta as meta
+            FROM
+                task ta
+        """
+        )
+
+        self.reset()
+        while self.do:
+            with self:
+                results = self._session.execute(sql).all()
+        return [Task(self, r[0], r[1], r[2], r[3], json.loads(r[4])) for r in results]
 
     def add_measure(
         self,
