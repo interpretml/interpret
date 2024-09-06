@@ -445,7 +445,7 @@ class Store:
             task_orm.name,
             task_orm.problem,
             task_orm.origin,
-            task_orm.meta,
+            json.loads(task_orm.meta),
         )
 
     def from_db_wheel(self, wheel_orm):
@@ -487,7 +487,7 @@ class Store:
             task,
             trial_orm.method,
             trial_orm.replicate_num,
-            trial_orm.meta,
+            json.loads(trial_orm.meta),
         )
 
     def find_experiment_by_id(self, _id: int):
@@ -650,7 +650,11 @@ class Store:
             trial_orm = db.Trial(
                 status=db.StatusEnum.READY,
                 create_time=datetime.now(pytz.utc),
-                **trial_param,
+                experiment_id=trial_param["experiment_id"],
+                task_id=trial_param["task_id"],
+                method=trial_param["method"],
+                replicate_num=trial_param["replicate_num"],
+                meta=json.dumps(trial_param["meta"]),
             )
             trial_orms.append(trial_orm)
 
@@ -673,7 +677,7 @@ class Store:
             task_id=task_id,
             method=method,
             replicate_num=replicate_num,
-            meta=meta,
+            meta=json.dumps(meta),
             status=db.StatusEnum.READY,
             create_time=datetime.now(pytz.utc),
         )
@@ -767,7 +771,7 @@ class Store:
             elif row["type"] == db.TypeEnum.STR.name:
                 df.at[index, "str_val"] = row["val"]
             elif row["type"] == db.TypeEnum.JSON.name:
-                df.at[index, "json_val"] = json.loads(row["val"])
+                df.at[index, "json_val"] = row["val"]
             else:
                 raise Exception(f"Bad DB type {row['type']}")
 
@@ -881,7 +885,7 @@ class Store:
             name=meta["name"],
             problem=meta["problem"],
             origin=meta["source"],
-            meta=supervised.meta,
+            meta=json.dumps(supervised.meta),
             x=X_bstream.getvalue(),
             y=y_bstream.getvalue(),
         )

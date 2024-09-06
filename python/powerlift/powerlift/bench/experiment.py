@@ -87,7 +87,7 @@ class Trial:
         task: Task,
         method: str,
         replicate_num: int,
-        meta: dict,
+        meta: Dict[str, object],
     ):
         """Represents a single trial within an experiment.
 
@@ -97,7 +97,7 @@ class Trial:
             task (Task): Task of trial.
             method (str): Method of trial.
             replicate_num (int): Replicate number of trial (when a trial is repeated many times).
-            meta (dict): Metadata associated with the trial.
+            meta (Dict[str, object]): Metadata associated with the trial.
         """
         self._id = _id
         self._store = store

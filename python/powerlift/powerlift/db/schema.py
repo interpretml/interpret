@@ -11,7 +11,6 @@ from sqlalchemy import (
     Text,
     Index,
     ForeignKey,
-    JSON,
     DateTime,
     Enum,
     Table,
@@ -83,7 +82,7 @@ class Trial(Base):
     task = relationship("Task", back_populates="trials")
 
     method = Column(String(NAME_LEN), nullable=False)
-    meta = Column(JSON, nullable=False)
+    meta = Column(Text, nullable=False)
     replicate_num = Column(Integer, nullable=False)
 
     measure_outcomes = relationship("MeasureOutcome", back_populates="trials")
@@ -134,7 +133,7 @@ class Task(Base):
     name = Column(String(NAME_LEN), nullable=False)
     problem = Column(String(PROBLEM_LEN), nullable=False)
     origin = Column(String(NAME_LEN), nullable=False)
-    meta = Column(JSON, nullable=False)
+    meta = Column(Text, nullable=False)
     x = Column(LargeBinary, nullable=False)
     y = Column(LargeBinary, nullable=False)
 
