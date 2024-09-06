@@ -20,15 +20,11 @@ class Executor:
     def submit(
         self,
         experiment_id,
-        trial_run_fn: FunctionType,
-        trials: List,
         timeout: int = None,
     ):
         """Submits and executes trials by trial run function asynchronously.
 
         Args:
-            trial_run_fn (FunctionType): Trial run function that takes tasks as arg.
-            trials (List): Trial objects that are to be run.
             timeout (int, optional): Timeout in seconds for trial run. Defaults to None.
 
         Raises:

@@ -71,14 +71,13 @@ class InsecureDocker(LocalMachine):
             wheel_filepaths=wheel_filepaths,
         )
 
-    def submit(self, experiment_id, trials: List, timeout=None):
+    def submit(self, experiment_id, timeout=None):
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
         )
 
-        n_runners = min(
-            len(trials),
-            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus,
+        n_runners = (
+            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus
         )
         for runner_id in range(n_runners):
             self._runner_id_to_result[runner_id] = self._pool.apply_async(

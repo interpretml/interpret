@@ -620,9 +620,7 @@ class Store:
                 **trial_param,
             )
             trial_orms.append(trial_orm)
-        self._session.bulk_save_objects(trial_orms, return_defaults=True)
-        self._session.flush()
-        return [x.id for x in trial_orms]
+        self._session.bulk_save_objects(trial_orms)
 
     def create_trial(
         self,

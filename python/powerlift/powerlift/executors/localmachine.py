@@ -45,12 +45,11 @@ class LocalMachine(Executor):
         if self._pool is not None:
             self._pool.close()
 
-    def submit(self, experiment_id, trials: List, timeout=None):
+    def submit(self, experiment_id, timeout=None):
         from powerlift.run import __main__ as runner
 
-        n_runners = min(
-            len(trials),
-            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus,
+        n_runners = (
+            multiprocessing.cpu_count() if self._n_cpus is None else self._n_cpus
         )
         for runner_id in range(n_runners):
             if self._pool is None:

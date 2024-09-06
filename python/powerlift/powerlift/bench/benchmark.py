@@ -121,15 +121,7 @@ class Benchmark:
                                 "replicate_num": replicate_num,
                                 "meta": meta,
                             }
-                            trial = Trial(
-                                None,
-                                self._store,
-                                task,
-                                method,
-                                replicate_num,
-                                meta,
-                            )
-                            trials.append((trial_param, trial))
+                            trials.append((trial_param, task))
 
                 # Do the hardest datasets first so that we can slip
                 # the faster ones into the cracks, but do some easy
@@ -138,12 +130,10 @@ class Benchmark:
                     trials,
                     reverse=True,
                     key=lambda x: (
-                        1
-                        if x[1].task.meta["n_classes"] < 3
-                        else x[1].task.meta["n_classes"]
+                        1 if x[1].meta["n_classes"] < 3 else x[1].meta["n_classes"]
                     )
-                    * x[1].task.meta["n_cols"]
-                    * x[1].task.meta["n_rows"],
+                    * x[1].meta["n_cols"]
+                    * x[1].meta["n_rows"],
                 )
                 trials = np.array(trials, dtype=object)
                 n_fastest = int(len(trials) * 0.25)
@@ -152,20 +142,17 @@ class Benchmark:
                 random.shuffle(take)
                 take = np.array([False] * (len(trials) - n_fastest) + take, dtype=bool)
                 trials = np.concatenate([trials[take][::-1], trials[~take]])
-                trial_params, pending_trials = zip(*trials)
+                trial_params, _ = zip(*trials)
 
                 # Save to store
-                trial_ids = self._store.create_trials(trial_params)
+                self._store.create_trials(trial_params)
         self._experiment_id = experiment_id
-
-        for _id, trial in zip(trial_ids, pending_trials):
-            trial._id = _id
 
         # Run trials
         if executor is None:
             executor = LocalMachine(self._store)
         self._executors.add(executor)
-        executor.submit(self._experiment_id, pending_trials, timeout=timeout)
+        executor.submit(self._experiment_id, timeout=timeout)
         return executor
 
     def wait_until_complete(self):
