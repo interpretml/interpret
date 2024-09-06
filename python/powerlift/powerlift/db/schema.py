@@ -78,9 +78,6 @@ class Trial(Base):
     create_time = Column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    status = Column(
-        Integer, nullable=False, server_default=text(str(StatusEnum.READY.value))
-    )
     errmsg = Column(Text, nullable=True)
 
     task_id = Column(Integer, ForeignKey("task.id"), nullable=False)

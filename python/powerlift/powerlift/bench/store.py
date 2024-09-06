@@ -404,16 +404,10 @@ class Store:
             raise Exception("Failed to create Transaction.")
 
     def end_trial(self, trial_id, errmsg=None):
-        if errmsg is not None:
-            status = db.StatusEnum.ERROR
-        else:
-            status = db.StatusEnum.COMPLETE
-
         query = text(
             """
             UPDATE trial
             SET end_time = CURRENT_TIMESTAMP,
-                status = :status,
                 errmsg = :errmsg,
                 runner_id = NULL
             WHERE id = :trial_id
@@ -421,7 +415,6 @@ class Store:
         )
 
         params = {
-            "status": status.value,
             "errmsg": errmsg,
             "trial_id": trial_id,
         }
@@ -558,7 +551,7 @@ class Store:
                     # can search via primary key or by the index in parallel.
                     result = self._session.execute(
                         text(
-                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, status={db.StatusEnum.RUNNING.value}, runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
+                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
                         )
                     )
                     rowcount = result.rowcount
@@ -699,7 +692,6 @@ class Store:
                 t.method AS method,
                 t.meta AS meta,
                 t.replicate_num AS replicate_num,
-                t.status AS status,
                 t.errmsg AS errmsg,
                 t.create_time AS create_time,
                 t.start_time AS start_time,
@@ -722,7 +714,28 @@ class Store:
         records = result.all()
         columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
-        df["status"] = df["status"].apply(lambda x: db.StatusEnum(x).name)
+
+        df["create_time"] = pd.to_datetime(df["start_time"])
+        df["start_time"] = pd.to_datetime(df["start_time"])
+        df["end_time"] = pd.to_datetime(df["end_time"])
+
+        df["status"] = df.apply(
+            lambda row: (
+                db.StatusEnum.ERROR.name
+                if row["errmsg"] is not None
+                else (
+                    db.StatusEnum.COMPLETE.name
+                    if pd.notna(row["end_time"])
+                    else (
+                        db.StatusEnum.RUNNING.name
+                        if pd.notna(row["start_time"])
+                        else db.StatusEnum.READY.name
+                    )
+                )
+            ),
+            axis=1,
+        )
+
         return df
 
     def get_results(self, experiment_name: str):
