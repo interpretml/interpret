@@ -16,7 +16,7 @@ def _err_handler(e):
 
 
 def _trials(task):
-    if task.problem == "binary" and task.meta["n_rows"] <= 10000:
+    if task.problem == "binary" and task.meta["n_samples"] <= 10000:
         return ["rf", "svm"]
     return []
 

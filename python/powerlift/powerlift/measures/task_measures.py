@@ -58,8 +58,8 @@ def class_stats(y: pd.Series, meta):
     labels_min_cnt = np.min(labels_unique[1])
     labels_max_cnt = np.max(labels_unique[1])
 
+    meta["n_classes"] = int(len(labels_unique))
     meta["class_normalized_entropy"] = float(entropy(labels, normalized=True))
-    meta["num_classes"] = int(len(labels_unique))
     meta["min_class_count"] = int(labels_min_cnt)
     meta["max_class_count"] = int(labels_max_cnt)
     meta["avg_class_count"] = float(np.average(labels_unique[1]))
@@ -78,19 +78,17 @@ def regression_stats(y: pd.Series, meta):
     labels_avg = np.average(labels)
     labels_max = max(labels)
     labels_min = min(labels)
+    meta["n_classes"] = 0
     meta["response_min_val"] = float(labels_min)
     meta["response_avg_val"] = float(labels_avg)
     meta["response_max_val"] = float(labels_max)
 
 
-def data_stats(
-    X: pd.DataFrame, y, is_classification, categorical_mask: Iterable[bool], meta
-):
+def data_stats(X: pd.DataFrame, categorical_mask: Iterable[bool], meta):
     """Computes data statistics on instances.
 
     Args:
         X (pd.DataFrame): Instances.
-        y (pd.DataFrame or pd.Series): outputs
         categorical_mask (Iterable[bool]): Boolean mask on which columns are categorical.
 
     Returns:
@@ -113,16 +111,10 @@ def data_stats(
         avg_prop_special_values += prop_special_values
     avg_prop_special_values /= X.shape[1]
 
-    n_classes = 0
-    if is_classification and y is not None:
-        n_classes = len(np.unique(y))
+    prop_cat_features = float(sum([int(x) for x in categorical_mask]))
+    prop_cat_features /= len(categorical_mask)
 
-    prop_cat_cols = float(sum([int(x) for x in categorical_mask]))
-    prop_cat_cols /= len(categorical_mask)
-
-    meta["n_rows"] = int(X.shape[0])
-    meta["n_cols"] = int(X.shape[1])
-    meta["n_classes"] = int(n_classes)
-    meta["prop_cat_cols"] = float(prop_cat_cols)
-    meta["row_col_ratio"] = float(X.shape[0]) / float(X.shape[1])
+    meta["n_samples"] = int(X.shape[0])
+    meta["n_features"] = int(X.shape[1])
+    meta["prop_cat_features"] = float(prop_cat_features)
     meta["avg_prop_special_values"] = float(avg_prop_special_values)

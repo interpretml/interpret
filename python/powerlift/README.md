@@ -11,7 +11,7 @@ Yes, we run this for InterpretML on as many docker containers we can run in para
 
 ```python
 def trial_filter(task):
-    if task.problem == "binary" and task.meta["n_rows"] <= 10000:
+    if task.problem == "binary" and task.meta["n_samples"] <= 10000:
         return ["rf", "svm"]
     return []
 

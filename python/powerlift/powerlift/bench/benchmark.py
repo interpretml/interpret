@@ -129,8 +129,8 @@ class Benchmark:
             trials,
             reverse=True,
             key=lambda x: (1 if x[1].meta["n_classes"] < 3 else x[1].meta["n_classes"])
-            * x[1].meta["n_cols"]
-            * x[1].meta["n_rows"],
+            * x[1].meta["n_features"]
+            * x[1].meta["n_samples"],
         )
         trials = np.array(trials, dtype=object)
         n_fastest = int(len(trials) * 0.25)

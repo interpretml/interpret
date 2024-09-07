@@ -800,6 +800,7 @@ class Store:
     def iter_available_tasks(
         self, include_measures: bool = False
     ) -> Iterable[Mapping[str, object]]:
+        # WARNING: obsolete
         self.check_allowed()
         task_orms = self._session.query(db.Task)
         for task_orm in task_orms:
@@ -1170,11 +1171,9 @@ def retrieve_openml(
 
             if problem == "regression":
                 regression_stats(y, meta)
-                is_classification = False
             elif problem in ["binary", "multiclass"]:
                 class_stats(y, meta)
-                is_classification = True
-            data_stats(X, y, is_classification, categorical_mask, meta)
+            data_stats(X, categorical_mask, meta)
 
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
@@ -1337,11 +1336,9 @@ def retrieve_catboost_50k(
             }
             if problem == "regression":
                 regression_stats(y, meta)
-                is_classification = False
             elif problem in ["binary", "multiclass"]:
                 class_stats(y, meta)
-                is_classification = True
-            data_stats(X, y, is_classification, categorical_mask, meta)
+            data_stats(X, categorical_mask, meta)
 
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
@@ -1414,11 +1411,9 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
             }
             if problem == "regression":
                 regression_stats(y, meta)
-                is_classification = False
             elif problem in ["binary", "multiclass"]:
                 class_stats(y, meta)
-                is_classification = True
-            data_stats(X, y, is_classification, categorical_mask, meta)
+            data_stats(X, categorical_mask, meta)
 
             supervised = SupervisedDataset(X, y, meta)
             if cache_dir is not None:
