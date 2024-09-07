@@ -441,6 +441,10 @@ class Store:
             task_orm.n_samples,
             task_orm.n_features,
             task_orm.n_classes,
+            task_orm.max_categories,
+            task_orm.max_unique_continuous,
+            task_orm.prop_cat_features,
+            task_orm.avg_prop_special_values,
             json.loads(task_orm.meta),
         )
 
@@ -569,6 +573,10 @@ class Store:
                         ta.n_samples AS n_samples,
                         ta.n_features AS n_features,
                         ta.n_classes AS n_classes,
+                        ta.max_categories AS max_categories,
+                        ta.max_unique_continuous AS max_unique_continuous,
+                        ta.prop_cat_features AS prop_cat_features,
+                        ta.avg_prop_special_values AS avg_prop_special_values,
                         ta.meta AS task_meta,
                         t.id AS trial_id,
                         t.method AS method,
@@ -594,15 +602,19 @@ class Store:
             result[4],
             result[5],
             result[6],
-            json.loads(result[7]),
-        )
-        return Trial(
+            result[7],
             result[8],
-            self,
-            task,
             result[9],
             result[10],
             json.loads(result[11]),
+        )
+        return Trial(
+            result[12],
+            self,
+            task,
+            result[13],
+            result[14],
+            json.loads(result[15]),
         )
 
     def get_experiment(self, name: str) -> Optional[int]:
@@ -848,6 +860,10 @@ class Store:
                 ta.n_samples AS n_samples,
                 ta.n_features AS n_features,
                 ta.n_classes AS n_classes,
+                ta.max_categories AS max_categories,
+                ta.max_unique_continuous AS max_unique_continuous,
+                ta.prop_cat_features AS prop_cat_features,
+                ta.avg_prop_special_values AS avg_prop_special_values,
                 ta.meta as meta
             FROM
                 task ta
@@ -859,7 +875,21 @@ class Store:
             with self:
                 results = self._session.execute(sql).all()
         return [
-            Task(self, r[0], r[1], r[2], r[3], r[4], r[5], r[6], json.loads(r[7]))
+            Task(
+                self,
+                r[0],
+                r[1],
+                r[2],
+                r[3],
+                r[4],
+                r[5],
+                r[6],
+                r[7],
+                r[8],
+                r[9],
+                r[10],
+                json.loads(r[11]),
+            )
             for r in results
         ]
 
@@ -926,6 +956,18 @@ class Store:
         n_classes = meta["n_classes"]
         del meta["n_classes"]
 
+        max_categories = meta["max_categories"]
+        del meta["max_categories"]
+
+        max_unique_continuous = meta["max_unique_continuous"]
+        del meta["max_unique_continuous"]
+
+        prop_cat_features = meta["prop_cat_features"]
+        del meta["prop_cat_features"]
+
+        avg_prop_special_values = meta["avg_prop_special_values"]
+        del meta["avg_prop_special_values"]
+
         task_orm = db.Task(
             name=name,
             problem=problem,
@@ -933,6 +975,10 @@ class Store:
             n_samples=n_samples,
             n_features=n_features,
             n_classes=n_classes,
+            max_categories=max_categories,
+            max_unique_continuous=max_unique_continuous,
+            prop_cat_features=prop_cat_features,
+            avg_prop_special_values=avg_prop_special_values,
             meta=json.dumps(meta),
             x=X_bstream.getvalue(),
             y=y_bstream.getvalue(),

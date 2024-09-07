@@ -94,27 +94,31 @@ def data_stats(X: pd.DataFrame, categorical_mask: Iterable[bool], meta):
     Returns:
         List[Tuple[str, str, float, bool]]: Tuples of form: (name, description, value, is_lower_better).
     """
-    data = X.values
 
     avg_prop_special_values = 0.0
-    for index, _ in enumerate(X):
-        prop_special_values = 0.0
-        if categorical_mask[index]:
-            for val in data[:, index]:
-                if pd.isnull(val) or val == " " or val == "":
-                    prop_special_values += 1.0
+    max_categories = 0
+    max_unique_continuous = 0
+
+    for i in range(X.shape[1]):
+        col = X.iloc[:, i]
+        if categorical_mask[i]:
+            max_categories = max(max_categories, col.nunique())
+            for val in col.values:
+                if pd.isnull(val) or val.strip() == "":
+                    avg_prop_special_values += 1.0
         else:
-            for val in data[:, index]:
+            max_unique_continuous = max(max_unique_continuous, col.nunique())
+            for val in col.values:
                 if pd.isnull(val) or val == 0:
-                    prop_special_values += 1.0
-        prop_special_values /= X.shape[0]
-        avg_prop_special_values += prop_special_values
-    avg_prop_special_values /= X.shape[1]
+                    avg_prop_special_values += 1.0
+    avg_prop_special_values /= X.shape[0] * X.shape[1]
 
     prop_cat_features = float(sum([int(x) for x in categorical_mask]))
     prop_cat_features /= len(categorical_mask)
 
     meta["n_samples"] = int(X.shape[0])
     meta["n_features"] = int(X.shape[1])
+    meta["max_categories"] = int(max_categories)
+    meta["max_unique_continuous"] = int(max_unique_continuous)
     meta["prop_cat_features"] = float(prop_cat_features)
     meta["avg_prop_special_values"] = float(avg_prop_special_values)

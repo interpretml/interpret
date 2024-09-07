@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import (
     Column,
     Integer,
+    Float,
     String,
     Text,
     Index,
@@ -141,6 +142,11 @@ class Task(Base):
     n_samples = Column(Integer, nullable=False)
     n_features = Column(Integer, nullable=False)
     n_classes = Column(Integer, nullable=False)
+
+    max_categories = Column(Integer, nullable=False)
+    max_unique_continuous = Column(Integer, nullable=False)
+    prop_cat_features = Column(Float, nullable=False)
+    avg_prop_special_values = Column(Float, nullable=False)
 
     meta = Column(Text, nullable=False)
     x = Column(LargeBinary, nullable=False)
