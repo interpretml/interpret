@@ -147,8 +147,46 @@ def run_azure_process(
         python startup.py
         exit_code=$?
         echo "Powerlift startup.py script exited with code: $exit_code"
+
         if [ exit_code -ne 0 ]; then
+            retry_count=0
+            while true; do
+                result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id='$EXPERIMENT_ID' AND runner_id='$RUNNER_ID' LIMIT 1;" -t -A)
+                if [ $? -eq 0 ]; then
+                    break
+                fi
+                if [ $retry_count -ge 300 ]; then
+                    echo "Maximum number of retries reached. Command failed."
+                    exit 67
+                fi
+                retry_count=$((retry_count + 1))
+                echo "Sleeping."
+                sleep 300
+                echo "Retrying."
+            done
+
+            if [ -n "$result" ]; then
+                # Found an orphaned trial. Set the errmsg if it isn't already set.
+
+                retry_count=0
+                while true; do
+                    psql "$DB_URL" -c "UPDATE trial SET end_time=CURRENT_TIMESTAMP, errmsg='TERMINATED WITH ERROR CODE: $exit_code', runner_id=NULL WHERE id=$result AND errmsg is NULL;"
+                    if [ $? -eq 0 ]; then
+                        break
+                    fi
+                    if [ $retry_count -ge 300 ]; then
+                        echo "Maximum number of retries reached. Command failed."
+                        exit 67
+                    fi
+                    retry_count=$((retry_count + 1))
+                    echo "Sleeping."
+                    sleep 300
+                    echo "Retrying."
+                done
+            fi
+
             # Do not delete the container so that the log can be inspected.
+            # TODO: in the future try re-starting the python process to continue working on a new trial
             exit $exit_code
         fi
 
