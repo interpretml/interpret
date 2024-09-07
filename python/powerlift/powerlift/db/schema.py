@@ -145,8 +145,8 @@ class Task(Base):
 
     max_categories = Column(Integer, nullable=False)
     max_unique_continuous = Column(Integer, nullable=False)
-    prop_cat_features = Column(Float, nullable=False)
-    avg_prop_special_values = Column(Float, nullable=False)
+    percent_categorical = Column(Float, nullable=False)
+    percent_special_values = Column(Float, nullable=False)
 
     meta = Column(Text, nullable=False)
     x = Column(LargeBinary, nullable=False)

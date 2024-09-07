@@ -53,8 +53,8 @@ class Task:
     n_classes: int
     max_categories: int
     max_unique_continuous: int
-    prop_cat_features: float
-    avg_prop_special_values: float
+    percent_categorical: float
+    percent_special_values: float
     meta: Dict[str, object]
 
     def data(self) -> List[object]:
