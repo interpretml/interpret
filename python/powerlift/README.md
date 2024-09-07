@@ -11,7 +11,7 @@ Yes, we run this for InterpretML on as many docker containers we can run in para
 
 ```python
 def trial_filter(task):
-    if task.problem == "binary" and task.meta["n_samples"] <= 10000:
+    if task.problem == "binary" and task.n_samples <= 10000:
         return ["rf", "svm"]
     return []
 
@@ -27,7 +27,7 @@ def trial_runner(trial):
     from sklearn.impute import SimpleImputer
 
     if trial.task.problem == "binary":
-        X, y, meta = trial.task.data(["X", "y", "meta"])
+        X, y = trial.task.data()
 
         # Holdout split
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.3)

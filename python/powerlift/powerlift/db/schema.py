@@ -137,6 +137,11 @@ class Task(Base):
     name = Column(String(NAME_LEN), nullable=False)
     problem = Column(String(PROBLEM_LEN), nullable=False)
     origin = Column(String(NAME_LEN), nullable=False)
+
+    n_samples = Column(Integer, nullable=False)
+    n_features = Column(Integer, nullable=False)
+    n_classes = Column(Integer, nullable=False)
+
     meta = Column(Text, nullable=False)
     x = Column(LargeBinary, nullable=False)
     y = Column(LargeBinary, nullable=False)

@@ -438,6 +438,9 @@ class Store:
             task_orm.name,
             task_orm.problem,
             task_orm.origin,
+            task_orm.n_samples,
+            task_orm.n_features,
+            task_orm.n_classes,
             json.loads(task_orm.meta),
         )
 
@@ -563,6 +566,9 @@ class Store:
                         ta.name AS name,
                         ta.problem AS problem,
                         ta.origin AS origin,
+                        ta.n_samples AS n_samples,
+                        ta.n_features AS n_features,
+                        ta.n_classes AS n_classes,
                         ta.meta AS task_meta,
                         t.id AS trial_id,
                         t.method AS method,
@@ -585,15 +591,18 @@ class Store:
             result[1],
             result[2],
             result[3],
-            json.loads(result[4]),
+            result[4],
+            result[5],
+            result[6],
+            json.loads(result[7]),
         )
         return Trial(
-            result[5],
+            result[8],
             self,
             task,
-            result[6],
-            result[7],
-            json.loads(result[8]),
+            result[9],
+            result[10],
+            json.loads(result[11]),
         )
 
     def get_experiment(self, name: str) -> Optional[int]:
@@ -836,6 +845,9 @@ class Store:
                 ta.name as name,
                 ta.problem as problem,
                 ta.origin as origin,
+                ta.n_samples AS n_samples,
+                ta.n_features AS n_features,
+                ta.n_classes AS n_classes,
                 ta.meta as meta
             FROM
                 task ta
@@ -846,7 +858,10 @@ class Store:
         while self.do:
             with self:
                 results = self._session.execute(sql).all()
-        return [Task(self, r[0], r[1], r[2], r[3], json.loads(r[4])) for r in results]
+        return [
+            Task(self, r[0], r[1], r[2], r[3], r[4], r[5], r[6], json.loads(r[7]))
+            for r in results
+        ]
 
     def add_measure(
         self,
@@ -891,12 +906,34 @@ class Store:
     def _create_task_with_supervised(self, supervised, exist_ok):
         X_bstream, y_bstream, _ = SupervisedDataset.serialize(supervised)
 
-        meta = supervised.meta
+        meta = supervised.meta.copy()
+
+        name = meta["name"]
+        del meta["name"]
+
+        problem = meta["problem"]
+        del meta["problem"]
+
+        origin = meta["origin"]
+        del meta["origin"]
+
+        n_samples = meta["n_samples"]
+        del meta["n_samples"]
+
+        n_features = meta["n_features"]
+        del meta["n_features"]
+
+        n_classes = meta["n_classes"]
+        del meta["n_classes"]
+
         task_orm = db.Task(
-            name=meta["name"],
-            problem=meta["problem"],
-            origin=meta["source"],
-            meta=json.dumps(supervised.meta),
+            name=name,
+            problem=problem,
+            origin=origin,
+            n_samples=n_samples,
+            n_features=n_features,
+            n_classes=n_classes,
+            meta=json.dumps(meta),
             x=X_bstream.getvalue(),
             y=y_bstream.getvalue(),
         )
@@ -928,7 +965,7 @@ class Store:
             description=f"Dataset {meta['name']} for {meta['problem']}",
             version=version,
             problem=meta["problem"],
-            origin=meta["source"],
+            origin=meta["origin"],
             config={
                 "type": "data_dataframe",
             },
@@ -1092,14 +1129,14 @@ def populate_with_datasets(
 
 
 def retrieve_openml(
-    cache_dir: str = None, suite_id: int | str = 99, source: str = "openml"
+    cache_dir: str = None, suite_id: int | str = 99, origin: str = "openml"
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML datasets.
 
     Args:
         cache_dir (str, optional): Use this cache directory across calls. Defaults to None.
         suite_id (int | str): OpenML suite_id
-        source (str): name for the dataset within powerlift
+        origin (str): name for the dataset within powerlift
 
     Yields:
         Generator[SupervisedDataset]: Yields datasets.
@@ -1107,7 +1144,7 @@ def retrieve_openml(
     import openml
 
     if cache_dir is not None:
-        cache_dir = pathlib.Path(cache_dir, source)
+        cache_dir = pathlib.Path(cache_dir, origin)
 
     dataset_names_filename = "dataset_names.json"
     dataset_names_stream = retrieve_cache(cache_dir, [dataset_names_filename])
@@ -1117,7 +1154,7 @@ def retrieve_openml(
         tasks = suite.tasks.copy()
         random.Random(1337).shuffle(tasks)
         cat_type = pd.CategoricalDtype(ordered=False)
-        for task_id in tqdm(tasks, desc=source):
+        for task_id in tqdm(tasks, desc=origin):
             task = openml.tasks.get_task(
                 task_id,
                 download_splits=False,
@@ -1164,7 +1201,7 @@ def retrieve_openml(
             meta = {
                 "name": name,
                 "problem": problem,
-                "source": source,
+                "origin": origin,
                 "categorical_mask": categorical_mask,
                 "feature_names": feature_names,
             }
@@ -1191,7 +1228,7 @@ def retrieve_openml(
         dataset_names = BytesParser.deserialize(MIMETYPE_JSON, dataset_names_stream)[
             "dataset_names"
         ]
-        for name in tqdm(dataset_names, desc=source):
+        for name in tqdm(dataset_names, desc=origin):
             X_name = f"{name}.X.parquet"
             y_name = f"{name}.y.parquet"
             meta_name = f"{name}.meta.json"
@@ -1330,7 +1367,7 @@ def retrieve_catboost_50k(
             meta = {
                 "name": name,
                 "problem": problem,
-                "source": "catboost_50k",
+                "origin": "catboost_50k",
                 "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }
@@ -1405,7 +1442,7 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
             meta = {
                 "name": name,
                 "problem": problem,
-                "source": "pmlb",
+                "origin": "pmlb",
                 "categorical_mask": categorical_mask,
                 "feature_names": list(X.columns),
             }

@@ -43,10 +43,14 @@ class Task:
     """Represents a problem and its associated data. For instance, binary classification on the adult dataset."""
 
     store: Store
+
     id: Optional[int]
     name: str
     problem: str
     origin: str
+    n_samples: int
+    n_features: int
+    n_classes: int
     meta: Dict[str, object]
 
     def data(self) -> List[object]:

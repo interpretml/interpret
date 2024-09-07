@@ -61,7 +61,7 @@ def run_trials(
             if timed_out:
                 raise RuntimeError(f"Timeout failure ({duration})")
         except Exception as e:
-            errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method}\n{traceback.format_exc()}"
+            errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method}, {trial.meta}, {trial.task.n_classes}, {trial.task.n_features}, {trial.task.n_samples}\n{traceback.format_exc()}"
             if raise_exception:
                 raise e
         finally:

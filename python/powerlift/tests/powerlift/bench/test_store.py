@@ -21,7 +21,7 @@ def test_retrieve_openml(cache_dir, dataset_limit):
             assert meta["problem"] in ["binary", "multiclass"]
             assert len(meta["feature_names"]) > 0
             assert len(meta["categorical_mask"]) > 0
-            assert meta["source"] == "openml"
+            assert meta["origin"] == "openml"
             assert isinstance(X, pd.DataFrame)
             assert isinstance(y, pd.Series)
             count += 1
@@ -39,7 +39,7 @@ def test_retrieve_pmlb(cache_dir, dataset_limit):
             assert meta["problem"] in ["binary", "multiclass", "regression"]
             assert len(meta["feature_names"]) > 0
             assert len(meta["categorical_mask"]) > 0
-            assert meta["source"] == "pmlb"
+            assert meta["origin"] == "pmlb"
             assert isinstance(X, pd.DataFrame)
             assert isinstance(y, pd.Series)
             count += 1
