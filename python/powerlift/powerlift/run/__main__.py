@@ -44,6 +44,8 @@ def run_trials(
         trial_run_fn = locals()[func_name]
 
     while True:
+        errmsg = "UNKNOWN FAILURE"
+
         trial = store.pick_trial(experiment_id, runner_id)
         if trial is None:
             if is_remote:
@@ -51,7 +53,6 @@ def run_trials(
             break
 
         # Run trial
-        errmsg = None
         try:
             # if the previous trial function created cyclic garbage, clear it.
             gc.collect()
@@ -60,10 +61,14 @@ def run_trials(
             )
             if timed_out:
                 raise RuntimeError(f"Timeout failure ({duration})")
-        except Exception as e:
+            errmsg = None
+        except Exception:
             errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method}, {trial.meta}, {trial.task.n_classes}, {trial.task.n_features}, {trial.task.n_samples}\n{traceback.format_exc()}"
             if raise_exception:
-                raise e
+                raise
+        except BaseException:
+            errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method}, {trial.meta}, {trial.task.n_classes}, {trial.task.n_features}, {trial.task.n_samples}\n{traceback.format_exc()}"
+            raise
         finally:
             store.end_trial(trial.id, errmsg)
 
@@ -87,8 +92,11 @@ if __name__ == "__main__":
         run_trials(
             experiment_id, runner_id, db_url, timeout, raise_exception, is_remote=True
         )
-        sys.exit(0)
     except Exception as e:
         print("EXCEPTION:")
         print("".join(traceback.format_exception(type(e), e, e.__traceback__)))
         sys.exit(65)
+    except BaseException as e:
+        print("EXCEPTION:")
+        print("".join(traceback.format_exception(type(e), e, e.__traceback__)))
+        sys.exit(64)

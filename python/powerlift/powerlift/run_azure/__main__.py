@@ -44,7 +44,7 @@ def run_azure_process(
             echo "Retrying."
         done
         if [ -n "$shell_install" ]; then
-            if [ "$is_updated" -eq 0 ]; then
+            if [ $is_updated -eq 0 ]; then
                 is_updated=1
                 apt-get --yes update
                 if [ $? -ne 0 ]; then
@@ -147,8 +147,8 @@ def run_azure_process(
         python startup.py
         exit_code=$?
         echo "Powerlift startup.py script exited with code: $exit_code"
-
-        if [ exit_code -ne 0 ]; then
+        
+        if [ $exit_code -ne 0 ]; then
             retry_count=0
             while true; do
                 result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id='$EXPERIMENT_ID' AND runner_id='$RUNNER_ID' LIMIT 1;" -t -A)
