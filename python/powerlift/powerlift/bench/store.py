@@ -441,8 +441,9 @@ class Store:
             task_orm.n_samples,
             task_orm.n_features,
             task_orm.n_classes,
-            task_orm.max_categories,
             task_orm.max_unique_continuous,
+            task_orm.max_categories,
+            task_orm.total_categories,
             task_orm.percent_categorical,
             task_orm.percent_special_values,
             json.loads(task_orm.meta),
@@ -573,8 +574,9 @@ class Store:
                         ta.n_samples AS n_samples,
                         ta.n_features AS n_features,
                         ta.n_classes AS n_classes,
-                        ta.max_categories AS max_categories,
                         ta.max_unique_continuous AS max_unique_continuous,
+                        ta.max_categories AS max_categories,
+                        ta.total_categories AS total_categories,
                         ta.percent_categorical AS percent_categorical,
                         ta.percent_special_values AS percent_special_values,
                         ta.meta AS task_meta,
@@ -606,15 +608,16 @@ class Store:
             result[8],
             result[9],
             result[10],
-            json.loads(result[11]),
+            result[11],
+            json.loads(result[12]),
         )
         return Trial(
-            result[12],
+            result[13],
             self,
             task,
-            result[13],
             result[14],
-            json.loads(result[15]),
+            result[15],
+            json.loads(result[16]),
         )
 
     def get_experiment(self, name: str) -> Optional[int]:
@@ -860,8 +863,9 @@ class Store:
                 ta.n_samples AS n_samples,
                 ta.n_features AS n_features,
                 ta.n_classes AS n_classes,
-                ta.max_categories AS max_categories,
                 ta.max_unique_continuous AS max_unique_continuous,
+                ta.max_categories AS max_categories,
+                ta.total_categories AS total_categories,
                 ta.percent_categorical AS percent_categorical,
                 ta.percent_special_values AS percent_special_values,
                 ta.meta as meta
@@ -888,7 +892,8 @@ class Store:
                 r[8],
                 r[9],
                 r[10],
-                json.loads(r[11]),
+                r[11],
+                json.loads(r[12]),
             )
             for r in results
         ]
@@ -956,11 +961,14 @@ class Store:
         n_classes = meta["n_classes"]
         del meta["n_classes"]
 
+        max_unique_continuous = meta["max_unique_continuous"]
+        del meta["max_unique_continuous"]
+
         max_categories = meta["max_categories"]
         del meta["max_categories"]
 
-        max_unique_continuous = meta["max_unique_continuous"]
-        del meta["max_unique_continuous"]
+        total_categories = meta["total_categories"]
+        del meta["total_categories"]
 
         percent_categorical = meta["percent_categorical"]
         del meta["percent_categorical"]
@@ -975,8 +983,9 @@ class Store:
             n_samples=n_samples,
             n_features=n_features,
             n_classes=n_classes,
-            max_categories=max_categories,
             max_unique_continuous=max_unique_continuous,
+            max_categories=max_categories,
+            total_categories=total_categories,
             percent_categorical=percent_categorical,
             percent_special_values=percent_special_values,
             meta=json.dumps(meta),

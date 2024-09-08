@@ -96,13 +96,16 @@ def data_stats(X: pd.DataFrame, categorical_mask: Iterable[bool], meta):
     """
 
     percent_special_values = 0.0
-    max_categories = 0
     max_unique_continuous = 0
+    max_categories = 0
+    total_categories = 0
 
     for i in range(X.shape[1]):
         col = X.iloc[:, i]
         if categorical_mask[i]:
-            max_categories = max(max_categories, col.nunique())
+            n_unique = col.nunique(dropna=False)
+            max_categories = max(max_categories, n_unique)
+            total_categories += n_unique
             for val in col.values:
                 if pd.isnull(val) or val.strip() == "":
                     percent_special_values += 1.0
@@ -118,7 +121,8 @@ def data_stats(X: pd.DataFrame, categorical_mask: Iterable[bool], meta):
 
     meta["n_samples"] = int(X.shape[0])
     meta["n_features"] = int(X.shape[1])
-    meta["max_categories"] = int(max_categories)
     meta["max_unique_continuous"] = int(max_unique_continuous)
+    meta["max_categories"] = int(max_categories)
+    meta["total_categories"] = int(total_categories)
     meta["percent_categorical"] = float(percent_categorical)
     meta["percent_special_values"] = float(percent_special_values)

@@ -143,8 +143,9 @@ class Task(Base):
     n_features = Column(Integer, nullable=False)
     n_classes = Column(Integer, nullable=False)
 
-    max_categories = Column(Integer, nullable=False)
     max_unique_continuous = Column(Integer, nullable=False)
+    max_categories = Column(Integer, nullable=False)
+    total_categories = Column(Integer, nullable=False)
     percent_categorical = Column(Float, nullable=False)
     percent_special_values = Column(Float, nullable=False)
 
