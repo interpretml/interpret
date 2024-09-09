@@ -526,7 +526,7 @@ WHERE id = :trial_id
         # transaction, but then subsequently have the network
         # communication fail, which puts us in a state where
         # the DB thinks this runner is assigned some work
-        # but the runnder does not know this. When retrying
+        # but the runner does not know this. When retrying
         # we include our runner id, and select any trials that
         # the DB believes are already assigned to us, thus we eventually
         # re-aquire orphaned work provided the runners do not fail.
@@ -535,9 +535,11 @@ WHERE id = :trial_id
         # a table index that it can use to quickly order the results,
         # The index cannot be used without start_time in the ORDER BY.
         #
-        # This is executed atomically. If it wasn't we'd have a problem since there
-        # would be a race condition. The race condition can be overcome with retries,
-        # but having a single atomic query is better.
+        # The UPDATE is not atomic from the inner query, so we need to
+        # re-check that the runner_id has not been updated in the update.
+        # If there are no results it might mean that there is no work
+        # or it could mean another runner stole our tentatively taken trial
+        # so we need to recheck if all trials are taken to exit
         sql_assign = text(
             f"""
 UPDATE trial
@@ -549,9 +551,16 @@ WHERE id = (
     AND (runner_id = :runner_id OR (runner_id IS NULL AND start_time IS NULL))
   ORDER BY experiment_id, runner_id, start_time, id NULLS LAST
   LIMIT 1
-)
+) AND experiment_id = :experiment_id AND (runner_id = :runner_id OR runner_id IS NULL AND start_time IS NULL)
 """
         )
+
+        # If runner_id was a match then the above would not fail to take it, so we
+        # only have to worry about the scenario where an open trial was taken.
+        sql_check = text(
+            "SELECT id FROM trial WHERE experiment_id = :experiment_id AND runner_id IS NULL AND start_time IS NULL LIMIT 1"
+        )
+        params_check = {"experiment_id": experiment_id}
 
         sql_query = text(
             f"""
@@ -588,12 +597,14 @@ LIMIT 1
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql_assign, params)
-
-                if result.rowcount != 1:
-                    # work is all done
-                    return None
-
+                while True:
+                    result = self._session.execute(sql_assign, params)
+                    if result.rowcount == 1:
+                        break
+                    result = self._session.execute(sql_check, params_check)
+                    if result.rowcount == 0:
+                        # work is all done
+                        return None
                 result = self._session.execute(sql_query, params).fetchone()
 
         task = Task(
