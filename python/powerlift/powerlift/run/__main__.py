@@ -8,7 +8,8 @@ def run_trials(
     timeout,
     raise_exception,
     debug_fn=None,
-    is_remote=False,
+    print_exceptions=False,
+    max_attempts=5,
 ):
     """Runs trials. Includes wheel installation and timeouts."""
     from powerlift.bench.store import Store
@@ -16,13 +17,6 @@ def run_trials(
     from powerlift.executors.base import timed_run
     import ast
     import gc
-
-    if is_remote:
-        print_exceptions = True
-        max_attempts = None
-    else:
-        print_exceptions = False
-        max_attempts = 5
 
     store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
 
@@ -48,7 +42,7 @@ def run_trials(
 
         trial = store.pick_trial(experiment_id, runner_id)
         if trial is None:
-            if is_remote:
+            if print_exceptions:
                 print("No more work to start!")
             break
 
@@ -90,7 +84,14 @@ if __name__ == "__main__":
             True if os.getenv("RAISE_EXCEPTION", False) == "True" else False
         )
         run_trials(
-            experiment_id, runner_id, db_url, timeout, raise_exception, is_remote=True
+            experiment_id,
+            runner_id,
+            db_url,
+            timeout,
+            raise_exception,
+            None,
+            True,
+            None,
         )
     except Exception as e:
         print("EXCEPTION:")

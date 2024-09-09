@@ -50,14 +50,14 @@ class Experiment(Base):
 
     __tablename__ = "experiment"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    name = Column(String(NAME_LEN), unique=True, nullable=False)
+    name = Column(String(NAME_LEN), nullable=False)
     description = Column(String(DESCRIPTION_LEN), nullable=True)
     shell_install = Column(Text, nullable=True)
     pip_install = Column(Text, nullable=True)
     script = Column(Text, nullable=False)
     trial_fn = Column(Text, nullable=False)
 
-    __table_args__ = (Index("ix_name", "name"),)
+    __table_args__ = (Index("ix_name", "name", unique=True),)
 
     wheels = relationship("Wheel", back_populates="experiment")
     trials = relationship("Trial", back_populates="experiment")

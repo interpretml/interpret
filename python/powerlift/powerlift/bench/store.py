@@ -404,14 +404,14 @@ class Store:
             raise Exception("Failed to create Transaction.")
 
     def end_trial(self, trial_id, errmsg=None):
-        query = text(
+        sql_text = text(
             """
-            UPDATE trial
-            SET end_time = CURRENT_TIMESTAMP,
-                errmsg = :errmsg,
-                runner_id = NULL
-            WHERE id = :trial_id
-        """
+UPDATE trial
+SET end_time = CURRENT_TIMESTAMP,
+  errmsg = :errmsg,
+  runner_id = NULL
+WHERE id = :trial_id
+"""
         )
 
         params = {
@@ -422,10 +422,7 @@ class Store:
         self.reset()
         while self.do:
             with self:
-                rowcount = 0
-                while rowcount != 1:
-                    result = self._session.execute(query, params)
-                    rowcount = result.rowcount
+                self._session.execute(sql_text, params)
 
     def from_db_task(self, task_orm):
         from powerlift.bench.experiment import Task
@@ -508,92 +505,96 @@ class Store:
         return self.from_db_task(task_orm)
 
     def get_trial_fn(self, experiment_id) -> str:
+        sql_text = text(f"SELECT trial_fn FROM experiment WHERE id = :experiment_id")
+        params = {"experiment_id": experiment_id}
+
         self.reset()
         while self.do:
             with self:
-                trial_fn = self._session.execute(
-                    text(f"SELECT trial_fn FROM experiment WHERE id={experiment_id}")
-                ).scalar()
+                trial_fn = self._session.execute(sql_text, params).scalar()
         return trial_fn
 
     def pick_trial(self, experiment_id, runner_id):
         from powerlift.bench.experiment import Task
         from powerlift.bench.experiment import Trial
 
+        # trials are inserted in the order we want them processed
+        # (biggest to smallest) so ordering by ascending "id"
+        # orders the work in our desired processing order.
+        #
+        # It is possible for the DB to successfully commit the
+        # transaction, but then subsequently have the network
+        # communication fail, which puts us in a state where
+        # the DB thinks this runner is assigned some work
+        # but the runnder does not know this. When retrying
+        # we include our runner id, and select any trials that
+        # the DB believes are already assigned to us, thus we eventually
+        # re-aquire orphaned work provided the runners do not fail.
+        #
+        # Include the start_time in the ORDER BY clause because we have
+        # a table index that it can use to quickly order the results,
+        # The index cannot be used without start_time in the ORDER BY.
+        #
+        # This is executed atomically. If it wasn't we'd have a problem since there
+        # would be a race condition. The race condition can be overcome with retries,
+        # but having a single atomic query is better.
+        sql_assign = text(
+            f"""
+UPDATE trial
+SET start_time = CURRENT_TIMESTAMP, runner_id = :runner_id
+WHERE id = (
+  SELECT id
+  FROM trial
+  WHERE experiment_id = :experiment_id
+    AND (runner_id = :runner_id OR (runner_id IS NULL AND start_time IS NULL))
+  ORDER BY experiment_id, runner_id, start_time, id NULLS LAST
+  LIMIT 1
+)
+"""
+        )
+
+        sql_query = text(
+            f"""
+SELECT
+  ta.id AS task_id,
+  ta.name AS name,
+  ta.problem AS problem,
+  ta.origin AS origin,
+  ta.n_samples AS n_samples,
+  ta.n_features AS n_features,
+  ta.n_classes AS n_classes,
+  ta.max_unique_continuous AS max_unique_continuous,
+  ta.max_categories AS max_categories,
+  ta.total_categories AS total_categories,
+  ta.percent_categorical AS percent_categorical,
+  ta.percent_special_values AS percent_special_values,
+  ta.meta AS task_meta,
+  t.id AS trial_id,
+  t.method AS method,
+  t.replicate_num AS replicate_num,
+  t.meta AS trial_meta
+FROM
+  trial t
+JOIN
+  task ta ON t.task_id = ta.id
+WHERE
+  t.experiment_id = :experiment_id AND t.runner_id = :runner_id
+LIMIT 1
+"""
+        )
+
+        params = {"experiment_id": experiment_id, "runner_id": runner_id}
+
         self.reset()
         while self.do:
             with self:
-                rowcount = 0
-                while rowcount != 1:
-                    # trials are inserted in the order we want them processed
-                    # (biggest to smallest) so ordering by ascending "id"
-                    # orders the work in our desired processing order.
-                    #
-                    # It is possible for the DB to successfully commit the
-                    # transaction, but then subsequently have the network
-                    # communication fail, which puts us in a state where
-                    # the DB thinks this runner is assigned some work
-                    # but the runnder does not know this. When retrying
-                    # we include our runner id, and select any trials that
-                    # the DB believes are already assigned to us, thus we eventually
-                    # re-aquire orphaned work provided the runners do not fail.
-                    #
-                    # Include the start_time in the ORDER BY clause because we have
-                    # a table index that it can use to quickly order the results,
-                    # The index cannot be used without start_time in the ORDER BY.
+                result = self._session.execute(sql_assign, params)
 
-                    trial_id = self._session.execute(
-                        text(
-                            f"SELECT id FROM trial WHERE experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL) ORDER BY runner_id, start_time, id NULLS LAST LIMIT 1"
-                        )
-                    ).scalar()
+                if result.rowcount != 1:
+                    # work is all done
+                    return None
 
-                    if trial_id is None:
-                        # work is all done
-                        return None
-
-                    # If another runner grabs the work we tentatively wanted, then 0
-                    # rows will be updated, and we attempt to aquire a different trial.
-                    #
-                    # Include experiment_id in the WHERE clause so the DB
-                    # can search via primary key or by the index in parallel.
-                    result = self._session.execute(
-                        text(
-                            f"UPDATE trial SET start_time=CURRENT_TIMESTAMP, runner_id={runner_id} WHERE id={trial_id} AND experiment_id={experiment_id} AND (runner_id={runner_id} OR runner_id IS NULL AND start_time IS NULL)"
-                        )
-                    )
-                    rowcount = result.rowcount
-
-                sql = text(
-                    f"""
-                    SELECT
-                        ta.id AS task_id,
-                        ta.name AS name,
-                        ta.problem AS problem,
-                        ta.origin AS origin,
-                        ta.n_samples AS n_samples,
-                        ta.n_features AS n_features,
-                        ta.n_classes AS n_classes,
-                        ta.max_unique_continuous AS max_unique_continuous,
-                        ta.max_categories AS max_categories,
-                        ta.total_categories AS total_categories,
-                        ta.percent_categorical AS percent_categorical,
-                        ta.percent_special_values AS percent_special_values,
-                        ta.meta AS task_meta,
-                        t.id AS trial_id,
-                        t.method AS method,
-                        t.replicate_num AS replicate_num,
-                        t.meta AS trial_meta
-                    FROM
-                        trial t
-                    JOIN
-                        task ta ON t.task_id = ta.id
-                    WHERE
-                        t.id = '{trial_id}'
-                """
-                )
-
-                result = self._session.execute(sql).fetchone()
+                result = self._session.execute(sql_query, params).fetchone()
 
         task = Task(
             self,
@@ -708,37 +709,45 @@ class Store:
             yield trial
 
     def get_status(self, experiment_name: str):
-        sql = text(
+        sql_text = text(
             f"""
-            SELECT
-                t.id AS trial_id,
-                ta.name AS task,
-                t.method AS method,
-                t.meta AS meta,
-                t.replicate_num AS replicate_num,
-                t.errmsg AS errmsg,
-                t.create_time AS create_time,
-                t.start_time AS start_time,
-                t.end_time AS end_time,
-                t.runner_id AS runner_id
-            FROM
-                experiment e
-            JOIN
-                trial t on e.id = t.experiment_id
-            JOIN
-                task ta ON t.task_id = ta.id
-            WHERE
-                e.name = '{experiment_name}'
-        """
+SELECT
+  t.id AS trial_id,
+  ta.name AS task,
+  t.method AS method,
+  t.meta AS meta,
+  t.replicate_num AS replicate_num,
+  t.errmsg AS errmsg,
+  t.create_time AS create_time,
+  t.start_time AS start_time,
+  t.end_time AS end_time,
+  t.runner_id AS runner_id,
+  ta.n_samples AS n_samples,
+  ta.n_features AS n_features,
+  ta.n_classes AS n_classes,
+  ta.total_categories as total_categories
+FROM
+  experiment e
+JOIN
+  trial t on e.id = t.experiment_id
+JOIN
+  task ta ON t.task_id = ta.id
+WHERE
+  e.name = :experiment_name
+"""
         )
+
+        params = {"experiment_name": experiment_name}
+
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql)
-        records = result.all()
-        columns = result.keys()
+                result = self._session.execute(sql_text, params)
+                records = result.all()
+                columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
 
+        df["runner_id"] = df["runner_id"].astype("Int64")
         df["create_time"] = pd.to_datetime(df["start_time"])
         df["start_time"] = pd.to_datetime(df["start_time"])
         df["end_time"] = pd.to_datetime(df["end_time"])
@@ -763,36 +772,39 @@ class Store:
         return df
 
     def get_results(self, experiment_name: str):
-        sql = text(
+        sql_text = text(
             f"""
-            SELECT
-                mo.id AS id,
-                ta.name AS task,
-                t.method AS method,
-                t.meta AS meta,
-                t.replicate_num AS replicate_num,
-                mo.name AS name,
-                mo.seq_num AS seq_num,
-                mo.type AS type,
-                mo.val AS val
-            FROM
-                experiment e
-            JOIN
-                trial t ON e.id = t.experiment_id
-            JOIN
-                task ta ON t.task_id = ta.id
-            JOIN
-                measure_outcome mo ON t.id = mo.trial_id
-            WHERE
-                e.name = '{experiment_name}'
-        """
+SELECT
+  mo.id AS id,
+  ta.name AS task,
+  t.method AS method,
+  t.meta AS meta,
+  t.replicate_num AS replicate_num,
+  mo.name AS name,
+  mo.seq_num AS seq_num,
+  mo.type AS type,
+  mo.val AS val
+FROM
+  experiment e
+JOIN
+  trial t ON e.id = t.experiment_id
+JOIN
+  task ta ON t.task_id = ta.id
+JOIN
+  measure_outcome mo ON t.id = mo.trial_id
+WHERE
+  e.name = :experiment_name
+"""
         )
+
+        params = {"experiment_name": experiment_name}
+
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql)
-        records = result.all()
-        columns = result.keys()
+                result = self._session.execute(sql_text, params)
+                records = result.all()
+                columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
 
         df["num_val"] = np.nan
@@ -814,11 +826,14 @@ class Store:
         return df
 
     def get_assets(self, task_id: int):
-        sql = text(f"SELECT x, y FROM task WHERE id = {task_id}")
+        sql_text = text(f"SELECT x, y FROM task WHERE id = :task_id")
+
+        params = {"task_id": task_id}
+
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql).fetchone()
+                result = self._session.execute(sql_text, params).fetchone()
         return tuple(result)
 
     def iter_available_tasks(
@@ -853,31 +868,31 @@ class Store:
     def get_tasks(self):
         from powerlift.bench.experiment import Task
 
-        sql = text(
+        sql_text = text(
             f"""
-            SELECT
-                ta.id as id,
-                ta.name as name,
-                ta.problem as problem,
-                ta.origin as origin,
-                ta.n_samples AS n_samples,
-                ta.n_features AS n_features,
-                ta.n_classes AS n_classes,
-                ta.max_unique_continuous AS max_unique_continuous,
-                ta.max_categories AS max_categories,
-                ta.total_categories AS total_categories,
-                ta.percent_categorical AS percent_categorical,
-                ta.percent_special_values AS percent_special_values,
-                ta.meta as meta
-            FROM
-                task ta
-        """
+SELECT
+  ta.id as id,
+  ta.name as name,
+  ta.problem as problem,
+  ta.origin as origin,
+  ta.n_samples AS n_samples,
+  ta.n_features AS n_features,
+  ta.n_classes AS n_classes,
+  ta.max_unique_continuous AS max_unique_continuous,
+  ta.max_categories AS max_categories,
+  ta.total_categories AS total_categories,
+  ta.percent_categorical AS percent_categorical,
+  ta.percent_special_values AS percent_special_values,
+  ta.meta as meta
+FROM
+  task ta
+"""
         )
 
         self.reset()
         while self.do:
             with self:
-                results = self._session.execute(sql).all()
+                results = self._session.execute(sql_text).all()
         return [
             Task(
                 self,
@@ -906,29 +921,32 @@ class Store:
         seq_num,
     ):
         if isinstance(value, str):
-            type_ = db.TypeEnum.STR
+            type_ = db.TypeEnum.STR.value
         elif isinstance(value, dict):
-            type_ = db.TypeEnum.JSON
+            type_ = db.TypeEnum.JSON.value
             value = json.dumps(value)
         elif isinstance(value, numbers.Number):
-            type_ = db.TypeEnum.NUMBER
+            type_ = db.TypeEnum.NUMBER.value
             value = repr(float(value))
         else:
             raise RuntimeError(f"Value type {type(value)} is not supported for measure")
 
-        # Create measure
-        measure_outcome_orm = db.MeasureOutcome(
-            name=name,
-            type=type_.value,
-            seq_num=seq_num,
-            val=value,
-            trial_id=trial_id,
+        sql_text = text(
+            "INSERT INTO measure_outcome (name, type, seq_num, val, trial_id) VALUES (:name, :type, :seq_num, :val, :trial_id)"
         )
+
+        params = {
+            "name": name,
+            "type": type_,
+            "seq_num": seq_num,
+            "val": value,
+            "trial_id": trial_id,
+        }
 
         self.reset()
         while self.do:
             with self:
-                self._session.add(measure_outcome_orm)
+                self._session.execute(sql_text, params)
 
     def create_task_with_data(self, data, exist_ok):
         if isinstance(data, SupervisedDataset):

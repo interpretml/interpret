@@ -60,6 +60,9 @@ class LocalMachine(Executor):
                         self._store.uri,
                         timeout,
                         self._raise_exception or self._debug_mode,
+                        None,
+                        self._store._print_exceptions,
+                        self._store._max_attempts,
                     )
                     self._runner_id_to_result[runner_id] = res
                 except Exception as e:
@@ -75,6 +78,9 @@ class LocalMachine(Executor):
                         self._store.uri,
                         timeout,
                         self._raise_exception or self._debug_mode,
+                        None,
+                        self._store._print_exceptions,
+                        self._store._max_attempts,
                     ),
                     error_callback=handle_err,
                 )
