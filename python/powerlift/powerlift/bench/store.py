@@ -119,7 +119,7 @@ class Store:
         uri: str,
         force_recreate: bool = False,
         print_exceptions=False,
-        max_attempts=10,
+        max_attempts=3,
         wait_secs=30.0,
         wait_lengthing=1.1,
         **create_engine_kwargs,
@@ -150,7 +150,7 @@ class Store:
                 if print_exceptions:
                     try:
                         print(str(e))
-                    except:
+                    except Exception:
                         pass
                 attempts += 1
                 if max_attempts is not None and max_attempts <= attempts:
@@ -171,7 +171,6 @@ class Store:
         self._wait_lengthing = wait_lengthing
 
         self._in_context = False
-        self._session_transaction = None
         self._attempts = 0
         self._reset = False
 
@@ -218,51 +217,10 @@ class Store:
                     print(
                         f"Sleeping: {sleep_time} seconds on attempt {self._attempts}."
                     )
-                except:
+                except Exception:
                     pass
 
             time.sleep(sleep_time)
-
-        if self._engine is None:
-            try:
-                self._engine = create_engine(self._uri, **self._create_engine_kwargs)
-            except Exception as e:
-                if self._print_exceptions:
-                    try:
-                        print(str(e))
-                    except:
-                        pass
-
-        if self._conn is None and self._engine is not None:
-            try:
-                self._conn = self._engine.connect()
-            except Exception as e:
-                if self._print_exceptions:
-                    try:
-                        print(str(e))
-                    except:
-                        pass
-
-        if self._session is None and self._conn is not None:
-            try:
-                self._session = Session(bind=self._conn)
-            except Exception as e:
-                if self._print_exceptions:
-                    try:
-                        print(str(e))
-                    except:
-                        pass
-
-        assert self._session_transaction is None
-        if self._session is not None:
-            try:
-                self._session_transaction = self._session.begin()
-            except Exception as e:
-                if self._print_exceptions:
-                    try:
-                        print(str(e))
-                    except:
-                        pass
 
         self._in_context = True
         self._reset = False
@@ -274,74 +232,82 @@ class Store:
             raise Exception("Not in Store context.")
         self._in_context = False
 
-        is_supress = False
-        if self._session_transaction is not None:
-            try:
-                is_supress = self._session_transaction.__exit__(
-                    exc_type, exc_value, traceback
-                )
-            except Exception as e:
-                self._session_transaction = None
+        if exc_type is None:
+            if self._session is not None:
+                try:
+                    # check if the user handled an error already
+                    if self._session.is_active:
+                        self._session.commit()
+                    else:
+                        self._session.rollback()
+                except Exception as e:
 
-                if self._print_exceptions:
-                    try:
-                        print(str(e))
-                    except:
-                        pass
+                    if self._print_exceptions:
+                        try:
+                            print(str(e))
+                        except Exception:
+                            pass
 
-                if self._session is not None:
                     try:
                         self._session.close()
                     except Exception as e:
                         if self._print_exceptions:
                             try:
                                 print(str(e))
-                            except:
+                            except Exception:
                                 pass
                     self._session = None
 
-                if self._conn is not None:
-                    try:
-                        self._conn.close()
-                    except Exception as e:
-                        if self._print_exceptions:
-                            try:
-                                print(str(e))
-                            except:
-                                pass
-                    self._conn = None
+                    if self._conn is not None:
+                        try:
+                            self._conn.close()
+                        except Exception as e:
+                            if self._print_exceptions:
+                                try:
+                                    print(str(e))
+                                except Exception:
+                                    pass
+                        self._conn = None
 
-                if self._engine is not None:
-                    try:
-                        self._engine.dispose()
-                    except Exception as e:
-                        if self._print_exceptions:
-                            try:
-                                print(str(e))
-                            except:
-                                pass
-                    self._engine = None
+                    if self._engine is not None:
+                        try:
+                            self._engine.dispose()
+                        except Exception as e:
+                            if self._print_exceptions:
+                                try:
+                                    print(str(e))
+                                except Exception:
+                                    pass
+                        self._engine = None
 
-                self._attempts += 1
-                if (
-                    self._max_attempts is not None
-                    and self._max_attempts <= self._attempts
-                ):
-                    raise
+                    self._attempts += 1
+                    if (
+                        self._max_attempts is not None
+                        and self._max_attempts <= self._attempts
+                    ):
+                        raise
 
-                # swallow the exception and any exception inside the
-                # with block if we haven't reached max_attempts
-                return exc_type is not None
-            self._session_transaction = None
+                    # swallow the exception and any exception inside the
+                    # with block if we haven't reached max_attempts
+                    return False
 
-        if exc_type is None:
+                try:
+                    self._session.close()
+                except Exception as e:
+                    if self._print_exceptions:
+                        try:
+                            print(str(e))
+                        except Exception:
+                            pass
+                self._session = None
+
             self._attempts = 0
             return False
 
         if self._print_exceptions:
             try:
                 print("".join(tb.format_exception(exc_type, exc_value, traceback)))
-            except:
+            except Exception:
                 pass
 
         if self._session is not None:
@@ -351,7 +317,7 @@ class Store:
                 if self._print_exceptions:
                     try:
                         print(str(e))
-                    except:
+                    except Exception:
                         pass
             self._session = None
 
@@ -362,7 +328,7 @@ class Store:
                 if self._print_exceptions:
                     try:
                         print(str(e))
-                    except:
+                    except Exception:
                         pass
             self._conn = None
 
@@ -373,16 +339,12 @@ class Store:
                 if self._print_exceptions:
                     try:
                         print(str(e))
-                    except:
+                    except Exception:
                         pass
             self._engine = None
 
         self._attempts += 1
-        return (
-            is_supress
-            or self._max_attempts is None
-            or self._attempts < self._max_attempts
-        )
+        return self._max_attempts is None or self._attempts < self._max_attempts
 
     def reset(self):
         if self._in_context:
@@ -396,12 +358,28 @@ class Store:
             raise Exception("Must exit a Store context for do to be valid")
         return self._reset or self._attempts != 0
 
-    def check_allowed(self):
+    @property
+    def connection(self):
         if not self._in_context:
-            raise Exception("Must be inside a Store context to call this function.")
+            raise Exception("Must be inside a Store context to get a connection.")
 
-        if self._session_transaction is None:
-            raise Exception("Failed to create Transaction.")
+        if self._conn is None:
+            if self._engine is None:
+                self._engine = create_engine(self._uri, **self._create_engine_kwargs)
+
+            self._conn = self._engine.connect()
+
+        return self._conn
+
+    @property
+    def session(self):
+        if not self._in_context:
+            raise Exception("Must be inside a Store context to get a session.")
+
+        if self._session is None:
+            self._session = Session(bind=self.connection)
+
+        return self._session
 
     def end_trial(self, trial_id, errmsg=None):
         sql_text = text(
@@ -422,12 +400,10 @@ WHERE id = :trial_id
         self.reset()
         while self.do:
             with self:
-                self._session.execute(sql_text, params)
+                self.session.execute(sql_text, params)
 
     def from_db_task(self, task_orm):
         from powerlift.bench.experiment import Task
-
-        self.check_allowed()
 
         return Task(
             self,
@@ -447,7 +423,6 @@ WHERE id = :trial_id
         )
 
     def from_db_wheel(self, wheel_orm):
-        self.check_allowed()
         from powerlift.bench.experiment import Wheel
 
         return Wheel(
@@ -457,7 +432,6 @@ WHERE id = :trial_id
         )
 
     def from_db_experiment(self, experiment_orm):
-        self.check_allowed()
         from powerlift.bench.experiment import Experiment
 
         wheels = [self.from_db_wheel(wheel) for wheel in experiment_orm.wheels]
@@ -475,7 +449,6 @@ WHERE id = :trial_id
         )
 
     def from_db_trial(self, trial_orm):
-        self.check_allowed()
         from powerlift.bench.experiment import Trial
 
         task = self.from_db_task(trial_orm.task)
@@ -489,17 +462,15 @@ WHERE id = :trial_id
         )
 
     def find_experiment_by_id(self, _id: int):
-        self.check_allowed()
         experiment_orm = (
-            self._session.query(db.Experiment).filter_by(id=_id).one_or_none()
+            self.session.query(db.Experiment).filter_by(id=_id).one_or_none()
         )
         if experiment_orm is None:
             return None
         return self.from_db_experiment(experiment_orm)
 
     def find_task_by_id(self, _id: int):
-        self.check_allowed()
-        task_orm = self._session.query(db.Task).filter_by(id=_id).one_or_none()
+        task_orm = self.session.query(db.Task).filter_by(id=_id).one_or_none()
         if task_orm is None:
             return None
         return self.from_db_task(task_orm)
@@ -511,7 +482,7 @@ WHERE id = :trial_id
         self.reset()
         while self.do:
             with self:
-                trial_fn = self._session.execute(sql_text, params).scalar()
+                trial_fn = self.session.execute(sql_text, params).scalar()
         return trial_fn
 
     def pick_trial(self, experiment_id, runner_id):
@@ -598,14 +569,14 @@ LIMIT 1
         while self.do:
             with self:
                 while True:
-                    result = self._session.execute(sql_assign, params)
+                    result = self.session.execute(sql_assign, params)
                     if result.rowcount == 1:
                         break
-                    result = self._session.execute(sql_check, params_check)
+                    result = self.session.execute(sql_check, params_check)
                     if result.rowcount == 0:
                         # work is all done
                         return None
-                result = self._session.execute(sql_query, params).fetchone()
+                result = self.session.execute(sql_query, params).fetchone()
 
         task = Task(
             self,
@@ -633,8 +604,7 @@ LIMIT 1
         )
 
     def get_experiment(self, name: str) -> Optional[int]:
-        self.check_allowed()
-        exp_orm = self._session.query(db.Experiment).filter_by(name=name).one_or_none()
+        exp_orm = self.session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             return None
         else:
@@ -668,8 +638,8 @@ LIMIT 1
         self.reset()
         while self.do:
             with self:
-                self._session.add(exp_orm)
-                self._session.flush()
+                self.session.add(exp_orm)
+                self.session.flush()
                 experiment_id = exp_orm.id
         return experiment_id
 
@@ -688,7 +658,7 @@ LIMIT 1
         self.reset()
         while self.do:
             with self:
-                self._session.bulk_save_objects(trial_orms)
+                self.session.bulk_save_objects(trial_orms)
 
     def create_trial(
         self,
@@ -698,7 +668,6 @@ LIMIT 1
         replicate_num: int,
         meta: dict,
     ):
-        self.check_allowed()
         trial_orm = db.Trial(
             experiment_id=experiment_id,
             task_id=task_id,
@@ -706,15 +675,12 @@ LIMIT 1
             replicate_num=replicate_num,
             meta=json.dumps(meta),
         )
-        self._session.add(trial_orm)
-        self._session.flush()
+        self.session.add(trial_orm)
+        self.session.flush()
         return trial_orm.id
 
     def iter_experiment_trials(self, experiment_id: int):
-        self.check_allowed()
-        trial_orms = self._session.query(db.Trial).filter_by(
-            experiment_id=experiment_id
-        )
+        trial_orms = self.session.query(db.Trial).filter_by(experiment_id=experiment_id)
         for trial_orm in trial_orms:
             trial = self.from_db_trial(trial_orm)
             yield trial
@@ -753,7 +719,7 @@ WHERE
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql_text, params)
+                result = self.session.execute(sql_text, params)
                 records = result.all()
                 columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
@@ -813,7 +779,7 @@ WHERE
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql_text, params)
+                result = self.session.execute(sql_text, params)
                 records = result.all()
                 columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
@@ -844,15 +810,14 @@ WHERE
         self.reset()
         while self.do:
             with self:
-                result = self._session.execute(sql_text, params).fetchone()
+                result = self.session.execute(sql_text, params).fetchone()
         return tuple(result)
 
     def iter_available_tasks(
         self, include_measures: bool = False
     ) -> Iterable[Mapping[str, object]]:
         # WARNING: obsolete
-        self.check_allowed()
-        task_orms = self._session.query(db.Task)
+        task_orms = self.session.query(db.Task)
         for task_orm in task_orms:
             record = {
                 "task_id": task_orm.id,
@@ -903,7 +868,7 @@ FROM
         self.reset()
         while self.do:
             with self:
-                results = self._session.execute(sql_text).all()
+                results = self.session.execute(sql_text).all()
         return [
             Task(
                 self,
@@ -957,7 +922,7 @@ FROM
         self.reset()
         while self.do:
             with self:
-                self._session.execute(sql_text, params)
+                self.session.execute(sql_text, params)
 
     def create_task_with_data(self, data, exist_ok):
         if isinstance(data, SupervisedDataset):
@@ -1026,9 +991,9 @@ FROM
         while self.do:
             with self:
                 try:
-                    self._session.add(task_orm)
+                    self.session.add(task_orm)
                     # we need to flush here to get the exception if it exists
-                    self._session.flush()
+                    self.session.flush()
                     ret = True
                 except IntegrityError as e:
                     ret = False
@@ -1040,7 +1005,6 @@ FROM
 
     def _create_task_with_dataframe(self, data, version):
         # WARNING: obsolete
-        self.check_allowed()
         inputs_bstream, outputs_bstream, _ = DataFrameDataset.serialize(data)
 
         meta = data.meta
@@ -1058,8 +1022,8 @@ FROM
             meta=data.meta,
         )
 
-        self._session.add(task_orm)
-        self._session.flush()
+        self.session.add(task_orm)
+        self.session.flush()
         return task_orm.id
 
 

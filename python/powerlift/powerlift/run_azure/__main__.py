@@ -19,7 +19,28 @@ def run_azure_process(
         self_delete() {
             echo "Attempt to self-delete this container group. Exit code was $1."
 
-            curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+            retry_count=0
+            while true; do
+                echo "Downloading azure tools."
+
+                curl -sL https://aka.ms/InstallAzureCLIDeb -o install_script.sh
+                exit_code=$?
+                if [ $exit_code -eq 0 ]; then
+                    break
+                fi
+
+                echo "curl failed with exit code $exit_code."
+                if [ $retry_count -ge 300 ]; then
+                    echo "Maximum number of retries reached. Command failed."
+                    exit 62
+                fi
+                retry_count=$((retry_count + 1))
+                echo "Sleeping."
+                sleep 300
+                echo "Retrying."
+            done
+            
+            bash install_script.sh
             exit_code=$?
             if [ $exit_code -ne 0 ]; then
                 echo "Failed to install azure tools with exit code $exit_code. Attempting to delete anyway."
@@ -29,8 +50,10 @@ def run_azure_process(
             RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
             CONTAINER_GROUP_NAME=${CONTAINER_GROUP_NAME}
 
-            echo "Waiting 10 mintues to allow inspection of the logs..."
-            sleep 600
+            if [ $1 -ne 0 ]; then
+                echo "Waiting 10 mintues to allow inspection of the logs..."
+                sleep 600
+            fi
 
             retry_count=0
             while true; do

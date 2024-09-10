@@ -53,5 +53,5 @@ def test_populate_with_datasets(store: Store, dataset_limit):
     dataset_iter = islice(retrieve_openml(), dataset_limit)
     populate_with_datasets(store, dataset_iter)
 
-    assert store._session.query(func.count(db.Asset.id)).scalar()
-    assert store._session.query(func.count(db.Task.id)).scalar()
+    assert store.session.query(func.count(db.Asset.id)).scalar()
+    assert store.session.query(func.count(db.Task.id)).scalar()
