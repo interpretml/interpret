@@ -798,6 +798,7 @@ WHERE
             else:
                 raise Exception(f"Bad DB type {row['type']}")
 
+        df = df.drop(columns=["val"])
         df["type"] = df["type"].apply(lambda x: db.TypeEnum(x).name)
 
         return df

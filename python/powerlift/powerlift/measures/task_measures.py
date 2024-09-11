@@ -54,15 +54,12 @@ def class_stats(y: pd.Series, meta):
         List[Tuple[str, str, float, bool]]: Tuples of form: (name, description, value, is_lower_better).
     """
     labels = y.values
-    labels_unique = np.unique(labels, return_counts=True)
-    labels_min_cnt = np.min(labels_unique[1])
-    labels_max_cnt = np.max(labels_unique[1])
+    _, counts = np.unique(labels, return_counts=True)
 
-    meta["n_classes"] = int(len(labels_unique))
+    meta["n_classes"] = int(len(counts))
     meta["class_normalized_entropy"] = float(entropy(labels, normalized=True))
-    meta["min_class_count"] = int(labels_min_cnt)
-    meta["max_class_count"] = int(labels_max_cnt)
-    meta["avg_class_count"] = float(np.average(labels_unique[1]))
+    meta["min_class_count"] = int(np.min(counts))
+    meta["max_class_count"] = int(np.max(counts))
 
 
 def regression_stats(y: pd.Series, meta):
@@ -75,13 +72,10 @@ def regression_stats(y: pd.Series, meta):
         List[Tuple[str, str, float, bool]]: Tuples of form: (name, description, value, is_lower_better).
     """
     labels = y.values
-    labels_avg = np.average(labels)
-    labels_max = max(labels)
-    labels_min = min(labels)
     meta["n_classes"] = 0
-    meta["response_min_val"] = float(labels_min)
-    meta["response_avg_val"] = float(labels_avg)
-    meta["response_max_val"] = float(labels_max)
+    meta["response_min_val"] = float(min(labels))
+    meta["response_avg_val"] = float(np.average(labels))
+    meta["response_max_val"] = float(max(labels))
 
 
 def data_stats(X: pd.DataFrame, categorical_mask: Iterable[bool], meta):

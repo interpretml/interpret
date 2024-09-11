@@ -334,7 +334,7 @@ def run_azure_process(
     container_group_names = set()
     starts = []
     for runner_id in range(n_runners):
-        container_group_name = f"powerlift-container-group-{batch_id}-{runner_id}"
+        container_group_name = f"powerlift-container-group-{batch_id}-{runner_id:04}"
 
         env_vars = [
             EnvironmentVariable(name="EXPERIMENT_ID", value=str(experiment_id)),
