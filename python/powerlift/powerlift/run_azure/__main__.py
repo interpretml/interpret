@@ -6,7 +6,6 @@ def run_azure_process(
     n_runners,
     uri,
     timeout,
-    raise_exception,
     image,
     azure_json,
     credential,
@@ -235,10 +234,21 @@ def run_azure_process(
             echo "Retrying."
         done
         printf "%s" "$result" > "startup.py"
-        echo "Running startup.py"
-        python startup.py
-        python_exit_code=$?
-        echo "Powerlift startup.py script exited with code: $python_exit_code"
+
+        while true; do
+            echo "Running startup.py"
+            python startup.py
+
+            # 0 means we are done
+            # 1 means we have more work
+            # anything else is a serious error and we cleanup
+            python_exit_code=$?
+            echo "Powerlift startup.py script exited with code: $python_exit_code"
+
+            if [ $python_exit_code -ne 1 ]; then
+                break
+            fi
+        done
         
         if [ $python_exit_code -ne 0 ]; then
             retry_count=0
@@ -341,7 +351,6 @@ def run_azure_process(
             EnvironmentVariable(name="RUNNER_ID", value=str(runner_id)),
             EnvironmentVariable(name="DB_URL", secure_value=uri),
             EnvironmentVariable(name="TIMEOUT", value=timeout),
-            EnvironmentVariable(name="RAISE_EXCEPTION", value=raise_exception),
             EnvironmentVariable(name="RESOURCE_GROUP_NAME", value=resource_group_name),
             EnvironmentVariable(
                 name="CONTAINER_GROUP_NAME", value=container_group_name

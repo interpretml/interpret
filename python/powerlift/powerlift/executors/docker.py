@@ -11,7 +11,7 @@ from typing import Iterable, List
 import multiprocessing
 
 
-def _run_docker(experiment_id, runner_id, db_url, timeout, raise_exception, image):
+def _run_docker(experiment_id, runner_id, db_url, timeout, image):
     import docker
 
     client = docker.from_env()
@@ -24,7 +24,6 @@ def _run_docker(experiment_id, runner_id, db_url, timeout, raise_exception, imag
             "RUNNER_ID": runner_id,
             "DB_URL": db_url,
             "TIMEOUT": timeout,
-            "RAISE_EXCEPTION": raise_exception,
         },
         network_mode="host",
         detach=True,
@@ -50,7 +49,6 @@ class InsecureDocker(LocalMachine):
         n_running_containers: int = None,
         wheel_filepaths: List[str] = None,
         docker_db_uri: str = None,
-        raise_exception: bool = False,
     ):
         """Runs trials in local docker containers.
 
@@ -60,14 +58,13 @@ class InsecureDocker(LocalMachine):
             n_running_containers (int, optional): Max number of containers running simultaneously. Defaults to None.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on docker trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
-            raise_exception (bool, optional): Raise exception on failure.
         """
         self._docker_db_uri = docker_db_uri
         self._image = image
         super().__init__(
             store=store,
             n_cpus=n_running_containers,
-            raise_exception=raise_exception,
+            raise_exception=False,
             wheel_filepaths=wheel_filepaths,
         )
 
@@ -87,7 +84,6 @@ class InsecureDocker(LocalMachine):
                     runner_id,
                     uri,
                     timeout,
-                    self._raise_exception,
                     self._image,
                 ),
                 error_callback=handle_err,

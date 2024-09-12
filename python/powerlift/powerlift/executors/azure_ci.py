@@ -35,7 +35,6 @@ class AzureContainerInstance(Executor):
         # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
         image: str = "mcr.microsoft.com/devcontainers/python:latest",
         docker_db_uri: str = None,
-        raise_exception: bool = False,
         delete_group_container_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.
@@ -56,7 +55,6 @@ class AzureContainerInstance(Executor):
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
             image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
-            raise_exception (bool, optional): Raise exception on failure.
             delete_group_container_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
         from multiprocessing import Manager
@@ -84,7 +82,6 @@ class AzureContainerInstance(Executor):
         self._runner_id_to_result = {}
         self._store = store
         self._wheel_filepaths = wheel_filepaths
-        self._raise_exception = raise_exception
 
     def __del__(self):
         if self._pool is not None:
@@ -106,7 +103,6 @@ class AzureContainerInstance(Executor):
             self._n_running_containers,
             uri,
             timeout,
-            self._raise_exception,
             self._image,
             self._azure_json,
             self._credential,
@@ -116,18 +112,11 @@ class AzureContainerInstance(Executor):
             self._batch_id,
         )
         self._batch_id = random.getrandbits(64)
-        if self._pool is None:
-            try:
-                res = remote_process.run_azure_process(*params)
-                self._runner_id_to_result[0] = res
-            except Exception as e:
-                self._runner_id_to_result[0] = e
-        else:
-            self._runner_id_to_result[0] = self._pool.apply_async(
-                remote_process.run_azure_process,
-                params,
-                error_callback=handle_err,
-            )
+        self._runner_id_to_result[0] = self._pool.apply_async(
+            remote_process.run_azure_process,
+            params,
+            error_callback=handle_err,
+        )
 
     def join(self):
         results = []
