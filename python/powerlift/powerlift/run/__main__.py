@@ -20,7 +20,22 @@ def run_trials(
 
     store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
 
-    trial_run_fn = store.get_trial_fn(experiment_id)
+    trial_run_fn = None
+    if return_after_one:
+        try:
+            with open("trial_run_fn.py", "r") as file:
+                trial_run_fn = file.read()
+        except FileNotFoundError:
+            pass
+
+    if trial_run_fn is None:
+        if print_exceptions:
+            print("Getting trial_run_fn from database.")
+        trial_run_fn = store.get_trial_fn(experiment_id)
+        if return_after_one:
+            with open("trial_run_fn.py", "w") as file:
+                file.write(trial_run_fn)
+
     trial_run_fn = ast.parse(trial_run_fn)
     if not isinstance(trial_run_fn, ast.Module) or not isinstance(
         trial_run_fn.body[0], ast.FunctionDef
