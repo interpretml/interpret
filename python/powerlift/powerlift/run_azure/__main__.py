@@ -101,7 +101,7 @@ def run_azure_process(
         fi
         retry_count=0
         while true; do
-            shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id = '$EXPERIMENT_ID' LIMIT 1;" -t -A)
             exit_code=$?
             if [ $exit_code -eq 0 ]; then
                 break
@@ -137,7 +137,7 @@ def run_azure_process(
 
         retry_count=0
         while true; do
-            filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id='$EXPERIMENT_ID';" -t -A)
+            filenames=$(psql "$DB_URL" -c "SELECT name FROM wheel WHERE experiment_id = '$EXPERIMENT_ID';" -t -A)
             exit_code=$?
             if [ $exit_code -eq 0 ]; then
                 break
@@ -157,7 +157,7 @@ def run_azure_process(
                 echo "Processing filename: $filename"
                 retry_count=0
                 while true; do
-                    psql "$DB_URL" -c "COPY (SELECT embedded FROM wheel WHERE experiment_id='$EXPERIMENT_ID' AND name='$filename') TO STDOUT WITH BINARY;" > "$filename"
+                    psql "$DB_URL" -c "COPY (SELECT embedded FROM wheel WHERE experiment_id = '$EXPERIMENT_ID' AND name = '$filename') TO STDOUT WITH BINARY;" > "$filename"
                     exit_code=$?
                     if [ $exit_code -eq 0 ]; then
                         break
@@ -184,7 +184,7 @@ def run_azure_process(
 
         retry_count=0
         while true; do
-            pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            pip_install=$(psql "$DB_URL" -c "SELECT pip_install FROM Experiment WHERE id = '$EXPERIMENT_ID' LIMIT 1;" -t -A)
             exit_code=$?
             if [ $exit_code -eq 0 ]; then
                 break
@@ -218,7 +218,7 @@ def run_azure_process(
 
         retry_count=0
         while true; do
-            result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id='$EXPERIMENT_ID' LIMIT 1;" -t -A)
+            result=$(psql "$DB_URL" -c "SELECT script FROM Experiment WHERE id = '$EXPERIMENT_ID' LIMIT 1;" -t -A)
             exit_code=$?
             if [ $exit_code -eq 0 ]; then
                 break
@@ -253,7 +253,7 @@ def run_azure_process(
         if [ $python_exit_code -ne 0 ]; then
             retry_count=0
             while true; do
-                result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id='$EXPERIMENT_ID' AND runner_id='$RUNNER_ID' LIMIT 1;" -t -A)
+                result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id = '$EXPERIMENT_ID' AND runner_id = '$RUNNER_ID' LIMIT 1;" -t -A)
                 exit_code=$?
                 if [ $exit_code -eq 0 ]; then
                     break
@@ -274,7 +274,7 @@ def run_azure_process(
 
                 retry_count=0
                 while true; do
-                    psql "$DB_URL" -c "UPDATE trial SET end_time=CURRENT_TIMESTAMP, errmsg='TERMINATED WITH ERROR CODE: $python_exit_code', runner_id=NULL WHERE id=$result AND errmsg is NULL;"
+                    psql "$DB_URL" -c "UPDATE trial SET runner_id = -2, end_time = CURRENT_TIMESTAMP, errmsg = 'ERROR: $python_exit_code' WHERE id = $result AND errmsg is NULL;"
                     exit_code=$?
                     if [ $exit_code -eq 0 ]; then
                         break

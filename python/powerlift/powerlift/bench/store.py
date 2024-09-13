@@ -387,7 +387,7 @@ class Store:
 UPDATE trial
 SET end_time = CURRENT_TIMESTAMP,
   errmsg = :errmsg,
-  runner_id = NULL
+  runner_id = -2
 WHERE id = :trial_id
 """
         )
@@ -502,10 +502,6 @@ WHERE id = :trial_id
         # the DB believes are already assigned to us, thus we eventually
         # re-aquire orphaned work provided the runners do not fail.
         #
-        # Include the start_time in the ORDER BY clause because we have
-        # a table index that it can use to quickly order the results,
-        # The index cannot be used without start_time in the ORDER BY.
-        #
         # The UPDATE is not atomic from the inner query, so we need to
         # re-check that the runner_id has not been updated in the update.
         # If there are no results it might mean that there is no work
@@ -514,22 +510,24 @@ WHERE id = :trial_id
         sql_assign = text(
             f"""
 UPDATE trial
-SET start_time = CURRENT_TIMESTAMP, runner_id = :runner_id
+SET runner_id = :runner_id, start_time = CURRENT_TIMESTAMP
 WHERE id = (
   SELECT id
   FROM trial
   WHERE experiment_id = :experiment_id
-    AND (runner_id = :runner_id OR (runner_id IS NULL AND start_time IS NULL))
-  ORDER BY experiment_id, runner_id, start_time, id NULLS LAST
+    AND (runner_id = :runner_id OR runner_id = -1)
+  ORDER BY experiment_id, runner_id DESC, id
   LIMIT 1
-) AND experiment_id = :experiment_id AND (runner_id = :runner_id OR runner_id IS NULL AND start_time IS NULL)
+) 
+AND experiment_id = :experiment_id 
+AND (runner_id = :runner_id OR runner_id = -1)
 """
         )
 
         # If runner_id was a match then the above would not fail to take it, so we
         # only have to worry about the scenario where an open trial was taken.
         sql_check = text(
-            "SELECT id FROM trial WHERE experiment_id = :experiment_id AND runner_id IS NULL AND start_time IS NULL LIMIT 1"
+            "SELECT EXISTS(SELECT 1 FROM trial WHERE experiment_id = :experiment_id AND runner_id = -1)"
         )
         params_check = {"experiment_id": experiment_id}
 
@@ -570,10 +568,10 @@ LIMIT 1
             with self:
                 while True:
                     result = self.session.execute(sql_assign, params)
-                    if result.rowcount == 1:
+                    if 0 < result.rowcount:
                         break
                     result = self.session.execute(sql_check, params_check)
-                    if result.rowcount == 0:
+                    if not result.scalar():
                         # work is all done
                         return None
                 result = self.session.execute(sql_query, params).fetchone()
@@ -724,8 +722,8 @@ WHERE
                 columns = result.keys()
         df = pd.DataFrame.from_records(records, columns=columns)
 
-        df["runner_id"] = df["runner_id"].astype("Int64")
-        df["create_time"] = pd.to_datetime(df["start_time"])
+        df["runner_id"] = df["runner_id"].astype(int)
+        df["create_time"] = pd.to_datetime(df["create_time"])
         df["start_time"] = pd.to_datetime(df["start_time"])
         df["end_time"] = pd.to_datetime(df["end_time"])
 

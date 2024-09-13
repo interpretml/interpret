@@ -56,7 +56,7 @@ def run_trials(
         if trial is None:
             if print_exceptions:
                 print("No more work to start!")
-            return True
+            return False
 
         # Run trial
         try:
@@ -79,7 +79,7 @@ def run_trials(
             store.end_trial(trial.id, errmsg)
 
         if return_after_one:
-            return False
+            return True
 
 
 if __name__ == "__main__":
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         runner_id = os.getenv("RUNNER_ID")
         db_url = os.getenv("DB_URL")
         timeout = float(os.getenv("TIMEOUT", 0.0))
-        is_done = run_trials(
+        is_more = run_trials(
             experiment_id,
             runner_id,
             db_url,
@@ -114,4 +114,4 @@ if __name__ == "__main__":
         print("".join(traceback.format_exception(type(e), e, e.__traceback__)))
         sys.exit(64)
 
-    sys.exit(0 if is_done else 1)
+    sys.exit(1 if is_more else 0)

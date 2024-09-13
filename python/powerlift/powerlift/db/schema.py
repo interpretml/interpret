@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     Index,
+    desc,
     ForeignKey,
     DateTime,
     Enum,
@@ -72,7 +73,7 @@ class Trial(Base):
     experiment_id = Column(Integer, ForeignKey("experiment.id"), nullable=False)
     experiment = relationship("Experiment", back_populates="trials")
 
-    runner_id = Column(Integer, nullable=True)
+    runner_id = Column(Integer, nullable=False, server_default=text("-1"))
     start_time = Column(DateTime, nullable=True)
     end_time = Column(DateTime, nullable=True)
 
@@ -90,15 +91,14 @@ class Trial(Base):
 
     measure_outcomes = relationship("MeasureOutcome", back_populates="trials")
     __table_args__ = (
-        # We select work by exact runner_id match, or when both runner_id and
-        # start_time are NULL. Both ways are fast to find with this index.
+        # We select work by exact runner_id match, or when runner_id = -1.
+        # Both ways are fast to find with this index.
         # experiment_id is included in the index for the WHERE clause in queries.
         Index(
             "ix_order",
-            experiment_id,
-            runner_id,
-            start_time,
-            id,  # include id to order them when runner_id and start_time are NULL
+            "experiment_id",
+            desc("runner_id"),
+            "id",  # include id to order them when runner_id = -1
         ),
     )
 
