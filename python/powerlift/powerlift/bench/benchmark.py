@@ -87,6 +87,17 @@ class Benchmark:
 
         tasks = self._store.get_tasks()
 
+        # Do the hardest tasks first so that we can slip
+        # the faster ones into the cracks, but do some easy
+        # ones first just to verify everything works.
+        tasks = sorted(
+            tasks,
+            reverse=True,
+            key=lambda x: (1 if x.n_classes < 3 else x.n_classes)
+            * x.n_features
+            * x.n_samples,
+        )
+
         # Create experiment
         if self._experiment_id is None:
             experiment_id = self._store.create_experiment(
@@ -101,6 +112,7 @@ class Benchmark:
 
         # Create trials
         trials = []
+        task_trials = []
         for task in tasks:
             generated_trials = trial_gen_fn(task)
             for generated_trial in generated_trials:
@@ -120,18 +132,12 @@ class Benchmark:
                         "replicate_num": replicate_num,
                         "meta": meta,
                     }
-                    trials.append((trial_param, task))
+                    task_trials.append(trial_param)
+            random.shuffle(task_trials)
+            trials.extend(task_trials)
+            task_trials = []
 
-        # Do the hardest datasets first so that we can slip
-        # the faster ones into the cracks, but do some easy
-        # ones first just to verify everything works.
-        trials = sorted(
-            trials,
-            reverse=True,
-            key=lambda x: (1 if x[1].n_classes < 3 else x[1].n_classes)
-            * x[1].n_features
-            * x[1].n_samples,
-        )
+        # put some of the easy ones first so that we find problems quickly
         trials = np.array(trials, dtype=object)
         n_fastest = int(len(trials) * 0.25)
         n_true = int(n_fastest * 0.25)
@@ -139,10 +145,9 @@ class Benchmark:
         random.shuffle(take)
         take = np.array([False] * (len(trials) - n_fastest) + take, dtype=bool)
         trials = np.concatenate([trials[take][::-1], trials[~take]])
-        trial_params, _ = zip(*trials)
 
         # Save to store
-        self._store.create_trials(trial_params)
+        self._store.create_trials(trials)
         self._experiment_id = experiment_id
 
         # Run trials
