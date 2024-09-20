@@ -630,36 +630,36 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
                         if(bUpdateWithHessian) {
                            weightLowLow = static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess());
-                           predictionLowLow = ComputeSinglePartitionUpdate(
+                           predictionLowLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
                                  weightLowLow);
                            weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess());
-                           predictionLowHigh = ComputeSinglePartitionUpdate(
+                           predictionLowHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
                                  weightLowHigh);
                            weightHighLow = static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess());
-                           predictionHighLow = ComputeSinglePartitionUpdate(
+                           predictionHighLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
                                  weightHighLow);
                            weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess());
-                           predictionHighHigh = ComputeSinglePartitionUpdate(
+                           predictionHighHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
                                  weightHighHigh);
                         } else {
                            weightLowLow = static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight());
-                           predictionLowLow = ComputeSinglePartitionUpdate(
+                           predictionLowLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
                                  weightLowLow);
                            weightLowHigh = static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight());
-                           predictionLowHigh = ComputeSinglePartitionUpdate(
+                           predictionLowHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
                                  weightLowHigh);
                            weightHighLow = static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight());
-                           predictionHighLow = ComputeSinglePartitionUpdate(
+                           predictionHighLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
                                  weightHighLow);
                            weightHighHigh = static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight());
-                           predictionHighHigh = ComputeSinglePartitionUpdate(
+                           predictionHighHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
                                  weightHighHigh);
                         }
@@ -788,36 +788,36 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
                         if(bUpdateWithHessian) {
                            weightLowLow = static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess());
-                           predictionLowLow = ComputeSinglePartitionUpdate(
+                           predictionLowLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
                                  weightLowLow);
                            weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess());
-                           predictionLowHigh = ComputeSinglePartitionUpdate(
+                           predictionLowHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
                                  weightLowHigh);
                            weightHighLow = static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess());
-                           predictionHighLow = ComputeSinglePartitionUpdate(
+                           predictionHighLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
                                  weightHighLow);
                            weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess());
-                           predictionHighHigh = ComputeSinglePartitionUpdate(
+                           predictionHighHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
                                  weightHighHigh);
                         } else {
                            weightLowLow = static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight());
-                           predictionLowLow = ComputeSinglePartitionUpdate(
+                           predictionLowLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
                                  weightLowLow);
                            weightLowHigh = static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight());
-                           predictionLowHigh = ComputeSinglePartitionUpdate(
+                           predictionLowHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
                                  weightLowHigh);
                            weightHighLow = static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight());
-                           predictionHighLow = ComputeSinglePartitionUpdate(
+                           predictionHighLow = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
                                  weightHighLow);
                            weightHighHigh = static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight());
-                           predictionHighHigh = ComputeSinglePartitionUpdate(
+                           predictionHighHigh = CalcUpdate(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
                                  weightHighHigh);
                         }
@@ -904,15 +904,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          FloatCalc weight;
          if(bUpdateWithHessian) {
             weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            update = ComputeSinglePartitionUpdate(
-                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            update = CalcUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
             if(nullptr != aWeights) {
                aWeights[iScore] = static_cast<double>(weight);
             }
          } else {
             weight = static_cast<FloatCalc>(weightAll);
-            update = ComputeSinglePartitionUpdate(
-                  static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            update = CalcUpdate(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
             if(nullptr != aWeights) {
                aWeights[iScore] = static_cast<double>(weight);
             }

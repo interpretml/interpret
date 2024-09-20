@@ -291,7 +291,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                   // useful): -1     -> 0 -0.999 -> 0.000999 -0.5   -> 0.25 -0.001 -> 0.000999 0      -> 0 +0.001 ->
                   // 0.000999 +0.5   -> 0.25 +0.999 -> 0.000999 +1     -> 0
 
-                  // when we use this hessian term retuned inside ComputeSinglePartitionUpdate, if there was only
+                  // when we use this hessian term retuned inside CalcUpdate, if there was only
                   //   a single hessian term, or multiple similar ones, at the limit we'd get the following for the
                   //   following inputs: boosting is working propertly and we're close to zero error:
                   //     - slice_term_score_update = sumGradient / sumHessian => gradient / [gradient * (1 - gradient)]

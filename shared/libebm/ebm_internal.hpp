@@ -49,6 +49,50 @@ static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowes
 
 #ifndef NDEBUG
 static constexpr FloatCalc k_epsilonNegativeGainAllowed = FloatCalc{-1e-7};
+
+template<typename T> INLINE_ALWAYS bool IsApproxEqual(const T val1, const T val2, const T percentage = T{1e-3}) {
+   bool isEqual = false;
+   if(!std::isnan(val1) && !std::isinf(val1)) {
+      if(!std::isnan(val2) && !std::isinf(val2)) {
+         const T smaller = T{1} - percentage;
+         const T bigger = T{1} + percentage;
+         if(T{0} < val1) {
+            if(T{0} < val2) {
+               if(val1 <= val2) {
+                  // val2 is the bigger number in absolute terms
+                  if(val2 * smaller <= val1 && val1 <= val2 * bigger) {
+                     isEqual = true;
+                  }
+               } else {
+                  // val1 is the bigger number in absolute terms
+                  if(val1 * smaller <= val2 && val2 <= val1 * bigger) {
+                     isEqual = true;
+                  }
+               }
+            }
+         } else if(val1 < T{0}) {
+            if(val2 < T{0}) {
+               if(val2 <= val1) {
+                  // val2 is the bigger number in absolute terms (the biggest negative number)
+                  if(val2 * bigger <= val1 && val1 <= val2 * smaller) {
+                     isEqual = true;
+                  }
+               } else {
+                  // val1 is the bigger number in absolute terms (the biggest negative number)
+                  if(val1 * bigger <= val2 && val2 <= val1 * smaller) {
+                     isEqual = true;
+                  }
+               }
+            }
+         } else {
+            if(T{0} == val2) {
+               isEqual = true;
+            }
+         }
+      }
+   }
+   return isEqual;
+}
 #endif // NDEBUG
 
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;

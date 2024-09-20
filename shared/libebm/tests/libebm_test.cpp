@@ -88,47 +88,43 @@ extern int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
    return 0;
 }
 
-extern bool IsApproxEqual(const double val, const double expected, const double percentage) {
+extern bool IsApproxEqual(const double val1, const double val2, const double percentage) {
    bool isEqual = false;
-   if(!std::isnan(val)) {
-      if(!std::isnan(expected)) {
-         if(!std::isinf(val)) {
-            if(!std::isinf(expected)) {
-               const double smaller = double{1} - percentage;
-               const double bigger = double{1} + percentage;
-               if(0 < val) {
-                  if(0 < expected) {
-                     if(val <= expected) {
-                        // expected is the bigger number in absolute terms
-                        if(expected * smaller <= val && val <= expected * bigger) {
-                           isEqual = true;
-                        }
-                     } else {
-                        // val is the bigger number in absolute terms
-                        if(val * smaller <= expected && expected <= val * bigger) {
-                           isEqual = true;
-                        }
-                     }
-                  }
-               } else if(val < 0) {
-                  if(expected < 0) {
-                     if(expected <= val) {
-                        // expected is the bigger number in absolute terms (the biggest negative number)
-                        if(expected * bigger <= val && val <= expected * smaller) {
-                           isEqual = true;
-                        }
-                     } else {
-                        // val is the bigger number in absolute terms (the biggest negative number)
-                        if(val * bigger <= expected && expected <= val * smaller) {
-                           isEqual = true;
-                        }
-                     }
+   if(!std::isnan(val1) && !std::isinf(val1)) {
+      if(!std::isnan(val2) && !std::isinf(val2)) {
+         const double smaller = double{1} - percentage;
+         const double bigger = double{1} + percentage;
+         if(0 < val1) {
+            if(0 < val2) {
+               if(val1 <= val2) {
+                  // val2 is the bigger number in absolute terms
+                  if(val2 * smaller <= val1 && val1 <= val2 * bigger) {
+                     isEqual = true;
                   }
                } else {
-                  if(0 == expected) {
+                  // val1 is the bigger number in absolute terms
+                  if(val1 * smaller <= val2 && val2 <= val1 * bigger) {
                      isEqual = true;
                   }
                }
+            }
+         } else if(val1 < 0) {
+            if(val2 < 0) {
+               if(val2 <= val1) {
+                  // val2 is the bigger number in absolute terms (the biggest negative number)
+                  if(val2 * bigger <= val1 && val1 <= val2 * smaller) {
+                     isEqual = true;
+                  }
+               } else {
+                  // val1 is the bigger number in absolute terms (the biggest negative number)
+                  if(val1 * bigger <= val2 && val2 <= val1 * smaller) {
+                     isEqual = true;
+                  }
+               }
+            }
+         } else {
+            if(0 == val2) {
+               isEqual = true;
             }
          }
       }

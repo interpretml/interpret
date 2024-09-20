@@ -747,17 +747,17 @@ extern void TensorTotalsBuild(const bool bHessian,
 //                   if(IS_REGRESSION(cCompilerClasses)) {
 //                      // regression
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetCountSamples()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetCountSamples());
 //                   } else {
 //                      EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                      // classification
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetGradientPairs()[iScore].GetHess()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetGradientPairs()[iScore].GetHess());
 //                   }
 //
@@ -796,17 +796,17 @@ extern void TensorTotalsBuild(const bool bHessian,
 //                   if(IS_REGRESSION(cCompilerClasses)) {
 //                      // regression
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetCountSamples()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetCountSamples());
 //                   } else {
 //                      EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                      // classification
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetGradientPairs()[iScore].GetHess()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetGradientPairs()[iScore].GetHess());
 //                   }
 //
@@ -845,17 +845,17 @@ extern void TensorTotalsBuild(const bool bHessian,
 //                   if(IS_REGRESSION(cCompilerClasses)) {
 //                      // regression
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetCountSamples()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetCountSamples());
 //                   } else {
 //                      EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                      // classification
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetGradientPairs()[iScore].GetHess()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetGradientPairs()[iScore].GetHess());
 //                   }
 //
@@ -893,17 +893,17 @@ extern void TensorTotalsBuild(const bool bHessian,
 //                   if(IS_REGRESSION(cCompilerClasses)) {
 //                      // regression
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetCountSamples()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetCountSamples());
 //                   } else {
 //                      EBM_ASSERT(IS_CLASSIFICATION(cCompilerClasses));
 //                      // classification
 //                      predictionTarget =
-//                      ComputeSinglePartitionUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsTarget->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsTarget->GetGradientPairs()[iScore].GetHess()); predictionOther =
-//                      ComputeSinglePartitionUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
+//                      CalcUpdate(pTotalsOther->GetGradientPairs()[iScore].m_sumGradients,
 //                      pTotalsOther->GetGradientPairs()[iScore].GetHess());
 //                   }
 //

@@ -126,18 +126,17 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
       const auto* const aGradientPairs = pBin->GetGradientPairs();
       if(TermBoostFlags_GradientSums & flags) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
-                  static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            const FloatCalc updateScore =
+                  CalcGradientUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       } else {
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore =
-                  ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-                        TermBoostFlags_DisableNewtonUpdate & flags ?
-                              weight :
-                              static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
+            const FloatCalc updateScore = CalcUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+                  TermBoostFlags_DisableNewtonUpdate & flags ?
+                        weight :
+                        static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
@@ -146,15 +145,15 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
       const auto* const aGradientPairs = pBin->GetGradientPairs();
       if(TermBoostFlags_GradientSums & flags) {
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = ComputeSinglePartitionUpdateGradientSum(
-                  static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
+            const FloatCalc updateScore =
+                  CalcGradientUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients));
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       } else {
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore =
-                  ComputeSinglePartitionUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
+                  CalcUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }

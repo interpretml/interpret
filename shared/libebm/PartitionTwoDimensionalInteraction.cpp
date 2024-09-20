@@ -202,70 +202,51 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 #ifndef NDEBUG
                bAnySplits = true;
 #endif // NDEBUG
+
+               const FloatCalc w00 = static_cast<FloatCalc>(bin00.GetWeight());
+               const FloatCalc w01 = static_cast<FloatCalc>(bin01.GetWeight());
+               const FloatCalc w10 = static_cast<FloatCalc>(bin10.GetWeight());
+               const FloatCalc w11 = static_cast<FloatCalc>(bin11.GetWeight());
+
                FloatCalc gain = 0;
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                  // TODO : we can make this faster by doing the division in CalcPartialGain after we add all
-                  // the numerators (but only do this after we've determined the best node splitting score for
-                  // classification, and the NewtonRaphsonStep for gain
+                  const FloatCalc grad00 = static_cast<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
+                  const FloatCalc grad01 = static_cast<FloatCalc>(aGradientPairs01[iScore].m_sumGradients);
+                  const FloatCalc grad10 = static_cast<FloatCalc>(aGradientPairs10[iScore].m_sumGradients);
+                  const FloatCalc grad11 = static_cast<FloatCalc>(aGradientPairs11[iScore].m_sumGradients);
 
-                  // n = numerator (sum_gradients), d = denominator (sum_hessians or weight)
-
-                  FloatCalc hessian00;
-                  if(bHessian) {
-                     hessian00 = aGradientPairs00[iScore].GetHess();
+                  FloatCalc hess00;
+                  FloatCalc hess01;
+                  FloatCalc hess10;
+                  FloatCalc hess11;
+                  if(bUseLogitBoost) {
+                     hess00 = static_cast<FloatCalc>(aGradientPairs00[iScore].GetHess());
+                     hess01 = static_cast<FloatCalc>(aGradientPairs01[iScore].GetHess());
+                     hess10 = static_cast<FloatCalc>(aGradientPairs10[iScore].GetHess());
+                     hess11 = static_cast<FloatCalc>(aGradientPairs11[iScore].GetHess());
                   } else {
-                     hessian00 = bin00.GetWeight();
+                     hess00 = w00;
+                     hess01 = w01;
+                     hess10 = w10;
+                     hess11 = w11;
                   }
-                  if(hessian00 < hessianMin) {
+                  if(hess00 < hessianMin) {
+                     goto next;
+                  }
+                  if(hess01 < hessianMin) {
+                     goto next;
+                  }
+                  if(hess10 < hessianMin) {
+                     goto next;
+                  }
+                  if(hess11 < hessianMin) {
                      goto next;
                   }
 
-                  FloatCalc hessian01;
-                  if(bHessian) {
-                     hessian01 = aGradientPairs01[iScore].GetHess();
-                  } else {
-                     hessian01 = bin01.GetWeight();
-                  }
-                  if(hessian01 < hessianMin) {
-                     goto next;
-                  }
-
-                  FloatCalc hessian10;
-                  if(bHessian) {
-                     hessian10 = aGradientPairs10[iScore].GetHess();
-                  } else {
-                     hessian10 = bin10.GetWeight();
-                  }
-                  if(hessian10 < hessianMin) {
-                     goto next;
-                  }
-
-                  FloatCalc hessian11;
-                  if(bHessian) {
-                     hessian11 = aGradientPairs11[iScore].GetHess();
-                  } else {
-                     hessian11 = bin11.GetWeight();
-                  }
-                  if(hessian11 < hessianMin) {
-                     goto next;
-                  }
-
-                  const FloatCalc n00 = static_cast<FloatCalc>(aGradientPairs00[iScore].m_sumGradients);
-                  const FloatCalc d00 =
-                        static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs00[iScore].GetHess() : bin00.GetWeight());
-
-                  const FloatCalc n01 = static_cast<FloatCalc>(aGradientPairs01[iScore].m_sumGradients);
-                  const FloatCalc d01 =
-                        static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs01[iScore].GetHess() : bin01.GetWeight());
-
-                  const FloatCalc n10 = static_cast<FloatCalc>(aGradientPairs10[iScore].m_sumGradients);
-                  const FloatCalc d10 =
-                        static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs10[iScore].GetHess() : bin10.GetWeight());
-
-                  const FloatCalc n11 = static_cast<FloatCalc>(aGradientPairs11[iScore].m_sumGradients);
-                  const FloatCalc d11 =
-                        static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs11[iScore].GetHess() : bin11.GetWeight());
-
+                  const FloatCalc d00 = hess00;
+                  const FloatCalc d01 = hess01;
+                  const FloatCalc d10 = hess10;
+                  const FloatCalc d11 = hess11;
                   if(CalcInteractionFlags_Purify & flags) {
                      // purified gain
 
@@ -314,39 +295,37 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      //      + main0_1 + main1_1 + pure11
                      // Which simplifies to:
                      //   update00 - update01 - update10 + update11 = pure00 - pure01 - pure10 + pure11
-                     // Purification means the pure update multiplied by the count must sum to zero
+                     // Purification means the pure update multiplied by the weight must sum to zero
                      // across all rows/columns:
-                     //   pure00 * count00 + pure01 * count01 = 0
-                     //   pure01 * count01 + pure11 * count11 = 0
-                     //   pure11 * count11 + pure10 * count10 = 0
-                     //   pure10 * count10 + pure00 * count00 = 0
+                     //   pure00 * weight00 + pure01 * weight01 = 0
+                     //   pure01 * weight01 + pure11 * weight11 = 0
+                     //   pure11 * weight11 + pure10 * weight10 = 0
+                     //   pure10 * weight10 + pure00 * weight00 = 0
                      // So:
-                     //   pure01 = -pure00 * count00 / count01
-                     //   pure10 = -pure00 * count00 / count10
+                     //   pure01 = -pure00 * weight00 / weight01
+                     //   pure10 = -pure00 * weight00 / weight10
                      // And we can relate pure00 to pure11 by adding/subtracting the above:
-                     //     pure00 * count00 + pure01 * count01
-                     //   - pure01 * count01 - pure11 * count11
-                     //   - pure11 * count11 - pure10 * count10
-                     //   + pure10 * count10 + pure00 * count00 = 0
+                     //     pure00 * weight00 + pure01 * weight01
+                     //   - pure01 * weight01 - pure11 * weight11
+                     //   - pure11 * weight11 - pure10 * weight10
+                     //   + pure10 * weight10 + pure00 * weight00 = 0
                      // which simplifies to:
-                     //   2 * pure00 * count00 - 2 * pure11 * count11 = 0
+                     //   2 * pure00 * weight00 - 2 * pure11 * weight11 = 0
                      // and then:
-                     //   pure11 = pure00 * count00 / count11
+                     //   pure11 = pure00 * weight00 / weight11
                      // From the above:
                      //   update00 - update01 - update10 + update11 = pure00 - pure01 - pure10 + pure11
                      // we can substitute to get:
                      //   update00 - update01 - update10 + update11 =
                      //      pure00
-                     //      + pure00 * count00 / count01
-                     //      + pure00 * count00 / count10
-                     //      + pure00 * count00 / count11
+                     //      + pure00 * weight00 / weight01
+                     //      + pure00 * weight00 / weight10
+                     //      + pure00 * weight00 / weight11
                      // Which simplifies to:
                      //   pure00 = (update00 - update01 - update10 + update11) /
-                     //     (1 + count00 / count01 + count00 / count10 + count00 / count11)
+                     //     (1 + weight00 / weight01 + weight00 / weight10 + weight00 / weight11)
                      // The other pure effects can be derived the same way.
 
-                     // if any of the denominators (weights) are zero then the purified gain will be
-                     // zero.  Handle it here to avoid division by zero
                      if(FloatCalc{0} != d00 && FloatCalc{0} != d01 && FloatCalc{0} != d10 && FloatCalc{0} != d11) {
 
                         // TODO: instead of checking the denominators for zero above, can we do it earlier?
@@ -354,10 +333,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 
                         // calculate what the full updates would be for non-purified:
                         // u = update (non-purified)
-                        const FloatCalc u00 = n00 / d00;
-                        const FloatCalc u01 = n01 / d01;
-                        const FloatCalc u10 = n10 / d10;
-                        const FloatCalc u11 = n11 / d11;
+                        const FloatCalc u00 = grad00 / hess00;
+                        const FloatCalc u01 = grad01 / hess01;
+                        const FloatCalc u10 = grad10 / hess10;
+                        const FloatCalc u11 = grad11 / hess11;
 
                         // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
                         const FloatCalc common = u00 - u01 - u10 + u11;
@@ -368,12 +347,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                         const FloatCalc p10 = common / (FloatCalc{-1} - d10 / d00 - d10 / d01 - d10 / d11);
                         const FloatCalc p11 = common / (FloatCalc{1} + d11 / d00 + d11 / d01 + d11 / d10);
 
-                        // g = gain
-                        const FloatCalc g00 = CalcPartialGainFromUpdate(p00, d00);
-                        const FloatCalc g01 = CalcPartialGainFromUpdate(p01, d01);
-                        const FloatCalc g10 = CalcPartialGainFromUpdate(p10, d10);
-                        const FloatCalc g11 = CalcPartialGainFromUpdate(p11, d11);
-
+                        // g = partial gain
+                        const FloatCalc g00 = CalcPartialGainFromUpdate2(hess00, p00);
+                        const FloatCalc g01 = CalcPartialGainFromUpdate2(hess01, p01);
+                        const FloatCalc g10 = CalcPartialGainFromUpdate2(hess10, p10);
+                        const FloatCalc g11 = CalcPartialGainFromUpdate2(hess11, p11);
 #ifndef NDEBUG
                         // r = reconsituted numerator (after purification)
                         const FloatCalc r00 = p00 * d00;
@@ -403,10 +381,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      }
                   } else {
                      // non-purified gain
-                     gain += CalcPartialGain(n00, d00);
-                     gain += CalcPartialGain(n01, d01);
-                     gain += CalcPartialGain(n10, d10);
-                     gain += CalcPartialGain(n11, d11);
+                     gain += CalcPartialGain(grad00, hess00);
+                     gain += CalcPartialGain(grad01, hess01);
+                     gain += CalcPartialGain(grad10, hess10);
+                     gain += CalcPartialGain(grad11, hess11);
                   }
                }
                EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
@@ -431,6 +409,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
+      // For purified, our gain is from the improvemennt of having no update to the purified update,
+      // which means the parent partial gain is zero since there would be no update with purified.
+      // For non-purified, there would be an update even without a split, so the parent partial gain
+      // needs to be subtracted.
       if(!(CalcInteractionFlags_Purify & flags)) {
          // if we are detecting impure interaction then so far we have only calculated the children partial gain
          // but we still need to subtract the partial gain of the parent to have
