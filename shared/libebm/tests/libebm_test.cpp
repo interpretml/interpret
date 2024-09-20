@@ -90,17 +90,25 @@ extern int RegisterTestHidden(const TestCaseHidden& testCaseHidden) {
 
 extern bool IsApproxEqual(const double val1, const double val2, const double percentage) {
    bool isEqual = false;
-   if(!std::isnan(val1) && !std::isinf(val1)) {
-      if(!std::isnan(val2) && !std::isinf(val2)) {
-         const double smaller = double{1} - percentage;
-         const double bigger = double{1} + percentage;
-         if(0 < val1) {
-            if(0 < val2) {
-               if(val1 <= val2) {
+   if(std::isnan(val1)) {
+      isEqual = std::isnan(val2);
+   } else if(!std::isnan(val2)) {
+      const double smaller = double{1} - percentage;
+      const double bigger = double{1} + percentage;
+      if(0 < val1) {
+         if(0 < val2) {
+            if(val1 <= val2) {
+               if(val2 == std::numeric_limits<double>::infinity()) {
+                  isEqual = val1 * bigger == std::numeric_limits<double>::infinity();
+               } else {
                   // val2 is the bigger number in absolute terms
                   if(val2 * smaller <= val1 && val1 <= val2 * bigger) {
                      isEqual = true;
                   }
+               }
+            } else {
+               if(val1 == std::numeric_limits<double>::infinity()) {
+                  isEqual = val2 * bigger == std::numeric_limits<double>::infinity();
                } else {
                   // val1 is the bigger number in absolute terms
                   if(val1 * smaller <= val2 && val2 <= val1 * bigger) {
@@ -108,13 +116,21 @@ extern bool IsApproxEqual(const double val1, const double val2, const double per
                   }
                }
             }
-         } else if(val1 < 0) {
-            if(val2 < 0) {
-               if(val2 <= val1) {
+         }
+      } else if(val1 < 0) {
+         if(val2 < 0) {
+            if(val2 <= val1) {
+               if(val2 == -std::numeric_limits<double>::infinity()) {
+                  isEqual = val1 * bigger == -std::numeric_limits<double>::infinity();
+               } else {
                   // val2 is the bigger number in absolute terms (the biggest negative number)
                   if(val2 * bigger <= val1 && val1 <= val2 * smaller) {
                      isEqual = true;
                   }
+               }
+            } else {
+               if(val1 == -std::numeric_limits<double>::infinity()) {
+                  isEqual = val2 * bigger == -std::numeric_limits<double>::infinity();
                } else {
                   // val1 is the bigger number in absolute terms (the biggest negative number)
                   if(val1 * bigger <= val2 && val2 <= val1 * smaller) {
@@ -122,10 +138,10 @@ extern bool IsApproxEqual(const double val1, const double val2, const double per
                   }
                }
             }
-         } else {
-            if(0 == val2) {
-               isEqual = true;
-            }
+         }
+      } else {
+         if(0 == val2) {
+            isEqual = true;
          }
       }
    }

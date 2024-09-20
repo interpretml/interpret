@@ -63,6 +63,32 @@ static constexpr FloatCalc k_gainMin = 0;
 //   - details on float representations -> https://www.volkerschatz.com/science/float.html
 //   - things that are guaranteed and not -> https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 
+INLINE_ALWAYS static FloatCalc CalcGradientUpdate(const FloatCalc sumGradient) {
+   // for differentially private EBMs we return the gradients. It is not really the update.
+   return sumGradient;
+}
+
+INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient, const FloatCalc sumHessian) {
+   // a loss function with negative hessians would be unstable
+   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
+
+   // Do not allow 0/0 to make a NaN value. Make the update zero in this case.
+   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
+   return UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : sumGradient / sumHessian;
+}
+
+INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(const FloatCalc sumHessian, const FloatCalc negUpdate) {
+   // a loss function with negative hessians would be unstable
+   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
+
+   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
+   const FloatCalc partialGain =
+         UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : negUpdate * negUpdate * sumHessian;
+
+   EBM_ASSERT(std::isnan(negUpdate) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
+   return partialGain;
+}
+
 INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, const FloatCalc sumHessian) {
    // This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which
    // can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
@@ -82,31 +108,6 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, cons
 
    EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
    return partialGain;
-}
-
-INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate2(const FloatCalc sumHessian, const FloatCalc update) {
-   // a loss function with negative hessians would be unstable
-   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
-
-   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
-   const FloatCalc partialGain = UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : update * update * sumHessian;
-
-   EBM_ASSERT(std::isnan(update) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
-   return partialGain;
-}
-
-INLINE_ALWAYS static FloatCalc CalcUpdate(const FloatCalc sumGradient, const FloatCalc sumHessian) {
-   // a loss function with negative hessians would be unstable
-   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
-
-   // do not allow 0/0 to make a NaN value, make the update zero in this case
-   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
-   return UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : (-sumGradient / sumHessian);
-}
-
-INLINE_ALWAYS static FloatCalc CalcGradientUpdate(const FloatCalc sumGradient) {
-   // for differentially private EBMs we return the gradients. It is not really the update.
-   return sumGradient;
 }
 
 } // namespace DEFINED_ZONE_NAME

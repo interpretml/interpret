@@ -189,10 +189,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          do {
             FloatCalc updateScore;
             if(bUpdateWithHessian) {
-               updateScore = CalcUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+               updateScore = -CalcNegUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(aGradientPair[iScore].GetHess()));
             } else {
-               updateScore = CalcUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+               updateScore = -CalcNegUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(pTreeNode->GetWeight()));
             }
 
@@ -367,17 +367,17 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          }
 
          if(MONOTONE_NONE != direction) {
-            const FloatCalc updateRight =
-                  CalcUpdate(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
-            const FloatCalc updateLeft =
-                  CalcUpdate(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
+            const FloatCalc negUpdateRight =
+                  CalcNegUpdate(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
+            const FloatCalc negUpdateLeft =
+                  CalcNegUpdate(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
             if(MonotoneDirection{0} < direction) {
-               if(updateRight < updateLeft) {
+               if(negUpdateLeft < negUpdateRight) {
                   bLegal = false;
                }
             } else {
                EBM_ASSERT(direction < MonotoneDirection{0});
-               if(updateLeft < updateRight) {
+               if(negUpdateRight < negUpdateLeft) {
                   bLegal = false;
                }
             }

@@ -133,7 +133,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
       } else {
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore = CalcUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+            const FloatCalc updateScore = -CalcNegUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
                   TermBoostFlags_DisableNewtonUpdate & flags ?
                         weight :
                         static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
@@ -153,7 +153,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore =
-                  CalcUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
+                  -CalcNegUpdate(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
