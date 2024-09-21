@@ -19,7 +19,6 @@ static_assert(std::numeric_limits<double>::is_iec559,
       "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way. "
       "We can't even guarantee that infinity exists as a concept.");
 
-static constexpr FloatCalc k_hessianMin = std::numeric_limits<FloatCalc>::min();
 static constexpr FloatCalc k_gainMin = 0;
 
 // - most compilers have flags that give unspecified behavior when either NaN or +-infinity are generated,
@@ -72,17 +71,15 @@ INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient, const 
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
+   // TODO: if our caller already prevents splits below a certain value, then we don't need to check for zero here
    // Do not allow 0/0 to make a NaN value. Make the update zero in this case.
-   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
-   return UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : sumGradient / sumHessian;
+   return UNLIKELY(sumHessian < std::numeric_limits<FloatCalc>::min()) ? FloatCalc{0} : sumGradient / sumHessian;
 }
 
 INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(
       const FloatCalc sumGradient, const FloatCalc sumHessian, const FloatCalc negUpdate) {
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
-
-   // do not consider k_hessianMin here since the update should be zero if sumHessian is below
 
    const FloatCalc partialGain = negUpdate * (sumGradient * FloatCalc{2} - negUpdate * sumHessian);
 
@@ -97,18 +94,12 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, cons
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
    // Do not allow 0/0 to make a NaN value. Make the update zero in this case.
-   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
+   const FloatCalc partialGain = sumGradient / sumHessian * sumGradient;
 
-   const FloatCalc partialGain =
-         UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : sumGradient / sumHessian * sumGradient;
+   EBM_ASSERT(std::isnan(partialGain) || FloatCalc{0} <= partialGain);
 
-   // This function should not create new NaN values, but if either sumGradient or sumHessian is a NaN then the
-   // result will be a NaN.  This could happen for instance if large value samples added to +inf in one bin and -inf
-   // in another bin, and then the two bins are added together. That would lead to NaN even without NaN samples.
-
-   EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
-
-   EBM_ASSERT(IsApproxEqual(
+   EBM_ASSERT(std::isnan(partialGain) ||
+         IsApproxEqual(
          partialGain, CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate(sumGradient, sumHessian))));
 
    return partialGain;

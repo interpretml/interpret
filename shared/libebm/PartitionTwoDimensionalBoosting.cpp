@@ -40,7 +40,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
       const size_t iDimensionSweep,
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinBestAndTemp,
       size_t* const piBestSplit
 #ifndef NDEBUG
@@ -93,7 +93,7 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
    auto* const aGradientPairsHigh =
          bUseStackMemory ? binHigh.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_High->GetGradientPairs();
 
-   EBM_ASSERT(0.0 < hessianMin);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
@@ -161,32 +161,30 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
             // and the NewtonRaphsonStep for gain
 
             FloatCalc hessianLow;
-            if(bHessian) {
-               hessianLow = aGradientPairsLow[iScore].GetHess();
+            if(bUseLogitBoost) {
+               hessianLow = static_cast<FloatCalc>(aGradientPairsLow[iScore].GetHess());
             } else {
-               hessianLow = binLow.GetWeight();
+               hessianLow = static_cast<FloatCalc>(binLow.GetWeight());
             }
             if(hessianLow < hessianMin) {
                goto next;
             }
 
             FloatCalc hessianHigh;
-            if(bHessian) {
-               hessianHigh = aGradientPairsHigh[iScore].GetHess();
+            if(bUseLogitBoost) {
+               hessianHigh = static_cast<FloatCalc>(aGradientPairsHigh[iScore].GetHess());
             } else {
-               hessianHigh = binHigh.GetWeight();
+               hessianHigh = static_cast<FloatCalc>(binHigh.GetWeight());
             }
             if(hessianHigh < hessianMin) {
                goto next;
             }
 
-            const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
-                  static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsLow[iScore].GetHess() : binLow.GetWeight()));
+            const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), hessianLow);
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
             gain += gain1;
 
-            const FloatCalc gain2 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients),
-                  static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairsHigh[iScore].GetHess() : binHigh.GetWeight()));
+            const FloatCalc gain2 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), hessianHigh);
             EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
             gain += gain2;
 
@@ -235,7 +233,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* const aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -316,7 +314,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       auto* pTotals1HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
       auto* pTotals1HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
 
-      EBM_ASSERT(0.0 < hessianMin);
+      EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
       LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting FIRST bin sweep loop");
       size_t iBin1 = 0;
@@ -537,9 +535,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                // numerators (but only do this after we've determined the best node splitting score for classification,
                // and the NewtonRaphsonStep for gain
 
+               const FloatCalc hess =
+                     static_cast<FloatCalc>(bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll);
+
+               // we would not get there unless there was a legal cut, which requires that hessianMin <= hess
+               EBM_ASSERT(hessianMin <= hess);
+
                const FloatCalc gain1 =
-                     CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-                           static_cast<FloatCalc>(bUseLogitBoost ? pGradientPairTotal[iScore].GetHess() : weightAll));
+                     CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), hess);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
             }
@@ -932,7 +935,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -985,7 +988,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const Term* const pTerm,
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -1016,7 +1019,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
       double* const pTotalGain

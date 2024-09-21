@@ -60,7 +60,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const size_t* const acBins,
       const CalcInteractionFlags flags,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -148,10 +148,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 0. Adjusting to 0.");
    }
 
-   if(std::isnan(minHessian) || minHessian <= 0.0) {
-      minHessian = std::numeric_limits<double>::min();
-      LOG_0(Trace_Warning,
-            "WARNING CalcInteractionStrength minHessian must be a positive number. Adjusting to minimum float");
+   FloatCalc hessianMin = static_cast<FloatCalc>(minHessian);
+   if(/* NaN */ !(std::numeric_limits<FloatCalc>::min() <= hessianMin)) {
+      hessianMin = std::numeric_limits<FloatCalc>::min();
+      if(/* NaN */ !(double{0} <= minHessian)) {
+         LOG_0(Trace_Warning,
+               "WARNING CalcInteractionStrength minHessian must be a positive number. Adjusting to minimum float");
+      }
    }
 
    if(countDimensions <= IntEbm{0}) {
@@ -436,7 +439,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             binSums.m_acBins,
             flags,
             cSamplesLeafMin,
-            minHessian,
+            hessianMin,
             aAuxiliaryBins,
             aMainBins
 #ifndef NDEBUG

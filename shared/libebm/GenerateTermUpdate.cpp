@@ -80,7 +80,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       const size_t cSplitsMax,
       const MonotoneDirection direction,
       const size_t cSamplesTotal,
@@ -92,7 +92,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const Term* const pTerm,
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
       double* const pTotalGain
@@ -169,7 +169,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const FloatMain weightTotal,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       const IntEbm countLeavesMax,
       const MonotoneDirection direction,
       double* const pTotalGain) {
@@ -215,7 +215,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       const TermBoostFlags flags,
       const size_t iTerm,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
@@ -637,10 +637,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 0.  Adjusting to 0.");
    }
 
-   if(std::isnan(minHessian) || minHessian <= 0.0) {
-      minHessian = std::numeric_limits<double>::min();
-      LOG_0(Trace_Warning,
-            "WARNING GenerateTermUpdate minHessian must be a positive number. Adjusting to minimum float");
+   FloatCalc hessianMin = static_cast<FloatCalc>(minHessian);
+   if(/* NaN */ !(std::numeric_limits<FloatCalc>::min() <= hessianMin)) {
+      hessianMin = std::numeric_limits<FloatCalc>::min();
+      if(/* NaN */ !(double{0} <= minHessian)) {
+         LOG_0(Trace_Warning,
+               "WARNING GenerateTermUpdate minHessian must be a positive number. Adjusting to minimum float");
+      }
    }
 
    const size_t cScores = pBoosterCore->GetCountScores();
@@ -999,7 +1002,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      static_cast<FloatMain>(weightTotal),
                      iDimensionImportant,
                      cSamplesLeafMin,
-                     minHessian,
+                     hessianMin,
                      lastDimensionLeavesMax,
                      significantDirection,
                      &gain);
@@ -1007,7 +1010,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   return error;
                }
             } else {
-               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, minHessian, &gain);
+               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, hessianMin, &gain);
                if(Error_None != error) {
                   return error;
                }

@@ -34,7 +34,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* const aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -98,7 +98,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       auto* const aGradientPairs11 =
             bUseStackMemory ? bin11.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_11->GetGradientPairs();
 
-      EBM_ASSERT(0.0 < hessianMin);
+      EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
 #ifndef NDEBUG
       bool bAnySplits = false;
@@ -384,44 +384,51 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
       // we start from zero, so bestGain can't be negative here
       EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
 
-      // For purified, our gain is from the improvemennt of having no update to the purified update,
-      // which means the parent partial gain is zero since there would be no update with purified.
-      // For non-purified, there would be an update even without a split, so the parent partial gain
-      // needs to be subtracted.
-      if(!(CalcInteractionFlags_Purify & flags)) {
-         // if we are detecting impure interaction then so far we have only calculated the children partial gain
-         // but we still need to subtract the partial gain of the parent to have
-         // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it
-         // here instead of inside the loop.
+      if(FloatCalc{0} < bestGain) {
+         // For purified, our gain is from the improvemennt of having no update to the purified update,
+         // which means the parent partial gain is zero since there would be no update with purified.
+         // For non-purified, there would be an update even without a split, so the parent partial gain
+         // needs to be subtracted.
+         if(!(CalcInteractionFlags_Purify & flags)) {
+            // if we are detecting impure interaction then so far we have only calculated the children partial gain
+            // but we still need to subtract the partial gain of the parent to have
+            // gain. All the splits we've analyzed so far though had the same non-split partial gain, so we subtract it
+            // here instead of inside the loop.
 
-         // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase,
-         // which contains the totals of all bins
-         const auto* const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
-         const FloatMain weightAll = pTotal->GetWeight();
-         const auto* const aGradientPairs = pTotal->GetGradientPairs();
-         for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
-            // (but only do this after we've determined the best node splitting score for classification, and the
-            // NewtonRaphsonStep for gain
+            // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase,
+            // which contains the totals of all bins
+            const auto* const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
+            const FloatMain weightAll = pTotal->GetWeight();
+            const auto* const aGradientPairs = pTotal->GetGradientPairs();
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+               // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
+               // numerators (but only do this after we've determined the best node splitting score for classification,
+               // and the NewtonRaphsonStep for gain
 
-            bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-                  static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll));
+               const FloatCalc hess =
+                     static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll);
+
+               EBM_ASSERT(hessianMin <= hess);
+
+               bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), hess);
+            }
+
+            // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
+            // it could also be -inf if the parent/total bin overflows, but the children parts did not.
+            // bestGain can also be substantially negative if we didn't find any legal cuts and
+            // then we subtracted the base partial gain here from zero
+
+            // if no legal splits were found, then bestGain will be zero.  In theory we should
+            // therefore not subtract the parent partial gain, but doing so does no harm since we later set any
+            // negative interaction score to zero in the caller of this function.  Due to that we don't
+            // need to check here, since any value we subtract from zero will lead to a negative number and
+            // then will be zeroed by our caller
+            // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative
+            // gain.
+
+            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
+                  k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
          }
-
-         // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-         // it could also be -inf if the parent/total bin overflows, but the children parts did not.
-         // bestGain can also be substantially negative if we didn't find any legal cuts and
-         // then we subtracted the base partial gain here from zero
-
-         // if no legal splits were found, then bestGain will be zero.  In theory we should
-         // therefore not subtract the parent partial gain, but doing so does no harm since we later set any
-         // negative interaction score to zero in the caller of this function.  Due to that we don't
-         // need to check here, since any value we subtract from zero will lead to a negative number and
-         // then will be zeroed by our caller
-         // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative gain.
-
-         EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
-               k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
       }
 
       // we clean up bestGain in the caller, since this function is templated and created many times
@@ -438,7 +445,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -490,7 +497,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
          const size_t* const acBins,
          const CalcInteractionFlags flags,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          BinBase* aAuxiliaryBinsBase,
          BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -521,7 +528,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const size_t* const acBins,
       const CalcInteractionFlags flags,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
 #ifndef NDEBUG

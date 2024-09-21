@@ -246,7 +246,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pTreeNode,
       TreeNode<bHessian, GetArrayScores(cCompilerScores)>* const pTreeNodeScratchSpace,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       const MonotoneDirection direction) {
 
    LOG_N(Trace_Verbose,
@@ -261,7 +261,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          static_cast<const void*>(pBoosterShell),
          static_cast<void*>(pTreeNode),
          static_cast<void*>(pTreeNodeScratchSpace),
-         hessianMin,
+         static_cast<double>(hessianMin),
          direction);
 
    if(!pTreeNode->BEFORE_IsSplittable()) {
@@ -311,9 +311,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
    UIntMain cSamplesRight = binParent.GetCountSamples();
 
+   const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+
    EBM_ASSERT(FloatCalc{0} <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
-   EBM_ASSERT(0.0 < hessianMin);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
    EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
    do {
       ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugMainBinsEnd());
@@ -329,7 +331,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       FloatMain sumHessiansLeft = binLeft.GetWeight() + pBinCur->GetWeight();
       FloatMain sumHessiansRight = binParent.GetWeight() - sumHessiansLeft;
 
-      if(!bHessian) {
+      if(!bUseLogitBoost) {
          if(UNLIKELY(sumHessiansRight < hessianMin)) {
             // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
             goto done;
@@ -360,7 +362,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             if(UNLIKELY(newSumHessiansLeft < hessianMin)) {
                bLegal = false;
             }
-            if(!(TermBoostFlags_DisableNewtonGain & flags)) {
+            if(bUseLogitBoost) {
                sumHessiansLeft = newSumHessiansLeft;
                sumHessiansRight = newSumHessiansRight;
             }
@@ -407,7 +409,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          goto next;
       }
 
-      if(!bHessian) {
+      if(!bUseLogitBoost) {
          if(UNLIKELY(sumHessiansLeft < hessianMin)) {
             goto next;
          }
@@ -491,17 +493,16 @@ done:;
       return -1; // exit boosting with overflow
    }
 
-   FloatMain sumHessiansOverwrite = binParent.GetWeight();
+   FloatCalc sumHessiansOverwrite = static_cast<FloatCalc>(binParent.GetWeight());
    size_t iScoreParent = 0;
    do {
-      const FloatMain sumGradientsParent = aParentGradientPairs[iScoreParent].m_sumGradients;
-      if(bHessian) {
-         if(!(TermBoostFlags_DisableNewtonGain & flags)) {
-            sumHessiansOverwrite = aParentGradientPairs[iScoreParent].GetHess();
-         }
+      const FloatCalc sumGradientsParent = static_cast<FloatCalc>(aParentGradientPairs[iScoreParent].m_sumGradients);
+      if(bUseLogitBoost) {
+         sumHessiansOverwrite = static_cast<FloatCalc>(aParentGradientPairs[iScoreParent].GetHess());
       }
-      const FloatCalc gain1 =
-            CalcPartialGain(static_cast<FloatCalc>(sumGradientsParent), static_cast<FloatCalc>(sumHessiansOverwrite));
+      // we would not get here unless there was a split, so both sides must meet the minHessian reqirement
+      EBM_ASSERT(hessianMin <= sumHessiansOverwrite);
+      const FloatCalc gain1 = CalcPartialGain(sumGradientsParent, sumHessiansOverwrite);
       EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       bestGain -= gain1;
 
@@ -604,7 +605,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          const size_t cBins,
          const size_t iDimension,
          const size_t cSamplesLeafMin,
-         const double hessianMin,
+         const FloatCalc hessianMin,
          const size_t cSplitsMax,
          const MonotoneDirection direction,
          const size_t cSamplesTotal,
@@ -775,7 +776,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t cBins,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
-      const double hessianMin,
+      const FloatCalc hessianMin,
       const size_t cSplitsMax,
       const MonotoneDirection direction,
       const size_t cSamplesTotal,
