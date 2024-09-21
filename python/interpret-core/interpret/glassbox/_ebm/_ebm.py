@@ -305,6 +305,9 @@ class EBMModel(BaseEstimator):
         # Trees
         min_samples_leaf,
         min_hessian,
+        reg_alpha,
+        reg_lambda,
+        max_delta_step,
         max_leaves,
         monotone_constraints,
         objective,
@@ -349,6 +352,9 @@ class EBMModel(BaseEstimator):
 
             self.min_samples_leaf = min_samples_leaf
             self.min_hessian = min_hessian
+            self.reg_alpha = reg_alpha
+            self.reg_lambda = reg_lambda
+            self.max_delta_step = max_delta_step
 
         self.max_leaves = max_leaves
         if not is_private(self):
@@ -862,6 +868,9 @@ class EBMModel(BaseEstimator):
             early_stopping_tolerance = 0.0
             min_samples_leaf = 0
             min_hessian = 0.0
+            reg_alpha = 0.0
+            reg_lambda = 0.0
+            max_delta_step = 0.0
             interactions = 0
             monotone_constraints = None
         else:
@@ -878,6 +887,9 @@ class EBMModel(BaseEstimator):
             early_stopping_tolerance = self.early_stopping_tolerance
             min_samples_leaf = self.min_samples_leaf
             min_hessian = self.min_hessian
+            reg_alpha = self.reg_alpha
+            reg_lambda = self.reg_lambda
+            max_delta_step = self.max_delta_step
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
 
@@ -935,6 +947,9 @@ class EBMModel(BaseEstimator):
                     self.learning_rate,
                     min_samples_leaf,
                     min_hessian,
+                    reg_alpha,
+                    reg_lambda,
+                    max_delta_step,
                     self.max_leaves,
                     monotone_constraints,
                     greedy_ratio,
@@ -1063,6 +1078,9 @@ class EBMModel(BaseEstimator):
                             max_cardinality,
                             min_samples_leaf,
                             min_hessian,
+                            reg_alpha,
+                            reg_lambda,
+                            max_delta_step,
                             (
                                 Native.CreateInteractionFlags_DifferentialPrivacy
                                 if is_differential_privacy
@@ -1182,6 +1200,9 @@ class EBMModel(BaseEstimator):
                         self.learning_rate,
                         min_samples_leaf,
                         min_hessian,
+                        reg_alpha,
+                        reg_lambda,
+                        max_delta_step,
                         self.max_leaves,
                         monotone_constraints,
                         greedy_ratio,
@@ -2458,6 +2479,12 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
         Minimum hessian required to consider a potential split valid.
+    reg_alpha : float, default=0.0
+        L1 regularization.
+    reg_lambda : float, default=0.0
+        L2 regularization.
+    max_delta_step : float, default=0.0
+        Used to limit the max output of tree leaves. <=0.0 means no constraint.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
@@ -2613,6 +2640,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
+        reg_alpha: Optional[float] = 0.0,
+        reg_lambda: Optional[float] = 0.0,
+        max_delta_step: Optional[float] = 0.0,
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
@@ -2640,6 +2670,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
+            reg_alpha=reg_alpha,
+            reg_lambda=reg_lambda,
+            max_delta_step=max_delta_step,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -2793,6 +2826,12 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
         Minimum hessian required to consider a potential split valid.
+    reg_alpha : float, default=0.0
+        L1 regularization.
+    reg_lambda : float, default=0.0
+        L2 regularization.
+    max_delta_step : float, default=0.0
+        Used to limit the max output of tree leaves. <=0.0 means no constraint.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
@@ -2948,6 +2987,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Trees
         min_samples_leaf: Optional[int] = 2,
         min_hessian: Optional[float] = 1e-4,
+        reg_alpha: Optional[float] = 0.0,
+        reg_lambda: Optional[float] = 0.0,
+        max_delta_step: Optional[float] = 0.0,
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
@@ -2975,6 +3017,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=early_stopping_tolerance,
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
+            reg_alpha=reg_alpha,
+            reg_lambda=reg_lambda,
+            max_delta_step=max_delta_step,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -3197,6 +3242,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             min_hessian=0.0,
+            reg_alpha=0.0,
+            reg_lambda=0.0,
+            max_delta_step=0.0,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="log_loss",
@@ -3465,6 +3513,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             early_stopping_tolerance=0.0,
             min_samples_leaf=0,
             min_hessian=0.0,
+            reg_alpha=0.0,
+            reg_lambda=0.0,
+            max_delta_step=0.0,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="rmse",

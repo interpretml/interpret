@@ -61,6 +61,9 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const CalcInteractionFlags flags,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
 #ifndef NDEBUG
@@ -81,6 +84,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       IntEbm maxCardinality,
       IntEbm minSamplesLeaf,
       double minHessian,
+      double regAlpha,
+      double regLambda,
+      double maxDeltaStep,
       double* avgInteractionStrengthOut) {
    LOG_COUNTED_N(&g_cLogCalcInteractionStrength,
          Trace_Info,
@@ -93,6 +99,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          "maxCardinality=%" IntEbmPrintf ", "
          "minSamplesLeaf=%" IntEbmPrintf ", "
          "minHessian=%le, "
+         "regAlpha=%le, "
+         "regLambda=%le, "
+         "maxDeltaStep=%le, "
          "avgInteractionStrengthOut=%p",
          static_cast<void*>(interactionHandle),
          countDimensions,
@@ -101,6 +110,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          maxCardinality,
          minSamplesLeaf,
          minHessian,
+         regAlpha,
+         regLambda,
+         maxDeltaStep,
          static_cast<void*>(avgInteractionStrengthOut));
 
    ErrorEbm error;
@@ -155,6 +167,26 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          LOG_0(Trace_Warning,
                "WARNING CalcInteractionStrength minHessian must be a positive number. Adjusting to minimum float");
       }
+   }
+
+   FloatCalc regAlphaCalc = static_cast<FloatCalc>(regAlpha);
+   if(/* NaN */ !(FloatCalc{0} <= regAlphaCalc)) {
+      regAlphaCalc = 0;
+      LOG_0(Trace_Warning,
+            "WARNING CalcInteractionStrength regAlpha must be a positive number or zero. Adjusting to 0.");
+   }
+
+   FloatCalc regLambdaCalc = static_cast<FloatCalc>(regLambda);
+   if(/* NaN */ !(FloatCalc{0} <= regLambdaCalc)) {
+      regLambdaCalc = 0;
+      LOG_0(Trace_Warning,
+            "WARNING CalcInteractionStrength regLambda must be a positive number or zero. Adjusting to 0.");
+   }
+
+   FloatCalc deltaStepMax = static_cast<FloatCalc>(maxDeltaStep);
+   if(/* NaN */ !(double{0} < maxDeltaStep)) {
+      // 0, negative numbers, and NaN mean turn off the max step. We use +inf to do this.
+      deltaStepMax = std::numeric_limits<FloatCalc>::infinity();
    }
 
    if(countDimensions <= IntEbm{0}) {
@@ -440,6 +472,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             flags,
             cSamplesLeafMin,
             hessianMin,
+            regAlphaCalc,
+            regLambdaCalc,
+            deltaStepMax,
             aAuxiliaryBins,
             aMainBins
 #ifndef NDEBUG

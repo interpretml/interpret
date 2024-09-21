@@ -1483,6 +1483,12 @@ class Native:
             ct.c_int64,
             # double minHessian
             ct.c_double,
+            # double regAlpha
+            ct.c_double,
+            # double regLambda
+            ct.c_double,
+            # double maxDeltaStep
+            ct.c_double,
             # int64_t * leavesMax
             ct.c_void_p,
             # MonotoneDirection * direction
@@ -1590,6 +1596,12 @@ class Native:
             # int64_t minSamplesLeaf
             ct.c_int64,
             # double minHessian
+            ct.c_double,
+            # double regAlpha
+            ct.c_double,
+            # double regLambda
+            ct.c_double,
+            # double maxDeltaStep
             ct.c_double,
             # double * avgInteractionStrengthOut
             ct.POINTER(ct.c_double),
@@ -1769,6 +1781,9 @@ class Booster(AbstractContextManager):
         learning_rate,
         min_samples_leaf,
         min_hessian,
+        reg_alpha,
+        reg_lambda,
+        max_delta_step,
         max_leaves,
         monotone_constraints,
     ):
@@ -1781,6 +1796,9 @@ class Booster(AbstractContextManager):
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
             min_hessian: Min hessian required to split.
+            reg_alpha: L1 regularization.
+            reg_lambda: L2 regularization.
+            max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
             max_leaves: Max leaf nodes on feature step.
             monotone_constraints: monotone constraints (1=increasing, 0=none, -1=decreasing)
 
@@ -1812,6 +1830,9 @@ class Booster(AbstractContextManager):
             learning_rate,
             min_samples_leaf,
             min_hessian,
+            reg_alpha,
+            reg_lambda,
+            max_delta_step,
             Native._make_pointer(max_leaves_arr, np.int64),
             Native._make_pointer(monotone_constraints, np.int32, is_null_allowed=True),
             ct.byref(avg_gain),
@@ -2127,6 +2148,9 @@ class InteractionDetector(AbstractContextManager):
         max_cardinality,
         min_samples_leaf,
         min_hessian,
+        reg_alpha,
+        reg_lambda,
+        max_delta_step,
     ):
         """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")
@@ -2144,6 +2168,9 @@ class InteractionDetector(AbstractContextManager):
             max_cardinality,
             min_samples_leaf,
             min_hessian,
+            reg_alpha,
+            reg_lambda,
+            max_delta_step,
             ct.byref(strength),
         )
         if return_code:  # pragma: no cover

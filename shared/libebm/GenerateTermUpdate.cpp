@@ -81,6 +81,9 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       const size_t cSplitsMax,
       const MonotoneDirection direction,
       const size_t cSamplesTotal,
@@ -93,6 +96,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
       double* const pTotalGain
@@ -106,11 +112,18 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const Term* const pTerm,
       const TermBoostFlags flags,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
       const MonotoneDirection significantDirection,
       double* const pTotalGain);
 
-static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBoostFlags flags) {
+static void BoostZeroDimensional(BoosterShell* const pBoosterShell,
+      const TermBoostFlags flags,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax) {
    LOG_0(Trace_Verbose, "Entered BoostZeroDimensional");
 
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -133,11 +146,13 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
       } else {
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            const FloatCalc updateScore =
-                  -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
-                        TermBoostFlags_DisableNewtonUpdate & flags ?
-                              weight :
-                              static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()));
+            const FloatCalc updateScore = -CalcNegUpdate<true>(
+                  static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+                  TermBoostFlags_DisableNewtonUpdate & flags ? weight :
+                                                               static_cast<FloatCalc>(aGradientPairs[iScore].GetHess()),
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
@@ -154,7 +169,11 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell, const TermBo
          const FloatCalc weight = static_cast<FloatCalc>(pBin->GetWeight());
          for(size_t iScore = 0; iScore < cScores; ++iScore) {
             const FloatCalc updateScore =
-                  -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients), weight);
+                  -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+                        weight,
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
             aUpdateScores[iScore] = static_cast<FloatScore>(updateScore);
          }
       }
@@ -171,6 +190,9 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       const IntEbm countLeavesMax,
       const MonotoneDirection direction,
       double* const pTotalGain) {
@@ -197,6 +219,9 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          iDimension,
          cSamplesLeafMin,
          hessianMin,
+         regAlpha,
+         regLambda,
+         deltaStepMax,
          cSplitsMax,
          direction,
          pBoosterCore->GetTrainingSet()->GetCountSamples(),
@@ -217,6 +242,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       const size_t iTerm,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       double* const pTotalGain) {
    LOG_0(Trace_Verbose, "Entered BoostMultiDimensional");
 
@@ -398,6 +426,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             acBins,
             cSamplesLeafMin,
             hessianMin,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
             aAuxiliaryBins,
             aWeights,
             pTotalGain
@@ -504,6 +535,9 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const size_t iTerm,
       const TermBoostFlags flags,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
       const MonotoneDirection significantDirection,
       double* const pTotalGain) {
@@ -517,7 +551,16 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   error = PartitionRandomBoosting(pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+   error = PartitionRandomBoosting(pRng,
+         pBoosterShell,
+         pTerm,
+         flags,
+         regAlpha,
+         regLambda,
+         deltaStepMax,
+         aLeavesMax,
+         significantDirection,
+         pTotalGain);
    if(Error_None != error) {
       LOG_0(Trace_Verbose, "Exited BoostRandom with Error code");
       return error;
@@ -543,6 +586,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double learningRate,
       IntEbm minSamplesLeaf,
       double minHessian,
+      double regAlpha,
+      double regLambda,
+      double maxDeltaStep,
       const IntEbm* leavesMax,
       const MonotoneDirection* direction,
       double* avgGainOut) {
@@ -559,6 +605,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          "learningRate=%le, "
          "minSamplesLeaf=%" IntEbmPrintf ", "
          "minHessian=%le, "
+         "regAlpha=%le, "
+         "regLambda=%le, "
+         "maxDeltaStep=%le, "
          "leavesMax=%p, "
          "direction=%p, "
          "avgGainOut=%p",
@@ -569,6 +618,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          learningRate,
          minSamplesLeaf,
          minHessian,
+         regAlpha,
+         regLambda,
+         maxDeltaStep,
          static_cast<const void*>(leavesMax),
          static_cast<const void*>(direction),
          static_cast<void*>(avgGainOut));
@@ -645,6 +697,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          LOG_0(Trace_Warning,
                "WARNING GenerateTermUpdate minHessian must be a positive number. Adjusting to minimum float");
       }
+   }
+
+   FloatCalc regAlphaCalc = static_cast<FloatCalc>(regAlpha);
+   if(/* NaN */ !(FloatCalc{0} <= regAlphaCalc)) {
+      regAlphaCalc = 0;
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate regAlpha must be a positive number or zero. Adjusting to 0.");
+   }
+
+   FloatCalc regLambdaCalc = static_cast<FloatCalc>(regLambda);
+   if(/* NaN */ !(FloatCalc{0} <= regLambdaCalc)) {
+      regLambdaCalc = 0;
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate regLambda must be a positive number or zero. Adjusting to 0.");
+   }
+
+   FloatCalc deltaStepMax = static_cast<FloatCalc>(maxDeltaStep);
+   if(/* NaN */ !(double{0} < maxDeltaStep)) {
+      // 0, negative numbers, and NaN mean turn off the max step. We use +inf to do this.
+      deltaStepMax = std::numeric_limits<FloatCalc>::infinity();
    }
 
    const size_t cScores = pBoosterCore->GetCountScores();
@@ -974,7 +1044,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
          if(1 == cTensorBins) {
             LOG_0(Trace_Warning, "WARNING GenerateTermUpdate boosting zero dimensional");
-            BoostZeroDimensional(pBoosterShell, flags);
+            BoostZeroDimensional(pBoosterShell, flags, regAlphaCalc, regLambdaCalc, deltaStepMax);
          } else {
             const double weightTotal = pBoosterCore->GetTrainingSet()->GetBagWeightTotal(iBag);
             EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
@@ -983,7 +1053,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
-               error = BoostRandom(pRng, pBoosterShell, iTerm, flags, leavesMax, significantDirection, &gain);
+               error = BoostRandom(pRng,
+                     pBoosterShell,
+                     iTerm,
+                     flags,
+                     regAlphaCalc,
+                     regLambdaCalc,
+                     deltaStepMax,
+                     leavesMax,
+                     significantDirection,
+                     &gain);
                if(Error_None != error) {
                   return error;
                }
@@ -1004,6 +1083,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      iDimensionImportant,
                      cSamplesLeafMin,
                      hessianMin,
+                     regAlphaCalc,
+                     regLambdaCalc,
+                     deltaStepMax,
                      lastDimensionLeavesMax,
                      significantDirection,
                      &gain);
@@ -1011,7 +1093,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   return error;
                }
             } else {
-               error = BoostMultiDimensional(pBoosterShell, flags, iTerm, cSamplesLeafMin, hessianMin, &gain);
+               error = BoostMultiDimensional(pBoosterShell,
+                     flags,
+                     iTerm,
+                     cSamplesLeafMin,
+                     hessianMin,
+                     regAlphaCalc,
+                     regLambdaCalc,
+                     deltaStepMax,
+                     &gain);
                if(Error_None != error) {
                   return error;
                }

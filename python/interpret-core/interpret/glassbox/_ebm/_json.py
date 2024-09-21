@@ -187,6 +187,15 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "min_hessian"):
             params["min_hessian"] = ebm.min_hessian
 
+        if hasattr(ebm, "reg_alpha"):
+            params["reg_alpha"] = ebm.reg_alpha
+
+        if hasattr(ebm, "reg_lambda"):
+            params["reg_lambda"] = ebm.reg_lambda
+
+        if hasattr(ebm, "max_delta_step"):
+            params["max_delta_step"] = ebm.max_delta_step
+
         if hasattr(ebm, "max_leaves"):
             params["max_leaves"] = ebm.max_leaves
 

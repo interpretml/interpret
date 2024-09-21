@@ -573,6 +573,9 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
       const double learningRate,
       const IntEbm minSamplesLeaf,
       const double minHessian,
+      const double regAlpha,
+      const double regLambda,
+      const double maxDeltaStep,
       const std::vector<IntEbm> leavesMax,
       const std::vector<MonotoneDirection> monotonicity) {
    ErrorEbm error;
@@ -587,6 +590,9 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
          learningRate,
          minSamplesLeaf,
          minHessian,
+         regAlpha,
+         regLambda,
+         maxDeltaStep,
          0 == leavesMax.size() ? nullptr : &leavesMax[0],
          0 == monotonicity.size() ? nullptr : &monotonicity[0],
          &gainAvg);
@@ -908,7 +914,10 @@ TestInteraction::~TestInteraction() {
 double TestInteraction::TestCalcInteractionStrength(const std::vector<IntEbm> features,
       const CalcInteractionFlags flags,
       const IntEbm minSamplesLeaf,
-      const double minHessian) const {
+      const double minHessian,
+      const double regAlpha,
+      const double regLambda,
+      const double maxDeltaStep) const {
    double avgInteractionStrength = double{0};
    const ErrorEbm error = CalcInteractionStrength(m_interactionHandle,
          features.size(),
@@ -917,6 +926,9 @@ double TestInteraction::TestCalcInteractionStrength(const std::vector<IntEbm> fe
          0,
          minSamplesLeaf,
          minHessian,
+         regAlpha,
+         regLambda,
+         maxDeltaStep,
          &avgInteractionStrength);
    if(Error_None != error) {
       throw TestException(error, "CalcInteractionStrength");

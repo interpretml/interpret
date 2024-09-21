@@ -444,6 +444,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double learningRate,
       IntEbm minSamplesLeaf,
       double minHessian,
+      double regAlpha,
+      double regLambda,
+      double maxDeltaStep,
       const IntEbm* leavesMax,
       const MonotoneDirection* direction,
       double* avgGainOut);
@@ -478,6 +481,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interact
       IntEbm maxCardinality,
       IntEbm minSamplesLeaf,
       double minHessian,
+      double regAlpha,
+      double regLambda,
+      double maxDeltaStep,
       double* avgInteractionStrengthOut);
 
 #ifdef __cplusplus

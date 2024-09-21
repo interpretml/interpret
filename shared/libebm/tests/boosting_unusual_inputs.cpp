@@ -467,6 +467,9 @@ TEST_CASE("one leavesMax, boosting, regression") {
                                        k_learningRateDefault,
                                        k_minSamplesLeafDefault,
                                        k_minHessianDefault,
+                                       k_regAlphaDefault,
+                                       k_regLambdaDefault,
+                                       k_maxDeltaStepDefault,
                                        k_leavesMax)
                                    .validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
@@ -499,6 +502,9 @@ TEST_CASE("mono-classification") {
          k_learningRateDefault,
          k_minSamplesLeafDefault,
          k_minHessianDefault,
+         k_regAlphaDefault,
+         k_regLambdaDefault,
+         k_maxDeltaStepDefault,
          &k_leavesMaxDefault[0],
          nullptr,
          &avgGain);
@@ -1126,6 +1132,9 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
                                              k_learningRateDefault,
                                              k_minSamplesLeafDefault,
                                              k_minHessianDefault,
+                                             k_regAlphaDefault,
+                                             k_regLambdaDefault,
+                                             k_maxDeltaStepDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1159,6 +1168,9 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
                                              k_learningRateDefault,
                                              k_minSamplesLeafDefault,
                                              k_minHessianDefault,
+                                             k_regAlphaDefault,
+                                             k_regLambdaDefault,
+                                             k_maxDeltaStepDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1207,10 +1219,16 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
    double validationMetric = double{0};
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric =
-               test.Boost(
-                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
-                     .validationMetric;
+         validationMetric = test.Boost(iTerm,
+                                      TermBoostFlags_RandomSplits,
+                                      k_learningRateDefault,
+                                      1,
+                                      k_minHessianDefault,
+                                      k_regAlphaDefault,
+                                      k_regLambdaDefault,
+                                      k_maxDeltaStepDefault,
+                                      k_leavesMax)
+                                  .validationMetric;
       }
    }
 
@@ -1264,10 +1282,16 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
    double validationMetric = double{0};
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric =
-               test.Boost(
-                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
-                     .validationMetric;
+         validationMetric = test.Boost(iTerm,
+                                      TermBoostFlags_RandomSplits,
+                                      k_learningRateDefault,
+                                      1,
+                                      k_minHessianDefault,
+                                      k_regAlphaDefault,
+                                      k_regLambdaDefault,
+                                      k_maxDeltaStepDefault,
+                                      k_leavesMax)
+                                  .validationMetric;
       }
    }
    CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
@@ -1322,10 +1346,16 @@ TEST_CASE("Random splitting, pure tripples, regression") {
    double validationMetric = double{0};
    for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < test.GetCountTerms(); ++iTerm) {
-         validationMetric =
-               test.Boost(
-                         iTerm, TermBoostFlags_RandomSplits, k_learningRateDefault, 1, k_minHessianDefault, k_leavesMax)
-                     .validationMetric;
+         validationMetric = test.Boost(iTerm,
+                                      TermBoostFlags_RandomSplits,
+                                      k_learningRateDefault,
+                                      1,
+                                      k_minHessianDefault,
+                                      k_regAlphaDefault,
+                                      k_regLambdaDefault,
+                                      k_maxDeltaStepDefault,
+                                      k_leavesMax)
+                                  .validationMetric;
       }
    }
 
@@ -1382,6 +1412,9 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
                                       k_learningRateDefault,
                                       k_minSamplesLeaf,
                                       k_minHessian,
+                                      k_regAlphaDefault,
+                                      k_regLambdaDefault,
+                                      k_maxDeltaStepDefault,
                                       k_leavesMax)
                                   .validationMetric;
       }
@@ -1435,6 +1468,9 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
                                       k_learningRateDefault,
                                       k_minSamplesLeafDefault,
                                       k_minHessianDefault,
+                                      k_regAlphaDefault,
+                                      k_regLambdaDefault,
+                                      k_maxDeltaStepDefault,
                                       k_leavesMax)
                                   .validationMetric;
          if(0 == iEpoch) {

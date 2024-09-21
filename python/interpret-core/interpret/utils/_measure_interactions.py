@@ -45,6 +45,9 @@ def measure_interactions(
     max_interaction_bins=32,
     min_samples_leaf=2,
     min_hessian=1e-3,
+    reg_alpha=0.0,
+    reg_lambda=0.0,
+    max_delta_step=0.0,
     objective=None,
 ):
     """Run the FAST algorithm and return the ranked interactions and their strengths as a dictionary.
@@ -63,6 +66,9 @@ def measure_interactions(
         max_interaction_bins: Max number of bins per interaction terms
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
         min_hessian: Minimum hessian required to consider a potential split valid
+        reg_alpha: L1 regularization.
+        reg_lambda: L2 regularization.
+        max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
             "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
             "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
@@ -279,6 +285,9 @@ def measure_interactions(
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         min_hessian=min_hessian,
+        reg_alpha=reg_alpha,
+        reg_lambda=reg_lambda,
+        max_delta_step=max_delta_step,
         create_interaction_flags=(
             Native.CreateInteractionFlags_DifferentialPrivacy
             if is_differential_privacy

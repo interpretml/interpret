@@ -5,6 +5,8 @@
 #ifndef EBM_STATS_HPP
 #define EBM_STATS_HPP
 
+#include <cmath>
+
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 
@@ -62,49 +64,92 @@ static constexpr FloatCalc k_gainMin = 0;
 //   - details on float representations -> https://www.volkerschatz.com/science/float.html
 //   - things that are guaranteed and not -> https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 
+INLINE_ALWAYS static FloatCalc HandleL1(const FloatCalc sumGradient, const FloatCalc regAlpha) {
+   EBM_ASSERT(0 <= regAlpha);
+   FloatCalc regularizedSumGradient = std::fabs(sumGradient) - regAlpha;
+   regularizedSumGradient = UNLIKELY(regularizedSumGradient < FloatCalc{0}) ? FloatCalc{0} : regularizedSumGradient;
+   regularizedSumGradient =
+         UNPREDICTABLE(sumGradient < FloatCalc{0}) ? -regularizedSumGradient : regularizedSumGradient;
+   return regularizedSumGradient;
+}
+
+INLINE_ALWAYS static FloatCalc HandleL2(const FloatCalc sumHessian, const FloatCalc regLambda) {
+   EBM_ASSERT(0 <= regLambda);
+   return sumHessian + regLambda;
+}
+
 INLINE_ALWAYS static FloatCalc CalcGradientUpdate(const FloatCalc sumGradient) {
    // for differentially private EBMs we return the gradients. It is not really the update.
    return sumGradient;
 }
 
 template<bool bCheckHessian>
-INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient, const FloatCalc sumHessian) {
+INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient,
+      const FloatCalc sumHessian,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax) {
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
+   EBM_ASSERT(FloatCalc{0} < deltaStepMax);
 
    if(bCheckHessian) {
       if(UNLIKELY(sumHessian < std::numeric_limits<FloatCalc>::min())) {
          return FloatCalc{0};
       }
    }
-   return sumGradient / sumHessian;
+   FloatCalc ret = HandleL1(sumGradient, regAlpha) / HandleL2(sumHessian, regLambda);
+   if(UNLIKELY(std::fabs(ret) > deltaStepMax)) {
+      ret = UNPREDICTABLE(ret < FloatCalc{0}) ? -deltaStepMax : deltaStepMax;
+   }
+   return ret;
 }
 
-INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(
-      const FloatCalc sumGradient, const FloatCalc sumHessian, const FloatCalc negUpdate) {
+INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(const FloatCalc sumGradient,
+      const FloatCalc sumHessian,
+      const FloatCalc negUpdate,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda) {
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
-   const FloatCalc partialGain = negUpdate * (sumGradient * FloatCalc{2} - negUpdate * sumHessian);
+   const FloatCalc partialGain =
+         negUpdate * (HandleL1(sumGradient, regAlpha) * FloatCalc{2} - negUpdate * HandleL2(sumHessian, regLambda));
 
    return partialGain;
 }
 
-INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, const FloatCalc sumHessian) {
+INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient,
+      const FloatCalc sumHessian,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax) {
    // This gain function used to determine splits is equivalent to minimizing sum of squared error SSE, which
    // can be seen following the derivation of Equation #7 in Ping Li's paper -> https://arxiv.org/pdf/1203.3491.pdf
 
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
+   EBM_ASSERT(FloatCalc{0} < deltaStepMax);
 
-   // Do not allow 0/0 to make a NaN value. Make the update zero in this case.
-   const FloatCalc partialGain = sumGradient / sumHessian * sumGradient;
+   FloatCalc partialGain;
+   if(UNLIKELY(std::numeric_limits<FloatCalc>::infinity() != deltaStepMax)) {
+      const FloatCalc negUpdate = CalcNegUpdate<false>(sumGradient, sumHessian, regAlpha, regLambda, deltaStepMax);
+      partialGain = CalcPartialGainFromUpdate(sumGradient, sumHessian, negUpdate, regAlpha, regLambda);
+   } else {
+      const FloatCalc regularizedSumGradient = HandleL1(sumGradient, regAlpha);
+      partialGain = regularizedSumGradient / HandleL2(sumHessian, regLambda) * regularizedSumGradient;
 
+      EBM_ASSERT(std::isnan(partialGain) ||
+            IsApproxEqual(partialGain,
+                  CalcPartialGainFromUpdate(sumGradient,
+                        sumHessian,
+                        CalcNegUpdate<false>(sumGradient, sumHessian, regAlpha, regLambda, deltaStepMax),
+                        regAlpha,
+                        regLambda)));
+   }
+   // This function does not allow flipping the sign of the update, unlike
+   // CalcPartialGainFromUpdate, so it should be impossible to get a negative partial gain.
    EBM_ASSERT(std::isnan(partialGain) || FloatCalc{0} <= partialGain);
-
-   EBM_ASSERT(std::isnan(partialGain) ||
-         IsApproxEqual(partialGain,
-               CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate<false>(sumGradient, sumHessian))));
 
    return partialGain;
 }

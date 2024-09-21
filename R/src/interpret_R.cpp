@@ -830,6 +830,9 @@ SEXP GenerateTermUpdate_R(
       learningRateLocal,
       0,
       hessianMin,
+      0,
+      0,
+      0,
       aLeavesMax,
       nullptr,
       &avgGain
@@ -1090,6 +1093,9 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
       cardinalityMax, 
       0,
       hessianMin,
+      0,
+      0,
+      0,
       &avgInteractionStrength
    );
    if(Error_None != err) {

@@ -38,6 +38,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
          BoosterShell* const pBoosterShell,
          const Term* const pTerm,
          const TermBoostFlags flags,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
          const MonotoneDirection significantDirection,
          double* const pTotalGain) {
@@ -551,10 +554,16 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
                FloatCalc updateScore;
                if(bUpdateWithHessian) {
                   updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
+                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
                } else {
                   updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
+                        static_cast<FloatCalc>(pCollapsedBin2->GetWeight()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
                }
                if(MONOTONE_NONE != significantDirection) {
                   EBM_ASSERT(1 == pTerm->GetCountRealDimensions());
@@ -612,10 +621,16 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
                FloatCalc updateScore;
                if(bUpdateWithHessian) {
                   updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
+                        static_cast<FloatCalc>(pGradientPair[iScore].GetHess()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
                } else {
                   updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
-                        static_cast<FloatCalc>(aCollapsedBins->GetWeight()));
+                        static_cast<FloatCalc>(aCollapsedBins->GetWeight()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
                }
                *pUpdateScore = static_cast<FloatScore>(updateScore);
                ++pUpdateScore;
@@ -637,16 +652,35 @@ template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTar
          BoosterShell* const pBoosterShell,
          const Term* const pTerm,
          const TermBoostFlags flags,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
          const MonotoneDirection significantDirection,
          double* const pTotalGain) {
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       if(cPossibleScores == pBoosterCore->GetCountScores()) {
-         return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingInternal<bHessian, cPossibleScores>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       } else {
-         return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       }
    }
 };
@@ -659,11 +693,22 @@ template<bool bHessian> class PartitionRandomBoostingTarget<bHessian, k_cCompile
          BoosterShell* const pBoosterShell,
          const Term* const pTerm,
          const TermBoostFlags flags,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
          const MonotoneDirection significantDirection,
          double* const pTotalGain) {
-      return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(
-            pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+      return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(pRng,
+            pBoosterShell,
+            pTerm,
+            flags,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
+            aLeavesMax,
+            significantDirection,
+            pTotalGain);
    }
 };
 
@@ -671,6 +716,9 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const Term* const pTerm,
       const TermBoostFlags flags,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
       const MonotoneDirection significantDirection,
       double* const pTotalGain) {
@@ -681,20 +729,52 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
    if(pBoosterCore->IsHessian()) {
       if(size_t{1} != cRuntimeScores) {
          // muticlass
-         return PartitionRandomBoostingTarget<true, k_cCompilerScoresStart>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingTarget<true, k_cCompilerScoresStart>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       } else {
-         return PartitionRandomBoostingInternal<true, k_oneScore>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingInternal<true, k_oneScore>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       }
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return PartitionRandomBoostingInternal<false, k_dynamicScores>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingInternal<false, k_dynamicScores>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       } else {
-         return PartitionRandomBoostingInternal<false, k_oneScore>::Func(
-               pRng, pBoosterShell, pTerm, flags, aLeavesMax, significantDirection, pTotalGain);
+         return PartitionRandomBoostingInternal<false, k_oneScore>::Func(pRng,
+               pBoosterShell,
+               pTerm,
+               flags,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
+               aLeavesMax,
+               significantDirection,
+               pTotalGain);
       }
    }
 }

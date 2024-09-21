@@ -41,6 +41,9 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinBestAndTemp,
       size_t* const piBestSplit
 #ifndef NDEBUG
@@ -176,13 +179,19 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
                goto next;
             }
 
-            const FloatCalc gain1 =
-                  CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), hessianLow);
+            const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients),
+                  hessianLow,
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
             gain += gain1;
 
-            const FloatCalc gain2 =
-                  CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), hessianHigh);
+            const FloatCalc gain2 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients),
+                  hessianHigh,
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
             EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
             gain += gain2;
 
@@ -232,6 +241,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
          const FloatCalc hessianMin,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          BinBase* const aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -331,6 +343,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                aBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                pTotals2LowLowBest,
                &splitSecond1LowBest
 #ifndef NDEBUG
@@ -357,6 +372,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         aBins,
                         cSamplesLeafMin,
                         hessianMin,
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax,
                         pTotals2HighLowBest,
                         &splitSecond1HighBest
 #ifndef NDEBUG
@@ -427,6 +445,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                aBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                pTotals1LowLowBestInner,
                &splitSecond2LowBest
 #ifndef NDEBUG
@@ -453,6 +474,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         aBins,
                         cSamplesLeafMin,
                         hessianMin,
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax,
                         pTotals1HighLowBestInner,
                         &splitSecond2HighBest
 #ifndef NDEBUG
@@ -536,7 +560,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                EBM_ASSERT(hessianMin <= hess);
 
                const FloatCalc gain1 =
-                     CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), hess);
+                     CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                           hess,
+                           regAlpha,
+                           regLambda,
+                           deltaStepMax);
                EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
                bestGain -= gain1;
             }
@@ -629,36 +657,60 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            weightLowLow = static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess());
                            predictionLowLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow);
+                                 weightLowLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess());
                            predictionLowHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh);
+                                 weightLowHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighLow = static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess());
                            predictionHighLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow);
+                                 weightHighLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess());
                            predictionHighHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh);
+                                 weightHighHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                         } else {
                            weightLowLow = static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight());
                            predictionLowLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow);
+                                 weightLowLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightLowHigh = static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight());
                            predictionLowHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh);
+                                 weightLowHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighLow = static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight());
                            predictionHighLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow);
+                                 weightHighLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighHigh = static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight());
                            predictionHighHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh);
+                                 weightHighHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                         }
 
                         FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
@@ -787,36 +839,60 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            weightLowLow = static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess());
                            predictionLowLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow);
+                                 weightLowLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess());
                            predictionLowHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh);
+                                 weightLowHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighLow = static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess());
                            predictionHighLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow);
+                                 weightHighLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess());
                            predictionHighHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh);
+                                 weightHighHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                         } else {
                            weightLowLow = static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight());
                            predictionLowLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow);
+                                 weightLowLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightLowHigh = static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight());
                            predictionLowHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh);
+                                 weightLowHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighLow = static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight());
                            predictionHighLow = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow);
+                                 weightHighLow,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                            weightHighHigh = static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight());
                            predictionHighHigh = -CalcNegUpdate<false>(
                                  static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh);
+                                 weightHighHigh,
+                                 regAlpha,
+                                 regLambda,
+                                 deltaStepMax);
                         }
                         FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
@@ -901,13 +977,21 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          FloatCalc weight;
          if(bUpdateWithHessian) {
             weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                  weight,
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
             if(nullptr != aWeights) {
                aWeights[iScore] = static_cast<double>(weight);
             }
          } else {
             weight = static_cast<FloatCalc>(weightAll);
-            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients), weight);
+            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                  weight,
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
             if(nullptr != aWeights) {
                aWeights[iScore] = static_cast<double>(weight);
             }
@@ -930,6 +1014,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
          const FloatCalc hessianMin,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -946,6 +1033,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
@@ -961,6 +1051,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
@@ -983,6 +1076,9 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const size_t* const acBins,
          const size_t cSamplesLeafMin,
          const FloatCalc hessianMin,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const pTotalGain
@@ -997,6 +1093,9 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             acBins,
             cSamplesLeafMin,
             hessianMin,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
             aAuxiliaryBinsBase,
             aWeights,
             pTotalGain
@@ -1014,6 +1113,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const size_t* const acBins,
       const size_t cSamplesLeafMin,
       const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
       double* const pTotalGain
@@ -1035,6 +1137,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
@@ -1050,6 +1155,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
@@ -1068,6 +1176,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
@@ -1083,6 +1194,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                acBins,
                cSamplesLeafMin,
                hessianMin,
+               regAlpha,
+               regLambda,
+               deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
                pTotalGain
