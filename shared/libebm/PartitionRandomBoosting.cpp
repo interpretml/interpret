@@ -550,10 +550,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatCalc updateScore;
                if(bUpdateWithHessian) {
-                  updateScore = -CalcNegUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
                         static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
                } else {
-                  updateScore = -CalcNegUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
                         static_cast<FloatCalc>(pCollapsedBin2->GetWeight()));
                }
                if(MONOTONE_NONE != significantDirection) {
@@ -611,10 +611,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
                FloatCalc updateScore;
                if(bUpdateWithHessian) {
-                  updateScore = -CalcNegUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
                         static_cast<FloatCalc>(pGradientPair[iScore].GetHess()));
                } else {
-                  updateScore = -CalcNegUpdate(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair[iScore].m_sumGradients),
                         static_cast<FloatCalc>(aCollapsedBins->GetWeight()));
                }
                *pUpdateScore = static_cast<FloatScore>(updateScore);

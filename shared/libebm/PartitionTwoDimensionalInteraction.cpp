@@ -330,10 +330,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 
                         // Calculate the unpurified updates. Purification is invariant to the sign,
                         // so we can purify the negative updates and get the same result.
-                        const FloatCalc negUpdate00 = CalcNegUpdate(grad00, hess00);
-                        const FloatCalc negUpdate01 = CalcNegUpdate(grad01, hess01);
-                        const FloatCalc negUpdate10 = CalcNegUpdate(grad10, hess10);
-                        const FloatCalc negUpdate11 = CalcNegUpdate(grad11, hess11);
+                        const FloatCalc negUpdate00 = CalcNegUpdate<false>(grad00, hess00);
+                        const FloatCalc negUpdate01 = CalcNegUpdate<false>(grad01, hess01);
+                        const FloatCalc negUpdate10 = CalcNegUpdate<false>(grad10, hess10);
+                        const FloatCalc negUpdate11 = CalcNegUpdate<false>(grad11, hess11);
 
                         // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
                         const FloatCalc common = negUpdate00 - negUpdate01 - negUpdate10 + negUpdate11;
@@ -401,10 +401,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             const FloatMain weightAll = pTotal->GetWeight();
             const auto* const aGradientPairs = pTotal->GetGradientPairs();
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
-               // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the
-               // numerators (but only do this after we've determined the best node splitting score for classification,
-               // and the NewtonRaphsonStep for gain
-
                const FloatCalc hess =
                      static_cast<FloatCalc>(bUseLogitBoost ? aGradientPairs[iScore].GetHess() : weightAll);
 

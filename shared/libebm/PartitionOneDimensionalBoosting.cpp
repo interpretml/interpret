@@ -189,10 +189,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          do {
             FloatCalc updateScore;
             if(bUpdateWithHessian) {
-               updateScore = -CalcNegUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+               updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(aGradientPair[iScore].GetHess()));
             } else {
-               updateScore = -CalcNegUpdate(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+               updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
                      static_cast<FloatCalc>(pTreeNode->GetWeight()));
             }
 
@@ -355,18 +355,18 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          if(bHessian) {
             const FloatMain newSumHessiansLeftOrig =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
-            const FloatCalc newSumHessiansRight =
-                  static_cast<FloatCalc>(aParentGradientPairs[iScore].GetHess() - newSumHessiansLeftOrig);
-            if(UNLIKELY(newSumHessiansRight < hessianMin)) {
-               // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
-               goto done;
-            }
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeftOrig);
-            const FloatCalc newSumHessiansLeft = static_cast<FloatCalc>(newSumHessiansLeftOrig);
-            if(UNLIKELY(newSumHessiansLeft < hessianMin)) {
-               bLegal = false;
-            }
             if(bUseLogitBoost) {
+               const FloatCalc newSumHessiansRight =
+                     static_cast<FloatCalc>(aParentGradientPairs[iScore].GetHess() - newSumHessiansLeftOrig);
+               if(UNLIKELY(newSumHessiansRight < hessianMin)) {
+                  // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
+                  goto done;
+               }
+               const FloatCalc newSumHessiansLeft = static_cast<FloatCalc>(newSumHessiansLeftOrig);
+               if(UNLIKELY(newSumHessiansLeft < hessianMin)) {
+                  bLegal = false;
+               }
                sumHessiansLeft = newSumHessiansLeft;
                sumHessiansRight = newSumHessiansRight;
             }
@@ -375,8 +375,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          const FloatCalc sumGradientsLeft = static_cast<FloatCalc>(sumGradientsLeftOrig);
 
          if(MONOTONE_NONE != direction) {
-            const FloatCalc negUpdateRight = CalcNegUpdate(sumGradientsRight, sumHessiansRight);
-            const FloatCalc negUpdateLeft = CalcNegUpdate(sumGradientsLeft, sumHessiansLeft);
+            const FloatCalc negUpdateRight = CalcNegUpdate<false>(sumGradientsRight, sumHessiansRight);
+            const FloatCalc negUpdateLeft = CalcNegUpdate<false>(sumGradientsLeft, sumHessiansLeft);
             if(MonotoneDirection{0} < direction) {
                if(negUpdateLeft < negUpdateRight) {
                   bLegal = false;
@@ -389,16 +389,10 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             }
          }
 
-         // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
-         // (but only do this after we've determined the best node splitting score for classification, and the
-         // NewtonRaphsonStep for gain
          const FloatCalc gainRight = CalcPartialGain(sumGradientsRight, sumHessiansRight);
          EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
-         // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
-         // (but only do this after we've determined the best node splitting score for classification, and the
-         // NewtonRaphsonStep for gain
          const FloatCalc gainLeft = CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
          EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;

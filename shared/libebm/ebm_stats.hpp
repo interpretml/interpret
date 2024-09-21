@@ -67,13 +67,17 @@ INLINE_ALWAYS static FloatCalc CalcGradientUpdate(const FloatCalc sumGradient) {
    return sumGradient;
 }
 
+template<bool bCheckHessian>
 INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient, const FloatCalc sumHessian) {
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
-   // TODO: if our caller already prevents splits below a certain value, then we don't need to check for zero here
-   // Do not allow 0/0 to make a NaN value. Make the update zero in this case.
-   return UNLIKELY(sumHessian < std::numeric_limits<FloatCalc>::min()) ? FloatCalc{0} : sumGradient / sumHessian;
+   if(bCheckHessian) {
+      if(UNLIKELY(sumHessian < std::numeric_limits<FloatCalc>::min())) {
+         return FloatCalc{0};
+      }
+   }
+   return sumGradient / sumHessian;
 }
 
 INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(
@@ -100,7 +104,7 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, cons
 
    EBM_ASSERT(std::isnan(partialGain) ||
          IsApproxEqual(partialGain,
-               CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate(sumGradient, sumHessian))));
+               CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate<false>(sumGradient, sumHessian))));
 
    return partialGain;
 }
