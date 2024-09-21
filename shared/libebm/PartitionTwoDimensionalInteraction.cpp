@@ -243,10 +243,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      goto next;
                   }
 
-                  const FloatCalc d00 = hess00;
-                  const FloatCalc d01 = hess01;
-                  const FloatCalc d10 = hess10;
-                  const FloatCalc d11 = hess11;
                   if(CalcInteractionFlags_Purify & flags) {
                      // purified gain
 
@@ -326,54 +322,33 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      //     (1 + weight00 / weight01 + weight00 / weight10 + weight00 / weight11)
                      // The other pure effects can be derived the same way.
 
-                     if(FloatCalc{0} != d00 && FloatCalc{0} != d01 && FloatCalc{0} != d10 && FloatCalc{0} != d11) {
+                     // if any of the weights are zero then the purified gain will be zero
+                     if(FloatCalc{0} != w00 && FloatCalc{0} != w01 && FloatCalc{0} != w10 && FloatCalc{0} != w11) {
 
                         // TODO: instead of checking the denominators for zero above, can we do it earlier?
                         // If we're using hessians then we'd need it here, but we aren't using them yet
 
-                        // calculate what the full updates would be for non-purified:
-                        // u = update (non-purified)
-                        const FloatCalc negUpdate00 = grad00 / hess00;
-                        const FloatCalc negUpdate01 = grad01 / hess01;
-                        const FloatCalc negUpdate10 = grad10 / hess10;
-                        const FloatCalc negUpdate11 = grad11 / hess11;
+                        // Calculate the unpurified updates. Purification is invariant to the sign,
+                        // so we can purify the negative updates and get the same result.
+                        const FloatCalc negUpdate00 = CalcNegUpdate(grad00, hess00);
+                        const FloatCalc negUpdate01 = CalcNegUpdate(grad01, hess01);
+                        const FloatCalc negUpdate10 = CalcNegUpdate(grad10, hess10);
+                        const FloatCalc negUpdate11 = CalcNegUpdate(grad11, hess11);
 
                         // common part of equations (positive for 00 & 11 equations, negative for 01 and 10)
                         const FloatCalc common = negUpdate00 - negUpdate01 - negUpdate10 + negUpdate11;
 
-                        // p = purified NEGATIVE update.
-                        const FloatCalc negPure00 = common / (FloatCalc{1} + d00 / d01 + d00 / d10 + d00 / d11);
-                        const FloatCalc negPure01 = common / (FloatCalc{-1} - d01 / d00 - d01 / d10 - d01 / d11);
-                        const FloatCalc negPure10 = common / (FloatCalc{-1} - d10 / d00 - d10 / d01 - d10 / d11);
-                        const FloatCalc negPure11 = common / (FloatCalc{1} + d11 / d00 + d11 / d01 + d11 / d10);
+                        const FloatCalc negPure00 = common / (FloatCalc{1} + w00 / w01 + w00 / w10 + w00 / w11);
+                        const FloatCalc negPure01 = common / (FloatCalc{-1} - w01 / w00 - w01 / w10 - w01 / w11);
+                        const FloatCalc negPure10 = common / (FloatCalc{-1} - w10 / w00 - w10 / w01 - w10 / w11);
+                        const FloatCalc negPure11 = common / (FloatCalc{1} + w11 / w00 + w11 / w01 + w11 / w10);
 
                         // g = partial gain
-                        const FloatCalc g00 = CalcPartialGainFromUpdate(hess00, negPure00);
-                        const FloatCalc g01 = CalcPartialGainFromUpdate(hess01, negPure01);
-                        const FloatCalc g10 = CalcPartialGainFromUpdate(hess10, negPure10);
-                        const FloatCalc g11 = CalcPartialGainFromUpdate(hess11, negPure11);
-#ifndef NDEBUG
-                        // r = reconsituted numerator (after purification)
-                        const FloatCalc r00 = negPure00 * d00;
-                        const FloatCalc r01 = negPure01 * d01;
-                        const FloatCalc r10 = negPure10 * d10;
-                        const FloatCalc r11 = negPure11 * d11;
+                        const FloatCalc g00 = CalcPartialGainFromUpdate(grad00, hess00, negPure00);
+                        const FloatCalc g01 = CalcPartialGainFromUpdate(grad01, hess01, negPure01);
+                        const FloatCalc g10 = CalcPartialGainFromUpdate(grad10, hess10, negPure10);
+                        const FloatCalc g11 = CalcPartialGainFromUpdate(grad11, hess11, negPure11);
 
-                        // purification means summing any direction gives us zero
-                        EBM_ASSERT(std::abs(r00 + r01) < 0.001);
-                        EBM_ASSERT(std::abs(r01 + r11) < 0.001);
-                        EBM_ASSERT(std::abs(r11 + r10) < 0.001);
-                        EBM_ASSERT(std::abs(r10 + r00) < 0.001);
-
-                        // if all of these added together are zero, then the parent partial gain should also
-                        // be zero, which means we can avoid calculating the parent partial gain.
-                        EBM_ASSERT(std::abs(r00 + r01 + r10 + r11) < 0.001);
-
-                        EBM_ASSERT(std::abs(g00 - CalcPartialGain(r00, d00)) < 0.001);
-                        EBM_ASSERT(std::abs(g01 - CalcPartialGain(r01, d01)) < 0.001);
-                        EBM_ASSERT(std::abs(g10 - CalcPartialGain(r10, d10)) < 0.001);
-                        EBM_ASSERT(std::abs(g11 - CalcPartialGain(r11, d11)) < 0.001);
-#endif // NDEBUG
                         gain += g00;
                         gain += g01;
                         gain += g10;

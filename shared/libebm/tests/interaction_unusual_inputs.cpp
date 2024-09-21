@@ -413,6 +413,57 @@ TEST_CASE("purified interaction strength same as pre-purified strength, interact
    CHECK_APPROX(metricReturn1, metricReturn2);
 }
 
+TEST_CASE("purified interaction strength same as unpurified, interaction, regression") {
+   // let us construct a matrix that consists of impure effect and pure effect and compare that to the
+   // interaction strength of the purified matrix.  They should be the same.
+
+   // Start by creating a pure interaction and getting the interaction strength:
+   //
+   // counts:
+   // 2.5  20
+   // 1.25 5
+   //
+   // pure:
+   // -16  2
+   //  32 -8
+
+   TestInteraction test1 = TestInteraction(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {
+               TestSample({0, 0}, -16.0, 2.5),
+               TestSample({0, 1}, 2.0, 20),
+               TestSample({1, 0}, 32.0, 1.25),
+               TestSample({1, 1}, -8.0, 5),
+         });
+
+   double metricReturn1 = test1.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_Default);
+
+   // to the pure input we add on one   axis: 3, 5
+   // to the pure input we add on other axis: 7, 11
+   // these should be purified away leaving only the base pure
+   //
+   // impure:
+   // 3 + 11   3 + 7
+   // 5 + 11   5 + 7
+
+   // or:
+   // 14  10
+   // 16  12
+
+   TestInteraction test2 = TestInteraction(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {
+               TestSample({0, 0}, -16.0 + (3.0 + 11.0), 2.5),
+               TestSample({0, 1}, 2.0 + (3.0 + 7.0), 20),
+               TestSample({1, 0}, 32.0 + (5.0 + 11.0), 1.25),
+               TestSample({1, 1}, -8.0 + (5.0 + 7.0), 5),
+         });
+
+   double metricReturn2 = test2.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_Purify);
+
+   CHECK_APPROX(metricReturn1, metricReturn2);
+}
+
 TEST_CASE("compare boosting gain to interaction strength, which should be identical") {
    // we use the same algorithm to calculate interaction strength (gain) and during boosting (gain again)
    // so we would expect them to generate the same response

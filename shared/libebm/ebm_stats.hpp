@@ -8,7 +8,7 @@
 #include "logging.h" // EBM_ASSERT
 #include "unzoned.h" // INLINE_ALWAYS, LIKELY, UNLIKELY
 
-#include "ebm_internal.hpp"
+#include "ebm_internal.hpp" // FloatCalc
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
@@ -77,15 +77,15 @@ INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient, const 
    return UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : sumGradient / sumHessian;
 }
 
-INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(const FloatCalc sumHessian, const FloatCalc negUpdate) {
+INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(
+      const FloatCalc sumGradient, const FloatCalc sumHessian, const FloatCalc negUpdate) {
    // a loss function with negative hessians would be unstable
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
-   EBM_ASSERT(FloatCalc{0} < k_hessianMin);
-   const FloatCalc partialGain =
-         UNLIKELY(sumHessian < k_hessianMin) ? FloatCalc{0} : negUpdate * negUpdate * sumHessian;
+   // do not consider k_hessianMin here since the update should be zero if sumHessian is below
 
-   EBM_ASSERT(std::isnan(negUpdate) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
+   const FloatCalc partialGain = negUpdate * (sumGradient * FloatCalc{2} - negUpdate * sumHessian);
+
    return partialGain;
 }
 
@@ -107,6 +107,10 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, cons
    // in another bin, and then the two bins are added together. That would lead to NaN even without NaN samples.
 
    EBM_ASSERT(std::isnan(sumGradient) || std::isnan(sumHessian) || FloatCalc{0} <= partialGain);
+
+   EBM_ASSERT(IsApproxEqual(
+         partialGain, CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate(sumGradient, sumHessian))));
+
    return partialGain;
 }
 
