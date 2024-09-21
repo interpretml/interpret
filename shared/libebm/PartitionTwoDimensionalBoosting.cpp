@@ -180,11 +180,13 @@ static FloatCalc SweepMultiDimensional(const size_t cRuntimeScores,
                goto next;
             }
 
-            const FloatCalc gain1 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), hessianLow);
+            const FloatCalc gain1 =
+                  CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLow[iScore].m_sumGradients), hessianLow);
             EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
             gain += gain1;
 
-            const FloatCalc gain2 = CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), hessianHigh);
+            const FloatCalc gain2 =
+                  CalcPartialGain(static_cast<FloatCalc>(aGradientPairsHigh[iScore].m_sumGradients), hessianHigh);
             EBM_ASSERT(std::isnan(gain2) || 0 <= gain2);
             gain += gain2;
 

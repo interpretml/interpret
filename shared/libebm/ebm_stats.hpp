@@ -99,8 +99,8 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient, cons
    EBM_ASSERT(std::isnan(partialGain) || FloatCalc{0} <= partialGain);
 
    EBM_ASSERT(std::isnan(partialGain) ||
-         IsApproxEqual(
-         partialGain, CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate(sumGradient, sumHessian))));
+         IsApproxEqual(partialGain,
+               CalcPartialGainFromUpdate(sumGradient, sumHessian, CalcNegUpdate(sumGradient, sumHessian))));
 
    return partialGain;
 }

@@ -328,8 +328,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       }
       binLeft.SetCountSamples(binLeft.GetCountSamples() + cSamplesChange);
 
-      FloatMain sumHessiansLeft = binLeft.GetWeight() + pBinCur->GetWeight();
-      FloatMain sumHessiansRight = binParent.GetWeight() - sumHessiansLeft;
+      FloatMain sumHessiansLeftOrig = binLeft.GetWeight() + pBinCur->GetWeight();
+      FloatCalc sumHessiansRight = static_cast<FloatCalc>(binParent.GetWeight() - sumHessiansLeftOrig);
 
       if(!bUseLogitBoost) {
          if(UNLIKELY(sumHessiansRight < hessianMin)) {
@@ -339,26 +339,30 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       }
       bool bLegal = true;
 
-      binLeft.SetWeight(sumHessiansLeft);
+      binLeft.SetWeight(sumHessiansLeftOrig);
+      FloatCalc sumHessiansLeft = static_cast<FloatCalc>(sumHessiansLeftOrig);
 
       const auto* const aBinGradientPairs = pBinCur->GetGradientPairs();
       FloatCalc gain = 0;
       size_t iScore = 0;
       do {
-         const FloatMain sumGradientsLeft =
+         const FloatMain sumGradientsLeftOrig =
                aLeftGradientPairs[iScore].m_sumGradients + aBinGradientPairs[iScore].m_sumGradients;
-         aLeftGradientPairs[iScore].m_sumGradients = sumGradientsLeft;
-         const FloatMain sumGradientsRight = aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeft;
+         aLeftGradientPairs[iScore].m_sumGradients = sumGradientsLeftOrig;
+         const FloatCalc sumGradientsRight =
+               static_cast<FloatCalc>(aParentGradientPairs[iScore].m_sumGradients - sumGradientsLeftOrig);
 
          if(bHessian) {
-            const FloatMain newSumHessiansLeft =
+            const FloatMain newSumHessiansLeftOrig =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
-            const FloatMain newSumHessiansRight = aParentGradientPairs[iScore].GetHess() - newSumHessiansLeft;
+            const FloatCalc newSumHessiansRight =
+                  static_cast<FloatCalc>(aParentGradientPairs[iScore].GetHess() - newSumHessiansLeftOrig);
             if(UNLIKELY(newSumHessiansRight < hessianMin)) {
                // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
                goto done;
             }
-            aLeftGradientPairs[iScore].SetHess(newSumHessiansLeft);
+            aLeftGradientPairs[iScore].SetHess(newSumHessiansLeftOrig);
+            const FloatCalc newSumHessiansLeft = static_cast<FloatCalc>(newSumHessiansLeftOrig);
             if(UNLIKELY(newSumHessiansLeft < hessianMin)) {
                bLegal = false;
             }
@@ -368,11 +372,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             }
          }
 
+         const FloatCalc sumGradientsLeft = static_cast<FloatCalc>(sumGradientsLeftOrig);
+
          if(MONOTONE_NONE != direction) {
-            const FloatCalc negUpdateRight =
-                  CalcNegUpdate(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
-            const FloatCalc negUpdateLeft =
-                  CalcNegUpdate(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
+            const FloatCalc negUpdateRight = CalcNegUpdate(sumGradientsRight, sumHessiansRight);
+            const FloatCalc negUpdateLeft = CalcNegUpdate(sumGradientsLeft, sumHessiansLeft);
             if(MonotoneDirection{0} < direction) {
                if(negUpdateLeft < negUpdateRight) {
                   bLegal = false;
@@ -388,16 +392,14 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
          // (but only do this after we've determined the best node splitting score for classification, and the
          // NewtonRaphsonStep for gain
-         const FloatCalc gainRight =
-               CalcPartialGain(static_cast<FloatCalc>(sumGradientsRight), static_cast<FloatCalc>(sumHessiansRight));
+         const FloatCalc gainRight = CalcPartialGain(sumGradientsRight, sumHessiansRight);
          EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
          // TODO : we can make this faster by doing the division in CalcPartialGain after we add all the numerators
          // (but only do this after we've determined the best node splitting score for classification, and the
          // NewtonRaphsonStep for gain
-         const FloatCalc gainLeft =
-               CalcPartialGain(static_cast<FloatCalc>(sumGradientsLeft), static_cast<FloatCalc>(sumHessiansLeft));
+         const FloatCalc gainLeft = CalcPartialGain(sumGradientsLeft, sumHessiansLeft);
          EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;
 
