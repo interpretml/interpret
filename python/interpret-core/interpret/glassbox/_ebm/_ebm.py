@@ -2402,7 +2402,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
         List of feature types. FeatureType can be:
 
-            - `None`: Auto-detect
+            - `'auto'`: Auto-detect
             - `'quantile'`: Continuous with equal density bins
             - `'rounded_quantile'`: Continuous with quantile bins, but the cut values are rounded when possible
             - `'uniform'`: Continuous with equal width bins
@@ -2410,7 +2410,6 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - `'continuous'`: Use the default binning for continuous features, which is 'quantile' currently
             - `[List of float]`: Continuous with specified cut values. Eg: [5.5, 8.75]
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
-            - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
@@ -2749,7 +2748,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
         List of feature types. FeatureType can be:
 
-            - `None`: Auto-detect
+            - `'auto'`: Auto-detect
             - `'quantile'`: Continuous with equal density bins
             - `'rounded_quantile'`: Continuous with quantile bins, but the cut values are rounded when possible
             - `'uniform'`: Continuous with equal width bins
@@ -2757,7 +2756,6 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - `'continuous'`: Use the default binning for continuous features, which is 'quantile' currently
             - `[List of float]`: Continuous with specified cut values. Eg: [5.5, 8.75]
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]
-            - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
@@ -3064,10 +3062,9 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         If auto-detection is used, a privacy warning will be issued.
         FeatureType can be:
 
-            - `None`: Auto-detect (privacy budget is not respected!).
+            - `'auto'`: Auto-detect (privacy budget is not respected!).
             - `'continuous'`: Use private continuous binning.
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]. Uses private categorical binning.
-            - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings. Uses private categorical binning.
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names. Uses private categorical binning.
     max_bins : int, default=32
         Max number of bins per feature.
@@ -3324,10 +3321,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         If auto-detection is used, a privacy warning will be issued.
         FeatureType can be:
 
-            - `None`: Auto-detect (privacy budget is not respected!).
+            - `'auto'`: Auto-detect (privacy budget is not respected!).
             - `'continuous'`: Use private continuous binning.
             - `[List of str]`: Ordinal categorical where the order has meaning. Eg: ["low", "medium", "high"]. Uses private categorical binning.
-            - `'ordinal'`: Ordinal categorical where the order is determined by sorting the feature strings. Uses private categorical binning.
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names. Uses private categorical binning.
     max_bins : int, default=32
         Max number of bins per feature.
