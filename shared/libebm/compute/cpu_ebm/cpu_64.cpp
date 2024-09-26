@@ -86,7 +86,7 @@ struct Cpu_64_Int final {
 
    inline Cpu_64_Int operator|(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data | other.m_data); }
 
-   friend inline Cpu_64_Int IfThenElse(const bool cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
+   friend inline Cpu_64_Int IfThenElse(const int cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
       return cmp ? trueVal : falseVal;
    }
 
@@ -101,10 +101,22 @@ template<bool bNegateInput = false,
       bool bUnderflowPossible = true,
       bool bOverflowPossible = true>
 inline Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept;
+template<bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = true,
+      bool bZeroPossible = true,
+      bool bPositiveInfinityPossible = true>
+inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept;
 
 struct Cpu_64_Float final {
    template<bool bNegateInput, bool bNaNPossible, bool bUnderflowPossible, bool bOverflowPossible>
    friend Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept;
+   template<bool bNegateOutput,
+         bool bNaNPossible,
+         bool bNegativePossible,
+         bool bZeroPossible,
+         bool bPositiveInfinityPossible>
+   friend Cpu_64_Float Log(const Cpu_64_Float& val) noexcept;
 
    using T = double;
    using TPack = double;
@@ -198,8 +210,8 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
-   friend inline bool operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
-      return left.m_data <= right.m_data;
+   friend inline int operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data <= right.m_data ? -1 : 0; // use all bits so that we can negate it ~
    }
 
    inline static Cpu_64_Float Load(const T* const a) noexcept { return Cpu_64_Float(*a); }
@@ -231,7 +243,7 @@ struct Cpu_64_Float final {
    }
 
    friend inline Cpu_64_Float IfThenElse(
-         const bool cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
+         const int cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
       return cmp ? trueVal : falseVal;
    }
 
@@ -292,8 +304,6 @@ struct Cpu_64_Float final {
 
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::sqrt(val.m_data)); }
 
-   friend inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::log(val.m_data)); }
-
    template<bool bDisableApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
@@ -336,8 +346,7 @@ struct Cpu_64_Float final {
    static inline Cpu_64_Float ApproxLog(
          const Cpu_64_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       UNUSED(addLogSchraudolphTerm);
-      Cpu_64_Float ret = Log(val);
-      return bNegateOutput ? -ret : ret;
+      return Log<bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible>(val);
    }
 
    template<bool bDisableApprox,
@@ -397,6 +406,16 @@ static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_
 template<bool bNegateInput, bool bNaNPossible, bool bUnderflowPossible, bool bOverflowPossible>
 inline Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept {
    return Exp64<Cpu_64_Float, bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
+}
+
+template<bool bNegateOutput,
+      bool bNaNPossible,
+      bool bNegativePossible,
+      bool bZeroPossible,
+      bool bPositiveInfinityPossible>
+inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept {
+   return Log64<Cpu_64_Float, bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible>(
+         val);
 }
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm ApplyUpdate_Cpu_64(

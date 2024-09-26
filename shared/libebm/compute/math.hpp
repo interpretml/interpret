@@ -22,6 +22,16 @@ template<typename TFloat> static INLINE_ALWAYS typename TFloat::TInt Exponent32(
    return ((TFloat::ReinterpretInt(val) << 1) >> 24) - typename TFloat::TInt(0x7F);
 }
 
+template<typename TFloat> static INLINE_ALWAYS TFloat Mantissa64(const TFloat& val) noexcept {
+   return TFloat::ReinterpretFloat((TFloat::ReinterpretInt(val) & 0x000FFFFFFFFFFFFFll) | 0x3FE0000000000000ll);
+}
+
+template<typename TFloat> static INLINE_ALWAYS TFloat Exponent64(const TFloat& val) noexcept {
+   return TFloat::ReinterpretFloat(
+                ((TFloat::ReinterpretInt(val) >> 52) | TFloat::ReinterpretInt(TFloat{4503599627370496.0}))) -
+         TFloat(4503599627370496.0 + 1023.0);
+}
+
 template<typename TFloat> static INLINE_ALWAYS TFloat Power32(const TFloat val) {
    return TFloat::ReinterpretFloat(TFloat::ReinterpretInt(val + TFloat{8388608 + 127}) << 23);
 }
@@ -32,7 +42,7 @@ template<typename TFloat> static INLINE_ALWAYS TFloat Power64(const TFloat val) 
 }
 
 template<typename TFloat>
-static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
+static INLINE_ALWAYS TFloat Polynomial32(const TFloat x,
       const TFloat c0,
       const TFloat c1,
       const TFloat c2,
@@ -47,7 +57,7 @@ static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
 }
 
 template<typename TFloat>
-static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
+static INLINE_ALWAYS TFloat Polynomial32(const TFloat x,
       const TFloat c0,
       const TFloat c1,
       const TFloat c2,
@@ -66,7 +76,7 @@ static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
 }
 
 template<typename TFloat>
-static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
+static INLINE_ALWAYS TFloat Polynomial64(const TFloat x,
       const TFloat c2,
       const TFloat c3,
       const TFloat c4,
@@ -91,6 +101,29 @@ static INLINE_ALWAYS TFloat Polynomial(const TFloat x,
                FusedMultiplyAdd(FusedMultiplyAdd(c3, x, c2), x2, x)));
 }
 
+template<typename TFloat>
+static INLINE_ALWAYS TFloat Polynomial64(const TFloat x,
+      const TFloat c0,
+      const TFloat c1,
+      const TFloat c2,
+      const TFloat c3,
+      const TFloat c4,
+      const TFloat c5) {
+   TFloat x2 = x * x;
+   TFloat x4 = x2 * x2;
+   return FusedMultiplyAdd(FusedMultiplyAdd(c3, x, c2),
+         x2,
+         FusedMultiplyAdd(FusedMultiplyAdd(c5, x, c4), x4, FusedMultiplyAdd(c1, x, c0)));
+}
+
+template<typename TFloat>
+static INLINE_ALWAYS TFloat Polynomial64(
+      const TFloat x, const TFloat c0, const TFloat c1, const TFloat c2, const TFloat c3, const TFloat c4) {
+   TFloat x2 = x * x;
+   TFloat x4 = x2 * x2;
+   return FusedMultiplyAdd(FusedMultiplyAdd(c3, x, c2), x2, FusedMultiplyAdd(c4 + x, x4, FusedMultiplyAdd(c1, x, c0)));
+}
+
 template<typename TFloat,
       bool bNegateInput = false,
       bool bNaNPossible = true,
@@ -111,7 +144,7 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
    x = FusedNegateMultiplyAdd(rounded, TFloat{-2.12194440e-4f}, x);
 
    const TFloat x2 = x * x;
-   TFloat ret = Polynomial(x,
+   TFloat ret = Polynomial32(x,
          TFloat{1} / TFloat{2},
          TFloat{1} / TFloat{6},
          TFloat{1} / TFloat{24},
@@ -139,9 +172,9 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, 0.0f, ret);
+         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), 0.0f, ret);
+         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
@@ -181,7 +214,7 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
 
    x -= 1.0f;
 
-   TFloat ret = Polynomial(x,
+   TFloat ret = Polynomial32(x,
          TFloat{3.3333331174E-1f},
          TFloat{-2.4999993993E-1f},
          TFloat{2.0000714765E-1f},
@@ -211,7 +244,7 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
             ret);
    }
    if(bNegativePossible) {
-      ret = IfLess(val, 0.0, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
+      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
    }
    if(bNaNPossible) {
       if(bPositiveInfinityPossible) {
@@ -251,8 +284,8 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
    // https://github.com/vectorclass/version2/blob/f4617df57e17efcd754f5bbe0ec87883e0ed9ce6/vectormath_exp.h#L327
 
    // k_expUnderflow is set to a value that prevents us from returning a denormal number.
-   static constexpr float k_expUnderflow = -708.25f; // this is exactly representable in IEEE 754
-   static constexpr float k_expOverflow = 708.25f; // this is exactly representable in IEEE 754
+   static constexpr double k_expUnderflow = -708.25; // this is exactly representable in IEEE 754
+   static constexpr double k_expOverflow = 708.25; // this is exactly representable in IEEE 754
 
    // TODO: make this negation more efficient
    TFloat x = bNegateInput ? -val : val;
@@ -260,7 +293,7 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
    x = FusedNegateMultiplyAdd(rounded, TFloat{0.693145751953125}, x);
    x = FusedNegateMultiplyAdd(rounded, TFloat{1.42860682030941723212E-6}, x);
 
-   TFloat ret = Polynomial(x,
+   TFloat ret = Polynomial64(x,
          TFloat{1} / TFloat{2},
          TFloat{1} / TFloat{6},
          TFloat{1} / TFloat{24},
@@ -293,9 +326,9 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, 0.0f, ret);
+         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), 0.0f, ret);
+         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
@@ -309,6 +342,89 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
          },
          bNegateInput ? -val : val,
          ret);
+#endif // NDEBUG
+
+   return ret;
+}
+
+template<typename TFloat,
+      bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = true,
+      bool bZeroPossible = true,
+      bool bPositiveInfinityPossible = true>
+static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
+   // algorithm comes from:
+   // https://github.com/vectorclass/version2/blob/f4617df57e17efcd754f5bbe0ec87883e0ed9ce6/vectormath_exp.h#L1048
+
+   TFloat x = Mantissa64(val);
+   TFloat exponent = Exponent64(val);
+
+   const auto comparison = x <= TFloat(1.41421356237309504880 * 0.5);
+   x = IfThenElse(comparison, x + x, x);
+   exponent = IfThenElse(~comparison, exponent + 1, exponent);
+
+   x -= 1.0;
+
+   TFloat poly1 = Polynomial64(x,
+         TFloat{7.70838733755885391666E0},
+         TFloat{1.79368678507819816313E1},
+         TFloat{1.44989225341610930846E1},
+         TFloat{4.70579119878881725854E0},
+         TFloat{4.97494994976747001425E-1},
+         TFloat{1.01875663804580931796E-4});
+   TFloat x2 = x * x;
+   poly1 *= x * x2;
+   TFloat poly2 = Polynomial64(x,
+         TFloat{2.31251620126765340583E1},
+         TFloat{7.11544750618563894466E1},
+         TFloat{8.29875266912776603211E1},
+         TFloat{4.52279145837532221105E1},
+         TFloat{1.12873587189167450590E1});
+   TFloat ret = poly1 / poly2;
+
+   ret = FusedMultiplyAdd(exponent, TFloat{-2.121944400546905827679E-4}, ret);
+   ret += FusedNegateMultiplyAdd(x2, 0.5, x);
+   ret = FusedMultiplyAdd(exponent, TFloat{0.693359375}, ret);
+
+   if(bNegateOutput) {
+      // TODO: do this with an alternate to FusedMultiplyAdd
+      ret = -ret;
+   }
+
+   if(bZeroPossible) {
+      ret = IfLess(val,
+            std::numeric_limits<typename TFloat::T>::min(),
+            bNegateOutput ? std::numeric_limits<typename TFloat::T>::infinity() :
+                            -std::numeric_limits<typename TFloat::T>::infinity(),
+            ret);
+   }
+   if(bNegativePossible) {
+      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
+   }
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         ret = IfLess(val, std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
+      } else {
+         ret = IfNaN(val, val, ret);
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         ret = IfEqual(std::numeric_limits<typename TFloat::T>::infinity(),
+               val,
+               bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
+                               std::numeric_limits<typename TFloat::T>::infinity(),
+               ret);
+      }
+   }
+
+#ifndef NDEBUG
+   TFloat::Execute(
+         [](int, typename TFloat::T orig, typename TFloat::T ret) {
+            EBM_ASSERT(IsApproxEqual(std::log(orig), ret, typename TFloat::T{1e-12}));
+         },
+         val,
+         bNegateOutput ? -ret : ret);
 #endif // NDEBUG
 
    return ret;
