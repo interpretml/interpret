@@ -74,6 +74,8 @@ struct Cpu_64_Int final {
 
    inline Cpu_64_Int operator+(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data + other.m_data); }
 
+   inline Cpu_64_Int operator-(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data - other.m_data); }
+
    inline Cpu_64_Int operator*(const T& other) const noexcept { return Cpu_64_Int(m_data * other); }
 
    inline Cpu_64_Int operator>>(int shift) const noexcept { return Cpu_64_Int(m_data >> shift); }
@@ -82,13 +84,28 @@ struct Cpu_64_Int final {
 
    inline Cpu_64_Int operator&(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data & other.m_data); }
 
+   inline Cpu_64_Int operator|(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data | other.m_data); }
+
+   friend inline Cpu_64_Int IfThenElse(const bool cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
+      return cmp ? trueVal : falseVal;
+   }
+
  private:
    TPack m_data;
 };
 static_assert(std::is_standard_layout<Cpu_64_Int>::value && std::is_trivially_copyable<Cpu_64_Int>::value,
       "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
 
+template<bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true>
+inline Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept;
+
 struct Cpu_64_Float final {
+   template<bool bNegateInput, bool bNaNPossible, bool bUnderflowPossible, bool bOverflowPossible>
+   friend Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept;
+
    using T = double;
    using TPack = double;
    using TInt = Cpu_64_Int;
@@ -106,6 +123,8 @@ struct Cpu_64_Float final {
    inline Cpu_64_Float(const double val) noexcept : m_data(static_cast<T>(val)) {}
    inline Cpu_64_Float(const float val) noexcept : m_data(static_cast<T>(val)) {}
    inline Cpu_64_Float(const int val) noexcept : m_data(static_cast<T>(val)) {}
+   inline Cpu_64_Float(const int64_t val) noexcept : m_data(static_cast<T>(val)) {}
+   explicit Cpu_64_Float(const Cpu_64_Int& val) : m_data(static_cast<T>(val.m_data)) {}
 
    inline Cpu_64_Float operator+() const noexcept { return *this; }
 
@@ -179,6 +198,10 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
+   friend inline bool operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data <= right.m_data;
+   }
+
    inline static Cpu_64_Float Load(const T* const a) noexcept { return Cpu_64_Float(*a); }
 
    inline void Store(T* const a) const noexcept { *a = m_data; }
@@ -207,6 +230,11 @@ struct Cpu_64_Float final {
       return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
    }
 
+   friend inline Cpu_64_Float IfThenElse(
+         const bool cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
+      return cmp ? trueVal : falseVal;
+   }
+
    friend inline Cpu_64_Float IfEqual(const Cpu_64_Float& cmp1,
          const Cpu_64_Float& cmp2,
          const Cpu_64_Float& trueVal,
@@ -226,9 +254,23 @@ struct Cpu_64_Float final {
       return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
    }
 
-   friend inline Cpu_64_Float Abs(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::abs(val.m_data)); }
+   static inline bool ReinterpretInt(const bool val) noexcept { return val; }
+
+   static inline Cpu_64_Int ReinterpretInt(const Cpu_64_Float& val) noexcept {
+      typename Cpu_64_Int::T mem;
+      memcpy(&mem, &val.m_data, sizeof(T));
+      return Cpu_64_Int(mem);
+   }
+
+   static inline Cpu_64_Float ReinterpretFloat(const Cpu_64_Int& val) noexcept {
+      T mem;
+      memcpy(&mem, &val.m_data, sizeof(T));
+      return Cpu_64_Float(mem);
+   }
 
    friend inline Cpu_64_Float Round(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::round(val.m_data)); }
+
+   friend inline Cpu_64_Float Abs(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::abs(val.m_data)); }
 
    friend inline Cpu_64_Float FastApproxReciprocal(const Cpu_64_Float& val) noexcept {
       return Cpu_64_Float(T{1.0} / val.m_data);
@@ -250,8 +292,6 @@ struct Cpu_64_Float final {
 
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::sqrt(val.m_data)); }
 
-   friend inline Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::exp(val.m_data)); }
-
    friend inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::log(val.m_data)); }
 
    template<bool bDisableApprox,
@@ -264,7 +304,7 @@ struct Cpu_64_Float final {
    static inline Cpu_64_Float ApproxExp(const Cpu_64_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       UNUSED(addExpSchraudolphTerm);
-      return Exp(bNegateInput ? -val : val);
+      return Exp<bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
    }
 
    template<bool bDisableApprox,
@@ -353,6 +393,11 @@ struct Cpu_64_Float final {
 };
 static_assert(std::is_standard_layout<Cpu_64_Float>::value && std::is_trivially_copyable<Cpu_64_Float>::value,
       "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
+
+template<bool bNegateInput, bool bNaNPossible, bool bUnderflowPossible, bool bOverflowPossible>
+inline Cpu_64_Float Exp(const Cpu_64_Float& val) noexcept {
+   return Exp64<Cpu_64_Float, bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
+}
 
 INTERNAL_IMPORT_EXPORT_BODY ErrorEbm ApplyUpdate_Cpu_64(
       const ObjectiveWrapper* const pObjectiveWrapper, ApplyUpdateBridge* const pData) {
