@@ -93,7 +93,6 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
    ret = (ret + TFloat{1}) * rounded2;
 
-   // TODO: handling overflow/underflow possible faster see vectormath version2 code
    if(bOverflowPossible) {
       if(bNegateInput) {
          ret = IfLess(val,
