@@ -912,7 +912,7 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
          }
       }
    }
-   CHECK_APPROX_TOLERANCE(validationMetric, 1.7171897252232722e-09, double{1e+1});
+   CHECK_APPROX_TOLERANCE(validationMetric, 1.3864288330078125, double{1e-1});
    double zeroLogit1 = test.GetCurrentTermScore(0, {}, 0);
    termScore = test.GetCurrentTermScore(0, {}, 1) - zeroLogit1;
    CHECK_APPROX(termScore, 0.0);
