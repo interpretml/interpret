@@ -527,9 +527,9 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(
             // according to IEEE 754, comparing NaN to anything returns false (except itself), so checking if it's
             // greater or equal to zero will yield false if val is a NaN, and then true after the negation, so this
             // checks for both of our NaN output conditions.  This needs to be compiled with strict floating point!
-            if(UNLIKELY(!(T{0} < val))) {
+            if(UNLIKELY(!(std::numeric_limits<T>::min() <= val))) {
                if(bZeroPossible) {
-                  return PREDICTABLE(T{0} == val) ?
+                  return PREDICTABLE(T{0} <= val) ?
                         (bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity()) :
                         std::numeric_limits<T>::quiet_NaN();
                } else {
@@ -538,7 +538,7 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(
             }
          } else {
             if(bZeroPossible) {
-               if(UNLIKELY(T{0} == val)) {
+               if(UNLIKELY(!(std::numeric_limits<T>::min() <= val))) {
                   return bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity();
                }
             }

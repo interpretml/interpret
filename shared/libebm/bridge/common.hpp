@@ -36,6 +36,37 @@ namespace DEFINED_ZONE_NAME {
 #define INLINE_RELEASE_TEMPLATED
 #endif // NDEBUG
 
+#ifndef NDEBUG
+template<typename T> INLINE_ALWAYS static bool IsApproxEqual(const T val1, const T val2, const T percentage = T{1e-3}) {
+   bool isEqual;
+   if(std::isnan(val1)) {
+      isEqual = std::isnan(val2);
+   } else {
+      // if val2 is NaN, the below comparisons will all be false, so it will be non-equal
+      const T multiple = T{1} + percentage;
+      if(val1 < val2) {
+         if(T{0} < val2) {
+            // val2 is the bigger positive number
+            isEqual = val2 <= val1 * multiple;
+         } else {
+            // val1 is the bigger negative number
+            isEqual = val2 * multiple <= val1;
+         }
+      } else {
+         // val2 <= val1
+         if(T{0} < val1) {
+            // val1 is the bigger positive number
+            isEqual = val1 <= val2 * multiple;
+         } else {
+            // val2 is the bigger negative number, or zero
+            isEqual = val1 * multiple <= val2;
+         }
+      }
+   }
+   return isEqual;
+}
+#endif // NDEBUG
+
 // The C++ standard makes it undefined behavior to access memory past the end of an array with a declared length.
 // So, without mitigation, the struct hack would be undefined behavior.  We can however formally turn an array
 // into a pointer, thus making our modified struct hack completely legal in C++.  So, for instance, the following

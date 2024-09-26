@@ -283,12 +283,12 @@ struct Cpu_64_Float final {
    template<bool bDisableApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
-         bool bNegativePossible = false,
-         bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a
-                                     // big positive number
-         bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a
-                                                 // double that is above the largest representable float, then setting
-                                                 // this is necessary to avoid undefined behavior
+         bool bNegativePossible = true,
+         bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a
+                                    // big positive number
+         bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
+                                                // double that is above the largest representable float, then setting
+                                                // this is necessary to avoid undefined behavior
          typename std::enable_if<bDisableApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxLog(
          const Cpu_64_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
@@ -300,12 +300,12 @@ struct Cpu_64_Float final {
    template<bool bDisableApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
-         bool bNegativePossible = false,
-         bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a
-                                     // big positive number
-         bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a
-                                                 // double that is above the largest representable float, then setting
-                                                 // this is necessary to avoid undefined behavior
+         bool bNegativePossible = true,
+         bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a
+                                    // big positive number
+         bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
+                                                // double that is above the largest representable float, then setting
+                                                // this is necessary to avoid undefined behavior
          typename std::enable_if<!bDisableApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxLog(
          const Cpu_64_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {

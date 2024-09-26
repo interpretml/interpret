@@ -677,12 +677,12 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    template<bool bDisableApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
-         bool bNegativePossible = false,
-         bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a
-                                     // big positive number
-         bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a
-                                                 // double that is above the largest representable float, then setting
-                                                 // this is necessary to avoid undefined behavior
+         bool bNegativePossible = true,
+         bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a
+                                    // big positive number
+         bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
+                                                // double that is above the largest representable float, then setting
+                                                // this is necessary to avoid undefined behavior
          typename std::enable_if<bDisableApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxLog(
          const Avx512f_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
@@ -694,12 +694,12 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    template<bool bDisableApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
-         bool bNegativePossible = false,
-         bool bZeroPossible = false, // if false, positive zero returns a big negative number, negative zero returns a
-                                     // big positive number
-         bool bPositiveInfinityPossible = false, // if false, +inf returns a big positive number.  If val can be a
-                                                 // double that is above the largest representable float, then setting
-                                                 // this is necessary to avoid undefined behavior
+         bool bNegativePossible = true,
+         bool bZeroPossible = true, // if false, positive zero returns a big negative number, negative zero returns a
+                                    // big positive number
+         bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
+                                                // double that is above the largest representable float, then setting
+                                                // this is necessary to avoid undefined behavior
          typename std::enable_if<!bDisableApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxLog(
          const Avx512f_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
@@ -713,6 +713,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       } else {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
       }
+      // TODO: combine this with the NaN check (we simply pass it through if it's +inf (with negation if required)
       if(bPositiveInfinityPossible) {
          result = IfEqual(std::numeric_limits<T>::infinity(),
                val,
@@ -720,13 +721,13 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
                result);
       }
       if(bZeroPossible) {
-         result = IfEqual(0.0,
-               val,
+         result = IfLess(val,
+               std::numeric_limits<T>::min(),
                bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(),
                result);
       }
       if(bNegativePossible) {
-         result = IfLess(val, 0.0, std::numeric_limits<T>::quiet_NaN(), result);
+         result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
       }
       if(bNaNPossible) {
          result = IfNaN(val, val, result);

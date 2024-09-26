@@ -260,7 +260,9 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                // identical, so instead of calling LoadScattered we'll be able to call LoadAligned
                const TFloat itemExp = TFloat::Load(aExps, target);
                const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
-               TFloat metric = TFloat::template ApproxLog<bDisableApprox, false>(invertedProbability);
+               // zero and negative are impossible since 1.0 is the lowest possible value
+               TFloat metric =
+                     TFloat::template ApproxLog<bDisableApprox, false, true, false, false>(invertedProbability);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);

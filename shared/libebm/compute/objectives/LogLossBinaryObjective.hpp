@@ -221,7 +221,8 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
                metric = TFloat::template ApproxExp<bDisableApprox, false>(metric);
                metric += 1.0;
-               metric = TFloat::template ApproxLog<bDisableApprox, false>(metric);
+               // zero and negative are impossible since 1.0 is the lowest possible value
+               metric = TFloat::template ApproxLog<bDisableApprox, false, true, false, false>(metric);
 
                if(bWeight) {
                   metricSum = FusedMultiplyAdd(metric, weight, metricSum);
