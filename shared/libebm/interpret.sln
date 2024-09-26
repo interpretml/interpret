@@ -69,6 +69,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\BinSumsInteraction.hpp = compute\BinSumsInteraction.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp
+		compute\math.hpp = compute\math.hpp
 		compute\Objective.hpp = compute\Objective.hpp
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\registration_exceptions.hpp = compute\registration_exceptions.hpp

@@ -22,6 +22,7 @@
 #include "Registration.hpp"
 #include "Objective.hpp"
 
+#include "math.hpp"
 #include "approximate_math.hpp"
 #include "compute_wrapper.hpp"
 
@@ -226,6 +227,8 @@ struct Cpu_64_Float final {
    }
 
    friend inline Cpu_64_Float Abs(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::abs(val.m_data)); }
+
+   friend inline Cpu_64_Float Round(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::round(val.m_data)); }
 
    friend inline Cpu_64_Float FastApproxReciprocal(const Cpu_64_Float& val) noexcept {
       return Cpu_64_Float(T{1.0} / val.m_data);
