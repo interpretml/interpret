@@ -64,7 +64,7 @@ static constexpr FloatCalc k_gainMin = 0;
 //   - details on float representations -> https://www.volkerschatz.com/science/float.html
 //   - things that are guaranteed and not -> https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
 
-INLINE_ALWAYS static FloatCalc HandleL1(const FloatCalc sumGradient, const FloatCalc regAlpha) {
+INLINE_ALWAYS static FloatCalc ApplyL1(const FloatCalc sumGradient, const FloatCalc regAlpha) {
    EBM_ASSERT(0 <= regAlpha);
    FloatCalc regularizedSumGradient = std::fabs(sumGradient) - regAlpha;
    regularizedSumGradient = UNLIKELY(regularizedSumGradient < FloatCalc{0}) ? FloatCalc{0} : regularizedSumGradient;
@@ -73,7 +73,7 @@ INLINE_ALWAYS static FloatCalc HandleL1(const FloatCalc sumGradient, const Float
    return regularizedSumGradient;
 }
 
-INLINE_ALWAYS static FloatCalc HandleL2(const FloatCalc sumHessian, const FloatCalc regLambda) {
+INLINE_ALWAYS static FloatCalc ApplyL2(const FloatCalc sumHessian, const FloatCalc regLambda) {
    EBM_ASSERT(0 <= regLambda);
    return sumHessian + regLambda;
 }
@@ -98,7 +98,7 @@ INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient,
          return FloatCalc{0};
       }
    }
-   FloatCalc ret = HandleL1(sumGradient, regAlpha) / HandleL2(sumHessian, regLambda);
+   FloatCalc ret = ApplyL1(sumGradient, regAlpha) / ApplyL2(sumHessian, regLambda);
    if(UNLIKELY(std::fabs(ret) > deltaStepMax)) {
       ret = UNPREDICTABLE(ret < FloatCalc{0}) ? -deltaStepMax : deltaStepMax;
    }
@@ -114,7 +114,7 @@ INLINE_ALWAYS static FloatCalc CalcPartialGainFromUpdate(const FloatCalc sumGrad
    EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} <= sumHessian);
 
    const FloatCalc partialGain =
-         negUpdate * (HandleL1(sumGradient, regAlpha) * FloatCalc{2} - negUpdate * HandleL2(sumHessian, regLambda));
+         negUpdate * (ApplyL1(sumGradient, regAlpha) * FloatCalc{2} - negUpdate * ApplyL2(sumHessian, regLambda));
 
    return partialGain;
 }
@@ -136,8 +136,8 @@ INLINE_ALWAYS static FloatCalc CalcPartialGain(const FloatCalc sumGradient,
       const FloatCalc negUpdate = CalcNegUpdate<false>(sumGradient, sumHessian, regAlpha, regLambda, deltaStepMax);
       partialGain = CalcPartialGainFromUpdate(sumGradient, sumHessian, negUpdate, regAlpha, regLambda);
    } else {
-      const FloatCalc regularizedSumGradient = HandleL1(sumGradient, regAlpha);
-      partialGain = regularizedSumGradient / HandleL2(sumHessian, regLambda) * regularizedSumGradient;
+      const FloatCalc regularizedSumGradient = ApplyL1(sumGradient, regAlpha);
+      partialGain = regularizedSumGradient / ApplyL2(sumHessian, regLambda) * regularizedSumGradient;
 
       EBM_ASSERT(std::isnan(partialGain) ||
             IsApproxEqual(partialGain,

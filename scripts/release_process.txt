@@ -264,9 +264,7 @@ set_visualize_provider(InlineProvider())
 POWERLIFT:
 - update CHANGELOG.md
 - update version in:
-  scripts\build-docker.sh
-  scripts\Dockerfile (in 2 places)
-  setup.py
-  powerlift\executors\azure_ci.py
-  powerlift\executors\docker.py
-  powerlift\_version.py
+  python\powerlift\scripts\build-docker.sh
+  python\powerlift\scripts\Dockerfile (in 2 places)
+  python\powerlift\setup.py
+  python\powerlift\powerlift\_version.py

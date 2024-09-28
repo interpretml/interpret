@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.4] - 2024-09-28
+### Added
+- support for regularization parameters reg_alpha, and reg_lambda in EBMs
+- support for the parameter max_delta_step in EBMs
+- improved fitting speed for most of the alternative objectives
+
 ## [v0.6.3] - 2024-08-07
 ### Added
 - visualizations for the APRL (Automatic Piecewise Linear Regression) package by @mathias-von-ottenbreit
