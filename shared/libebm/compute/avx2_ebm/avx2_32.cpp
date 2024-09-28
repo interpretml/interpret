@@ -34,12 +34,24 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+static constexpr size_t k_cAlignment = 32;
+struct alignas(k_cAlignment) Avx2_32_Float;
+struct alignas(k_cAlignment) Avx2_32_Int;
+
+template<bool bNegateInput = false,
+      bool bNaNPossible = true,
+      bool bUnderflowPossible = true,
+      bool bOverflowPossible = true>
+inline Avx2_32_Float Exp(const Avx2_32_Float& val) noexcept;
+template<bool bNegateOutput = false,
+      bool bNaNPossible = true,
+      bool bNegativePossible = true,
+      bool bZeroPossible = true,
+      bool bPositiveInfinityPossible = true>
+inline Avx2_32_Float Log(const Avx2_32_Float& val) noexcept;
+
 // this is super-special and included inside the zone namespace
 #include "objective_registrations.hpp"
-
-static constexpr size_t k_cAlignment = 32;
-
-struct alignas(k_cAlignment) Avx2_32_Float;
 
 struct alignas(k_cAlignment) Avx2_32_Int final {
    friend Avx2_32_Float;
@@ -137,18 +149,6 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
 };
 static_assert(std::is_standard_layout<Avx2_32_Int>::value && std::is_trivially_copyable<Avx2_32_Int>::value,
       "This allows offsetof, memcpy, memset, inter-language, GPU and cross-machine use where needed");
-
-template<bool bNegateInput = false,
-      bool bNaNPossible = true,
-      bool bUnderflowPossible = true,
-      bool bOverflowPossible = true>
-inline Avx2_32_Float Exp(const Avx2_32_Float& val) noexcept;
-template<bool bNegateOutput = false,
-      bool bNaNPossible = true,
-      bool bNegativePossible = true,
-      bool bZeroPossible = true,
-      bool bPositiveInfinityPossible = true>
-inline Avx2_32_Float Log(const Avx2_32_Float& val) noexcept;
 
 struct alignas(k_cAlignment) Avx2_32_Float final {
    template<bool bNegateInput, bool bNaNPossible, bool bUnderflowPossible, bool bOverflowPossible>

@@ -52,25 +52,23 @@ template<typename TFloat> struct GammaDevianceRegressionObjective : RegressionOb
    inline double FinishMetric(const double metricSum) const noexcept { return 2.0 * metricSum; }
 
    GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat frac = target / prediction;
+      const TFloat invPrediction = Exp<true>(score); // log link function
+      const TFloat frac = target * invPrediction;
       const TFloat metric = frac - 1.0 - Log(frac);
       return metric;
    }
 
    GPU_DEVICE inline TFloat CalcGradient(const TFloat& score, const TFloat& target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat frac = target / prediction;
-      const TFloat gradient = 1.0 - frac;
+      const TFloat invPrediction = Exp<true>(score); // log link function
+      const TFloat gradient = FusedNegateMultiplyAdd(target, invPrediction, 1.0);
       return gradient;
    }
 
    GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(
          const TFloat& score, const TFloat& target) const noexcept {
-      const TFloat prediction = Exp(score); // log link function
-      const TFloat frac = target / prediction;
-      const TFloat gradient = 1.0 - frac;
-      const TFloat hessian = frac;
+      const TFloat invPrediction = Exp<true>(score); // log link function
+      const TFloat gradient = FusedNegateMultiplyAdd(target, invPrediction, 1.0);
+      const TFloat hessian = target * invPrediction;
       return MakeGradientHessian(gradient, hessian);
    }
 };
