@@ -19,9 +19,9 @@ from sklearn.base import (
     RegressorMixin,
     is_classifier,
     is_regressor,
-)  # type: ignore
+)
 from sklearn.isotonic import IsotonicRegression
-from sklearn.utils.validation import check_is_fitted  # type: ignore
+from sklearn.utils.validation import check_is_fitted
 
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
@@ -55,7 +55,6 @@ from ...utils._unify_data import unify_data
 from ._bin import (
     ebm_eval_terms,
     ebm_predict_scores,
-    eval_terms,
     make_bin_weights,
 )
 from ._boost import boost
@@ -88,7 +87,7 @@ class EBMExplanation(FeatureValueExplanation):
         name=None,
         selector=None,
     ):
-        """Initializes class.
+        """Initialize class.
 
         Args:
             explanation_type:  Type of explanation.
@@ -97,8 +96,9 @@ class EBMExplanation(FeatureValueExplanation):
             feature_types: List of feature types.
             name: User-defined name of explanation.
             selector: A dataframe whose indices correspond to explanation entries.
+
         """
-        super(EBMExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -108,7 +108,7 @@ class EBMExplanation(FeatureValueExplanation):
         )
 
     def visualize(self, key=None):
-        """Provides interactive visualizations.
+        """Provide interactive visualizations.
 
         Args:
             key: Either a scalar or list
@@ -117,6 +117,7 @@ class EBMExplanation(FeatureValueExplanation):
 
         Returns:
             A Plotly figure.
+
         """
         from ...visual.plot import (
             is_multiclass_global_data_dict,
@@ -156,9 +157,7 @@ class EBMExplanation(FeatureValueExplanation):
 
         # Per term global explanation
         if self.explanation_type == "global":
-            title = "Term: {0} ({1})".format(
-                self.feature_names[key], self.feature_types[key]
-            )
+            title = f"Term: {self.feature_names[key]} ({self.feature_types[key]})"
 
             if self.feature_types[key] == "continuous":
                 xtitle = self.feature_names[key]
@@ -181,23 +180,20 @@ class EBMExplanation(FeatureValueExplanation):
             ):
                 figure = super().visualize(key, title)
                 figure._interpret_help_text = (
-                    "The contribution (score) of the term {0} to predictions "
-                    "made by the model.".format(self.feature_names[key])
+                    f"The contribution (score) of the term {self.feature_names[key]} to predictions "
+                    "made by the model."
                 )
             else:  # pragma: no cover
-                raise Exception(
-                    "Not supported configuration: {0}, {1}".format(
-                        self.explanation_type, self.feature_types[key]
-                    )
-                )
+                msg = f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
+                raise Exception(msg)
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
-                "{0} to predictions made by the model. For classification, "
+                f"{self.feature_names[key]} to predictions made by the model. For classification, "
                 "scores are on a log scale (logits). For regression, scores are on the same "
                 "scale as the outcome being predicted (e.g., dollars when predicting cost). "
                 "Each graph is centered vertically such that average prediction on the train "
-                "set is 0.".format(self.feature_names[key])
+                "set is 0."
             )
 
             return figure
@@ -219,20 +215,26 @@ class EBMExplanation(FeatureValueExplanation):
             )
 
             return figure
+        msg = (
+            f"`explainer_type has to be 'global' or 'local', got {self.explainer_type}."
+        )
+        raise NotImplementedError(msg)
 
 
 def is_private(estimator):
-    """Return True if the given estimator is a differentially private EBM estimator
+    """Return True if the given estimator is a differentially private EBM estimator.
+
     Parameters
     ----------
     estimator : estimator instance
         Estimator object to test.
+
     Returns
     -------
     out : bool
         True if estimator is a differentially private EBM estimator and False otherwise.
-    """
 
+    """
     return isinstance(
         estimator, (DPExplainableBoostingClassifier, DPExplainableBoostingRegressor)
     )
@@ -241,8 +243,8 @@ def is_private(estimator):
 def _clean_exclude(exclude, feature_map):
     ret = set()
     for term in exclude:
-        if isinstance(term, int) or isinstance(term, float) or isinstance(term, str):
-            term = (term,)
+        if isinstance(term, (float, int, str)):
+            term = (term,)  # noqa: PLW2901
 
         cleaned = []
         for feature in term:
@@ -251,13 +253,13 @@ def _clean_exclude(exclude, feature_map):
                     msg = "exclude must contain integers or feature names"
                     _log.error(msg)
                     raise ValueError(msg)
-                feature = int(feature)
+                feature = int(feature)  # noqa: PLW2901
             elif isinstance(feature, str):
                 if feature not in feature_map:
                     msg = f"exclude item {feature} not in feature names"
                     _log.error(msg)
                     raise ValueError(msg)
-                feature = feature_map[feature]
+                feature = feature_map[feature]  # noqa: PLW2901
             elif not isinstance(feature, int):
                 msg = f"unrecognized item type {type(feature)} in exclude"
                 _log.error(msg)
@@ -274,7 +276,7 @@ def _clean_exclude(exclude, feature_map):
 
 
 class EBMModel(BaseEstimator):
-    """Base class for all EBMs"""
+    """Base class for all EBMs."""
 
     def __init__(
         self,
@@ -366,12 +368,12 @@ class EBMModel(BaseEstimator):
             self.privacy_target_min = privacy_target_min
             self.privacy_target_max = privacy_target_max
 
-    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):  # noqa: C901
-        """Fits model to provided samples.
+    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):
+        """Fit model to provided samples.
 
         Args:
-            X: Numpy array for training samples.
-            y: Numpy array as training labels.
+            X: NumPy array for training samples.
+            y: NumPy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
             bags: Optional bag definitions. The first dimension should have length equal to the number of outer_bags.
                 The second dimension should have length equal to the number of samples. The contents should be
@@ -382,8 +384,8 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself.
-        """
 
+        """
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
@@ -399,16 +401,15 @@ class EBMModel(BaseEstimator):
             msg = "outer_bags must be an integer"
             _log.error(msg)
             raise ValueError(msg)
-        elif self.outer_bags < 1:
+        if self.outer_bags < 1:
             msg = "outer_bags must be 1 or greater. Did you mean to set: outer_bags=1, validation_size=0?"
             _log.error(msg)
             raise ValueError(msg)
 
-        if bags is not None:
-            if len(bags) != self.outer_bags:
-                msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
-                _log.error(msg)
-                raise ValueError(msg)
+        if (bags is not None) and len(bags) != self.outer_bags:
+            msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
+            _log.error(msg)
+            raise ValueError(msg)
 
         if not isinstance(self.validation_size, int) and not isinstance(
             self.validation_size, float
@@ -416,16 +417,17 @@ class EBMModel(BaseEstimator):
             msg = "validation_size must be an integer or float"
             _log.error(msg)
             raise ValueError(msg)
-        elif self.validation_size <= 0:
+        if self.validation_size <= 0:
             if self.validation_size < 0:
                 msg = "validation_size cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif 1 < self.outer_bags:
+            if self.outer_bags > 1:
                 warn(
-                    "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning."
+                    "If validation_size is 0, the outer_bags have no purpose. Set outer_bags=1 to remove this warning.",
+                    stacklevel=1,
                 )
-        elif 1 <= self.validation_size:
+        elif self.validation_size >= 1:
             # validation_size equal to 1 or more is an exact number specification, so it must be an integer
             if (
                 not isinstance(self.validation_size, int)
@@ -439,7 +441,7 @@ class EBMModel(BaseEstimator):
             msg = "max_rounds must be an integer"
             _log.error(msg)
             raise ValueError(msg)
-        elif self.max_rounds < 0:
+        if self.max_rounds < 0:
             # max_rounds == 0 means no boosting. This can be useful to just perform discretization
             msg = "max_rounds cannot be negative"
             _log.error(msg)
@@ -450,7 +452,7 @@ class EBMModel(BaseEstimator):
                 msg = "greedy_ratio cannot be NaN"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.greedy_ratio < 0.0:
+            if self.greedy_ratio < 0.0:
                 msg = "greedy_ratio cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -467,7 +469,7 @@ class EBMModel(BaseEstimator):
                 msg = "cyclic_progress cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif 1.0 < self.cyclic_progress:
+            elif self.cyclic_progress > 1.0:
                 msg = "cyclic_progress cannot be above 1.0"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -481,7 +483,7 @@ class EBMModel(BaseEstimator):
                 msg = "smoothing_rounds must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.smoothing_rounds < 0:
+            if self.smoothing_rounds < 0:
                 msg = "smoothing_rounds cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -493,7 +495,7 @@ class EBMModel(BaseEstimator):
                 msg = "interaction_smoothing_rounds must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.interaction_smoothing_rounds < 0:
+            if self.interaction_smoothing_rounds < 0:
                 msg = "interaction_smoothing_rounds cannot be negative"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -505,7 +507,7 @@ class EBMModel(BaseEstimator):
                 msg = "inner_bags must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.inner_bags < 0:
+            if self.inner_bags < 0:
                 # inner_bags == 0 turns off inner bagging
                 msg = "inner_bags cannot be negative"
                 _log.error(msg)
@@ -518,7 +520,7 @@ class EBMModel(BaseEstimator):
                 msg = "early_stopping_rounds must be an integer"
                 _log.error(msg)
                 raise ValueError(msg)
-            elif self.early_stopping_rounds < 0:
+            if self.early_stopping_rounds < 0:
                 # early_stopping_rounds == 0 means turn off early_stopping
                 # early_stopping_rounds == 1 means check after the first round, etc
                 msg = "early_stopping_rounds cannot be negative"
@@ -538,7 +540,7 @@ class EBMModel(BaseEstimator):
             msg = "learning_rate must be a float"
             _log.error(msg)
             raise ValueError(msg)
-        elif self.learning_rate <= 0:
+        if self.learning_rate <= 0:
             msg = "learning_rate must be a positive number"
             _log.error(msg)
             raise ValueError(msg)
@@ -608,7 +610,8 @@ class EBMModel(BaseEstimator):
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
-                raise ValueError("sample_weight must be 1 dimensional")
+                msg = "sample_weight must be 1 dimensional"
+                raise ValueError(msg)
             if len(y) != len(sample_weight):
                 msg = f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
@@ -640,7 +643,8 @@ class EBMModel(BaseEstimator):
                 warn(
                     f"Privacy violation: using a fixed random_state of {self.random_state} "
                     "will cause deterministic noise additions. This capability is only "
-                    "for debugging/testing. Set random_state to None to remove this warning."
+                    "for debugging/testing. Set random_state to None to remove this warning.",
+                    stacklevel=1,
                 )
 
             validate_eps_delta(self.epsilon, self.delta)
@@ -669,15 +673,15 @@ class EBMModel(BaseEstimator):
                         "Possible privacy violation: assuming min/max values for "
                         "target are public info. Pass in privacy_target_min and "
                         "privacy_target_max with known public values to avoid "
-                        "this warning."
+                        "this warning.",
+                        stacklevel=1,
                     )
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
-            elif 2 < n_classes:  # pragma: no cover
-                raise ValueError(
-                    "Multiclass not supported for Differentially Private EBMs."
-                )
+            elif n_classes > 2:  # pragma: no cover
+                msg = "Multiclass not supported for Differentially Private EBMs."
+                raise ValueError(msg)
 
             # Split epsilon, delta budget for binning and learning
             bin_eps = self.epsilon * self.bin_budget_frac
@@ -739,7 +743,8 @@ class EBMModel(BaseEstimator):
                 "Missing values detected. Our visualizations do not currently display missing values. "
                 "To retain the glassbox nature of the model you need to either set the missing values "
                 "to an extreme value like -1000 that will be visible on the graphs, or manually "
-                "examine the missing value score in ebm.term_scores_[term_index][0]"
+                "examine the missing value score in ebm.term_scores_[term_index][0]",
+                stacklevel=1,
             )
 
         n_features_in = len(bins)
@@ -778,7 +783,7 @@ class EBMModel(BaseEstimator):
                     y,
                     self.validation_size,
                     bagged_rng,
-                    0 <= n_classes and not is_differential_privacy,
+                    n_classes >= 0 and not is_differential_privacy,
                 )
             else:
                 bag = bags[idx]
@@ -792,7 +797,7 @@ class EBMModel(BaseEstimator):
                     msg = f"y has {len(y)} samples and bags has {len(bag)} samples"
                     _log.error(msg)
                     raise ValueError(msg)
-                if (127 < bag).any() or (bag < -128).any():
+                if (bag > 127).any() or (bag < -128).any():
                     msg = "A value in bags is outside the valid range -128 to 127"
                     _log.error(msg)
                     raise ValueError(msg)
@@ -809,7 +814,7 @@ class EBMModel(BaseEstimator):
                 else:
                     bag_weights.append(sample_weight.sum())
             else:
-                keep = 0 < bag
+                keep = bag > 0
                 if sample_weight is None:
                     bag_weights.append(bag[keep].sum())
                 else:
@@ -819,7 +824,7 @@ class EBMModel(BaseEstimator):
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if 0 <= n_classes else max_target - min_target
+            domain_size = 1 if n_classes >= 0 else max_target - min_target
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta - bin_delta
@@ -843,9 +848,8 @@ class EBMModel(BaseEstimator):
                 # Alg Line 17
                 noise_scale_boosting *= domain_size * self.learning_rate * max_weight
             else:
-                raise NotImplementedError(
-                    f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
-                )
+                msg = f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
+                raise NotImplementedError(msg)
 
             bin_data_weights = main_bin_weights
             term_boost_flags = (
@@ -884,9 +888,7 @@ class EBMModel(BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-            exclude_features = set(
-                i for i, v in enumerate(monotone_constraints) if v != 0
-            )
+            exclude_features = {i for i, v in enumerate(monotone_constraints) if v != 0}
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
@@ -905,7 +907,7 @@ class EBMModel(BaseEstimator):
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = early_stopping_rounds
             bag = internal_bags[idx]
-            if bag is None or (0 <= bag).all():
+            if bag is None or (bag >= 0).all():
                 # if there are no validation samples, turn off early stopping
                 # because the validation metric cannot improve each round
                 early_stopping_rounds_local = 0
@@ -956,7 +958,9 @@ class EBMModel(BaseEstimator):
         results = provider.parallel(boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
-        del parallel_args  # parallel_args holds references to dataset, so must be deleted
+        del (
+            parallel_args
+        )  # parallel_args holds references to dataset, so must be deleted
         del dataset
 
         best_iteration = [[]]
@@ -974,7 +978,7 @@ class EBMModel(BaseEstimator):
             if interactions is None:
                 break
 
-            if isinstance(interactions, int) or isinstance(interactions, float):
+            if isinstance(interactions, (float, int)):
                 if interactions <= 0:
                     if interactions == 0:
                         break
@@ -991,7 +995,7 @@ class EBMModel(BaseEstimator):
                         raise ValueError(msg)
                     interactions = int(interactions)
 
-                if 2 < n_classes:
+                if n_classes > 2:
                     warn(
                         "Detected multiclass problem. Forcing interactions to 0. "
                         "Multiclass interactions only have local explanations. "
@@ -999,15 +1003,14 @@ class EBMModel(BaseEstimator):
                         "visualizations. Set interactions=0 to disable this warning. "
                         "If you still want multiclass interactions, this API accepts "
                         "a list, and the measure_interactions function can be used to "
-                        "detect them."
+                        "detect them.",
+                        stacklevel=1,
                     )
                     break
 
                 # at this point interactions will be a positive, nonzero integer
-            else:
-                # interactions must be a list of the interactions
-                if len(interactions) == 0:
-                    break
+            elif len(interactions) == 0:
+                break
 
             initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
@@ -1039,7 +1042,9 @@ class EBMModel(BaseEstimator):
                 feature_names_in,
                 feature_types_in,
             )
-            del y  # we no longer need this, so allow the garbage collector to reclaim it
+            del (
+                y
+            )  # we no longer need this, so allow the garbage collector to reclaim it
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
@@ -1118,7 +1123,7 @@ class EBMModel(BaseEstimator):
                                 msg = f"interaction feature index {feature} is not an integer."
                                 _log.error(msg)
                                 raise ValueError(msg)
-                            feature = int(feature)
+                            feature = int(feature)  # noqa: PLW2901
 
                         if isinstance(feature, int):
                             if feature < 0:
@@ -1134,7 +1139,7 @@ class EBMModel(BaseEstimator):
                                 _log.error(msg)
                                 raise ValueError(msg)
                         elif isinstance(feature, str):
-                            feature_idx = feature_map.get(feature, None)
+                            feature_idx = feature_map.get(feature)
                             if feature_idx is None:
                                 msg = f'interaction feature "{feature}" not in the list of feature names.'
                                 _log.error(msg)
@@ -1152,17 +1157,18 @@ class EBMModel(BaseEstimator):
                         uniquifier.add(sorted_tuple)
                         boost_groups.append(feature_idxs)
 
-                if 2 < max_dimensions:
+                if max_dimensions > 2:
                     warn(
                         "Interactions with 3 or more terms are not graphed in "
                         "global explanations. Local explanations are still "
-                        "available and exact."
+                        "available and exact.",
+                        stacklevel=1,
                     )
 
             parallel_args = []
             for idx in range(self.outer_bags):
                 early_stopping_rounds_local = early_stopping_rounds
-                if internal_bags[idx] is None or (0 <= internal_bags[idx]).all():
+                if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
                     # if there are no validation samples, turn off early stopping
                     # because the validation metric cannot improve each round
                     early_stopping_rounds_local = 0
@@ -1281,7 +1287,7 @@ class EBMModel(BaseEstimator):
             self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
-        if 0 <= n_classes:
+        if n_classes >= 0:
             self.classes_ = classes  # required by scikit-learn
         else:
             # we do not use these currently, but they indicate the domain for DP and
@@ -1314,21 +1320,21 @@ class EBMModel(BaseEstimator):
         return self
 
     def to_jsonable(self, detail="all"):
-        """Converts the model to a JSONable representation.
+        """Convert the model to a JSONable representation.
 
         Args:
             detail: 'minimal', 'interpretable', 'mergeable', 'all'
 
         Returns:
             JSONable object
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         return to_jsonable(self, detail)
 
     def to_json(self, file, detail="all", indent=2):
-        """Exports the model to a JSON text file.
+        r"""Export the model to a JSON text file.
 
         Args:
             file: a path-like object (str or os.PathLike),
@@ -1340,8 +1346,8 @@ class EBMModel(BaseEstimator):
                 None (the default) selects the most compact representation. Using a
                 positive integer indent indents that many spaces per level. If indent
                 is a string (such as "\t"), that string is used to indent each level.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         if isinstance(file, (str, os.PathLike)):
@@ -1355,20 +1361,20 @@ class EBMModel(BaseEstimator):
             json.dump(outer, file, allow_nan=False, indent=indent)
 
     def _from_jsonable(self, jsonable):
-        """Converts a JSONable EBM representation into an EBM.
+        """Convert a JSONable EBM representation into an EBM.
 
         Args:
             jsonable: the JSONable object
 
         Returns:
             Itself after de-JSONifying.
-        """
 
+        """
         UNTESTED_from_jsonable(self, jsonable)
         return self
 
     def _from_json(self, file):
-        """Loads from a JSON EBM file.
+        """Load from a JSON EBM file.
 
         Args:
             file: a path-like object (str or os.PathLike),
@@ -1376,11 +1382,11 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself after loading.
-        """
 
+        """
         if isinstance(file, (str, os.PathLike)):
             # file is a path-like object (str or os.PathLike)
-            with open(file, "r") as fp:
+            with open(file) as fp:
                 jsonable = json.load(fp)
             UNTESTED_from_jsonable(self, jsonable)
         else:
@@ -1390,15 +1396,16 @@ class EBMModel(BaseEstimator):
         return self
 
     def _predict_score(self, X, init_score=None):
-        """Predicts scores on provided samples.
+        """Predict scores on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             The sum of the additive term contributions.
+
         """
         check_is_fitted(self, "has_fitted_")
 
@@ -1424,25 +1431,25 @@ class EBMModel(BaseEstimator):
         )
 
     def eval_terms(self, X):
-        """The term scores returned will be identical to the local explanation values
-        obtained by calling ebm.explain_local(X). Calling
-        interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\\_, ebm.link\\_)
+        r"""Term scores identical to the local explanation values obtained by calling ebm.explain_local(x).
+
+        Calling interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
         is equivalent to calling ebm.predict(X) for regression or ebm.predict_proba(X) for classification.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
 
         Returns:
             local explanation scores for each term of each sample.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
-        explanations = ebm_eval_terms(
+        return ebm_eval_terms(
             X,
             n_samples,
             n_scores,
@@ -1453,10 +1460,8 @@ class EBMModel(BaseEstimator):
             self.term_features_,
         )
 
-        return explanations
-
     def explain_global(self, name=None):
-        """Provides global explanation for model.
+        """Provide global explanation for model.
 
         Args:
             name: User-defined explanation name.
@@ -1464,6 +1469,7 @@ class EBMModel(BaseEstimator):
         Returns:
             An explanation object,
             visualizing feature-value pairs as horizontal bar chart.
+
         """
         if name is None:
             name = gen_name_from_class(self)
@@ -1554,7 +1560,7 @@ class EBMModel(BaseEstimator):
                         min_feature_val = feature_bounds[feature_index0, 0]
                         max_feature_val = feature_bounds[feature_index0, 1]
 
-                    # this will have no effect in normal models, but will handle inconsistent editied models
+                    # this will have no effect in normal models, but will handle inconsistent edited models
                     min_graph, max_graph = native.suggest_graph_bounds(
                         feature_bins, min_feature_val, max_feature_val
                     )
@@ -1604,15 +1610,16 @@ class EBMModel(BaseEstimator):
                     },
                 }
                 if hasattr(self, "classes_"):
-                    # Classes should be numpy array, convert to list.
+                    # Classes should be NumPy array, convert to list.
                     data_dict["meta"] = {"label_names": self.classes_.tolist()}
 
                 data_dicts.append(data_dict)
             elif len(feature_idxs) == 2:
-                if hasattr(self, "classes_") and 2 < len(self.classes_):
+                if hasattr(self, "classes_") and len(self.classes_) > 2:
                     warn(
                         f"Dropping term {term_names[term_idx]} from explanation "
-                        "since we can't graph multinomial interactions."
+                        "since we can't graph multinomial interactions.",
+                        stacklevel=1,
                     )
                 else:
                     keep_idxs.append(term_idx)
@@ -1635,7 +1642,7 @@ class EBMModel(BaseEstimator):
                             min_feature_val = feature_bounds[feature_idxs[0], 0]
                             max_feature_val = feature_bounds[feature_idxs[0], 1]
 
-                        # this will have no effect in normal models, but will handle inconsistent editied models
+                        # this will have no effect in normal models, but will handle inconsistent edited models
                         min_graph, max_graph = native.suggest_graph_bounds(
                             feature_bins, min_feature_val, max_feature_val
                         )
@@ -1663,7 +1670,7 @@ class EBMModel(BaseEstimator):
                             min_feature_val = feature_bounds[feature_idxs[1], 0]
                             max_feature_val = feature_bounds[feature_idxs[1], 1]
 
-                        # this will have no effect in normal models, but will handle inconsistent editied models
+                        # this will have no effect in normal models, but will handle inconsistent edited models
                         min_graph, max_graph = native.suggest_graph_bounds(
                             feature_bins, min_feature_val, max_feature_val
                         )
@@ -1694,7 +1701,8 @@ class EBMModel(BaseEstimator):
             else:  # pragma: no cover
                 warn(
                     f"Dropping term {term_names[term_idx]} from explanation "
-                    "since we can't graph more than 2 dimensions."
+                    "since we can't graph more than 2 dimensions.",
+                    stacklevel=1,
                 )
 
         importances = self.term_importances()
@@ -1732,11 +1740,11 @@ class EBMModel(BaseEstimator):
         )
 
     def explain_local(self, X, y=None, name=None, init_score=None):
-        """Provides local explanations for provided samples.
+        """Provide local explanations for provided samples.
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
@@ -1744,8 +1752,8 @@ class EBMModel(BaseEstimator):
         Returns:
             An explanation object, visualizing feature-value pairs
             for each sample as horizontal bar charts.
-        """
 
+        """
         # Produce feature value pairs for each sample.
         # Values are the model graph score per respective term.
 
@@ -1757,7 +1765,8 @@ class EBMModel(BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             if classes is not None:
@@ -1785,9 +1794,10 @@ class EBMModel(BaseEstimator):
             )
 
             intercept = self.intercept_
-            if classes is None or len(classes) <= 2:
-                if isinstance(intercept, np.ndarray) or isinstance(intercept, list):
-                    intercept = intercept[0]
+            if (classes is None or len(classes) <= 2) and isinstance(
+                intercept, (list, np.ndarray)
+            ):
+                intercept = intercept[0]
 
             n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
 
@@ -1828,7 +1838,7 @@ class EBMModel(BaseEstimator):
                     "perf": perf,
                 }
                 if classes is not None:
-                    # Classes should be numpy array, convert to list.
+                    # Classes should be NumPy array, convert to list.
                     data_dict["meta"] = {"label_names": classes.tolist()}
                 data_dicts.append(data_dict)
 
@@ -1872,15 +1882,15 @@ class EBMModel(BaseEstimator):
         )
 
     def term_importances(self, importance_type="avg_weight"):
-        """Provides the term importances
+        """Provide the term importances.
 
         Args:
             importance_type: the type of term importance requested ('avg_weight', 'min_max')
 
         Returns:
             An array term importances with one importance per additive term
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         n_terms = len(self.term_features_)
@@ -1897,28 +1907,27 @@ class EBMModel(BaseEstimator):
                     scores = np.average(scores, axis=-1)
                 importances[i] = np.average(scores, weights=self.bin_weights_[i])
             return importances
-        elif importance_type == "min_max":
+        if importance_type == "min_max":
             return np.array(
                 [np.max(tensor) - np.min(tensor) for tensor in self.term_scores_],
                 np.float64,
             )
-        else:
-            raise ValueError(f"Unrecognized importance_type: {importance_type}")
+        msg = f"Unrecognized importance_type: {importance_type}"
+        raise ValueError(msg)
 
     def copy(self):
-        """Makes a deepcopy of the EBM.
-
-        Args:
+        """Make a deepcopy of the EBM.
 
         Returns:
             The new copy.
-        """
 
+        """
         return deepcopy(self)
 
     def monotonize(self, term, increasing="auto", passthrough=0.0):
-        """Adjusts a term to be monotone using isotonic regression. An important consideration
-        is that this function only adjusts a single term and will not modify pairwise terms.
+        r"""Adjust a term to be monotone using isotonic regression.
+
+        An important consideration is that this function only adjusts a single term and will not modify pairwise terms.
         When a feature needs to be globally monotonic, any pairwise terms that include the feature
         should be excluded from the model.
 
@@ -1928,20 +1937,20 @@ class EBMModel(BaseEstimator):
             passthrough: the process of monotonization can result in a change to the mean response
                 of the model. If passthrough is set to 0.0 then the model's mean response to the
                 training set will not change. If passthrough is set to 1.0 then any change to the
-                mean response made by monotonization will be passed through to self.intercept\\_.
+                mean response made by monotonization will be passed through to self.intercept\_.
                 Values between 0 and 1 will result in that percentage being passed through.
 
         Returns:
             Itself.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         if hasattr(self, "classes_"):
             if len(self.classes_) == 1:
                 # monoclassification is always monotonized
-                return
-            elif 2 < len(self.classes_):
+                return None
+            if len(self.classes_) > 2:
                 msg = "monotonize not supported for multiclass"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -1955,7 +1964,7 @@ class EBMModel(BaseEstimator):
         )
 
         features = self.term_features_[term]
-        if 2 <= len(features):
+        if len(features) >= 2:
             msg = "monotonize only works on univariate feature terms"
             _log.error(msg)
             raise ValueError(msg)
@@ -1972,7 +1981,7 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -1997,7 +2006,7 @@ class EBMModel(BaseEstimator):
 
         self.term_scores_[term][1:-1] = y
 
-        if 0.0 < passthrough:
+        if passthrough > 0.0:
             mean = np.average(self.term_scores_[term], weights=all_weights)
             self.term_scores_[term] -= mean
             self.intercept_ += mean
@@ -2013,8 +2022,9 @@ class EBMModel(BaseEstimator):
         return self
 
     def remove_terms(self, terms):
-        """Removes terms (and their associated components) from a fitted EBM. Note
-        that this will change the structure (i.e., by removing the specified
+        """Remove terms (and their associated components) from a fitted EBM.
+
+        Note that this will change the structure (i.e., by removing the specified
         indices) of the following components of ``self``: ``term_features_``,
         ``term_names_``, ``term_scores_``, ``bagged_scores_``,
         ``standard_deviations_``, and ``bin_weights_``.
@@ -2024,6 +2034,7 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself.
+
         """
         check_is_fitted(self, "has_fitted_")
 
@@ -2058,13 +2069,14 @@ class EBMModel(BaseEstimator):
         return self
 
     def remove_features(self, features):
-        """Removes features (and their associated components) from a fitted EBM. Note
-        that this will change the structure (i.e., by removing the specified
+        r"""Remove features (and their associated components) from a fitted EBM.
+
+        Note that this will change the structure (i.e., by removing the specified
         indices) of the following components of ``self``: ``histogram_edges_``,
         ``histogram_weights_``, ``unique_val_counts_``, ``bins_``,
         ``feature_names_in_``, ``feature_types_in_``, and ``feature_bounds_``.
         Also, any terms that use the features being deleted will be deleted.
-        The following attributes that the caller passed to the \\_\\_init\\_\\_ function are
+        The following attributes that the caller passed to the \_\_init\_\_ function are
         not modified: ``feature_names``, and ``feature_types``.
 
         Args:
@@ -2073,8 +2085,8 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         drop_features = clean_indexes(
@@ -2115,7 +2127,7 @@ class EBMModel(BaseEstimator):
         return self
 
     def sweep(self, terms=True, bins=True, features=False):
-        """Purges unused elements from a fitted EBM.
+        """Purge unused elements from a fitted EBM.
 
         Args:
             terms: Boolean indicating if zeroed terms that do not affect the output
@@ -2127,8 +2139,8 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         if terms is True:
@@ -2163,8 +2175,9 @@ class EBMModel(BaseEstimator):
         return self
 
     def scale(self, term, factor):
-        """Scale the individual term contribution by a constant factor. For
-        example, you can nullify the contribution of specific terms by setting
+        """Scale the individual term contribution by a constant factor.
+
+        For example, you can nullify the contribution of specific terms by setting
         their corresponding weights to zero; this would cause the associated
         global explanations (e.g., variable importance) to also be zero. A
         couple of things are worth noting: 1) this method has no affect on the
@@ -2179,8 +2192,8 @@ class EBMModel(BaseEstimator):
 
         Returns:
             Itself.
-        """
 
+        """
         check_is_fitted(self, "has_fitted_")
 
         term = clean_index(
@@ -2200,7 +2213,7 @@ class EBMModel(BaseEstimator):
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2250,7 +2263,7 @@ class EBMModel(BaseEstimator):
     def _ovrize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2300,7 +2313,7 @@ class EBMModel(BaseEstimator):
     def _binarize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
-        if passthrough < 0.0 or 1.0 < passthrough:
+        if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
             _log.error(msg)
             raise ValueError(msg)
@@ -2330,10 +2343,9 @@ class EBMModel(BaseEstimator):
                 ebms.append(ebm)
 
             return ebms
-        else:
-            msg = f"binarize can only be called on a multiclass EBM classifier, but this classifier has link function {self.link_}."
-            _log.error(msg)
-            raise ValueError(msg)
+        msg = f"binarize can only be called on a multiclass EBM classifier, but this classifier has link function {self.link_}."
+        _log.error(msg)
+        raise ValueError(msg)
 
     def _more_tags(self):
         return {
@@ -2344,7 +2356,7 @@ class EBMModel(BaseEstimator):
 
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """An Explainable Boosting Classifier
+    r"""An Explainable Boosting Classifier.
 
     Parameters
     ----------
@@ -2448,15 +2460,15 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
     Attributes
     ----------
-    classes\\_ : array of bool, int, or unicode with shape ``(n_classes,)``
+    classes\_ : array of bool, int, or unicode with shape ``(n_classes,)``
         The class labels.
-    n_features_in\\_ : int
+    n_features_in\_ : int
         Number of features.
-    feature_names_in\\_ : List of str
+    feature_names_in\_ : List of str
         Resolved feature names. Names can come from feature_names, X, or be auto-generated.
-    feature_types_in\\_ : List of str
+    feature_types_in\_ : List of str
         Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
-    bins\\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
         Per-feature list that defines how to bin each feature. Each feature in the list contains
         a list of binning resolutions. The first item in the binning resolution list is for binning
         main effect features. If there are more items in the binning resolution list, they define the
@@ -2465,49 +2477,50 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
         'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
         and the arrays will contain float cut points that separate continuous values into bins.
-    feature_bounds\\_ : array of float with shape ``(n_features, 2)``
+    feature_bounds\_ : array of float with shape ``(n_features, 2)``
         min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
         and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
         values of NaN.
-    histogram_edges\\_ : List of None or array of float with shape ``(n_hist_edges,)``
+    histogram_edges\_ : List of None or array of float with shape ``(n_hist_edges,)``
         Per-feature list of the histogram edges. Categorical features contain None within the List
         at their feature index.
-    histogram_weights\\_ : List of array of float with shape ``(n_hist_bins,)``
+    histogram_weights\_ : List of array of float with shape ``(n_hist_bins,)``
         Per-feature list of the total sample weights within each feature's histogram bins.
-    unique_val_counts\\_ : array of int with shape ``(n_features,)``
+    unique_val_counts\_ : array of int with shape ``(n_features,)``
         Per-feature count of the number of unique feature values.
-    term_features\\_ : List of tuples of feature indices
+    term_features\_ : List of tuples of feature indices
         Additive terms used in the model and their component feature indices.
-    term_names\\_ : List of str
+    term_names\_ : List of str
         List of term names.
-    bin_weights\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+    bin_weights\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the total sample weights in each term's tensor bins.
-    bagged_scores\\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
+    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    term_scores\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+    term_scores\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
+    standard_deviations\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins, n_classes)`` or ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the standard deviations of the bagged model scores.
         The last dimension of length n_classes is dropped for binary classification.
-    link\\_ : str
+    link\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial",
         "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
-    link_param\\_ : float
+    link_param\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
-    bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
+    bag_weights\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+    best_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
         Normally, the count of main effects boosting iterations will be in best_iteration_[0],
         and the count of interaction boosting iterations will be in best_iteration_[1].
-    intercept\\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
+    intercept\_ : array of float with shape ``(n_classes,)`` or ``(1,)``
         Intercept of the model. Binary classification is shape ``(1,)``, and multiclass is shape ``(n_classes,)``.
-    bagged_intercept\\_ : array of float with shape ``(n_outer_bags, n_classes)`` or ``(n_outer_bags,)``
+    bagged_intercept\_ : array of float with shape ``(n_outer_bags, n_classes)`` or ``(n_outer_bags,)``
         Bagged intercept of the model. Binary classification is shape ``(n_outer_bags,)``, and multiclass is shape ``(n_outer_bags, n_classes)``.
+
     """
 
     n_features_in_: int
@@ -2535,7 +2548,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
 
     # TODO PK v.3 use underscores here like ClassifierMixin._estimator_type?
-    available_explanations = ["global", "local"]
+    available_explanations = ("global", "local")
     explainer_type = "model"
 
     """ Public facing EBM classifier."""
@@ -2563,7 +2576,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,
+        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -2579,7 +2592,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
-        super(ExplainableBoostingClassifier, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -2617,14 +2630,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """Probability estimates on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Probability estimate of sample for each class.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
@@ -2632,40 +2645,39 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         """Predict scores from model before calling the link function.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             The sum of the additive term contributions.
-        """
 
+        """
         return self._predict_score(X, init_score)
 
     def predict(self, X, init_score=None):
-        """Predicts on provided samples.
+        """Predict on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
-        else:
-            # multiclass
-            return self.classes_[np.argmax(scores, axis=1)]
+            return self.classes_[(scores > 0).astype(np.int8)]
+        # multiclass
+        return self.classes_[np.argmax(scores, axis=1)]
 
 
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """An Explainable Boosting Regressor
+    r"""An Explainable Boosting Regressor.
 
     Parameters
     ----------
@@ -2771,13 +2783,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
     Attributes
     ----------
-    n_features_in\\_ : int
+    n_features_in\_ : int
         Number of features.
-    feature_names_in\\_ : List of str
+    feature_names_in\_ : List of str
         Resolved feature names. Names can come from feature_names, X, or be auto-generated.
-    feature_types_in\\_ : List of str
+    feature_types_in\_ : List of str
         Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
-    bins\\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
         Per-feature list that defines how to bin each feature. Each feature in the list contains
         a list of binning resolutions. The first item in the binning resolution list is for binning
         main effect features. If there are more items in the binning resolution list, they define the
@@ -2786,49 +2798,50 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
         'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
         and the arrays will contain float cut points that separate continuous values into bins.
-    feature_bounds\\_ : array of float with shape ``(n_features, 2)``
+    feature_bounds\_ : array of float with shape ``(n_features, 2)``
         min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
         and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
         values of NaN.
-    histogram_edges\\_ : List of None or array of float with shape ``(n_hist_edges,)``
+    histogram_edges\_ : List of None or array of float with shape ``(n_hist_edges,)``
         Per-feature list of the histogram edges. Categorical features contain None within the List
         at their feature index.
-    histogram_weights\\_ : List of array of float with shape ``(n_hist_bins,)``
+    histogram_weights\_ : List of array of float with shape ``(n_hist_bins,)``
         Per-feature list of the total sample weights within each feature's histogram bins.
-    unique_val_counts\\_ : array of int with shape ``(n_features,)``
+    unique_val_counts\_ : array of int with shape ``(n_features,)``
         Per-feature count of the number of unique feature values.
-    term_features\\_ : List of tuples of feature indices
+    term_features\_ : List of tuples of feature indices
         Additive terms used in the model and their component feature indices.
-    term_names\\_ : List of str
+    term_names\_ : List of str
         List of term names.
-    bin_weights\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+    bin_weights\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the total sample weights in each term's tensor bins.
-    bagged_scores\\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
+    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the bagged model scores.
-    term_scores\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+    term_scores\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the model scores.
-    standard_deviations\\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
+    standard_deviations\_ : List of array of float with shape ``(n_feature0_bins, ..., n_featureN_bins)``
         Per-term list of the standard deviations of the bagged model scores.
-    link\\_ : str
+    link\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
-    link_param\\_ : float
+    link_param\_ : float
         Float value that can be used by the link function. The primary use is for the power link.
-    bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
+    bag_weights\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+    best_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
         Normally, the count of main effects boosting iterations will be in best_iteration_[0],
         and the count of interaction boosting iterations will be in best_iteration_[1].
-    intercept\\_ : float
+    intercept\_ : float
         Intercept of the model.
-    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+    bagged_intercept\_ : array of float with shape ``(n_outer_bags,)``
         Bagged intercept of the model.
-    min_target\\_ : float
+    min_target\_ : float
         The minimum value found in 'y'.
-    max_target\\_ : float
+    max_target\_ : float
         The maximum value found in 'y'.
+
     """
 
     n_features_in_: int
@@ -2857,7 +2870,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
+    available_explanations = ("global", "local")
     explainer_type = "model"
 
     """ Public facing EBM regressor."""
@@ -2884,7 +2897,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Boosting
         learning_rate: float = 0.01,
         greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,
+        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 200,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
@@ -2900,7 +2913,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         n_jobs: Optional[int] = -2,
         random_state: Optional[int] = 42,
     ):
-        super(ExplainableBoostingRegressor, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -2938,20 +2951,22 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """Predicts on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
-    """Differentially Private Explainable Boosting Classifier. Note that many arguments are defaulted differently than regular EBMs.
+    r"""Differentially Private Explainable Boosting Classifier.
+
+    Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
     ----------
@@ -3008,15 +3023,15 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
 
     Attributes
     ----------
-    classes\\_ : array of bool, int, or unicode with shape ``(2,)``
+    classes\_ : array of bool, int, or unicode with shape ``(2,)``
         The class labels. DPExplainableBoostingClassifier only supports binary classification, so there are 2 classes.
-    n_features_in\\_ : int
+    n_features_in\_ : int
         Number of features.
-    feature_names_in\\_ : List of str
+    feature_names_in\_ : List of str
         Resolved feature names. Names can come from feature_names, X, or be auto-generated.
-    feature_types_in\\_ : List of str
+    feature_types_in\_ : List of str
         Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
-    bins\\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
         Per-feature list that defines how to bin each feature. Each feature in the list contains
         a list of binning resolutions. The first item in the binning resolution list is for binning
         main effect features. If there are more items in the binning resolution list, they define the
@@ -3025,42 +3040,43 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
         'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
         and the arrays will contain float cut points that separate continuous values into bins.
-    feature_bounds\\_ : array of float with shape ``(n_features, 2)``
+    feature_bounds\_ : array of float with shape ``(n_features, 2)``
         min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
         and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
         values of NaN.
-    term_features\\_ : List of tuples of feature indices
+    term_features\_ : List of tuples of feature indices
         Additive terms used in the model and their component feature indices.
-    term_names\\_ : List of str
+    term_names\_ : List of str
         List of term names.
-    bin_weights\\_ : List of array of float with shape ``(n_bins)``
+    bin_weights\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the total sample weights in each term's bins.
-    bagged_scores\\_ : List of array of float with shape ``(n_outer_bags, n_bins)``
+    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_bins)``
         Per-term list of the bagged model scores.
-    term_scores\\_ : List of array of float with shape ``(n_bins)``
+    term_scores\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the model scores.
-    standard_deviations\\_ : List of array of float with shape ``(n_bins)``
+    standard_deviations\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
-    link\\_ : str
+    link\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "monoclassification", "custom_binary", "custom_ovr", "custom_multinomial",
         "mlogit", "vlogit", "logit", "probit", "cloglog", "loglog", "cauchit"
-    link_param\\_ : float
+    link_param\_ : float
         Float value that can be used by the link function. For classification it is only used by "custom_classification".
-    bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
+    bag_weights\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+    best_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
         Normally, the count of main effects boosting iterations will be in best_iteration_[0].
-    intercept\\_ : array of float with shape ``(1,)``
+    intercept\_ : array of float with shape ``(1,)``
         Intercept of the model.
-    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+    bagged_intercept\_ : array of float with shape ``(n_outer_bags,)``
         Bagged intercept of the model.
-    noise_scale_binning\\_ : float
+    noise_scale_binning\_ : float
         The noise scale during binning.
-    noise_scale_boosting\\_ : float
+    noise_scale_boosting\_ : float
         The noise scale during boosting.
+
     """
 
     n_features_in_: int
@@ -3086,7 +3102,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
     intercept_: np.ndarray  # np.float64, 1D[class]
     bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
 
-    available_explanations = ["global", "local"]
+    available_explanations = ("global", "local")
     explainer_type = "model"
 
     """ Public facing DPEBM classifier."""
@@ -3122,7 +3138,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
         ] = None,
     ):
-        super(DPExplainableBoostingClassifier, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -3160,14 +3176,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """Probability estimates on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Probability estimate of sample for each class.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
@@ -3175,40 +3191,41 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         """Predict scores from model before calling the link function.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             The sum of the additive term contributions.
-        """
 
+        """
         return self._predict_score(X, init_score)
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
-            return self.classes_[(0 < scores).astype(np.int8)]
-        else:
-            # multiclass
-            return self.classes_[np.argmax(scores, axis=1)]
+            return self.classes_[(scores > 0).astype(np.int8)]
+        # multiclass
+        return self.classes_[np.argmax(scores, axis=1)]
 
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
-    """Differentially Private Explainable Boosting Regressor. Note that many arguments are defaulted differently than regular EBMs.
+    r"""Differentially Private Explainable Boosting Regressor.
+
+    Note that many arguments are defaulted differently than regular EBMs.
 
     Parameters
     ----------
@@ -3271,13 +3288,13 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
     Attributes
     ----------
-    n_features_in\\_ : int
+    n_features_in\_ : int
         Number of features.
-    feature_names_in\\_ : List of str
+    feature_names_in\_ : List of str
         Resolved feature names. Names can come from feature_names, X, or be auto-generated.
-    feature_types_in\\_ : List of str
+    feature_types_in\_ : List of str
         Resolved feature types. Can be: 'continuous', 'nominal', or 'ordinal'.
-    bins\\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
+    bins\_ : List[Union[List[Dict[str, int]], List[array of float with shape ``(n_cuts,)``]]]
         Per-feature list that defines how to bin each feature. Each feature in the list contains
         a list of binning resolutions. The first item in the binning resolution list is for binning
         main effect features. If there are more items in the binning resolution list, they define the
@@ -3286,45 +3303,46 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         If the binning resolution list contains dictionaries, then the feature is either a 'nominal' or
         'ordinal' categorical. If the binning resolution list contains arrays, then the feature is 'continuous'
         and the arrays will contain float cut points that separate continuous values into bins.
-    feature_bounds\\_ : array of float with shape ``(n_features, 2)``
+    feature_bounds\_ : array of float with shape ``(n_features, 2)``
         min/max bounds for each feature. feature_bounds_[feature_index, 0] is the min value of the feature
         and feature_bounds_[feature_index, 1] is the max value of the feature. Categoricals have min & max
         values of NaN.
-    term_features\\_ : List of tuples of feature indices
+    term_features\_ : List of tuples of feature indices
         Additive terms used in the model and their component feature indices.
-    term_names\\_ : List of str
+    term_names\_ : List of str
         List of term names.
-    bin_weights\\_ : List of array of float with shape ``(n_bins)``
+    bin_weights\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the total sample weights in each term's bins.
-    bagged_scores\\_ : List of array of float with shape ``(n_outer_bags, n_bins)``
+    bagged_scores\_ : List of array of float with shape ``(n_outer_bags, n_bins)``
         Per-term list of the bagged model scores.
-    term_scores\\_ : List of array of float with shape ``(n_bins)``
+    term_scores\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the model scores.
-    standard_deviations\\_ : List of array of float with shape ``(n_bins)``
+    standard_deviations\_ : List of array of float with shape ``(n_bins)``
         Per-term list of the standard deviations of the bagged model scores.
-    link\\_ : str
+    link\_ : str
         Link function used to convert the predictions or targets into linear space
         additive scores and vice versa via the inverse link. Possible values include:
         "custom_regression", "power", "identity", "log", "inverse", "inverse_square", "sqrt"
-    link_param\\_ : float
+    link_param\_ : float
         Float value that can be used by the link function. The primary use is for the power link.
-    bag_weights\\_ : array of float with shape ``(n_outer_bags,)``
+    bag_weights\_ : array of float with shape ``(n_outer_bags,)``
         Per-bag record of the total weight within each bag.
-    best_iteration\\_ : array of int with shape ``(n_stages, n_outer_bags)``
+    best_iteration\_ : array of int with shape ``(n_stages, n_outer_bags)``
         The number of boosting iterations performed within each stage until either early stopping, or the max_rounds was reached.
         Normally, the count of main effects boosting iterations will be in best_iteration_[0].
-    intercept\\_ : float
+    intercept\_ : float
         Intercept of the model.
-    bagged_intercept\\_ : array of float with shape ``(n_outer_bags,)``
+    bagged_intercept\_ : array of float with shape ``(n_outer_bags,)``
         Bagged intercept of the model.
-    min_target\\_ : float
+    min_target\_ : float
         The minimum value found in 'y', or privacy_target_min if provided.
-    max_target\\_ : float
+    max_target\_ : float
         The maximum value found in 'y', or privacy_target_max if provided.
-    noise_scale_binning\\_ : float
+    noise_scale_binning\_ : float
         The noise scale during binning.
-    noise_scale_boosting\\_ : float
+    noise_scale_boosting\_ : float
         The noise scale during boosting.
+
     """
 
     n_features_in_: int
@@ -3352,7 +3370,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     max_target_: float
 
     # TODO PK v.3 use underscores here like RegressorMixin._estimator_type?
-    available_explanations = ["global", "local"]
+    available_explanations = ("global", "local")
     explainer_type = "model"
 
     """ Public facing DPEBM regressor."""
@@ -3390,7 +3408,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         privacy_target_min: Optional[float] = None,
         privacy_target_max: Optional[float] = None,
     ):
-        super(DPExplainableBoostingRegressor, self).__init__(
+        super().__init__(
             feature_names=feature_names,
             feature_types=feature_types,
             max_bins=max_bins,
@@ -3425,16 +3443,16 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         )
 
     def predict(self, X, init_score=None):
-        """Predicts on provided samples.
+        """Predict on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
                 If samples scores it should be the same length as X.
 
         Returns:
             Predicted class label per sample.
-        """
 
+        """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
