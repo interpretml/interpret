@@ -150,9 +150,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             tab_name = "Performance"
         else:
             tab_name = explanation_type.capitalize()
-        tab_el = tabs_el.find_element_by_xpath(
-            f"//span[contains(text(),'{tab_name}')]"
-        )
+        tab_el = tabs_el.find_element_by_xpath(f"//span[contains(text(),'{tab_name}')]")
         tab_el.click()
 
     def duplicate_explanations(explanation, num_duplicates):
@@ -195,9 +193,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             return
 
         for i in range(len(explanations)):
-            wait.until(
-                EC.presence_of_element_located((By.ID, f"overall-graph-{i}"))
-            )
+            wait.until(EC.presence_of_element_located((By.ID, f"overall-graph-{i}")))
 
     def check_full_specific_graphs(explanations, share_tables, num_records=2):
         if explanations[0].visualize(0) is None:

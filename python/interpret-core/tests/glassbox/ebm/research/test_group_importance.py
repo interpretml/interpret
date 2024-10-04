@@ -1,4 +1,3 @@
-
 import pytest
 from interpret.glassbox import (
     ExplainableBoostingClassifier,

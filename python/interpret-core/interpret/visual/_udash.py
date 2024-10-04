@@ -543,9 +543,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_pane_cb(explanation_type):
         def output_callback(value, is_shared):
-            _log.debug(
-                f"Registering pane: {explanation_type}|{value}|{is_shared}"
-            )
+            _log.debug(f"Registering pane: {explanation_type}|{value}|{is_shared}")
             if value is None:
                 return None
 
@@ -604,9 +602,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                         )
                     )
                 else:
-                    _log.info(
-                        f"No df provided in pane cb for model idx: {model_idx}"
-                    )
+                    _log.info(f"No df provided in pane cb for model idx: {model_idx}")
                     components.append(
                         html.Div(
                             [
@@ -657,9 +653,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                     f"Pane index {pane_idx} larger than selected explanations."
                 )
                 return None
-            _log.debug(
-                f"Updating plots: {pane_idx}|{model_idx}|{instance_idx}"
-            )
+            _log.debug(f"Updating plots: {pane_idx}|{model_idx}|{instance_idx}")
             return gen_plots_container(model_idx[pane_idx], instance_idx)
 
         return output_callback
@@ -717,9 +711,7 @@ The explanations available are split into tabs, each covering an aspect of the p
             Output(f"{tab}-shared-idx", "children"),
             [
                 Input(f"{tab}-shared-table", "data"),
-                Input(
-                    f"{tab}-shared-table", "derived_virtual_selected_row_ids"
-                ),
+                Input(f"{tab}-shared-table", "derived_virtual_selected_row_ids"),
             ],
         )(register_update_idx_cb())
         for i in range(MAX_NUM_PANES):

@@ -986,9 +986,7 @@ def test_encode_categorical_existing_obj_int_small():
 def test_encode_categorical_existing_obj_int_big():
     c = {"-2": 1, "18446744073709551615": 2, "1": 3}
     encoded, bad = _encode_categorical_existing(
-        np.array(
-            [1, np.int8(-2), np.uint64("18446744073709551615")], dtype=np.object_
-        ),
+        np.array([1, np.int8(-2), np.uint64("18446744073709551615")], dtype=np.object_),
         None,
         c,
     )

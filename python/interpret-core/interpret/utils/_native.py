@@ -1718,9 +1718,7 @@ class Booster(AbstractContextManager):
                     )
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        "init_scores should have ndim == 2 for multiclass"
-                    )
+                    raise ValueError("init_scores should have ndim == 2 for multiclass")
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 
@@ -2009,7 +2007,6 @@ class Booster(AbstractContextManager):
         self._term_idx = term_idx
 
 
-
 class InteractionDetector(AbstractContextManager):
     """Lightweight wrapper for EBM C interaction code."""
 
@@ -2091,9 +2088,7 @@ class InteractionDetector(AbstractContextManager):
                     )
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        "init_scores should have ndim == 2 for multiclass"
-                    )
+                    raise ValueError("init_scores should have ndim == 2 for multiclass")
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
 

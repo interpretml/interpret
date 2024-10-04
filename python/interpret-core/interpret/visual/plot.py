@@ -248,7 +248,9 @@ def plot_density(
     if not is_categorical:
         x_text = []
         for indx in range(len(edges) - 1):
-            new_val = f"{_pretty_number(edges[indx])} - {_pretty_number(edges[indx + 1])}"
+            new_val = (
+                f"{_pretty_number(edges[indx])} - {_pretty_number(edges[indx + 1])}"
+            )
             x_text.append(new_val)
         x_vals = [np.mean([i, j]) for i, j in zip(edges, edges[1:])]
     else:
@@ -832,9 +834,7 @@ def plot_ebm_multiple_booleans(
                 densities.append(my_data["density"]["scores"][1])
                 counter += 1
             else:
-                print(
-                    f"Feature: {feat_name} is not observed as a Boolean variable."
-                )
+                print(f"Feature: {feat_name} is not observed as a Boolean variable.")
     if mpl_style:
         _ = plt.figure(figsize=(12, 12))
         sorted_i = np.argsort(impacts)

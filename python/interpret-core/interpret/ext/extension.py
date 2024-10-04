@@ -19,9 +19,7 @@ def _is_valid_explainer(proposed_explainer, expected_explainer_type):
         available_explanations = proposed_explainer.available_explanations
 
         if explainer_type != expected_explainer_type:
-            _log.warning(
-                f"Proposed explainer is not a {expected_explainer_type}."
-            )
+            _log.warning(f"Proposed explainer is not a {expected_explainer_type}.")
             return False
 
         for available_explanation in available_explanations:

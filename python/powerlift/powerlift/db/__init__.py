@@ -1,4 +1,4 @@
-""" Database schema for benchmarks.
+"""Database schema for benchmarks.
 
 Currently we use SQLAlchemy. The basics of it are well explained in the below link:
 https://docs.sqlalchemy.org/en/14/tutorial/index.html

@@ -1,4 +1,4 @@
-""" Task related measures. """
+"""Task related measures."""
 
 from math import e, log
 from numbers import Number

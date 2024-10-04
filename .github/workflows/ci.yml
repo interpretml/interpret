@@ -630,7 +630,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   format_clang:
-    needs: [bdist]  # bdist is not needed but slow this step down
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -663,8 +662,7 @@ jobs:
               conclusion: 'neutral'
             })
 
-  format_black:
-    needs: [bdist]  # bdist is not needed but slow this step down
+  format_ruff:
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -673,13 +671,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-      - name: Check python matches black format
+      - name: Check python matches ruff format
         id: check_python
         continue-on-error: true
         run: |
           cd python
-          python -m pip install --upgrade black
-          black --check .
+          python -m pip install --upgrade ruff
+          ruff format --check
       - name: Mark step with a warning
         if: ${{ steps.check_python.outcome == 'failure' }}
         uses: actions/github-script@v6
@@ -688,7 +686,7 @@ jobs:
             github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name: 'Failed black formatting check',
+              name: 'Failed ruff formatting check',
               head_sha: context.sha,
               status: 'completed',
               conclusion: 'neutral'

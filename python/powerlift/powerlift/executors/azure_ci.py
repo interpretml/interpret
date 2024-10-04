@@ -1,4 +1,4 @@
-""" Azure Container Instances runtime.
+"""Azure Container Instances runtime.
 
 # See more details here:
 https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?view=azure-python

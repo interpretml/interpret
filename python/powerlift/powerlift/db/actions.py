@@ -1,4 +1,4 @@
-""" Actions that can be performed on the database. """
+"""Actions that can be performed on the database."""
 
 from sqlalchemy import create_engine
 from sqlalchemy_utils import create_database, database_exists, drop_database

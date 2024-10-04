@@ -19,8 +19,7 @@ def trim_tensor(tensor, trim_low=None, trim_high=None):
         ]
     elif trim_high is None:
         dim_slices = [
-            slice(int(is_low), None)
-            for dim_len, is_low in zip(tensor.shape, trim_low)
+            slice(int(is_low), None) for dim_len, is_low in zip(tensor.shape, trim_low)
         ]
     else:
         dim_slices = [

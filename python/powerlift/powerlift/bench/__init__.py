@@ -1,4 +1,4 @@
-""" Benchmarking module is responsible for building and running experiments.
+"""Benchmarking module is responsible for building and running experiments.
 
 The general philosophy is to allow
 methods to be tested on both a single machine in the convenience of a notebook,

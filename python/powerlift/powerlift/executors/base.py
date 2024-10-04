@@ -1,4 +1,4 @@
-""" Base service classes and methods for services. """
+"""Base service classes and methods for services."""
 
 import time
 from numbers import Number

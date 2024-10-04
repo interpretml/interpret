@@ -59,7 +59,7 @@ class MorrisSensitivity(ExplainerMixin):
         feature_names=None,
         feature_types=None,
         sampler=None,
-        **kwargs
+        **kwargs,
     ):
         """Initializes class.
 

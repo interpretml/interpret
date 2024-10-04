@@ -91,7 +91,9 @@ def build_vis_if_needed():
 
     # JavaScript compile
     js_path = os.path.join(script_path, "..", "..", "shared", "vis")
-    subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True, check=False)
+    subprocess.run(
+        "npm install && npm run build-prod", cwd=js_path, shell=True, check=False
+    )
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
@@ -276,7 +278,7 @@ https://github.com/interpretml/interpret
             "nbconvert>=5.4.1",
             "selenium>=3.141.0",
             "pytest-cov>=2.6.1",
-            "flake8>=3.7.7",
+            "ruff>=0.1.2",
             "jupyter>=1.0.0",
             "ipywidgets>=7.4.2",
         ],

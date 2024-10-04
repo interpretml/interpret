@@ -560,7 +560,7 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
             feature_names=feature_names,
             feature_types=feature_types,
             max_depth=max_depth,
-            **kwargs
+            **kwargs,
         )
 
     def _model(self):
@@ -603,7 +603,7 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
             feature_names=feature_names,
             feature_types=feature_types,
             max_depth=max_depth,
-            **kwargs
+            **kwargs,
         )
 
     def _model(self):

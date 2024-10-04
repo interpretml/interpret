@@ -104,9 +104,7 @@ class PreserveProvider(VisualizeProvider):
             display_html(final_html, raw=True)
 
         if visual is None:  # pragma: no cover
-            msg = (
-                f"No visualization for explanation [{explanation_name}] with selector_key [{selector_key}]"
-            )
+            msg = f"No visualization for explanation [{explanation_name}] with selector_key [{selector_key}]"
             _log.error(msg)
             if file_name is None:
                 render_html(msg)

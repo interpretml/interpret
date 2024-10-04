@@ -173,7 +173,13 @@ def assert_valid_model_explainer(explainer, X):
 
 
 def valid_visualization(obj):
-    if obj is None or isinstance(obj, NDFrame) or isinstance(obj, str) or isinstance(obj, go.Figure) or isinstance(obj, dash_base.Component):
+    if (
+        obj is None
+        or isinstance(obj, NDFrame)
+        or isinstance(obj, str)
+        or isinstance(obj, go.Figure)
+        or isinstance(obj, dash_base.Component)
+    ):
         return True
     return False
 

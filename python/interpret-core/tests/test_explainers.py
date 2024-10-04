@@ -34,7 +34,10 @@ def test_spec_synthetic():
             assert_valid_model_explainer(explainer, data["test"]["X"].head())
         # elif explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
         #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
-        elif explainer_class.explainer_type == "blackbox" or explainer_class.explainer_type == "specific":
+        elif (
+            explainer_class.explainer_type == "blackbox"
+            or explainer_class.explainer_type == "specific"
+        ):
             if is_classification:
                 explainer = explainer_class(binary_model, data["train"]["X"])
             else:

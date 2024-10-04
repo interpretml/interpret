@@ -126,9 +126,7 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
                         perf=perf[key],
                     )
                 # pragma: no cover
-                raise RuntimeError(
-                    f"Visual provider {provider} not supported"
-                )
+                raise RuntimeError(f"Visual provider {provider} not supported")
             is_multiclass = is_multiclass_local_data_dict(data_dict)
             if is_multiclass:
                 # Sort by predicted class' abs feature values

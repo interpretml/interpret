@@ -1,4 +1,4 @@
-""" This is called to run a trial by worker nodes (local / remote). """
+"""This is called to run a trial by worker nodes (local / remote)."""
 
 
 def run_azure_process(
@@ -482,4 +482,3 @@ def run_azure_process(
                     break
                 except HttpResponseError:
                     time.sleep(1)
-

@@ -1,4 +1,4 @@
-""" Runs docker containers locally.
+"""Runs docker containers locally.
 
 This is handy for testing if dockerfiles work with powerlift before
 sending it a remote container service.

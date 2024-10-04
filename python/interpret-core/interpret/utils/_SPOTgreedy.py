@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-""" SPOT: A framework for selection of prototypes using optimal transport
+"""SPOT: A framework for selection of prototypes using optimal transport
 
 This file implements the SPOTgreedy algorithm from [1].
 

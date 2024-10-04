@@ -82,9 +82,7 @@ def determine_classes(model, data, n_samples):
             # we have at least 2 samples, so this means classes was an empty dimension
             n_classes = 0
         elif preds.shape[0] != n_samples:
-            msg = (
-                "model(data) has an inconsistent number of samples compared to data"
-            )
+            msg = "model(data) has an inconsistent number of samples compared to data"
             _log.error(msg)
             raise ValueError(msg)
         elif preds.ndim == 1:
@@ -112,6 +110,7 @@ def unify_predict_fn(predict_fn, X, class_idx):
                 return predict_fn(X_fill)[:, class_idx]
 
             return new_predict_fn
+
         # regression
         def new_predict_fn(x):
             X_fill = pd.DataFrame(x, columns=names)

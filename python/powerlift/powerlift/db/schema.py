@@ -1,5 +1,4 @@
-""" Entity models for benchmarking.
-"""
+"""Entity models for benchmarking."""
 
 import enum
 

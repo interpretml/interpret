@@ -1,4 +1,4 @@
-""" Dataset stores including utility methods. 
+"""Dataset stores including utility methods.
 
 The end goal is to allow users to freely register their own benchmarks
 for retrieval by their peers while also providing some basic benchmarks
@@ -237,7 +237,6 @@ class Store:
                     else:
                         self._session.rollback()
                 except Exception as e:
-
                     if self._print_exceptions:
                         try:
                             print(str(e))
@@ -1133,7 +1132,6 @@ class SupervisedDataset(Dataset):
 
 class DatasetAlreadyExistsError(Exception):
     """Raised when dataset already exists in store."""
-
 
 
 def populate_with_datasets(

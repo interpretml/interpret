@@ -85,9 +85,7 @@ class AppRunner:
             # sock.close()
         except OSError:  # pragma: no cover
             if rais:
-                raise RuntimeError(
-                    f"The server is already running on port {port}"
-                )
+                raise RuntimeError(f"The server is already running on port {port}")
             return False
         return True
 
@@ -168,16 +166,8 @@ class AppRunner:
 
     def display_link(self, ctx):
         obj_path = self._obj_id(ctx) + "/"
-        path = (
-            obj_path
-            if self.base_url is None
-            else f"{self.base_url}/{obj_path}"
-        )
-        start_url = (
-            "/"
-            if self.use_relative_links
-            else f"http://{self.ip}:{self.port}/"
-        )
+        path = obj_path if self.base_url is None else f"{self.base_url}/{obj_path}"
+        start_url = "/" if self.use_relative_links else f"http://{self.ip}:{self.port}/"
 
         url = f"{start_url}{path}"
         _log.info(f"Display URL: {url}")
@@ -214,9 +204,7 @@ class DispatcherApp:
         if self.base_url is None:
             self.app_pattern = re.compile(r"/?(.+?)(/|$)")
         else:
-            self.app_pattern = re.compile(
-                rf"/?(?:{self.base_url}/)?(.+?)(/|$)"
-            )
+            self.app_pattern = re.compile(rf"/?(?:{self.base_url}/)?(.+?)(/|$)")
 
     def obj_id(self, obj):
         return str(id(obj))

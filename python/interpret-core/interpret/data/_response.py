@@ -90,9 +90,7 @@ class Marginal(ExplainerMixin):
         }
 
         # Sample down
-        n_samples = (
-            min(len(y), self.max_scatter_samples)
-        )
+        n_samples = min(len(y), self.max_scatter_samples)
         idx = np.random.choice(np.arange(len(y)), n_samples, replace=False)
         X_sample = X[idx, :]
         y_sample = y[idx]
@@ -277,9 +275,7 @@ class MarginalExplanation(ExplanationMixin):
             hovermode="closest",
             xaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
             yaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
-            title=(
-                f"Pearson Correlation: {corr:.3f}" if corr is not None else ""
-            ),
+            title=(f"Pearson Correlation: {corr:.3f}" if corr is not None else ""),
         )
         fig = go.Figure(data=data, layout=layout)
         return fig

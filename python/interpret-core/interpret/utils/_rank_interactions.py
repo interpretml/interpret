@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-""" FAST - Interaction Detection
+"""FAST - Interaction Detection
 
 This module exposes a method called FAST [1] to measure and rank the strengths
 of the interaction of all pairs of features in a dataset.

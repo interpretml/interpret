@@ -1,4 +1,4 @@
-""" Runs all trials on local machine that is running powerlift.
+"""Runs all trials on local machine that is running powerlift.
 
 This currently uses multiprocessing pools to handle parallelism.
 """

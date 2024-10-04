@@ -1,4 +1,4 @@
-""" This is called to run a trial by worker nodes (local / remote). """
+"""This is called to run a trial by worker nodes (local / remote)."""
 
 
 def run_trials(
