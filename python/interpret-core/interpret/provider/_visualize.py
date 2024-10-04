@@ -189,8 +189,7 @@ class DashProvider(VisualizeProvider):
         share_tables = kwargs.pop("share_tables", None)
         self.app_runner.register(explanation, share_tables=share_tables)
 
-        url = self.app_runner.display_link(explanation)
-        return url
+        return self.app_runner.display_link(explanation)
 
     def render(self, explanation, **kwargs):
         self.idempotent_start()

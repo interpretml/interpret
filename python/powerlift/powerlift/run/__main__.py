@@ -41,7 +41,8 @@ def run_trials(
     if not isinstance(trial_run_fn, ast.Module) or not isinstance(
         trial_run_fn.body[0], ast.FunctionDef
     ):
-        raise RuntimeError("Serialized code not valid.")
+        msg = "Serialized code not valid."
+        raise RuntimeError(msg)
 
     func_name = r"wired_function"
     trial_run_fn.body[0].name = func_name
@@ -67,7 +68,8 @@ def run_trials(
                 lambda: trial_run_fn(trial), timeout_seconds=timeout
             )
             if timed_out:
-                raise RuntimeError(f"Timeout failure ({duration})")
+                msg = f"Timeout failure ({duration})"
+                raise RuntimeError(msg)
             errmsg = None
         except Exception:
             errmsg = f"EXCEPTION: {trial.task.origin}, {trial.task.name}, {trial.method}, {trial.meta}, {trial.task.n_classes}, {trial.task.n_features}, {trial.task.n_samples}\n{traceback.format_exc()}"

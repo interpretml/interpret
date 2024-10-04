@@ -8,7 +8,7 @@ This file implements the SPOTgreedy algorithm from [1].
 [1] https://link.springer.com/chapter/10.1007/978-3-030-86514-6_33
 """
 
-import numpy as cp
+import numpy as np
 from scipy.sparse import csr_matrix
 
 # import time
@@ -20,30 +20,30 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
     # targetMarginal: 1 x number of target (row-vector) size histogram of target distribution. Non negative entries summing to 1 {[1*numX]}
     # m: number of prototypes to be selected.
 
-    targetMarginal = targetMarginal / cp.sum(targetMarginal)
+    targetMarginal = targetMarginal / np.sum(targetMarginal)
     numY = C.shape[0]
     numX = C.shape[1]
-    allY = cp.arange(numY)
+    allY = np.arange(numY)
     # just to make sure we have a row vector.
     targetMarginal = targetMarginal.reshape(1, numX)
 
     # Intialization
-    S = cp.zeros((1, m), dtype=int)
-    setValues = cp.zeros((1, m), dtype=int)
+    S = np.zeros((1, m), dtype=int)
+    setValues = np.zeros((1, m), dtype=int)
     sizeS = 0
-    currMinCostValues = cp.ones((1, numX)) * 1000000
-    currMinSourceIndex = cp.zeros((1, numX), dtype=int)
+    currMinCostValues = np.ones((1, numX)) * 1000000
+    currMinSourceIndex = np.zeros((1, numX), dtype=int)
     remainingElements = allY
     chosenElements = []
     # start = time.time()
     while sizeS < m:
         remainingElements = remainingElements[
-            ~cp.isin(cp.array(remainingElements), cp.array(chosenElements))
+            ~np.isin(np.array(remainingElements), np.array(chosenElements))
         ]
-        temp1 = cp.maximum(currMinCostValues - C, 0)
-        temp1 = cp.matmul(temp1, targetMarginal.T)
+        temp1 = np.maximum(currMinCostValues - C, 0)
+        temp1 = np.matmul(temp1, targetMarginal.T)
         incrementValues = temp1[remainingElements]
-        maxIncrementIndex = cp.argmax(cp.array(incrementValues))
+        maxIncrementIndex = np.argmax(np.array(incrementValues))
         # Chosing the best element
         chosenElements = remainingElements[maxIncrementIndex]
         S[0][sizeS] = chosenElements
@@ -54,7 +54,7 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
         # currMinSourceIndex reflects index in set S
         currMinSourceIndex[tempIndex] = sizeS
         # Current objective and other booking
-        currObjectiveValue = cp.sum(cp.dot(currMinCostValues, targetMarginal.T))
+        currObjectiveValue = np.sum(np.dot(currMinCostValues, targetMarginal.T))
         setValues[0][sizeS] = currObjectiveValue
         if sizeS == m - 1:
             # print("targetMarginal", targetMarginal);
@@ -63,7 +63,7 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
                 shape=(m, numX),
             )
             # print("gammaOpt \n", gammaOpt);
-            currOptw = cp.asarray(cp.sum(gammaOpt, axis=1).flatten())
+            currOptw = np.asarray(np.sum(gammaOpt, axis=1).flatten())
             # print("currOptw \n", currOptw);
         sizeS = sizeS + 1
     # end = time.time()

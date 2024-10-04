@@ -33,14 +33,11 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     # called under: fit
 
     if (
-        processing != "quantile"
-        and processing != "rounded_quantile"
-        and processing != "uniform"
-        and processing != "winsorized"
+        processing not in ("quantile", "rounded_quantile", "uniform", "winsorized")
         and not isinstance(processing, list)
         and not isinstance(processing, np.ndarray)
     ):
-        if isinstance(binning, list) or isinstance(binning, np.ndarray):
+        if isinstance(binning, (list, np.ndarray)):
             msg = f"illegal binning type {binning}"
             _log.error(msg)
             raise ValueError(msg)
@@ -130,13 +127,15 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
-                raise ValueError("sample_weight must be 1 dimensional")
+                msg = "sample_weight must be 1 dimensional"
+                raise ValueError(msg)
             if n_samples is not None and n_samples != len(sample_weight):
                 msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
@@ -205,9 +204,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     * max_weight
                 )
             else:
-                raise NotImplementedError(
-                    f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
-                )
+                msg = f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
+                raise NotImplementedError(msg)
 
         feature_types_in = _none_list * n_features
         bins = _none_list * n_features
@@ -238,9 +236,8 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
             if max_bins < 3:
-                raise ValueError(
-                    f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values."
-                )
+                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values."
+                raise ValueError(msg)
 
             if not X_col.flags.c_contiguous:
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
@@ -515,13 +512,15 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         if sample_weight is not None:
             sample_weight = clean_dimensions(sample_weight, "sample_weight")
             if sample_weight.ndim != 1:
-                raise ValueError("sample_weight must be 1 dimensional")
+                msg = "sample_weight must be 1 dimensional"
+                raise ValueError(msg)
             if n_samples is not None and n_samples != len(sample_weight):
                 msg = f"y has {n_samples} samples and sample_weight has {len(sample_weight)} samples"
                 _log.error(msg)
@@ -585,11 +584,14 @@ def construct_bins(
             noise_scale = preprocessor.noise_scale_
         else:
             if feature_names_in != preprocessor.feature_names_in_:
-                raise RuntimeError("Mismatched feature_names")
+                msg = "Mismatched feature_names"
+                raise RuntimeError(msg)
             if feature_types_in != preprocessor.feature_types_in_:
-                raise RuntimeError("Mismatched feature_types")
+                msg = "Mismatched feature_types"
+                raise RuntimeError(msg)
             if len(bins) != len(preprocessor.bins_):
-                raise RuntimeError("Mismatched bin lengths")
+                msg = "Mismatched bin lengths"
+                raise RuntimeError(msg)
 
             for bin_levels, feature_bins in zip(bins, preprocessor.bins_):
                 bin_levels.append(feature_bins)

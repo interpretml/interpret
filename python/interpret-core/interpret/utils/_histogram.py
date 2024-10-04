@@ -26,9 +26,8 @@ def _make_histogram_edges(min_feature_val, max_feature_val, histogram_weights):
         np.array([min_feature_val, max_feature_val], np.float64), n_cuts
     )
     if len(cuts) != n_cuts:
-        raise Exception(
-            f"There are insufficient floating point values between min_feature_val={min_feature_val} to max_feature_val={max_feature_val} to make {n_cuts} cuts"
-        )
+        msg = f"There are insufficient floating point values between min_feature_val={min_feature_val} to max_feature_val={max_feature_val} to make {n_cuts} cuts"
+        raise Exception(msg)
 
     return np.concatenate(([min_feature_val], cuts, [max_feature_val]))
 

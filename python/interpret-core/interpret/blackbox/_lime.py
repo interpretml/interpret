@@ -76,7 +76,8 @@ class LimeTabular(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         X, n_samples = preclean_X(
@@ -85,7 +86,8 @@ class LimeTabular(ExplainerMixin):
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes >= 3:
-            raise Exception("multiclass LIME not supported")
+            msg = "multiclass LIME not supported"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
         X, _, _ = unify_data(

@@ -18,6 +18,7 @@ Near future support:
 # TODO(nopdive): Review how seq_num (integrity) are done with measure outcomes.
 """
 
+import contextlib
 import io
 import json
 import numbers
@@ -55,10 +56,7 @@ class BytesParser:
 
         import pandas as pd
 
-        if not isinstance(bytes, io.BytesIO):
-            bstream = io.BytesIO(bytes)
-        else:
-            bstream = bytes
+        bstream = io.BytesIO(bytes) if not isinstance(bytes, io.BytesIO) else bytes
 
         if mimetype == MIMETYPE_JSON:
             return json.load(bstream)
@@ -131,7 +129,8 @@ class Store:
         # https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/connect-python?tabs=cmd%2Cpasswordless
 
         if wait_lengthing < 1.0:
-            raise Exception("wait_lengthing must be equal to or above 1.0")
+            msg = "wait_lengthing must be equal to or above 1.0"
+            raise Exception(msg)
 
         self._create_engine_kwargs = create_engine_kwargs
         attempts = 0
@@ -144,10 +143,8 @@ class Store:
                 break
             except Exception as e:
                 if print_exceptions:
-                    try:
+                    with contextlib.suppress(Exception):
                         print(str(e))
-                    except Exception:
-                        pass
                 attempts += 1
                 if max_attempts is not None and max_attempts <= attempts:
                     raise
@@ -176,30 +173,26 @@ class Store:
 
     def __del__(self):
         if self._session is not None:
-            try:
+            with contextlib.suppress(BaseException):
                 self._session.close()
-            except:
-                pass
             self._session = None
         if self._conn is not None:
-            try:
+            with contextlib.suppress(BaseException):
                 self._conn.close()
-            except:
-                pass
             self._conn = None
         if self._engine is not None:
-            try:
+            with contextlib.suppress(BaseException):
                 self._engine.dispose()
-            except:
-                pass
             self._engine = None
 
     def __enter__(self):
         if self._in_context:
-            raise Exception("Already inside a database transaction.")
+            msg = "Already inside a database transaction."
+            raise Exception(msg)
 
         if not self._reset and self._attempts == 0:
-            raise Exception("Must reset before entering the Store context.")
+            msg = "Must reset before entering the Store context."
+            raise Exception(msg)
 
         # on first re-attempt, do not sleep
         if self._attempts >= 2:
@@ -209,12 +202,10 @@ class Store:
                 * random.uniform(0.5, 2.0)
             )
             if self._print_exceptions:
-                try:
+                with contextlib.suppress(Exception):
                     print(
                         f"Sleeping: {sleep_time} seconds on attempt {self._attempts}."
                     )
-                except Exception:
-                    pass
 
             time.sleep(sleep_time)
 
@@ -225,7 +216,8 @@ class Store:
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not self._in_context:
-            raise Exception("Not in Store context.")
+            msg = "Not in Store context."
+            raise Exception(msg)
         self._in_context = False
 
         if exc_type is None:
@@ -238,19 +230,15 @@ class Store:
                         self._session.rollback()
                 except Exception as e:
                     if self._print_exceptions:
-                        try:
+                        with contextlib.suppress(Exception):
                             print(str(e))
-                        except Exception:
-                            pass
 
                     try:
                         self._session.close()
                     except Exception as e:
                         if self._print_exceptions:
-                            try:
+                            with contextlib.suppress(Exception):
                                 print(str(e))
-                            except Exception:
-                                pass
                     self._session = None
 
                     if self._conn is not None:
@@ -258,10 +246,8 @@ class Store:
                             self._conn.close()
                         except Exception as e:
                             if self._print_exceptions:
-                                try:
+                                with contextlib.suppress(Exception):
                                     print(str(e))
-                                except Exception:
-                                    pass
                         self._conn = None
 
                     if self._engine is not None:
@@ -269,10 +255,8 @@ class Store:
                             self._engine.dispose()
                         except Exception as e:
                             if self._print_exceptions:
-                                try:
+                                with contextlib.suppress(Exception):
                                     print(str(e))
-                                except Exception:
-                                    pass
                         self._engine = None
 
                     self._attempts += 1
@@ -290,30 +274,24 @@ class Store:
                     self._session.close()
                 except Exception as e:
                     if self._print_exceptions:
-                        try:
+                        with contextlib.suppress(Exception):
                             print(str(e))
-                        except Exception:
-                            pass
                 self._session = None
 
             self._attempts = 0
             return False
 
         if self._print_exceptions:
-            try:
+            with contextlib.suppress(Exception):
                 print("".join(tb.format_exception(exc_type, exc_value, traceback)))
-            except Exception:
-                pass
 
         if self._session is not None:
             try:
                 self._session.close()
             except Exception as e:
                 if self._print_exceptions:
-                    try:
+                    with contextlib.suppress(Exception):
                         print(str(e))
-                    except Exception:
-                        pass
             self._session = None
 
         if self._conn is not None:
@@ -321,10 +299,8 @@ class Store:
                 self._conn.close()
             except Exception as e:
                 if self._print_exceptions:
-                    try:
+                    with contextlib.suppress(Exception):
                         print(str(e))
-                    except Exception:
-                        pass
             self._conn = None
 
         if self._engine is not None:
@@ -332,10 +308,8 @@ class Store:
                 self._engine.dispose()
             except Exception as e:
                 if self._print_exceptions:
-                    try:
+                    with contextlib.suppress(Exception):
                         print(str(e))
-                    except Exception:
-                        pass
             self._engine = None
 
         self._attempts += 1
@@ -343,20 +317,23 @@ class Store:
 
     def reset(self):
         if self._in_context:
-            raise Exception("Cannot reset while inside a Store context.")
+            msg = "Cannot reset while inside a Store context."
+            raise Exception(msg)
         self._reset = True
         self._attempts = 0
 
     @property
     def do(self):
         if self._in_context:
-            raise Exception("Must exit a Store context for do to be valid")
+            msg = "Must exit a Store context for do to be valid"
+            raise Exception(msg)
         return self._reset or self._attempts != 0
 
     @property
     def connection(self):
         if not self._in_context:
-            raise Exception("Must be inside a Store context to get a connection.")
+            msg = "Must be inside a Store context to get a connection."
+            raise Exception(msg)
 
         if self._conn is None:
             if self._engine is None:
@@ -369,7 +346,8 @@ class Store:
     @property
     def session(self):
         if not self._in_context:
-            raise Exception("Must be inside a Store context to get a session.")
+            msg = "Must be inside a Store context to get a session."
+            raise Exception(msg)
 
         if self._session is None:
             self._session = Session(bind=self.connection)
@@ -605,10 +583,10 @@ LIMIT 1
         self,
         name: str,
         description: str,
-        shell_install: str = None,
-        pip_install: str = None,
-        script: str = None,
-        trial_fn: str = None,
+        shell_install: Optional[str] = None,
+        pip_install: Optional[str] = None,
+        script: Optional[str] = None,
+        trial_fn: Optional[str] = None,
         wheels=None,
     ) -> Tuple[int, bool]:
         """Create experiment keyed by name."""
@@ -787,7 +765,8 @@ WHERE
             elif row["type"] == db.TypeEnum.JSON.value:
                 df.at[index, "json_val"] = row["val"]
             else:
-                raise Exception(f"Bad DB type {row['type']}")
+                msg = f"Bad DB type {row['type']}"
+                raise Exception(msg)
 
         df = df.drop(columns=["val"])
         df["type"] = df["type"].apply(lambda x: db.TypeEnum(x).name)
@@ -897,7 +876,8 @@ FROM
             type_ = db.TypeEnum.NUMBER.value
             value = repr(float(value))
         else:
-            raise RuntimeError(f"Value type {type(value)} is not supported for measure")
+            msg = f"Value type {type(value)} is not supported for measure"
+            raise RuntimeError(msg)
 
         sql_text = text(
             "INSERT INTO measure_outcome (name, type, seq_num, val, trial_id) VALUES (:name, :type, :seq_num, :val, :trial_id)"
@@ -922,7 +902,8 @@ FROM
         if isinstance(data, DataFrameDataset):
             return self._create_task_with_dataframe(data, exist_ok)
         # pragma: no cover
-        raise ValueError(f"Does not support {type(data)}")
+        msg = f"Does not support {type(data)}"
+        raise ValueError(msg)
 
     def _create_task_with_supervised(self, supervised, exist_ok):
         X_bstream, y_bstream, _ = SupervisedDataset.serialize(supervised)
@@ -991,7 +972,8 @@ FROM
                     ret = False
 
         if ret is False and not exist_ok:
-            raise DatasetAlreadyExistsError("Dataset already in store") from e
+            msg = "Dataset already in store"
+            raise DatasetAlreadyExistsError(msg)
 
         return ret
 
@@ -1136,8 +1118,8 @@ class DatasetAlreadyExistsError(Exception):
 
 def populate_with_datasets(
     store: Store,
-    dataset_iter: Iterable[Dataset] = None,
-    cache_dir: str = None,
+    dataset_iter: Optional[Iterable[Dataset]] = None,
+    cache_dir: Optional[str] = None,
     exist_ok: bool = False,
 ) -> bool:
     """Populates store with datasets.
@@ -1167,7 +1149,7 @@ def populate_with_datasets(
 
 
 def retrieve_openml(
-    cache_dir: str = None, suite_id: int | str = 99, origin: str = "openml"
+    cache_dir: Optional[str] = None, suite_id: int | str = 99, origin: str = "openml"
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML datasets.
 
@@ -1227,7 +1209,8 @@ def retrieve_openml(
                 problem = "regression"
                 y = pd.Series(y, dtype=np.float64)
             else:
-                raise Exception(f"Unrecognized task_type_id {task.task_type_id}.")
+                msg = f"Unrecognized task_type_id {task.task_type_id}."
+                raise Exception(msg)
 
             for col_name, cat in zip(X.columns, categorical_mask):
                 col = X[col_name]
@@ -1276,7 +1259,7 @@ def retrieve_openml(
 
 
 def retrieve_openml_automl_regression(
-    cache_dir: str = None,
+    cache_dir: Optional[str] = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML regression datasets.
 
@@ -1291,7 +1274,7 @@ def retrieve_openml_automl_regression(
 
 
 def retrieve_openml_automl_classification(
-    cache_dir: str = None,
+    cache_dir: Optional[str] = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML classification datasets.
 
@@ -1306,7 +1289,7 @@ def retrieve_openml_automl_classification(
 
 
 def retrieve_openml_cc18(
-    cache_dir: str = None,
+    cache_dir: Optional[str] = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML CC18 datasets.
 
@@ -1321,7 +1304,7 @@ def retrieve_openml_cc18(
 
 
 def retrieve_catboost_50k(
-    cache_dir: str = None,
+    cache_dir: Optional[str] = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrieves catboost regression and classification datasets that have less than 50k training instances.
 
@@ -1391,7 +1374,8 @@ def retrieve_catboost_50k(
                 problem = "regression"
                 y = pd.Series(y, dtype=np.float64)
             else:
-                raise Exception(f"Unrecognized problem {problem_type}.")
+                msg = f"Unrecognized problem {problem_type}."
+                raise Exception(msg)
 
             categorical_mask = [dt.kind == "O" for dt in X.dtypes]
 
@@ -1424,7 +1408,9 @@ def retrieve_catboost_50k(
         yield supervised
 
 
-def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, None]:
+def retrieve_pmlb(
+    cache_dir: Optional[str] = None,
+) -> Generator[SupervisedDataset, None, None]:
     """Retrieves PMLB regression and classification datasets.
 
     Args:
@@ -1466,7 +1452,8 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
                 problem = "regression"
                 y = pd.Series(y, dtype=np.float64)
             else:
-                raise Exception(f"Unrecognized problem_type {problem_type}.")
+                msg = f"Unrecognized problem_type {problem_type}."
+                raise Exception(msg)
 
             categorical_mask = [dt.kind == "O" for dt in X.dtypes]
 

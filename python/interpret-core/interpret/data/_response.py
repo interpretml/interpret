@@ -50,7 +50,8 @@ class Marginal(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         try:
             y = y.astype(np.float64, copy=False)
@@ -95,16 +96,17 @@ class Marginal(ExplainerMixin):
         X_sample = X[idx, :]
         y_sample = y[idx]
         specific_dicts = []
-        for feat_idx, feature_name in enumerate(feature_names):
+        for feat_idx, _feature_name in enumerate(feature_names):
             feature_type = feature_types[feat_idx]
             if feature_type == "continuous":
                 counts, values = np.histogram(X[:, feat_idx], bins="doane")
                 corr = pearsonr(X[:, feat_idx].astype(np.float64, copy=False), y)[0]
-            elif feature_type == "nominal" or feature_type == "ordinal":
+            elif feature_type in ("nominal", "ordinal"):
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
             else:
-                raise Exception(f"Cannot support type: {feature_type}")
+                msg = f"Cannot support type: {feature_type}"
+                raise Exception(msg)
 
             feat_density_data_dict = {"names": values, "scores": counts}
             specific_dict = {
@@ -197,10 +199,9 @@ class MarginalExplanation(ExplanationMixin):
             return None
 
         if key is None:
-            figure = plot_density(
+            return plot_density(
                 data_dict["density"], title="Response", ytitle="Density"
             )
-            return figure
 
         # Show feature graph
         density_dict = data_dict["feature_density"]
@@ -218,11 +219,11 @@ class MarginalExplanation(ExplanationMixin):
                 name="x density",
                 yaxis="y2",
                 autobinx=False,
-                xbins=dict(
-                    start=density_dict["names"][0],
-                    end=density_dict["names"][-1],
-                    size=bin_size,
-                ),
+                xbins={
+                    "start": density_dict["names"][0],
+                    "end": density_dict["names"][-1],
+                    "size": bin_size,
+                },
             )
         data = []
         resp_density_dict = data_dict["response_density"]
@@ -233,11 +234,11 @@ class MarginalExplanation(ExplanationMixin):
             name="y density",
             xaxis="x2",
             autobiny=False,
-            ybins=dict(
-                start=resp_density_dict["names"][0],
-                end=resp_density_dict["names"][-1],
-                size=resp_bin_size,
-            ),
+            ybins={
+                "start": resp_density_dict["names"][0],
+                "end": resp_density_dict["names"][-1],
+                "size": resp_bin_size,
+            },
         )
         data.append(trace1)
         data.append(trace2)
@@ -249,7 +250,7 @@ class MarginalExplanation(ExplanationMixin):
                 y=y,
                 mode="markers",
                 name="points",
-                marker=dict(size=5, opacity=0.5),
+                marker={"size": 5, "opacity": 0.5},
             )
             data.append(trace3)
         else:
@@ -262,23 +263,25 @@ class MarginalExplanation(ExplanationMixin):
         layout = go.Layout(
             showlegend=False,
             autosize=True,
-            xaxis=dict(
-                title=self.feature_names[key],
-                type="category" if is_categorical else "-",
-                domain=[0, do_hi],
-                showgrid=False,
-                zeroline=False,
-            ),
-            yaxis=dict(
-                title="Response", domain=[0, do_lo], showgrid=False, zeroline=False
-            ),
+            xaxis={
+                "title": self.feature_names[key],
+                "type": "category" if is_categorical else "-",
+                "domain": [0, do_hi],
+                "showgrid": False,
+                "zeroline": False,
+            },
+            yaxis={
+                "title": "Response",
+                "domain": [0, do_lo],
+                "showgrid": False,
+                "zeroline": False,
+            },
             hovermode="closest",
-            xaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
-            yaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
+            xaxis2={"domain": [do_hi, 1], "showgrid": False, "zeroline": False},
+            yaxis2={"domain": [do_hi, 1], "showgrid": False, "zeroline": False},
             title=(f"Pearson Correlation: {corr:.3f}" if corr is not None else ""),
         )
-        fig = go.Figure(data=data, layout=layout)
-        return fig
+        return go.Figure(data=data, layout=layout)
 
 
 class ClassHistogram(ExplainerMixin):
@@ -313,7 +316,8 @@ class ClassHistogram(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         try:
             y = y.astype(np.float64, copy=False)
@@ -435,10 +439,9 @@ class ClassHistogramExplanation(ExplanationMixin):
             layout = go.Layout(
                 title="Response Distribution",
                 showlegend=False,
-                xaxis=dict(type="category"),
+                xaxis={"type": "category"},
             )
-            fig = go.Figure(data=[trace1, trace2], layout=layout)
-            return fig
+            return go.Figure(data=[trace1, trace2], layout=layout)
 
         # Show feature graph
         x = data_dict["x"]

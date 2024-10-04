@@ -1,6 +1,6 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from warnings import warn
 
 import numpy as np
@@ -45,17 +45,31 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
         X: FloatMatrix,
         y: FloatVector,
         sample_weight: FloatVector = np.empty(0),
-        X_names: List[str] = [],
+        X_names: Optional[List[str]] = None,
         cv_observations: IntMatrix = np.empty([0, 0]),
-        prioritized_predictors_indexes: List[int] = [],
-        monotonic_constraints: List[int] = [],
+        prioritized_predictors_indexes: Optional[List[int]] = None,
+        monotonic_constraints: Optional[List[int]] = None,
         group: FloatVector = np.empty(0),
-        interaction_constraints: List[List[int]] = [],
+        interaction_constraints: Optional[List[List[int]]] = None,
         other_data: FloatMatrix = np.empty([0, 0]),
-        predictor_learning_rates: List[float] = [],
-        predictor_penalties_for_non_linearity: List[float] = [],
-        predictor_penalties_for_interactions: List[float] = [],
+        predictor_learning_rates: Optional[List[float]] = None,
+        predictor_penalties_for_non_linearity: Optional[List[float]] = None,
+        predictor_penalties_for_interactions: Optional[List[float]] = None,
     ):
+        if predictor_penalties_for_interactions is None:
+            predictor_penalties_for_interactions = []
+        if predictor_penalties_for_non_linearity is None:
+            predictor_penalties_for_non_linearity = []
+        if predictor_learning_rates is None:
+            predictor_learning_rates = []
+        if interaction_constraints is None:
+            interaction_constraints = []
+        if monotonic_constraints is None:
+            monotonic_constraints = []
+        if prioritized_predictors_indexes is None:
+            prioritized_predictors_indexes = []
+        if X_names is None:
+            X_names = []
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
@@ -203,7 +217,7 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
         self.model_.__set_params_cpp()
         return self
 
-    def explain_global(self, name: str = None):
+    def explain_global(self, name: Optional[str] = None):
         """Provides global explanation for model.
 
         Args:
@@ -314,7 +328,9 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
             selector=selector,
         )
 
-    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
+    def explain_local(
+        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+    ):
         """Provides local explanations for provided instances.
 
         Args:
@@ -337,7 +353,8 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             y = y.astype(np.float64, copy=False)
         X_values = create_values(X, explanations, term_names, self.feature_names_in_)
         perf_list = gen_perf_dicts(pred, y, False)
@@ -410,20 +427,19 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
         return X.values
     if isinstance(X, list):
         return np.array(X)
-    raise TypeError(
+    msg = (
         "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
     )
+    raise TypeError(msg)
 
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
-    unique_values_counts = [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
-    return unique_values_counts
+    return [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
 
 
 def define_feature_names(X_names: List[str], X: FloatMatrix) -> List[str]:
     if len(X_names) == 0:
-        names = [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
-        return names
+        return [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
     return list(X_names)
 
 
@@ -463,15 +479,29 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
         X: FloatMatrix,
         y: List[str],
         sample_weight: FloatVector = np.empty(0),
-        X_names: List[str] = [],
+        X_names: Optional[List[str]] = None,
         cv_observations: IntMatrix = np.empty([0, 0]),
-        prioritized_predictors_indexes: List[int] = [],
-        monotonic_constraints: List[int] = [],
-        interaction_constraints: List[List[int]] = [],
-        predictor_learning_rates: List[float] = [],
-        predictor_penalties_for_non_linearity: List[float] = [],
-        predictor_penalties_for_interactions: List[float] = [],
+        prioritized_predictors_indexes: Optional[List[int]] = None,
+        monotonic_constraints: Optional[List[int]] = None,
+        interaction_constraints: Optional[List[List[int]]] = None,
+        predictor_learning_rates: Optional[List[float]] = None,
+        predictor_penalties_for_non_linearity: Optional[List[float]] = None,
+        predictor_penalties_for_interactions: Optional[List[float]] = None,
     ):
+        if predictor_penalties_for_interactions is None:
+            predictor_penalties_for_interactions = []
+        if predictor_penalties_for_non_linearity is None:
+            predictor_penalties_for_non_linearity = []
+        if predictor_learning_rates is None:
+            predictor_learning_rates = []
+        if interaction_constraints is None:
+            interaction_constraints = []
+        if monotonic_constraints is None:
+            monotonic_constraints = []
+        if prioritized_predictors_indexes is None:
+            prioritized_predictors_indexes = []
+        if X_names is None:
+            X_names = []
         self.bin_counts, self.bin_edges = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X_names, X)
@@ -565,7 +595,7 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
         self.model_.__set_params_cpp()
         return self
 
-    def explain_global(self, name: str = None):
+    def explain_global(self, name: Optional[str] = None):
         """Provides global explanation for model.
 
         Args:
@@ -689,7 +719,9 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
             selector=selector,
         )
 
-    def explain_local(self, X: FloatMatrix, y: FloatVector = None, name: str = None):
+    def explain_local(
+        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+    ):
         """Provides local explanations for provided instances.
 
         Args:
@@ -715,7 +747,8 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             if not all(isinstance(val, str) for val in y):
                 y = [str(val) for val in y]
         X_values = create_values(X, explanations, term_names, self.feature_names_in_)
@@ -808,7 +841,7 @@ class APLRExplanation(FeatureValueExplanation):
             name: User-defined name of explanation.
             selector: A dataframe whose indices correspond to explanation entries.
         """
-        super(APLRExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -883,9 +916,8 @@ class APLRExplanation(FeatureValueExplanation):
                     transform_vals=False,
                 )
             else:  # pragma: no cover
-                raise Exception(
-                    f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
-                )
+                msg = f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
+                raise Exception(msg)
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
@@ -914,3 +946,4 @@ class APLRExplanation(FeatureValueExplanation):
             )
 
             return figure
+        return None

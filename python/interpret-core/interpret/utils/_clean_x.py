@@ -587,7 +587,7 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
             raise ValueError(msg)
     elif processing is None or processing == "auto":
         pass
-    elif processing == "nominal_prevalence" or processing == "nominal_alphabetical":
+    elif processing in ("nominal_prevalence", "nominal_alphabetical"):
         # TODO: we could instead handle this by re-ordering the pandas pd_categories.
         # Someone might want to construct it quickly but then override the pd_categories
         msg = f"{processing} type invalid for pandas.CategoricalDtype"
@@ -608,12 +608,7 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
                 n_items += 1
                 if isinstance(item, str):
                     n_ordinals += 1
-                elif (
-                    isinstance(item, float)
-                    or isinstance(item, int)
-                    or isinstance(item, np.floating)
-                    or isinstance(item, np.integer)
-                ):
+                elif isinstance(item, (float, int, np.floating, np.integer)):
                     n_continuous += 1
         except TypeError:
             msg = f"{processing} type invalid for pandas.CategoricalDtype"
@@ -785,18 +780,13 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
             categories,
             None,
         )
-    if processing == "nominal_prevalence" or processing == "nominal_alphabetical":
+    if processing in ("nominal_prevalence", "nominal_alphabetical"):
         # called under: fit
         X_col, categories = _process_column_initial(
             X_col, nonmissings, processing, None
         )
         return "nominal", X_col, categories, None
-    if (
-        processing == "quantile"
-        or processing == "rounded_quantile"
-        or processing == "uniform"
-        or processing == "winsorized"
-    ):
+    if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         # called under: fit
         X_col, bad = _process_continuous(X_col, nonmissings)
         return "continuous", X_col, None, bad
@@ -837,12 +827,7 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
             n_items += 1
             if isinstance(item, str):
                 n_ordinals += 1
-            elif (
-                isinstance(item, float)
-                or isinstance(item, int)
-                or isinstance(item, np.floating)
-                or isinstance(item, np.integer)
-            ):
+            elif isinstance(item, (float, int, np.floating, np.integer)):
                 n_continuous += 1
     except TypeError:
         msg = f"{processing} type invalid"
@@ -1039,7 +1024,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
             raise ValueError(msg)
-    elif isinstance(X_col, list) or isinstance(X_col, tuple):
+    elif isinstance(X_col, (list, tuple)):
         X_col = np.array(X_col, np.object_)
     elif isinstance(X_col, str):
         # don't allow strings to get to the np.array conversion below
@@ -1349,9 +1334,9 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
                     if feature_type_given != "ignore"
                 ]
 
-            X_names_unique = set(
+            X_names_unique = {
                 name for name, n_count in Counter(X_names).items() if n_count == 1
-            )
+            }
             if any(name not in X_names_unique for name in names_used):
                 # ok, need to use position indexing
                 if n_final != n_cols and n_final != n_cols + n_ignored:
@@ -1362,13 +1347,13 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     if feature_types_given is not None:
         if len(feature_types_given) == len(feature_names_in):
             if len(feature_names_in) - n_ignored != len(
-                set(
+                {
                     feature_name_in
                     for feature_name_in, feature_type_given in zip(
                         feature_names_in, feature_types_given
                     )
                     if feature_type_given != "ignore"
-                )
+                }
             ):
                 msg = "cannot have duplicate feature names"
                 _log.error(msg)
@@ -1482,7 +1467,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, 0
-    if isinstance(X, list) or isinstance(X, tuple):
+    if isinstance(X, (list, tuple)):
         is_copied = False
     elif callable(getattr(X, "__array__", None)):
         X = X.__array__()
@@ -1521,7 +1506,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
 
     for idx in range(len(X)):
         sample = X[idx]
-        if isinstance(sample, list) or isinstance(sample, tuple):
+        if isinstance(sample, (list, tuple)):
             pass
         elif isinstance(sample, ma.masked_array):
             # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray

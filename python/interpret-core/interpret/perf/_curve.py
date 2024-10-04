@@ -54,13 +54,15 @@ class PR(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
-            raise Exception("Only binary classification supported in the PR class")
+            msg = "Only binary classification supported in the PR class"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data(
@@ -72,7 +74,8 @@ class PR(ExplainerMixin):
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
             if len(classes) != n_classes:
-                raise ValueError("class number mismatch")
+                msg = "class number mismatch"
+                raise ValueError(msg)
         else:
             invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)
@@ -139,13 +142,15 @@ class ROC(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
-            raise Exception("Only binary classification supported in the ROC class")
+            msg = "Only binary classification supported in the ROC class"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data(
@@ -157,7 +162,8 @@ class ROC(ExplainerMixin):
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
             if len(classes) != n_classes:
-                raise ValueError("class number mismatch")
+                msg = "class number mismatch"
+                raise ValueError(msg)
         else:
             invert_classes = dict(zip(classes, count()))
             y = np.array([invert_classes[el] for el in y], dtype=np.int64)

@@ -41,8 +41,7 @@ def explanation():
     clf = LogisticRegression()
     clf.fit(data["train"]["X"], data["train"]["y"])
 
-    global_exp = clf.explain_global()
-    return global_exp
+    return clf.explain_global()
 
 
 # TODO: Re-enable on skoperules working with latest scikit learn.
@@ -157,7 +156,7 @@ def test_show_link(explanation):
     actual_url = show_link(explanation)
     expected_id = str(id(explanation))
     status = status_show_server()
-    expected_url = "http://127.0.0.1:{0}/{1}/".format(status["addr"][1], expected_id)
+    expected_url = "http://127.0.0.1:{}/{}/".format(status["addr"][1], expected_id)
 
     assert actual_url == expected_url
 

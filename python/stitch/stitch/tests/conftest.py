@@ -21,7 +21,7 @@ class MockComm(Comm):
         self.log_open = []
         self.log_send = []
         self.log_close = []
-        super(MockComm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def open(self, *args, **kwargs):
         self.log_open.append((args, kwargs))

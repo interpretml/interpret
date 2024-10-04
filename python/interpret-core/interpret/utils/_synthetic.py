@@ -20,7 +20,7 @@ except ImportError:
 
 
 def make_synthetic(
-    classes=["class_0", "class_1"],
+    classes=("class_0", "class_1"),
     n_samples=1000,
     missing=False,
     seed=None,
@@ -29,13 +29,15 @@ def make_synthetic(
     base_shift=0.0,
     higher_class_probs=None,
     impute_missing=0.0,
-    disable=[],
-    categories=[9, 46],  # 46 is the max categories before the UI hides them
-    categorical_floor=[0.2, 0.01],
+    disable=None,
+    categories=(9, 46),  # 46 is the max categories before the UI hides them
+    categorical_floor=(0.2, 0.01),
     categorical_digits=3,
     clip_low=-2.0,
     clip_high=2.0,
 ):
+    if disable is None:
+        disable = []
     rng = np.random.default_rng(seed)
 
     X_orig, names, types = _make_synthetic_features(
@@ -92,10 +94,7 @@ def make_synthetic(
         y += X_imp[:, 2] * X_imp[:, 3] * X_imp[:, -2] * 0.02
 
     if classes is not None and classes != 0:
-        if isinstance(classes, int):
-            classes = np.arange(classes)
-        else:
-            classes = np.array(classes)
+        classes = np.arange(classes) if isinstance(classes, int) else np.array(classes)
 
         n_classes = len(classes)
         if n_classes == 1:
@@ -139,10 +138,7 @@ def _make_synthetic_features(
     # and the average positive value is about +1.0. This establishes a uniform scale
     # with integers, accommodating five integers ranging from -2 to +2.
 
-    if isinstance(seed, np.random.Generator):
-        rng = seed
-    else:
-        rng = np.random.default_rng(seed)
+    rng = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
 
     clip_low_int = int(np.ceil(clip_low))
     clip_high_int = int(np.floor(clip_high))
@@ -248,12 +244,15 @@ def _make_synthetic_features(
     elif isinstance(missing, int):
         missing = float(missing)
     elif not isinstance(missing, float):
-        raise ValueError(f"missing must be bool or float, but is {type(missing)}")
+        msg = f"missing must be bool or float, but is {type(missing)}"
+        raise ValueError(msg)
 
     if missing < 0.0:
-        raise ValueError("missing cannot be negative")
+        msg = "missing cannot be negative"
+        raise ValueError(msg)
     if missing > 1.0:
-        raise ValueError("missing cannot be more than 1.0")
+        msg = "missing cannot be more than 1.0"
+        raise ValueError(msg)
     if missing == 0.0:
         mask = None
     else:
@@ -280,7 +279,8 @@ def _make_synthetic_features(
         X = X.T
     elif output_type == "pandas":
         if not _pandas_installed:
-            raise ValueError("pandas was requested, but is not installed.")
+            msg = "pandas was requested, but is not installed."
+            raise ValueError(msg)
 
         for i in range(len(features)):
             col = features[i]
@@ -298,13 +298,15 @@ def _make_synthetic_features(
         X = pd.concat(features, axis=1)
     elif output_type == "scipy":
         if not _scipy_installed:
-            raise ValueError("scipy was requested, but is not installed.")
+            msg = "scipy was requested, but is not installed."
+            raise ValueError(msg)
         X = np.array(features, np.float64)
         if mask is not None:
             X[mask] = np.nan
         X = sp.sparse.csc_matrix(X.T)
     else:
-        raise ValueError(f"unknown output_type={output_type}")
+        msg = f"unknown output_type={output_type}"
+        raise ValueError(msg)
 
     return (X, names, types)
 
@@ -399,9 +401,8 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
             if isinstance(col.dtype, np.dtype) and np.issubdtype(col.dtype, np.object_):
                 nonmissings &= col != np.array(None)
 
-        if isinstance(col, np.ma.masked_array):
-            if col.mask is not np.ma.nomask:
-                nonmissings &= ~col.mask
+        if isinstance(col, np.ma.masked_array) and col.mask is not np.ma.nomask:
+            nonmissings &= ~col.mask
 
         col = col[nonmissings]
         floats = np.full(len(nonmissings), np.nan, np.float64)
@@ -422,9 +423,7 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
             np.place(floats, nonmissings, col)
 
         features.append(floats)
-    X = np.array(features, np.float64).T
-
-    return X
+    return np.array(features, np.float64).T
 
 
 def _check_synthetic_dataset(

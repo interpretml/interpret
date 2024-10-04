@@ -12,8 +12,7 @@ from ._native import Native
 
 def _measure_impurity(scores, weights):
     native = Native.get_native_singleton()
-    impurity = native.measure_impurity(scores, weights).sum()
-    return impurity
+    return native.measure_impurity(scores, weights).sum()
 
 
 def purify(scores, weights, tolerance=0.0, is_randomized=True):
@@ -46,11 +45,13 @@ def purify(scores, weights, tolerance=0.0, is_randomized=True):
     """
 
     if scores.ndim != weights.ndim and scores.ndim != weights.ndim + 1:
-        raise Exception("scores and weights do not match in terms of dimensionality.")
+        msg = "scores and weights do not match in terms of dimensionality."
+        raise Exception(msg)
 
     n_dim = weights.ndim
     if n_dim == 0:
-        raise Exception("scores cannot have zero dimensions.")
+        msg = "scores cannot have zero dimensions."
+        raise Exception(msg)
 
     scores = scores.copy()
     native = Native.get_native_singleton()

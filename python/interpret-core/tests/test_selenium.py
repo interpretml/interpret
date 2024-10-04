@@ -51,7 +51,8 @@ def all_explanations():
             else:
                 explainer = explainer_class(regression_model)
         else:
-            raise Exception("Not supported explainer type.")
+            msg = "Not supported explainer type."
+            raise Exception(msg)
 
         if "local" in explainer.available_explanations:
             with warnings.catch_warnings():

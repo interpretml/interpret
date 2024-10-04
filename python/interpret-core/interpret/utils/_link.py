@@ -21,7 +21,8 @@ def identify_task(link):
     try:
         return _task_dict[link]
     except KeyError:
-        raise ValueError(f"Unsupported link function: {link}")
+        msg = f"Unsupported link function: {link}"
+        raise ValueError(msg)
 
 
 def link_func(predictions, link, link_param=np.nan):
@@ -122,7 +123,8 @@ def link_func(predictions, link, link_param=np.nan):
             # log(0.0) gives warning otherwise
             return np.log(predictions)
     else:
-        raise ValueError(f"Unsupported link function: {link}")
+        msg = f"Unsupported link function: {link}"
+        raise ValueError(msg)
 
 
 def inv_link(scores, link, link_param=np.nan):
@@ -140,7 +142,7 @@ def inv_link(scores, link, link_param=np.nan):
     scores = np.asarray(scores, np.float64)
     if link == "monoclassification":
         bools = np.isnan(scores)
-        preds = np.ones(scores.shape + (1,), np.float64)
+        preds = np.ones((*scores.shape, 1), np.float64)
         preds[np.expand_dims(bools, axis=-1)] = np.nan
 
         bools |= scores == -np.inf
@@ -203,4 +205,5 @@ def inv_link(scores, link, link_param=np.nan):
             # scores == 999 gives warning otherwise
             return np.exp(scores)
     else:
-        raise ValueError(f"Unsupported link function: {link}")
+        msg = f"Unsupported link function: {link}"
+        raise ValueError(msg)

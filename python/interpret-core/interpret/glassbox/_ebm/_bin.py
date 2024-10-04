@@ -29,7 +29,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     _log.info("eval_terms")
 
     requests = []
-    waiting = dict()
+    waiting = {}
     for term_idx, feature_idxs in enumerate(term_features):
         # the first len(feature_idxs) items hold the binned data that we get back as it arrives
         requirements = _none_list * (len(feature_idxs) + 1)

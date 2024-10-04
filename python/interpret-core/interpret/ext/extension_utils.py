@@ -23,11 +23,12 @@ def _validate_class_name(proposed_class_name):
     # TODO: Support other languages
     match = re.match(r"[a-zA-Z_][a-zA-Z_0-9]+", proposed_class_name)
     if match is None or match.group(0) != proposed_class_name:
-        raise ValueError(
+        msg = (
             f"Invalid class name {proposed_class_name}. Class names must start with a "
             "letter or an underscore and can continue with letters, "
             "numbers, and underscores."
         )
+        raise ValueError(msg)
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
@@ -57,12 +58,12 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
             _validate_class_name(extension_class_name)
 
             if not extension_class_validator(extension_class):
-                raise ValueError(f"class {extension_class} failed validation.")
+                msg = f"class {extension_class} failed validation."
+                raise ValueError(msg)
 
             if getattr(current_module, extension_class_name, None) is not None:
-                raise ValueError(
-                    f"class name {extension_class_name} already exists for module {current_module.__name__}."
-                )
+                msg = f"class name {extension_class_name} already exists for module {current_module.__name__}."
+                raise ValueError(msg)
 
             setattr(current_module, extension_class_name, extension_class)
 

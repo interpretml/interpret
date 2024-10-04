@@ -14,9 +14,8 @@ _log = logging.getLogger(__name__)
 
 def validate_eps_delta(eps, delta):
     if eps is None or eps <= 0 or delta is None or delta <= 0:
-        raise ValueError(
-            f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers"
-        )
+        msg = f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers"
+        raise ValueError(msg)
 
 
 def calc_classic_noise_multi(total_queries, target_epsilon, delta, sensitivity):
@@ -39,8 +38,7 @@ def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
         return delta_eps_mu(eps, mu) - delta
 
     final_mu = brentq(lambda x: f(x, target_epsilon, delta), 1e-5, 1000)
-    sigma = np.sqrt(total_queries) / final_mu
-    return sigma
+    return np.sqrt(total_queries) / final_mu
 
 
 def private_numeric_binning(

@@ -57,7 +57,6 @@ def test_binarize_1term():
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
     clf = ExplainableBoostingClassifier(interactions=0)
     clf.fit(X_train, y_train)
@@ -80,7 +79,6 @@ def test_vlogit_2class():
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
     X_test = data["test"]["X"]
-    y_test = data["test"]["y"]
 
     clf = ExplainableBoostingClassifier(interactions=10)
     clf.fit(X_train, y_train)
@@ -134,7 +132,8 @@ def test_binarize():
 
     logloss_binary = log_loss(y_test, probas)
     ratio = logloss_binary / logloss_multinomial
-    assert ratio > 0.8 and ratio < 1.9
+    assert ratio > 0.8
+    assert ratio < 1.9
 
     logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
 
@@ -145,7 +144,8 @@ def test_binarize():
     logloss_original = log_loss(y_test, original.predict_proba(X_test))
 
     ratio2 = logloss_original / logloss_multinomial
-    assert ratio > 0.75 and ratio < 1.75
+    assert ratio2 > 0.75
+    assert ratio2 < 1.75
 
 
 def test_monotonize():

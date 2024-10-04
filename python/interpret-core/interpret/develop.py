@@ -100,7 +100,7 @@ def static_system_info():
 
     import psutil
 
-    system_info = {
+    return {
         "platform": platform.platform(),
         "platform.architecture": platform.architecture(),
         "platform.machine": platform.machine(),
@@ -114,8 +114,6 @@ def static_system_info():
         "psutil.virtual_memory.total": _sizeof_fmt(psutil.virtual_memory().total),
         "psutil.swap_memory.total": _sizeof_fmt(psutil.swap_memory().total),
     }
-
-    return system_info
 
 
 def _sizeof_fmt(num, suffix="B"):
@@ -131,9 +129,9 @@ def _sizeof_fmt(num, suffix="B"):
     """
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)  # pragma: no cover
+    return "{:.1f}{}{}".format(num, "Yi", suffix)  # pragma: no cover
 
 
 def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd=True):
@@ -155,7 +153,8 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
 
     # Exit fast on second call.
     if _current_module.is_debug_mode:
-        raise Exception("Cannot call debug_mode more than once in the same session.")
+        msg = "Cannot call debug_mode more than once in the same session."
+        raise Exception(msg)
     _current_module.is_debug_mode = True
 
     # Register log

@@ -26,10 +26,7 @@ def example_explanation():
     data = synthetic_classification()
     explainer = LogisticRegression()
     explainer.fit(data["train"]["X"], data["train"]["y"])
-    explanation = explainer.explain_local(
-        data["test"]["X"].head(), data["test"]["y"].head()
-    )
-    return explanation
+    return explainer.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
 
 
 def test_joblib_provider():

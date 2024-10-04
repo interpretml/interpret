@@ -31,7 +31,7 @@ def trim_tensor(tensor, trim_low=None, trim_high=None):
 
 def remove_last(tensors, term_bin_weights):
     new_tensors = []
-    for idx, tensor, weights in zip(count(), tensors, term_bin_weights):
+    for _idx, tensor, weights in zip(count(), tensors, term_bin_weights):
         if tensor is None:
             result = None
         elif weights is None:
@@ -44,7 +44,7 @@ def remove_last(tensors, term_bin_weights):
                 dim_slices = entire_tensor.copy()
                 dim_slices[dimension_idx] = -1
                 total_sum = np.sum(weights[tuple(dim_slices)])
-                higher.append(True if total_sum == 0 else False)
+                higher.append(total_sum == 0)
             result = trim_tensor(tensor, None, higher)
         new_tensors.append(result)
     return new_tensors
@@ -75,8 +75,8 @@ def restore_missing_value_zeros(tensor, weights):
         dim_slices = entire_tensor.copy()
         dim_slices[dimension_idx] = 0
         total_sum = np.sum(weights[tuple(dim_slices)])
-        lower.append(True if total_sum == 0 else False)
+        lower.append(total_sum == 0)
         dim_slices[dimension_idx] = -1
         total_sum = np.sum(weights[tuple(dim_slices)])
-        higher.append(True if total_sum == 0 else False)
+        higher.append(total_sum == 0)
     _zero_tensor(tensor, lower, higher)

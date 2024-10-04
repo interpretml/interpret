@@ -21,7 +21,8 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     if y is not None:
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
         n_samples = len(y)
 
     feature_names = (
@@ -39,7 +40,8 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
 
     predict_fn, n_classes, classes = determine_classes(explainer.model, X, n_samples)
     if n_classes >= 3:
-        raise Exception("multiclass SHAP not supported")
+        msg = "multiclass SHAP not supported"
+        raise Exception(msg)
     predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
     X, feature_names, feature_types = unify_data(

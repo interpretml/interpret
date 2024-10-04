@@ -34,9 +34,8 @@ def _copy_native_code_to_setup():
                 os.path.join(root_path, file_name), os.path.join(sym_path, file_name)
             )
     elif not os.path.exists(target_shared_path):
-        raise Exception(
-            "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
-        )
+        msg = "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
+        raise Exception(msg)
 
 
 def build_libebm():

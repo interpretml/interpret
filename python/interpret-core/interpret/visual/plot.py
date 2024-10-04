@@ -44,7 +44,7 @@ def plot_performance_curve(
         mode="lines",
         text=[f"Threshold ({x:.3f})" for x in thresholds],
         hoverinfo="text+x+y",
-        line=dict(color="darkorange", width=width),
+        line={"color": "darkorange", "width": width},
         name=auc_str,
         showlegend=False,
     )
@@ -54,15 +54,15 @@ def plot_performance_curve(
             x=[0, 1],
             y=[0, 1],
             mode="lines",
-            line=dict(color="navy", width=width, dash="dash"),
+            line={"color": "navy", "width": width, "dash": "dash"},
             showlegend=False,
         )
         data.append(baseline_trace)
 
     layout = go.Layout(
         title=auc_str,
-        xaxis=dict(title=xtitle),
-        yaxis=dict(title=ytitle),
+        xaxis={"title": xtitle},
+        yaxis={"title": ytitle},
         showlegend=False,
     )
 
@@ -133,7 +133,7 @@ def plot_continuous_bar(
             class_line = go.Scatter(
                 x=new_x_vals,
                 y=new_y_vals[:, i],
-                line=dict(shape="hv"),
+                line={"shape": "hv"},
                 name=class_name,
                 mode="lines",
             )
@@ -144,7 +144,7 @@ def plot_continuous_bar(
             y=new_y_vals,
             name="Main",
             mode="lines",
-            line=dict(color="rgb(31, 119, 180)", shape="hv"),
+            line={"color": "rgb(31, 119, 180)", "shape": "hv"},
             fillcolor="rgba(68, 68, 68, 0.15)",
             fill=fill,
         )
@@ -156,8 +156,8 @@ def plot_continuous_bar(
             x=new_x_vals,
             y=new_y_hi,
             mode="lines",
-            marker=dict(color="#444"),
-            line=dict(width=0, shape="hv"),
+            marker={"color": "#444"},
+            line={"width": 0, "shape": "hv"},
             fillcolor="rgba(68, 68, 68, 0.15)",
             fill="tonexty",
         )
@@ -165,18 +165,18 @@ def plot_continuous_bar(
             name="Lower Bound",
             x=new_x_vals,
             y=new_y_lo,
-            marker=dict(color="#444"),
-            line=dict(width=0, shape="hv"),
+            marker={"color": "#444"},
+            line={"width": 0, "shape": "hv"},
             mode="lines",
         )
         data = [lower_bound, main_line, upper_bound]
 
-    show_legend = True if multiclass or not show_error else False
+    show_legend = bool(multiclass or not show_error)
     layout = go.Layout(
         title=title,
         showlegend=show_legend,
-        xaxis=dict(title=xtitle),
-        yaxis=dict(title=ytitle),
+        xaxis={"title": xtitle},
+        yaxis={"title": ytitle},
     )
     yrange = None
     if data_dict.get("scores_range", None) is not None:
@@ -264,25 +264,24 @@ def plot_density(
             hovertemplate="(%{hovertext}): %{y}",
             hovertext=x_text,
             name=name,
-            marker=dict(color=color),
+            marker={"color": color},
         )
     )
     layout = go.Layout(
         title=title,
         showlegend=False,
-        xaxis=dict(title=xtitle),
-        yaxis=dict(title=ytitle),
+        xaxis={"title": xtitle},
+        yaxis={"title": ytitle},
         hovermode="closest",
     )
     if not is_categorical:
-        layout["xaxis"] = dict(
-            title=xtitle,
-            tickmode="array",
-            tickvals=x_vals,
-            ticktext=x_text,
-        )
-    bar_fig = go.Figure(data, layout)
-    return bar_fig
+        layout["xaxis"] = {
+            "title": xtitle,
+            "tickmode": "array",
+            "tickvals": x_vals,
+            "ticktext": x_text,
+        }
+    return go.Figure(data, layout)
 
 
 def _plot_with_density(
@@ -365,7 +364,7 @@ def plot_line(
         y=y_vals,
         name=name,
         mode="lines",
-        line=dict(color=color),
+        line={"color": color},
         fillcolor="rgba(68, 68, 68, 0.15)",
         fill=fill,
     )
@@ -379,7 +378,7 @@ def plot_line(
                     y=background_lines[i, :],
                     mode="lines",
                     opacity=0.3,
-                    line=dict(width=1.5),
+                    line={"width": 1.5},
                     name="Background: " + str(i + 1),
                     connectgaps=True,
                 )
@@ -390,8 +389,8 @@ def plot_line(
             x=x_vals,
             y=y_hi,
             mode="lines",
-            marker=dict(color="#444"),
-            line=dict(width=0),
+            marker={"color": "#444"},
+            line={"width": 0},
             fillcolor="rgba(68, 68, 68, 0.15)",
             fill="tonexty",
         )
@@ -399,8 +398,8 @@ def plot_line(
             name="Lower Bound",
             x=x_vals,
             y=y_lo,
-            marker=dict(color="#444"),
-            line=dict(width=0),
+            marker={"color": "#444"},
+            line={"width": 0},
             mode="lines",
         )
         data = [lower_bound, main_line, upper_bound]
@@ -408,8 +407,8 @@ def plot_line(
     layout = go.Layout(
         title=title,
         showlegend=False,
-        xaxis=dict(title=xtitle),
-        yaxis=dict(title=ytitle),
+        xaxis={"title": xtitle},
+        yaxis={"title": ytitle},
     )
     main_fig = go.Figure(data, layout)
 
@@ -428,10 +427,7 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     x = data_dict["names"].copy()
     y = data_dict["scores"].copy()
     y_upper_err = data_dict.get("upper_bounds", None)
-    if y_upper_err is not None:
-        y_err = y_upper_err - y
-    else:
-        y_err = None
+    y_err = y_upper_err - y if y_upper_err is not None else None
     multiclass = isinstance(y, np.ndarray) and y.ndim == 2
     traces = []
     if multiclass:
@@ -444,7 +440,7 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
             class_bar = go.Bar(
                 x=x,
                 y=y[:, i],
-                error_y=dict(type="data", array=y_err[:, i], visible=True),
+                error_y={"type": "data", "array": y_err[:, i], "visible": True},
                 name=class_name,
             )
             traces.append(class_bar)
@@ -452,14 +448,19 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
         trace = go.Bar(
             x=x,
             y=y,
-            error_y=dict(type="data", color="#ff6614", array=y_err, visible=True),
+            error_y={
+                "type": "data",
+                "color": "#ff6614",
+                "array": y_err,
+                "visible": True,
+            },
         )
         traces.append(trace)
     layout = go.Layout(
         title=title,
         showlegend=False,
-        xaxis=dict(title=xtitle, type="category"),
-        yaxis=dict(title=ytitle),
+        xaxis={"title": xtitle, "type": "category"},
+        yaxis={"title": ytitle},
     )
     yrange = None
     if data_dict.get("scores_range", None) is not None:
@@ -532,7 +533,7 @@ def plot_horizontal_bar(
             title_str += f"Predicted Class: {predicted}"
             title_str += f"<br />Pr(y = {predicted}): {predicted_score:.3f}"
 
-            if not np.isnan(actual) and len(set([predicted, actual])) == 2:
+            if not np.isnan(actual) and len({predicted, actual}) == 2:
                 title_str += f" | Pr(y = {actual}): {actual_score:.3f}"
             title_items.append(title_str)
         else:  # Regression titles
@@ -569,7 +570,7 @@ def plot_horizontal_bar(
                 go.Bar(y=trace_names, x=trace_scores, orientation="h", name=cls)
             )
     else:
-        traces.append(go.Bar(x=x, y=y, orientation="h", marker=dict(color=color)))
+        traces.append(go.Bar(x=x, y=y, orientation="h", marker={"color": color}))
 
     if start_zero:
         x_range = [0, np.max(x)]
@@ -578,15 +579,14 @@ def plot_horizontal_bar(
         if multiclass:
             max_abs_x = np.sum(np.array(x), axis=1)
         x_range = [-max_abs_x, max_abs_x]
-    layout = dict(
-        title=title,
-        yaxis=dict(automargin=True, title=ytitle, dtick=1),
-        xaxis=dict(range=x_range, title=xtitle),
-    )
+    layout = {
+        "title": title,
+        "yaxis": {"automargin": True, "title": ytitle, "dtick": 1},
+        "xaxis": {"range": x_range, "title": xtitle},
+    }
     if multiclass:
         layout["barmode"] = "relative"
-    figure = go.Figure(data=traces, layout=layout)
-    return figure
+    return go.Figure(data=traces, layout=layout)
 
 
 def mli_plot_horizontal_bar(
@@ -606,8 +606,8 @@ def mli_plot_horizontal_bar(
     # title = "🔴 🔵<br>Predicted {0:.2f} | Actual {1:.2f}".format(
     if perf is not None and title == "":
         title_items = []
-        title_items.append("Predicted {0:.2f}".format(perf["predicted"]))
-        title_items.append("Actual {0:.2f}".format(perf["actual"]))
+        title_items.append("Predicted {:.2f}".format(perf["predicted"]))
+        title_items.append("Actual {:.2f}".format(perf["actual"]))
         title = " | ".join(title_items)
 
     color = [COLORS[0] if value <= 0 else COLORS[1] for value in scores]
@@ -619,7 +619,7 @@ def mli_plot_horizontal_bar(
 
     x = scores
     y = names
-    trace = go.Bar(x=x, y=y, orientation="h", marker=dict(color=color))
+    trace = go.Bar(x=x, y=y, orientation="h", marker={"color": color})
 
     if start_zero:
         x_range = [0, max(x)]
@@ -627,15 +627,13 @@ def mli_plot_horizontal_bar(
         max_abs_x = max(np.abs(x))
         x_range = [-max_abs_x, max_abs_x]
 
-    layout = dict(
-        title=title,
-        yaxis=dict(automargin=True, title=ytitle),
-        xaxis=dict(range=x_range, title=xtitle),
-    )
+    layout = {
+        "title": title,
+        "yaxis": {"automargin": True, "title": ytitle},
+        "xaxis": {"range": x_range, "title": xtitle},
+    }
 
-    figure = go.Figure(data=[trace], layout=layout)
-
-    return figure
+    return go.Figure(data=[trace], layout=layout)
 
 
 def plot_pairwise_heatmap(
@@ -656,10 +654,8 @@ def plot_pairwise_heatmap(
         heatmap["zmin"] = data_dict["scores_range"][0]
         heatmap["zmax"] = data_dict["scores_range"][1]
 
-    layout = go.Layout(title=title, xaxis=dict(title=xtitle), yaxis=dict(title=ytitle))
-    figure = go.Figure(data=[heatmap], layout=layout)
-
-    return figure
+    layout = go.Layout(title=title, xaxis={"title": xtitle}, yaxis={"title": ytitle})
+    return go.Figure(data=[heatmap], layout=layout)
 
 
 def sort_take(
@@ -675,7 +671,7 @@ def sort_take(
         sort_indexes = np.array(range(top_n))
 
     data_dict = data_dict.copy()
-    for key in data_dict.keys():
+    for key in data_dict:
         if key in ["names", "scores", "values", "left_names", "right_names"]:
             if reverse_results:
                 data_dict[key] = [data_dict[key][i] for i in reversed(sort_indexes)]
@@ -794,8 +790,7 @@ def rules_to_html(data_dict, title=""):  # pragma: no cover
     else:  # pragma: no cover
         rule_final = "<h2>No rules found.</h2>"
 
-    html_str = multi_html_template.format(title=title, rules=rule_final)
-    return html_str
+    return multi_html_template.format(title=title, rules=rule_final)
 
 
 def plot_ebm_multiple_booleans(
@@ -834,7 +829,7 @@ def plot_ebm_multiple_booleans(
                 densities.append(my_data["density"]["scores"][1])
                 counter += 1
             else:
-                print(f"Feature: {feat_name} is not observed as a Boolean variable.")
+                pass
     if mpl_style:
         _ = plt.figure(figsize=(12, 12))
         sorted_i = np.argsort(impacts)
@@ -855,22 +850,22 @@ def plot_ebm_multiple_booleans(
         plt.yticks(fontsize=26)
         if figname is not None:
             plt.savefig(figname, dpi=300, bbox_inches="tight")
-        else:
-            plt.show()
-    else:
-        sorted_i = np.argsort(impacts)
-        names = np.array(names)[sorted_i]
-        impacts = np.array(impacts)[sorted_i]
-        upper_bounds = np.array(upper_bounds)[sorted_i]
-        lower_bounds = np.array(lower_bounds)[sorted_i]
-        densities_dict = {"names": names, "scores": np.array(densities)[sorted_i]}
-        data_dict = {
-            "type": "univariate",
-            "names": names,
-            "scores": impacts,
-            "scores_range": (np.min(lower_bounds), np.max(upper_bounds)),
-            "upper_bounds": upper_bounds,
-            "lower_bounds": lower_bounds,
-            "density": densities_dict,
-        }
-        return plot_bar(data_dict)
+            return None
+        plt.show()
+        return None
+    sorted_i = np.argsort(impacts)
+    names = np.array(names)[sorted_i]
+    impacts = np.array(impacts)[sorted_i]
+    upper_bounds = np.array(upper_bounds)[sorted_i]
+    lower_bounds = np.array(lower_bounds)[sorted_i]
+    densities_dict = {"names": names, "scores": np.array(densities)[sorted_i]}
+    data_dict = {
+        "type": "univariate",
+        "names": names,
+        "scores": impacts,
+        "scores_range": (np.min(lower_bounds), np.max(upper_bounds)),
+        "upper_bounds": upper_bounds,
+        "lower_bounds": lower_bounds,
+        "density": densities_dict,
+    }
+    return plot_bar(data_dict)

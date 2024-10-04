@@ -68,9 +68,11 @@ class BaseLinear:
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) == 0:
-            raise ValueError("y cannot have 0 samples")
+            msg = "y cannot have 0 samples"
+            raise ValueError(msg)
 
         if is_classifier(self):
             y = typify_classification(y)
@@ -95,7 +97,7 @@ class BaseLinear:
         self.categorical_uniq_ = {}
 
         for i, feature_type in enumerate(self.feature_types_in_):
-            if feature_type == "nominal" or feature_type == "ordinal":
+            if feature_type in ("nominal", "ordinal"):
                 self.categorical_uniq_[i] = sorted(set(X[:, i]))
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
@@ -157,7 +159,8 @@ class BaseLinear:
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             if is_classifier(self):
@@ -171,7 +174,8 @@ class BaseLinear:
 
         if n_samples == 0:
             # TODO: we could probably handle this case
-            raise ValueError("X has zero samples")
+            msg = "X has zero samples"
+            raise ValueError(msg)
 
         X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
@@ -285,7 +289,7 @@ class BaseLinear:
         }
 
         specific_data_dicts = []
-        for index, feature in enumerate(self.feature_names_in_):
+        for index, _feature in enumerate(self.feature_names_in_):
             feat_min = self.X_mins_[index]
             feat_max = self.X_maxs_[index]
             feat_coef = coef[index]
@@ -356,7 +360,7 @@ class LinearExplanation(FeatureValueExplanation):
             selector: A dataframe whose indices correspond to explanation entries.
         """
 
-        super(LinearExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -412,7 +416,8 @@ class LinearExplanation(FeatureValueExplanation):
                     title="Overall Importance:<br>Coefficients",
                 )
             # pragma: no cover
-            raise RuntimeError(f"Visual provider {provider} not supported")
+            msg = f"Visual provider {provider} not supported"
+            raise RuntimeError(msg)
         data_dict = self.data(key)
         if data_dict is None:
             return None
@@ -421,10 +426,9 @@ class LinearExplanation(FeatureValueExplanation):
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
-            figure = plot_horizontal_bar(
+            return plot_horizontal_bar(
                 data_dict, title="Overall Importance:<br>Coefficients"
             )
-            return figure
 
         return super().visualize(key)
 
@@ -530,7 +534,7 @@ def _hist_per_column(arr, feature_types=None):
                 count, bin_edge = np.histogram(arr[:, i], bins="doane")
                 counts.append(count)
                 bin_edges.append(bin_edge)
-            elif feat_type == "nominal" or feat_type == "ordinal":
+            elif feat_type in ("nominal", "ordinal"):
                 # Todo: check if this call
                 bin_edge, count = np.unique(arr[:, i], return_counts=True)
                 counts.append(count)

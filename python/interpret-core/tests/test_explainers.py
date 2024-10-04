@@ -34,10 +34,7 @@ def test_spec_synthetic():
             assert_valid_model_explainer(explainer, data["test"]["X"].head())
         # elif explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
         #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
-        elif (
-            explainer_class.explainer_type == "blackbox"
-            or explainer_class.explainer_type == "specific"
-        ):
+        elif explainer_class.explainer_type in ("blackbox", "specific"):
             if is_classification:
                 explainer = explainer_class(binary_model, data["train"]["X"])
             else:
@@ -50,7 +47,8 @@ def test_spec_synthetic():
             else:
                 explainer = explainer_class(regression_model)
         else:
-            raise Exception("Not supported explainer type.")
+            msg = "Not supported explainer type."
+            raise Exception(msg)
 
         if "local" in explainer.available_explanations:
             # With labels

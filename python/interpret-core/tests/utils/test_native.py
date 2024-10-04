@@ -98,7 +98,7 @@ def test_gaussian_random_number_generator():
 
     for std in stddevs:
         norm_results, shapiro_results = [], []
-        for i in range(n_iter):
+        for _i in range(n_iter):
             rands = native.generate_gaussian_random(None, std, count=1000)
             norm_results.append(normaltest(rands).pvalue > 0.05)
             shapiro_results.append(shapiro(rands).pvalue > 0.05)

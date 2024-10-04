@@ -29,14 +29,14 @@ class UDash(dash.Dash):
         super().__init__(*args, **kwargs)
 
 
-DATA_TABLE_DEFAULTS = dict(
-    fixed_rows={"headers": True, "data": 0},
-    filter_action="native",
-    sort_action="native",
-    virtualization=True,
-    editable=False,
-    style_table={"height": "250px", "overflowX": "auto", "overflowY": "auto"},
-    css=[
+DATA_TABLE_DEFAULTS = {
+    "fixed_rows": {"headers": True, "data": 0},
+    "filter_action": "native",
+    "sort_action": "native",
+    "virtualization": True,
+    "editable": False,
+    "style_table": {"height": "250px", "overflowX": "auto", "overflowY": "auto"},
+    "css": [
         {
             "selector": ".dash-cell div.dash-cell-value",
             "rule": "display: inline; white-space: inherit; overflow: inherit;",
@@ -47,7 +47,7 @@ DATA_TABLE_DEFAULTS = dict(
             "rule": "transform: scale(1.5);",
         },
     ],
-    style_cell={
+    "style_cell": {
         "textAlign": "right",
         "paddingTop": "5px",
         "paddingBottom": "5px",
@@ -58,15 +58,17 @@ DATA_TABLE_DEFAULTS = dict(
         "overflow": "hidden",
         "maxWidth": 0,
     },
-    style_data=[{"backgroundColor": "white"}],
-    style_data_conditional=[{"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"}],
-    style_header={
+    "style_data": [{"backgroundColor": "white"}],
+    "style_data_conditional": [
+        {"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"}
+    ],
+    "style_header": {
         "fontWeight": "bold",
         # 'fontSize': '1.25em',
         "backgroundColor": "#eaeaea",
         # 'color': 'white'
     },
-)
+}
 
 
 # Dash app for a single explanation only
@@ -247,10 +249,11 @@ def gen_overall_plot(exp, model_idx):
     else:  # pragma: no cover
         _type = type(figure)
         _log.warning(f"Visualization type not supported: {_type}")
-        raise Exception(f"Not supported visualization type: {_type}")
+        msg = f"Not supported visualization type: {_type}"
+        raise Exception(msg)
 
     name = exp.name
-    output_div = html.Div(
+    return html.Div(
         [
             html.Div(
                 html.Div(f"{name} (Overall)", className="card-title"),
@@ -260,7 +263,6 @@ def gen_overall_plot(exp, model_idx):
         ],
         className="card",
     )
-    return output_div
 
 
 def gen_plot(exp, picker, model_idx, counter):
@@ -301,11 +303,12 @@ def gen_plot(exp, picker, model_idx, counter):
     else:  # pragma: no cover
         _type = type(figure)
         _log.warning(f"Visualization type not supported: {_type}")
-        raise Exception(f"Not supported visualization type: {_type}")
+        msg = f"Not supported visualization type: {_type}"
+        raise Exception(msg)
 
     idx_str = str(picker)
     name = exp.name
-    output_div = html.Div(
+    return html.Div(
         [
             html.Div(
                 html.Div(f"{name} [{idx_str}]", className="card-title"),
@@ -315,7 +318,6 @@ def gen_plot(exp, picker, model_idx, counter):
         ],
         className="card",
     )
-    return output_div
 
 
 # Dash app code
@@ -631,10 +633,8 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_idx_cb():
         def output_callback(data, derived_virtual_selected_row_ids):
             if derived_virtual_selected_row_ids is None:
-                output = None
-                return output
-            output = [data[i]["id"] for i in derived_virtual_selected_row_ids]
-            return output
+                return None
+            return [data[i]["id"] for i in derived_virtual_selected_row_ids]
 
         return output_callback
 
@@ -758,7 +758,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                 row_selectable="multi",
                 **DATA_TABLE_DEFAULTS,
             )
-            component = html.Div(
+            return html.Div(
                 [
                     html.Div(
                         html.Div("Select Components to Graph", className="card-title"),
@@ -770,7 +770,6 @@ The explanations available are split into tabs, each covering an aspect of the p
                 ],
                 className="card",
             )
-            return component
         return None
 
     def gen_plots_container(model_idx, picker_idx):
@@ -849,7 +848,7 @@ def _expand_ctx_item(item):
 
     if selector is not None:
         df = selector.copy()
-        df.reset_index(inplace=True, drop=True)
+        df = df.reset_index(drop=True)
         df["id"] = df.index
         df *= 1
     else:
@@ -868,13 +867,12 @@ def generate_app(
     # If we are passed a single explanation as a scalar, generate mini app.
     if not isinstance(ctx, list):
         new_item = _expand_ctx_item(ctx)
-        app = generate_app_mini(
+        return generate_app_mini(
             new_item,
             url_base_pathname=url_base_pathname,
             requests_pathname_prefix=requests_pathname_prefix,
             routes_pathname_prefix=routes_pathname_prefix,
         )
-        return app
 
     app = generate_app_full(
         requests_pathname_prefix=requests_pathname_prefix,
@@ -910,7 +908,8 @@ def generate_app(
     elif isinstance(share_tables, dict):
         shared_frames = share_tables
     else:  # pragma: no cover
-        raise Exception("share_tables option must be True|False|None or dict.")
+        msg = "share_tables option must be True|False|None or dict."
+        raise Exception(msg)
 
     new_options["share_tables"] = shared_frames
     _log.debug(f"POST shared_tables: {shared_frames}")

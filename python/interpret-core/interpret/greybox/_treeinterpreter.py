@@ -90,7 +90,8 @@ class TreeInterpreter(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         feature_names = (

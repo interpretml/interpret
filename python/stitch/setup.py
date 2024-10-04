@@ -55,20 +55,20 @@ npm_install = combine_commands(
 cmdclass["jsdeps"] = skip_if_exists(jstargets, npm_install)
 
 
-setup_args = dict(
-    name=name,
-    description="Bidirectional channel between user-defined JavaScript and Jupyter.",
-    version=version,
-    scripts=glob(pjoin("scripts", "*")),
-    cmdclass=cmdclass,
-    packages=find_packages(),
-    author="The InterpretML Contributors",
-    author_email="interpret@microsoft.com",
-    url="https://github.com/interpretml/stitch",
-    license="BSD",
-    platforms="Linux, Mac OS X, Windows",
-    keywords=["Jupyter", "Widgets", "IPython"],
-    classifiers=[
+setup_args = {
+    "name": name,
+    "description": "Bidirectional channel between user-defined JavaScript and Jupyter.",
+    "version": version,
+    "scripts": glob(pjoin("scripts", "*")),
+    "cmdclass": cmdclass,
+    "packages": find_packages(),
+    "author": "The InterpretML Contributors",
+    "author_email": "interpret@microsoft.com",
+    "url": "https://github.com/interpretml/stitch",
+    "license": "BSD",
+    "platforms": "Linux, Mac OS X, Windows",
+    "keywords": ["Jupyter", "Widgets", "IPython"],
+    "classifiers": [
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: BSD License",
@@ -80,12 +80,12 @@ setup_args = dict(
         "Programming Language :: Python :: 3.7",
         "Framework :: Jupyter",
     ],
-    include_package_data=True,
-    python_requires=">=3.6",
-    install_requires=[
+    "include_package_data": True,
+    "python_requires": ">=3.6",
+    "install_requires": [
         "ipywidgets>=7.0.0",
     ],
-    extras_require={
+    "extras_require": {
         "test": [
             "pytest>=4.6",
             "pytest-cov",
@@ -105,8 +105,8 @@ setup_args = dict(
             "sphinx_rtd_theme",
         ],
     },
-    entry_points={},
-)
+    "entry_points": {},
+}
 
 if __name__ == "__main__":
     setup(**setup_args)

@@ -5,7 +5,7 @@ sending it a remote container service.
 """
 
 import multiprocessing
-from typing import List
+from typing import List, Optional
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import handle_err
@@ -47,9 +47,9 @@ class InsecureDocker(LocalMachine):
         self,
         store: Store,
         image: str = "mcr.microsoft.com/devcontainers/python:latest",
-        n_running_containers: int = None,
-        wheel_filepaths: List[str] = None,
-        docker_db_uri: str = None,
+        n_running_containers: Optional[int] = None,
+        wheel_filepaths: Optional[List[str]] = None,
+        docker_db_uri: Optional[str] = None,
     ):
         """Runs trials in local docker containers.
 

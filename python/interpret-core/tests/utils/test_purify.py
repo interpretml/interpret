@@ -50,7 +50,7 @@ def test_purify_multiclass_1():
     shape = (257,)
     n_classes = 9
 
-    scores = np.random.uniform(low=-0.5, high=1.0, size=shape + (n_classes,))
+    scores = np.random.uniform(low=-0.5, high=1.0, size=(*shape, n_classes))
     weights = np.random.uniform(low=1.0, high=10.0, size=shape)
     purified, impurities, intercept = purify(scores, weights)
 
@@ -107,7 +107,7 @@ def test_purify_multiclass_2():
         )
     )
 
-    scores = np.random.uniform(low=-0.5, high=1.0, size=shape + (n_classes,))
+    scores = np.random.uniform(low=-0.5, high=1.0, size=(*shape, n_classes))
     weights = np.random.uniform(low=1.0, high=10.0, size=shape)
     purified, impurities, intercept = purify(scores, weights)
 
@@ -175,7 +175,7 @@ def test_purify_multiclass_3():
         )
     )
 
-    scores = np.random.uniform(low=-0.5, high=1.0, size=shape + (n_classes,))
+    scores = np.random.uniform(low=-0.5, high=1.0, size=(*shape, n_classes))
     weights = np.random.uniform(low=1.0, high=10.0, size=shape)
     purified, impurities, intercept = purify(scores, weights)
 
@@ -243,7 +243,7 @@ def test_purify_multiclass_5():
         )
     )
 
-    scores = np.random.uniform(low=-0.5, high=1.0, size=shape + (n_classes,))
+    scores = np.random.uniform(low=-0.5, high=1.0, size=(*shape, n_classes))
     weights = np.random.uniform(low=1.0, high=10.0, size=shape)
     purified, impurities, intercept = purify(scores, weights)
 

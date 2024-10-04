@@ -118,14 +118,13 @@ class TreeExplanation(ExplanationMixin):
 
         # Handle overall graphs
         if key is None:
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 # userZoomingEnabled=False,
                 elements=data_dict["nodes"] + data_dict["edges"],
                 stylesheet=stylesheet,
             )
-            return component
 
         # Handle local instance graphs
         if self.explanation_type == "local":
@@ -133,13 +132,12 @@ class TreeExplanation(ExplanationMixin):
             nodes = data_dict["nodes"]
             new_edges = self._weight_edges(edges, data_dict["decision"])
             new_nodes = self._weight_nodes_decision(nodes, data_dict["decision"])
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 elements=new_nodes + new_edges,
                 stylesheet=stylesheet,
             )
-            return component
         # Handle global feature graphs
         if self.explanation_type == "global":
             feature = self.feature_names[key]
@@ -161,18 +159,16 @@ class TreeExplanation(ExplanationMixin):
                         </style>
                         <div class='center'><h1>"{0}" is not used by this tree.</h1></div>
                     """
-                figure = figure.format(feature)
-                return figure
+                return figure.format(feature)
 
             new_nodes = self._weight_nodes_feature(nodes, feature)
             elements = new_nodes + data_dict["edges"]
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 elements=elements,
                 stylesheet=stylesheet,
             )
-            return component
         # pragma: no cover
         msg = f"Cannot handle type {self.explanation_type}"
         _log.error(msg)
@@ -270,9 +266,11 @@ class BaseShallowDecisionTree:
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) == 0:
-            raise ValueError("y cannot have 0 samples")
+            msg = "y cannot have 0 samples"
+            raise ValueError(msg)
 
         if is_classifier(self):
             y = typify_classification(y)
@@ -398,7 +396,8 @@ class BaseShallowDecisionTree:
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             if is_classifier(self):
@@ -412,7 +411,8 @@ class BaseShallowDecisionTree:
 
         if n_samples == 0:
             # TODO: we could probably handle this case
-            raise ValueError("X has zero samples")
+            msg = "X has zero samples"
+            raise ValueError(msg)
 
         # Extract decision tree structure
         nodes, edges = self._graph_from_tree(self._model(), self.feature_names_in_)
@@ -492,10 +492,7 @@ class BaseShallowDecisionTree:
 
             counter["node"] += 1
             node_id = str(counter["node"])
-            if is_classifier(self):
-                value_str = "# Obs: "
-            else:
-                value_str = "E[Y]: "
+            value_str = "# Obs: " if is_classifier(self) else "E[Y]: "
 
             if feature is not None and threshold is not None:
                 value_str += ", ".join([str(v) for v in value[0]])

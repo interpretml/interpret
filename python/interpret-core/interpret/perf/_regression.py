@@ -46,13 +46,15 @@ class RegressionPerf(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, _ = determine_classes(self.model, X, n_samples)
         if n_classes >= 0:
-            raise Exception("Classification not supported by the RegressionPerf class")
+            msg = "Classification not supported by the RegressionPerf class"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data(
@@ -159,7 +161,6 @@ class RegressionExplanation(ExplanationMixin):
 
         title = "{0} <br> RMSE = {1:.2f}" + " | R<sup>2</sup> = {2:.2f}"
         title = title.format(self.name, rmse, r2)
-        density_fig = plot_density(
+        return plot_density(
             data_dict["density"], title=title, xtitle="Residuals", ytitle="Density"
         )
-        return density_fig

@@ -2,13 +2,15 @@
 
 from math import e, log
 from numbers import Number
-from typing import Iterable
+from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
 
 
-def entropy(labels: Iterable, base: Number = None, normalized: bool = False) -> Number:
+def entropy(
+    labels: Iterable, base: Optional[Number] = None, normalized: bool = False
+) -> Number:
     """Computes entropy of label distribution.
 
     Args:

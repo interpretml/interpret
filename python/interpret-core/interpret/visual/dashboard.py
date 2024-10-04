@@ -1,6 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import contextlib
 import logging
 import os
 import random
@@ -85,7 +86,8 @@ class AppRunner:
             # sock.close()
         except OSError:  # pragma: no cover
             if rais:
-                raise RuntimeError(f"The server is already running on port {port}")
+                msg = f"The server is already running on port {port}"
+                raise RuntimeError(msg)
             return False
         return True
 
@@ -273,7 +275,7 @@ class DispatcherApp:
                 f"/{self.base_url}"
             ):
                 _log.info("No base url in path. Rewrite to include in path.")
-                environ["PATH_INFO"] = "/{0}{1}".format(
+                environ["PATH_INFO"] = "/{}{}".format(
                     self.base_url, environ["PATH_INFO"]
                 )
 
@@ -281,12 +283,10 @@ class DispatcherApp:
 
         except Exception as e:  # pragma: no cover
             _log.error(e, exc_info=True)
-            try:
+            with contextlib.suppress(Exception):
                 start_response(
                     "500 INTERNAL SERVER ERROR", [("Content-Type", "text/plain")]
                 )
-            except Exception:
-                pass
             return [
                 b"Internal Server Error caught by Dispatcher. See logs if available."
             ]
@@ -397,7 +397,7 @@ body {
         else:
             items = "\n".join(
                 [
-                    r'<li><a href="{0}">{1}</a></li>'.format(
+                    r'<li><a href="{}">{}</a></li>'.format(
                         (
                             f"/{key}/"
                             if self.base_url is None
@@ -405,9 +405,8 @@ body {
                         ),
                         key,
                     )
-                    for key in self.pool.keys()
+                    for key in self.pool
                 ]
             )
 
-        content = Template(body).substitute(list=items)
-        return content
+        return Template(body).substitute(list=items)

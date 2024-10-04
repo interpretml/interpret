@@ -33,9 +33,8 @@ def set_visualize_provider(provider):
     if provider is None or has_render_method:
         _current_module.visualize_provider = provider
     else:  # pragma: no cover
-        raise ValueError(
-            f"Object of type {type(provider)} is not a visualize provider."
-        )
+        msg = f"Object of type {type(provider)} is not a visualize provider."
+        raise ValueError(msg)
 
 
 def set_show_addr(addr):
@@ -56,11 +55,10 @@ def get_show_addr():
         Address tuple (ip, port).
     """
     if isinstance(_current_module.visualize_provider, DashProvider):
-        addr = (
+        return (
             _current_module.visualize_provider.app_runner.ip,
             _current_module.visualize_provider.app_runner.port,
         )
-        return addr
     return None
 
 
@@ -128,7 +126,8 @@ def _get_integer_key(key, explanation):
     if key is not None and not isinstance(key, int):
         series = explanation.selector[explanation.selector.columns[0]]
         if key not in series.values:  # pragma: no cover
-            raise ValueError(f"Key {key} not in explanation's selector")
+            msg = f"Key {key} not in explanation's selector"
+            raise ValueError(msg)
         key = series[series == key].index[0]
 
     return key
@@ -186,8 +185,7 @@ def show_link(explanation, share_tables=None):
     )
 
     try:
-        url = _current_module.visualize_provider.app_runner.display_link(explanation)
-        return url
+        return _current_module.visualize_provider.app_runner.display_link(explanation)
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e

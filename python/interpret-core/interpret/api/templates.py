@@ -126,15 +126,20 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
                         perf=perf[key],
                     )
                 # pragma: no cover
-                raise RuntimeError(f"Visual provider {provider} not supported")
+                msg = f"Visual provider {provider} not supported"
+                raise RuntimeError(msg)
             is_multiclass = is_multiclass_local_data_dict(data_dict)
             if is_multiclass:
                 # Sort by predicted class' abs feature values
                 pred_idx = data_dict["perf"]["predicted"]
-                sort_fn = lambda x: -abs(x[pred_idx])
+
+                def sort_fn(x):
+                    return -abs(x[pred_idx])
             else:
                 # Sort by abs feature values
-                sort_fn = lambda x: -abs(x)
+                def sort_fn(x):
+                    return -abs(x)
+
             data_dict = sort_take(
                 data_dict, sort_fn=sort_fn, top_n=15, reverse_results=True
             )
@@ -146,7 +151,7 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             title = self.feature_names[key]
         if feature_type == "continuous":
             return plot_line(data_dict, title=title)
-        if feature_type == "nominal" or feature_type == "ordinal":
+        if feature_type in ("nominal", "ordinal"):
             return plot_bar(data_dict, title=title)
         if feature_type == "interaction":
             # TODO: Generalize this out.
@@ -157,6 +162,7 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             )
 
         # Handle everything else as invalid
+        msg = f"Not supported configuration: {self.explanation_type}, {feature_type}"
         raise Exception(  # pragma: no cover
-            f"Not supported configuration: {self.explanation_type}, {feature_type}"
+            msg
         )

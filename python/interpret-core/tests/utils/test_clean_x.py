@@ -448,7 +448,7 @@ def check_numpy_throws(dtype_src, val1, val2):
                 3,
             )
         )
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
 
@@ -1867,12 +1867,12 @@ def test_unify_columns_str_throw():
     X = "abc"
     try:
         X, n_samples = preclean_X(X, None, None)
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
     try:
         feature_names_in = unify_feature_names(X)
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
     try:
@@ -1886,7 +1886,7 @@ def test_unify_columns_str_throw():
                 3,
             )
         )
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
 
@@ -1895,12 +1895,12 @@ def test_unify_columns_int_throw():
     X = 1
     try:
         X, n_samples = preclean_X(X, None, None)
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
     try:
         feature_names_in = unify_feature_names(X)
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
     try:
@@ -1914,7 +1914,7 @@ def test_unify_columns_int_throw():
                 3,
             )
         )
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
 
@@ -1926,7 +1926,7 @@ def test_unify_columns_duplicate_colnames_throw():
 
     try:
         feature_names_in = unify_feature_names(X)
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
     try:
@@ -1940,7 +1940,7 @@ def test_unify_columns_duplicate_colnames_throw():
                 3,
             )
         )
-        assert False
+        raise AssertionError()
     except:  # noqa: E722
         pass
 

@@ -50,7 +50,7 @@ def clean_indexes(indexes, n_items, names, param_name, attribute_name):
     result = set()
     for i, v in enumerate(indexes):
         n_indexes += 1
-        if isinstance(v, bool) or isinstance(v, np.bool_):
+        if isinstance(v, (bool, np.bool_)):
             n_bools += 1
             if v:
                 v = i

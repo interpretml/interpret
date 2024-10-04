@@ -3,7 +3,7 @@
 import time
 from numbers import Number
 from types import FunctionType
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 from stopit import ThreadingTimeout as Timeout
 
@@ -21,7 +21,7 @@ class Executor:
     def submit(
         self,
         experiment_id,
-        timeout: int = None,
+        timeout: Optional[int] = None,
     ):
         """Submits and executes trials by trial run function asynchronously.
 

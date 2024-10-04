@@ -58,11 +58,10 @@ def clean_dimensions(data, param_name):
         if isinstance(data, ma.masked_array):
             # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
             mask = data.mask
-            if mask is not ma.nomask:
-                if mask.any():
-                    msg = f"{param_name} cannot contain missing values"
-                    _log.error(msg)
-                    raise ValueError(msg)
+            if mask is not ma.nomask and mask.any():
+                msg = f"{param_name} cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
             data = data.data
         elif isinstance(data, np.ndarray):
             pass
@@ -89,7 +88,7 @@ def clean_dimensions(data, param_name):
                 data = data.astype(np.object_, copy=False).values
         elif _scipy_installed and sp.sparse.issparse(data):
             data = data.toarray()
-        elif isinstance(data, list) or isinstance(data, tuple):
+        elif isinstance(data, (list, tuple)):
             data = np.array(data, np.object_)
         elif callable(getattr(data, "__array__", None)):
             data = data.__array__()
@@ -295,7 +294,7 @@ def clean_init_score_and_X(
                 # only 1 class to predict means perfect prediction, and no scores for EBMs
                 # do not check if probs are all one in case there is floating point noise
                 return np.empty((1, 0), np.float64), X, n_samples
-            probs = probs.reshape([1] + probs.shape)
+            probs = probs.reshape([1, *probs.shape])
         else:
             if probs.shape[0] == 0:
                 # having any dimension as zero length probably means 1 class, so treat it that way
@@ -336,7 +335,7 @@ def clean_init_score_and_X(
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != 1:
-            init_score = init_score.reshape([1] + init_score.shape)
+            init_score = init_score.reshape([1, *init_score.shape])
     else:
         if init_score.shape[0] == 0:
             # must be a 1 class problem. We use 1 score, but others might use 0.

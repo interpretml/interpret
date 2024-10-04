@@ -86,7 +86,8 @@ def _to_json_inner(ebm, detail="all"):
             if max_target is not None and not isnan(max_target):
                 output["max_target"] = jsonify_item(max_target)
     else:
-        raise ValueError(f"Unsupported link function: {ebm.link_}")
+        msg = f"Unsupported link function: {ebm.link_}"
+        raise ValueError(msg)
 
     output["link"] = ebm.link_
     output["link_param"] = jsonify_item(ebm.link_param_)
@@ -243,11 +244,10 @@ def _to_json_inner(ebm, detail="all"):
         feature_type = ebm.feature_types_in_[i]
         feature["type"] = feature_type
 
-        if level >= 1:
-            if unique_val_counts is not None:
-                feature["num_unique_vals"] = int(unique_val_counts[i])
+        if level >= 1 and unique_val_counts is not None:
+            feature["num_unique_vals"] = int(unique_val_counts[i])
 
-        if feature_type == "nominal" or feature_type == "ordinal":
+        if feature_type in ("nominal", "ordinal"):
             categories = []
             for bins in ebm.bins_[i]:
                 leveled_categories = []
@@ -281,7 +281,8 @@ def _to_json_inner(ebm, detail="all"):
                             feature_histogram_weights.tolist()
                         )
         else:
-            raise ValueError(f"Unsupported feature type: {feature_type}")
+            msg = f"Unsupported feature type: {feature_type}"
+            raise ValueError(msg)
 
         features.append(feature)
     j["features"] = features
@@ -298,18 +299,16 @@ def _to_json_inner(ebm, detail="all"):
             for feature_idx in ebm.term_features_[term_idx]
         ]
         term["scores"] = jsonify_lists(ebm.term_scores_[term_idx].tolist())
-        if level >= 1:
-            if standard_deviations_all is not None:
-                standard_deviations = standard_deviations_all[term_idx]
-                if standard_deviations is not None:
-                    term["standard_deviations"] = jsonify_lists(
-                        standard_deviations.tolist()
-                    )
-        if level >= 2:
-            if bagged_scores_all is not None:
-                bagged_scores = bagged_scores_all[term_idx]
-                if bagged_scores is not None:
-                    term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
+        if level >= 1 and standard_deviations_all is not None:
+            standard_deviations = standard_deviations_all[term_idx]
+            if standard_deviations is not None:
+                term["standard_deviations"] = jsonify_lists(
+                    standard_deviations.tolist()
+                )
+        if level >= 2 and bagged_scores_all is not None:
+            bagged_scores = bagged_scores_all[term_idx]
+            if bagged_scores is not None:
+                term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
         if level >= 1:
             term["bin_weights"] = jsonify_lists(ebm.bin_weights_[term_idx].tolist())
 

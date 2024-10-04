@@ -120,9 +120,8 @@ def measure_interactions(
         elif task == "classification":
             link, link_param = native.determine_link(flags, objective, len(classes))
         else:
-            raise ValueError(
-                f"init_score is a classifier, but the objective is: {objective}"
-            )
+            msg = f"init_score is a classifier, but the objective is: {objective}"
+            raise ValueError(msg)
     elif is_regressor(init_score):
         if task is None:
             task = "regression"
@@ -134,9 +133,8 @@ def measure_interactions(
                 flags, objective, Native.Task_Regression
             )
         else:
-            raise ValueError(
-                f"init_score is a regressor, but the objective is: {objective}"
-            )
+            msg = f"init_score is a regressor, but the objective is: {objective}"
+            raise ValueError(msg)
     elif task == "classification":
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
@@ -151,9 +149,8 @@ def measure_interactions(
         if task is None:
             task = "classification"
         elif task != "classification":
-            raise ValueError(
-                f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
-            )
+            msg = f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
+            raise ValueError(msg)
 
     if task is None:
         # type_of_target does not seem to like np.object_, so convert it to something that works
@@ -176,7 +173,8 @@ def measure_interactions(
             else:
                 task = "classification"
         else:
-            raise ValueError("unrecognized target type in y")
+            msg = "unrecognized target type in y"
+            raise ValueError(msg)
 
     if task == "classification":
         if classes is None:
@@ -199,31 +197,28 @@ def measure_interactions(
     if init_score is not None:
         if n_classes == 2 or n_classes < 0:
             if init_score.ndim != 1:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
         elif n_classes >= 3:
             if init_score.ndim != 2 or init_score.shape[1] != n_classes:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
         else:  # 1 class
             # what the init_score should be for mono-classifiction is somewhat abiguous,
             # so allow either 0 or 1 (which means the dimension is eliminated)
             if init_score.ndim == 2 and init_score.shape[1] >= 2:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
             init_score = None
 
     if sample_weight is not None:
         sample_weight = clean_dimensions(sample_weight, "sample_weight")
         if sample_weight.ndim != 1:
-            raise ValueError("sample_weight must be 1 dimensional")
+            msg = "sample_weight must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) != len(sample_weight):
-            raise ValueError(
-                f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
-            )
+            msg = f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
+            raise ValueError(msg)
         sample_weight = sample_weight.astype(np.float64, copy=False)
 
     binning_result = construct_bins(

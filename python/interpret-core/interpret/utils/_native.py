@@ -97,21 +97,26 @@ class Native:
 
         if array is None:
             if not is_null_allowed:  # pragma: no cover
-                raise ValueError("array cannot be None")
+                msg = "array cannot be None"
+                raise ValueError(msg)
             return None
 
         if not isinstance(array, np.ndarray):  # pragma: no cover
-            raise ValueError("array should be an ndarray")
+            msg = "array should be an ndarray"
+            raise ValueError(msg)
 
         if array.dtype.type is not dtype:  # pragma: no cover
-            raise ValueError(f"array should be an ndarray of type {dtype}")
+            msg = f"array should be an ndarray of type {dtype}"
+            raise ValueError(msg)
 
         # if the data is transposed, Fortran ordered, or has strides, we can't use it
         if not array.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("array should be a contiguous ndarray")
+            msg = "array should be a contiguous ndarray"
+            raise ValueError(msg)
 
         if ndim is not None and array.ndim != ndim:  # pragma: no cover
-            raise ValueError(f"array should have {ndim} dimensions")
+            msg = f"array should have {ndim} dimensions"
+            raise ValueError(msg)
 
         # ctypes.data will return an interor pointer when given an array that is sliced,
         # so arr[1:-1] will return a pointer to the 1st element within arr.
@@ -221,13 +226,13 @@ class Native:
         n_bags = tensor.shape[0]
         if weights is not None:
             if weights.ndim != 1:
-                raise Exception(
+                msg = (
                     f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
                 )
+                raise Exception(msg)
             if len(weights) != n_bags:
-                raise Exception(
-                    "weights must contain the same number of items as there are bags in tensor."
-                )
+                msg = "weights must contain the same number of items as there are bags in tensor."
+                raise Exception(msg)
 
         n_tensor_bins = 1
         for n_bins in tensor.shape[1:]:
@@ -251,13 +256,13 @@ class Native:
         n_bags = tensor.shape[0]
         if weights is not None:
             if weights.ndim != 1:
-                raise Exception(
+                msg = (
                     f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
                 )
+                raise Exception(msg)
             if len(weights) != n_bags:
-                raise Exception(
-                    "weights must contain the same number of items as there are bags in tensor."
-                )
+                msg = "weights must contain the same number of items as there are bags in tensor."
+                raise Exception(msg)
 
         n_tensor_bins = 1
         for n_bins in tensor.shape[1:]:
@@ -362,9 +367,8 @@ class Native:
             shape_classless = shape_all[:-1]
 
         if shape_classless != weights.shape:
-            raise Exception(
-                f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
-            )
+            msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            raise Exception(msg)
 
         if not scores.flags.c_contiguous:
             scores = scores.copy()
@@ -394,12 +398,14 @@ class Native:
 
     def purify(self, scores, weights, tolerance, is_randomized):
         if np.isnan(tolerance) or tolerance < 0.0 or tolerance >= 1.0:
-            raise Exception(
+            msg = (
                 f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
             )
+            raise Exception(msg)
 
         if is_randomized is not True and is_randomized is not False:
-            raise Exception("is_randomized must be True or False.")
+            msg = "is_randomized must be True or False."
+            raise Exception(msg)
 
         shape_all = scores.shape
         shape_classless = scores.shape
@@ -410,9 +416,8 @@ class Native:
             shape_classless = shape_all[:-1]
 
         if shape_classless != weights.shape:
-            raise Exception(
-                f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
-            )
+            msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            raise Exception(msg)
 
         intercept = np.zeros(n_multi_scores, np.float64)
 
@@ -475,7 +480,8 @@ class Native:
 
     def cut_uniform(self, X_col, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = self._unsafe.CutUniform(
@@ -488,7 +494,8 @@ class Native:
 
     def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -507,7 +514,8 @@ class Native:
 
     def cut_winsorized(self, X_col, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -766,9 +774,8 @@ class Native:
         count_samples = count_training_samples + count_validation_samples
 
         if len(targets) != count_samples:
-            raise ValueError(
-                "count_training_samples + count_validation_samples should be equal to len(targets)"
-            )
+            msg = "count_training_samples + count_validation_samples should be equal to len(targets)"
+            raise ValueError(msg)
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
@@ -1672,11 +1679,13 @@ class Booster(AbstractContextManager):
             self.dataset
         )
 
-        if n_weights != 0 and n_weights != 1:  # pragma: no cover
-            raise ValueError("n_weights must be 0 or 1")
+        if n_weights not in (0, 1):  # pragma: no cover
+            msg = "n_weights must be 0 or 1"
+            raise ValueError(msg)
 
         if n_targets != 1:  # pragma: no cover
-            raise ValueError("n_targets must be 1")
+            msg = "n_targets must be 1"
+            raise ValueError(msg)
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum(
@@ -1697,7 +1706,8 @@ class Booster(AbstractContextManager):
         n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
-                raise ValueError("bag should be len(n_samples)")
+                msg = "bag should be len(n_samples)"
+                raise ValueError(msg)
             n_bagged_samples = np.count_nonzero(self.bag)
 
         init_scores = self.init_scores
@@ -1707,20 +1717,20 @@ class Booster(AbstractContextManager):
                 init_scores = init_scores.copy()
 
             if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
-                raise ValueError(
-                    "init_scores should have the same length as the number of non-zero bag entries"
-                )
+                msg = "init_scores should have the same length as the number of non-zero bag entries"
+                raise ValueError(msg)
 
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        "init_scores should have ndim == 1 for regression or binary classification"
-                    )
+                    msg = "init_scores should have ndim == 1 for regression or binary classification"
+                    raise ValueError(msg)
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError("init_scores should have ndim == 2 for multiclass")
+                    msg = "init_scores should have ndim == 2 for multiclass"
+                    raise ValueError(msg)
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
+                    msg = f"init_scores should have {n_class_scores} scores"
+                    raise ValueError(msg)
 
         flags = self.create_booster_flags
         if not native.approximates:
@@ -1815,9 +1825,8 @@ class Booster(AbstractContextManager):
 
         if monotone_constraints is not None:
             if len(monotone_constraints) != n_features:
-                raise ValueError(
-                    f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
-                )
+                msg = f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
+                raise ValueError(msg)
 
         return_code = native._unsafe.GenerateTermUpdate(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
@@ -1886,7 +1895,8 @@ class Booster(AbstractContextManager):
 
     def get_term_update_splits(self):
         if self._term_idx < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._term_idx")
+            msg = "invalid internal self._term_idx"
+            raise RuntimeError(msg)
 
         splits = []
         feature_idxs = self.term_features[self._term_idx]
@@ -1966,12 +1976,12 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetTermUpdateSplits")
 
-        splits = splits[: count_splits.value]
-        return splits
+        return splits[: count_splits.value]
 
     def get_term_update(self):
         if self._term_idx < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._term_idx")
+            msg = "invalid internal self._term_idx"
+            raise RuntimeError(msg)
 
         native = Native.get_native_singleton()
 
@@ -1993,7 +2003,8 @@ class Booster(AbstractContextManager):
         shape = self._term_shapes[term_idx]
 
         if shape != update_scores.shape:  # pragma: no cover
-            raise ValueError("incorrect tensor shape in call to set_term_update")
+            msg = "incorrect tensor shape in call to set_term_update"
+            raise ValueError(msg)
 
         native = Native.get_native_singleton()
         return_code = native._unsafe.SetTermUpdate(
@@ -2053,11 +2064,13 @@ class InteractionDetector(AbstractContextManager):
             self.dataset
         )
 
-        if n_weights != 0 and n_weights != 1:  # pragma: no cover
-            raise ValueError("n_weights must be 0 or 1")
+        if n_weights not in (0, 1):  # pragma: no cover
+            msg = "n_weights must be 0 or 1"
+            raise ValueError(msg)
 
         if n_targets != 1:  # pragma: no cover
-            raise ValueError("n_targets must be 1")
+            msg = "n_targets must be 1"
+            raise ValueError(msg)
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum(
@@ -2067,7 +2080,8 @@ class InteractionDetector(AbstractContextManager):
         n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
-                raise ValueError("bag should be len(n_samples)")
+                msg = "bag should be len(n_samples)"
+                raise ValueError(msg)
             n_bagged_samples = np.count_nonzero(self.bag)
 
         init_scores = self.init_scores
@@ -2077,20 +2091,20 @@ class InteractionDetector(AbstractContextManager):
                 init_scores = init_scores.copy()
 
             if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
-                raise ValueError(
-                    "init_scores should have the same length as the number of non-zero bag entries"
-                )
+                msg = "init_scores should have the same length as the number of non-zero bag entries"
+                raise ValueError(msg)
 
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        "init_scores should have ndim == 1 for regression or binary classification"
-                    )
+                    msg = "init_scores should have ndim == 1 for regression or binary classification"
+                    raise ValueError(msg)
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError("init_scores should have ndim == 2 for multiclass")
+                    msg = "init_scores should have ndim == 2 for multiclass"
+                    raise ValueError(msg)
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
+                    msg = f"init_scores should have {n_class_scores} scores"
+                    raise ValueError(msg)
 
         flags = self.create_interaction_flags
         if not native.approximates:

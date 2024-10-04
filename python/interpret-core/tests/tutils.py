@@ -76,18 +76,15 @@ def get_all_explainers():
 
 
 def synthetic_regression():
-    dataset = _synthetic("regression")
-    return dataset
+    return _synthetic("regression")
 
 
 def synthetic_classification():
-    dataset = _synthetic("classification")
-    return dataset
+    return _synthetic("classification")
 
 
 def synthetic_multiclass():
-    dataset = _synthetic("multiclass")
-    return dataset
+    return _synthetic("multiclass")
 
 
 def _synthetic(mode="regression"):
@@ -107,13 +104,11 @@ def _synthetic(mode="regression"):
         X_df, y_df, test_size=0.20, random_state=1
     )
 
-    dataset = {
+    return {
         "full": {"X": X_df, "y": y_df},
         "train": {"X": X_df_train, "y": y_df_train},
         "test": {"X": X_df_test, "y": y_df_test},
     }
-
-    return dataset
 
 
 def iris_classification():
@@ -128,13 +123,11 @@ def iris_classification():
         X_df, y_df, test_size=0.20, random_state=1
     )
 
-    dataset = {
+    return {
         "full": {"X": X_df, "y": y_df},
         "train": {"X": X_df_train, "y": y_df_train},
         "test": {"X": X_df_test, "y": y_df_test},
     }
-
-    return dataset
 
 
 def valid_predict(explainer, X):
@@ -173,25 +166,16 @@ def assert_valid_model_explainer(explainer, X):
 
 
 def valid_visualization(obj):
-    if (
-        obj is None
-        or isinstance(obj, NDFrame)
-        or isinstance(obj, str)
-        or isinstance(obj, go.Figure)
-        or isinstance(obj, dash_base.Component)
-    ):
-        return True
-    return False
+    return bool(
+        obj is None or isinstance(obj, (NDFrame, str, go.Figure, dash_base.Component))
+    )
 
 
 def valid_data_dict(data_dict):
     if data_dict is None:
         return True
 
-    if not isinstance(data_dict, dict):
-        return False
-
-    return True
+    return isinstance(data_dict, dict)
 
 
 def valid_internal_obj(obj):

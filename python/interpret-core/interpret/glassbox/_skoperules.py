@@ -181,9 +181,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             _BASE_FEATURE_NAME + x
             for x in np.arange(len(self.feature_names_in_)).astype(str)
         ]
-        self.feature_map_ = {
-            key: name for key, name in zip(self.feature_index_, self.feature_names_in_)
-        }
+        self.feature_map_ = dict(zip(self.feature_index_, self.feature_names_in_))
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
         self.sk_model_.fit(X, y)
@@ -248,9 +246,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             matched_idx = list(df.query(r[0]).index)
             scores[matched_idx] = np.minimum(k, scores[matched_idx])
         scores[np.isinf(scores)] = len(selected_rules)
-        scores = scores.astype("int64")
-
-        return scores
+        return scores.astype("int64")
 
     def predict_proba(self, X):
         """Provides probability estimates on provided instances.
@@ -341,7 +337,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             y = typify_classification(y)

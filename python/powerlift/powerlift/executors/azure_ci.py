@@ -6,7 +6,7 @@ https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?vi
 
 import random
 from multiprocessing import Pool
-from typing import List
+from typing import List, Optional
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor, handle_err
@@ -22,11 +22,11 @@ class AzureContainerInstance(Executor):
         subscription_id: str,
         azure_client_id: str,
         credential=None,
-        azure_client_secret: str = None,
+        azure_client_secret: Optional[str] = None,
         resource_group: str = "powerlift_rg",
-        shell_install: str = None,
-        pip_install: str = None,
-        wheel_filepaths: List[str] = None,
+        shell_install: Optional[str] = None,
+        pip_install: Optional[str] = None,
+        wheel_filepaths: Optional[List[str]] = None,
         n_running_containers: int = 1,
         num_cores: int = 4,
         mem_size_gb: int = 16,
@@ -34,7 +34,7 @@ class AzureContainerInstance(Executor):
         # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
         # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
         image: str = "mcr.microsoft.com/devcontainers/python:latest",
-        docker_db_uri: str = None,
+        docker_db_uri: Optional[str] = None,
         delete_group_container_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.
@@ -120,7 +120,7 @@ class AzureContainerInstance(Executor):
     def join(self):
         results = []
         if self._pool is not None:
-            for _, result in self._runner_id_to_result.items():
+            for result in self._runner_id_to_result.values():
                 res = result.get()
                 results.append(res)
         return results

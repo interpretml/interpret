@@ -275,7 +275,7 @@ def deduplicate_bins(bins):
     # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we
     # use the id of the bins to identify feature data that was previously binned
 
-    uniques = dict()
+    uniques = {}
     for bin_levels in bins:
         highest_key = None
         highest_idx = -1
@@ -301,40 +301,49 @@ def convert_to_intervals(cuts):  # pragma: no cover
         return [(-np.inf, np.inf)]
 
     if not np.isfinite(cuts).all():
-        raise Exception("cuts must contain only finite numbers")
+        msg = "cuts must contain only finite numbers"
+        raise Exception(msg)
 
     intervals = [(-np.inf, cuts[0]), *zip(cuts[:-1], cuts[1:]), (cuts[-1], np.inf)]
 
     if any(higher <= lower for (lower, higher) in intervals):
-        raise Exception("cuts must contain increasing values")
+        msg = "cuts must contain increasing values"
+        raise Exception(msg)
 
     return intervals
 
 
 def convert_to_cuts(intervals):  # pragma: no cover
     if len(intervals) == 0:
-        raise Exception("intervals must have at least one interval")
+        msg = "intervals must have at least one interval"
+        raise Exception(msg)
 
     if any(len(x) != 2 for x in intervals):
-        raise Exception("intervals must be a list of tuples")
+        msg = "intervals must be a list of tuples"
+        raise Exception(msg)
 
     if intervals[0][0] != -np.inf:
-        raise Exception("intervals must start from -inf")
+        msg = "intervals must start from -inf"
+        raise Exception(msg)
 
     if intervals[-1][-1] != np.inf:
-        raise Exception("intervals must end with inf")
+        msg = "intervals must end with inf"
+        raise Exception(msg)
 
     cuts = [lower for (lower, _) in intervals[1:]]
     cuts_verify = [higher for (_, higher) in intervals[:-1]]
 
     if np.isnan(cuts).any():
-        raise Exception("intervals cannot contain NaN")
+        msg = "intervals cannot contain NaN"
+        raise Exception(msg)
 
     if any(x[0] != x[1] for x in zip(cuts, cuts_verify)):
-        raise Exception("intervals must contain adjacent sections")
+        msg = "intervals must contain adjacent sections"
+        raise Exception(msg)
 
     if any(higher <= lower for lower, higher in zip(cuts, cuts[1:])):
-        raise Exception("intervals must contain increasing sections")
+        msg = "intervals must contain increasing sections"
+        raise Exception(msg)
 
     return cuts
 
@@ -345,7 +354,8 @@ def make_bag(y, test_size, rng, is_stratified):
     # the same as before
 
     if test_size < 0:  # pragma: no cover
-        raise Exception("test_size must be a positive numeric value.")
+        msg = "test_size must be a positive numeric value."
+        raise Exception(msg)
     if test_size == 0:
         return None
     n_samples = len(y)
@@ -353,7 +363,8 @@ def make_bag(y, test_size, rng, is_stratified):
 
     if test_size >= 1:
         if test_size % 1:
-            raise Exception("If test_size >= 1, test_size should be a whole number.")
+            msg = "If test_size >= 1, test_size should be a whole number."
+            raise Exception(msg)
         n_test_samples = test_size
     else:
         n_test_samples = ceil(n_samples * test_size)

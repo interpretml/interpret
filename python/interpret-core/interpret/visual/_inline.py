@@ -98,13 +98,12 @@ def _build_viz_err_obj(err_msg):
     figure = _build_error_frame(err_msg)
     viz_figure = {"type": _type, "figure": figure}
 
-    viz_obj = {
+    return {
         "name": "Error",
         "overall": viz_figure,
         "specific": [],
         "selector": {"columns": [], "data": []},
     }
-    return viz_obj
 
 
 def _build_viz_obj(explanation, detected_envs):
@@ -123,13 +122,12 @@ def _build_viz_obj(explanation, detected_envs):
             "data": explanation.selector.to_dict("records"),
         }
 
-    viz_obj = {
+    return {
         "name": explanation.name,
         "overall": overall,
         "specific": specific,
         "selector": selector_obj,
     }
-    return viz_obj
 
 
 def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
@@ -160,10 +158,7 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
         <script type="text/javascript" src="{js_url}"></script>
         """
 
-    if id_str is None:
-        div_id = f"_interpret-viz-{uuid.uuid4()}"
-    else:
-        div_id = id_str
+    div_id = f"_interpret-viz-{uuid.uuid4()}" if id_str is None else id_str
 
     body_js = f"""
     <div id="{div_id}"></div>

@@ -160,7 +160,7 @@ def boost(
                     noisy_update_tensor = term_update_tensor.copy()
 
                     # Make splits iteration friendly
-                    splits_iter = [0] + list(splits) + [len(term_update_tensor)]
+                    splits_iter = [0, *list(splits), len(term_update_tensor)]
 
                     n_sections = len(splits_iter) - 1
                     noises = native.generate_gaussian_random(

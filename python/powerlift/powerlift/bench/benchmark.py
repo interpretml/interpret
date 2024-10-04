@@ -33,7 +33,8 @@ class Benchmark:
         elif isinstance(store_or_uri, Store):
             self._store = store_or_uri
         else:  # pragma: no cover
-            raise TypeError(f"Incorrect type: {type(store_or_uri)}")
+            msg = f"Incorrect type: {type(store_or_uri)}"
+            raise TypeError(msg)
 
         if name is None:
             name = f"#{random.randint(0, 9999)}"
@@ -176,7 +177,7 @@ class Benchmark:
             self._store.get_or_create_experiment(self._name, self._description)
         )
         trials = list(self._store.iter_experiment_trials(self._experiment_id))
-        experiment = Experiment(
+        return Experiment(
             self._experiment_id,
             self._name,
             self._description,
@@ -185,7 +186,6 @@ class Benchmark:
             script,
             trials,
         )
-        return experiment
 
     def status(self) -> Optional[pd.DataFrame]:
         """Retrieves all trial's status and associated information.
@@ -194,8 +194,7 @@ class Benchmark:
             Trial statuses (Optional[pandas.DataFrame]): Experiment's trials' status.
         """
         df = self._store.get_status(self._name)
-        df = df.sort_values(by=["task", "method", "meta", "replicate_num"])
-        return df
+        return df.sort_values(by=["task", "method", "meta", "replicate_num"])
 
     def results(self) -> Optional[pd.DataFrame]:
         """Retrieves trial measures of an experiment in long form.
@@ -214,10 +213,9 @@ class Benchmark:
         )["id"].idxmin()
         df = df.loc[idx]
         df = df.drop(["id"], axis=1)
-        df = df.sort_values(
+        return df.sort_values(
             by=["task", "method", "meta", "replicate_num", "name", "seq_num"]
         )
-        return df
 
     def available_tasks(self, include_measures=False) -> Optional[pd.DataFrame]:
         """Retrieves available tasks to run a benchmark against.
