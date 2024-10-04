@@ -1,32 +1,27 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import (
-    gen_name_from_class,
-    gen_local_selector,
-    gen_global_selector,
-    gen_perf_dicts,
-)
-
-from sklearn.base import ClassifierMixin, RegressorMixin
-from sklearn.tree import DecisionTreeClassifier as SKDT
-from sklearn.tree import DecisionTreeRegressor as SKRT
-from sklearn.base import is_classifier
-from sklearn.utils.validation import check_is_fitted
-import numpy as np
+import logging
 from abc import abstractmethod
-from sklearn.tree import _tree
 from copy import deepcopy
 
+import numpy as np
+from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
+from sklearn.tree import DecisionTreeClassifier as SKDT
+from sklearn.tree import DecisionTreeRegressor as SKRT
+from sklearn.tree import _tree
+from sklearn.utils.validation import check_is_fitted
 
-from ..utils._clean_x import preclean_X
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import (
+    gen_global_selector,
+    gen_local_selector,
+    gen_name_from_class,
+    gen_perf_dicts,
+)
 from ..utils._unify_data import unify_data
-
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -146,7 +141,7 @@ class TreeExplanation(ExplanationMixin):
             )
             return component
         # Handle global feature graphs
-        elif self.explanation_type == "global":
+        if self.explanation_type == "global":
             feature = self.feature_names[key]
             nodes = data_dict["nodes"]
 
@@ -178,10 +173,10 @@ class TreeExplanation(ExplanationMixin):
                 stylesheet=stylesheet,
             )
             return component
-        else:  # pragma: no cover
-            msg = "Cannot handle type {0}".format(self.explanation_type)
-            _log.error(msg)
-            raise Exception(msg)
+        # pragma: no cover
+        msg = f"Cannot handle type {self.explanation_type}"
+        _log.error(msg)
+        raise Exception(msg)
 
     def _weight_edges(self, edges, decision_nodes):
         edges = deepcopy(edges)
@@ -504,12 +499,10 @@ class BaseShallowDecisionTree:
 
             if feature is not None and threshold is not None:
                 value_str += ", ".join([str(v) for v in value[0]])
-                label_str = "{0} <= {1:.2f}\n{2}".format(feature, threshold, value_str)
+                label_str = f"{feature} <= {threshold:.2f}\n{value_str}"
             else:
                 value_str += ", ".join([str(v) for v in value[0]])
-                label_str = "Impurity: {0:.2f}\n{1}".format(
-                    tree_.impurity[i], value_str
-                )
+                label_str = f"Impurity: {tree_.impurity[i]:.2f}\n{value_str}"
 
             nodes.append(
                 {"data": {"id": node_id, "label": label_str, "feature": feature}}

@@ -2,12 +2,12 @@
 # Distributed under the MIT software license
 
 import os
+import re
 
 import nbformat
+import pytest
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat.v4 import new_code_cell
-import pytest
-import re
 
 
 def run_notebook(notebook_path):
@@ -72,8 +72,8 @@ def test_example_notebooks(notebook_path):
 
     # NOTE: Hotfix required for Windows to run Jupyter notebooks in cloud.
     # https://github.com/jupyter/nbconvert/issues/1372#issuecomment-691596163
-    import sys
     import asyncio
+    import sys
 
     if (
         sys.version_info[0] == 3

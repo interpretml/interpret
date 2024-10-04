@@ -5,8 +5,8 @@ import logging
 
 import numpy as np
 
-from ._native import Native
 from ._clean_x import unify_columns
+from ._native import Native
 
 _log = logging.getLogger(__name__)
 _none_ndarray = np.array(None)

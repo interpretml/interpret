@@ -1,10 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from itertools import repeat
-import numpy as np
-
 import logging
+from itertools import repeat
+
+import numpy as np
 
 from ._clean_x import unify_columns, unify_feature_names
 

@@ -1,16 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from abc import ABC, abstractmethod
 import logging
-
-from ._environment import EnvironmentDetector, is_cloud_env, ENV_DETECTED
+from abc import ABC, abstractmethod
 
 from .._version import __version__
+from ._environment import ENV_DETECTED, EnvironmentDetector, is_cloud_env
 
-JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(
-    __version__
-)
+JS_URL = f"https://unpkg.com/@interpretml/interpret-inline@{__version__}/dist/interpret-inline.js"
 
 _log = logging.getLogger(__name__)
 
@@ -50,11 +47,10 @@ class AutoVisualizeProvider(VisualizeProvider):
                 self.provider = InlineProvider(
                     detected_envs=detected_envs, js_url=JS_URL
                 )
+            elif self.app_runner:
+                self.provider = DashProvider(self.app_runner)
             else:
-                if self.app_runner:
-                    self.provider = DashProvider(self.app_runner)
-                else:
-                    self.provider = DashProvider.from_address()
+                self.provider = DashProvider.from_address()
         else:  # ENV_DETECTED.NON_CLOUD
             _log.info("Detected non-cloud environment.")
             if self.app_runner:
@@ -88,33 +84,28 @@ class PreserveProvider(VisualizeProvider):
         self._preserve_output(
             explanation.name, visual, selector_key=key, file_name=file_name, **kwargs
         )
-        return None
 
     def _preserve_output(
         self, explanation_name, visual, selector_key=None, file_name=None, **kwargs
     ):
-        from plotly.offline import iplot, plot, init_notebook_mode
-        from IPython.display import display, display_html
         from base64 import b64encode
 
-        from plotly import graph_objs as go
-        from pandas.core.generic import NDFrame
         import dash.development.base_component as dash_base
+        from IPython.display import display, display_html
+        from pandas.core.generic import NDFrame
+        from plotly import graph_objs as go
+        from plotly.offline import init_notebook_mode, iplot, plot
 
         init_notebook_mode(connected=True)
 
         def render_html(html_string):
             base64_html = b64encode(html_string.encode("utf-8")).decode("ascii")
-            final_html = """<iframe src="data:text/html;base64,{data}" width="100%" height=400 frameBorder="0"></iframe>""".format(
-                data=base64_html
-            )
+            final_html = f"""<iframe src="data:text/html;base64,{base64_html}" width="100%" height=400 frameBorder="0"></iframe>"""
             display_html(final_html, raw=True)
 
         if visual is None:  # pragma: no cover
             msg = (
-                "No visualization for explanation [{0}] with selector_key [{1}]".format(
-                    explanation_name, selector_key
-                )
+                f"No visualization for explanation [{explanation_name}] with selector_key [{selector_key}]"
             )
             _log.error(msg)
             if file_name is None:
@@ -146,9 +137,7 @@ class PreserveProvider(VisualizeProvider):
             _log.error(msg)
             return False
         else:  # pragma: no cover
-            msg = "Visualization cannot be preserved for type: {0}.".format(
-                type(visual)
-            )
+            msg = f"Visualization cannot be preserved for type: {type(visual)}."
             if file_name is None:
                 render_html(msg)
             _log.error(msg)

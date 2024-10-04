@@ -1,6 +1,5 @@
-from interpret.utils._explanation import gen_perf_dicts, gen_name_from_class
-
 import numpy as np
+from interpret.utils._explanation import gen_name_from_class, gen_perf_dicts
 
 
 def test_gen_perf_dicts_regression():

@@ -3,9 +3,9 @@
 
 from ._compute import ComputeProvider, JobLibProvider  # noqa: F401
 from ._visualize import (  # noqa: F401
-    VisualizeProvider,
+    AutoVisualizeProvider,
     DashProvider,
     InlineProvider,
-    AutoVisualizeProvider,
     PreserveProvider,
+    VisualizeProvider,
 )

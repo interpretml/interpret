@@ -3,7 +3,7 @@
 
 import logging
 import math
-from itertools import count, repeat, groupby
+from itertools import count, groupby, repeat
 from warnings import warn
 
 import numpy as np
@@ -13,18 +13,17 @@ from sklearn.base import (
 )
 from sklearn.utils.validation import check_is_fitted
 
-from ._clean_x import unify_columns, preclean_X, unify_feature_names
 from ._clean_simple import clean_dimensions
-from ._seed import normalize_seed, increment_seed
-
+from ._clean_x import preclean_X, unify_columns, unify_feature_names
 from ._native import Native
 from ._privacy import (
-    validate_eps_delta,
     calc_classic_noise_multi,
     calc_gdp_noise_multi,
-    private_numeric_binning,
     private_categorical_binning,
+    private_numeric_binning,
+    validate_eps_delta,
 )
+from ._seed import increment_seed, normalize_seed
 
 _log = logging.getLogger(__name__)
 _none_list = [None]
@@ -466,7 +465,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
             (n_samples, len(self.feature_names_in_)), np.int64, order="F"
         )
 
-        if 0 < n_samples:
+        if n_samples > 0:
             native = Native.get_native_singleton()
             category_iter = (
                 category if isinstance(category, dict) else None

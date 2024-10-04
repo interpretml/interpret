@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import copy
+
 import numpy as np
 
 

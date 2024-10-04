@@ -1,16 +1,16 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 import logging
-from warnings import warn
-from ...utils._link import identify_task
-from math import isnan
-import numpy as np
 from itertools import groupby
+from math import isnan
+from warnings import warn
 
-from ._utils import generate_term_names
-from ...utils._histogram import make_all_histogram_edges
+import numpy as np
 
 from ...utils._clean_simple import typify_classification
+from ...utils._histogram import make_all_histogram_edges
+from ...utils._link import identify_task
+from ._utils import generate_term_names
 
 _log = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def _to_json_inner(ebm, detail="all"):
     if task == "classification":
         output["classes"] = ebm.classes_.tolist()
     elif task == "regression":
-        if 3 <= level:
+        if level >= 3:
             min_target = getattr(ebm, "min_target_", None)
             if min_target is not None and not isnan(min_target):
                 output["min_target"] = jsonify_item(min_target)
@@ -107,7 +107,7 @@ def _to_json_inner(ebm, detail="all"):
     if bagged_intercept is not None:
         j["bagged_intercept"] = jsonify_lists(bagged_intercept.tolist())
 
-    if 3 <= level:
+    if level >= 3:
         noise_scale_binning = getattr(ebm, "noise_scale_binning_", None)
         if noise_scale_binning is not None:
             j["noise_scale_binning"] = jsonify_item(noise_scale_binning)
@@ -115,17 +115,17 @@ def _to_json_inner(ebm, detail="all"):
         if noise_scale_boosting is not None:
             j["noise_scale_boosting"] = jsonify_item(noise_scale_boosting)
 
-    if 2 <= level:
+    if level >= 2:
         bag_weights = getattr(ebm, "bag_weights_", None)
         if bag_weights is not None:
             j["bag_weights"] = jsonify_lists(bag_weights.tolist())
 
-    if 3 <= level:
+    if level >= 3:
         best_iteration = getattr(ebm, "best_iteration_", None)
         if best_iteration is not None:
             j["best_iteration"] = best_iteration.tolist()
 
-    if 3 <= level:
+    if level >= 3:
         j["implementation"] = "python"
         params = {}
 
@@ -243,7 +243,7 @@ def _to_json_inner(ebm, detail="all"):
         feature_type = ebm.feature_types_in_[i]
         feature["type"] = feature_type
 
-        if 1 <= level:
+        if level >= 1:
             if unique_val_counts is not None:
                 feature["num_unique_vals"] = int(unique_val_counts[i])
 
@@ -266,7 +266,7 @@ def _to_json_inner(ebm, detail="all"):
             for bins in ebm.bins_[i]:
                 cuts.append(bins.tolist())
             feature["cuts"] = cuts
-            if 1 <= level:
+            if level >= 1:
                 if feature_bounds is not None:
                     feature_min = feature_bounds[i, 0]
                     if not isnan(feature_min):
@@ -298,19 +298,19 @@ def _to_json_inner(ebm, detail="all"):
             for feature_idx in ebm.term_features_[term_idx]
         ]
         term["scores"] = jsonify_lists(ebm.term_scores_[term_idx].tolist())
-        if 1 <= level:
+        if level >= 1:
             if standard_deviations_all is not None:
                 standard_deviations = standard_deviations_all[term_idx]
                 if standard_deviations is not None:
                     term["standard_deviations"] = jsonify_lists(
                         standard_deviations.tolist()
                     )
-        if 2 <= level:
+        if level >= 2:
             if bagged_scores_all is not None:
                 bagged_scores = bagged_scores_all[term_idx]
                 if bagged_scores is not None:
                     term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
-        if 1 <= level:
+        if level >= 1:
             term["bin_weights"] = jsonify_lists(ebm.bin_weights_[term_idx].tolist())
 
         terms.append(term)
@@ -398,18 +398,17 @@ def UNTESTED_dejsonify_lists(vals):
                 vals[idx] = np.inf
             elif val == "-inf":
                 vals[idx] = -np.inf
-        else:
-            if isinstance(val, list):
-                UNTESTED_dejsonify_lists(val)
+        elif isinstance(val, list):
+            UNTESTED_dejsonify_lists(val)
     return vals
 
 
 def UNTESTED_dejsonify_item(val):
     if val == "nan":
         return np.nan
-    elif val == "+inf":
+    if val == "+inf":
         return np.inf
-    elif val == "-inf":
+    if val == "-inf":
         return -np.inf
     return val
 

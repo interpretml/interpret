@@ -1,9 +1,10 @@
 """ Base service classes and methods for services. """
 
-from numbers import Number
 import time
+from numbers import Number
 from types import FunctionType
-from typing import Any, List, Tuple
+from typing import Any, Tuple
+
 from stopit import ThreadingTimeout as Timeout
 
 

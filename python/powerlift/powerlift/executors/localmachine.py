@@ -3,12 +3,12 @@
 This currently uses multiprocessing pools to handle parallelism.
 """
 
-from powerlift.bench.store import Store
-from powerlift.executors.base import Executor
+import multiprocessing
 from multiprocessing import Pool
 from typing import List
-from powerlift.executors.base import handle_err
-import multiprocessing
+
+from powerlift.bench.store import Store
+from powerlift.executors.base import Executor, handle_err
 
 
 class LocalMachine(Executor):

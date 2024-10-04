@@ -1,36 +1,29 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+
+import dash.development.base_component as dash_base
+import numpy as np
+import pandas as pd
+from interpret.blackbox import (
+    PartialDependence,
+)
 from interpret.data import ClassHistogram, Marginal
-from interpret.perf import ROC, PR, RegressionPerf
-
-from interpret.blackbox import LimeTabular
-from interpret.blackbox import ShapKernel
-from interpret.blackbox import MorrisSensitivity
-from interpret.blackbox import PartialDependence
-
-# from ..blackbox import PermutationImportance
-
-from interpret.greybox import TreeInterpreter
-from interpret.greybox import ShapTree
-
-from interpret.glassbox import LogisticRegression, LinearRegression
-from interpret.glassbox import ClassificationTree, RegressionTree
-from interpret.glassbox import DecisionListClassifier
 from interpret.glassbox import (
+    ClassificationTree,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
+    LinearRegression,
+    LogisticRegression,
+    RegressionTree,
 )
 
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-import dash.development.base_component as dash_base
+# from ..blackbox import PermutationImportance
+from interpret.perf import PR, ROC, RegressionPerf
 from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
-
-import sys
+from sklearn.model_selection import train_test_split
 
 
 def get_all_explainers():
@@ -180,18 +173,9 @@ def assert_valid_model_explainer(explainer, X):
 
 
 def valid_visualization(obj):
-    if obj is None:
+    if obj is None or isinstance(obj, NDFrame) or isinstance(obj, str) or isinstance(obj, go.Figure) or isinstance(obj, dash_base.Component):
         return True
-    elif isinstance(obj, NDFrame):
-        return True
-    elif isinstance(obj, str):
-        return True
-    elif isinstance(obj, go.Figure):
-        return True
-    elif isinstance(obj, dash_base.Component):
-        return True
-    else:
-        return False
+    return False
 
 
 def valid_data_dict(data_dict):
@@ -245,7 +229,7 @@ def assert_valid_explanation(explanation):
 
 
 def smoke_test_explanations(global_exp, local_exp, port):
-    from interpret import preserve, show, shutdown_show_server, set_show_addr
+    from interpret import preserve, set_show_addr, show, shutdown_show_server
 
     set_show_addr(("127.0.0.1", port))
 

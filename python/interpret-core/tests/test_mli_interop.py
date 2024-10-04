@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 from interpret.glassbox import LogisticRegression
+
 from .tutils import synthetic_classification
 
 

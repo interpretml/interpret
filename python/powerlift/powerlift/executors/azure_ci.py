@@ -4,12 +4,12 @@
 https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?view=azure-python
 """
 
-from powerlift.executors.localmachine import LocalMachine
-from powerlift.bench.store import Store
-from typing import List
-from powerlift.executors.base import Executor, handle_err
 import random
 from multiprocessing import Pool
+from typing import List
+
+from powerlift.bench.store import Store
+from powerlift.executors.base import Executor, handle_err
 
 
 class AzureContainerInstance(Executor):
@@ -57,7 +57,6 @@ class AzureContainerInstance(Executor):
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             delete_group_container_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
-        from multiprocessing import Manager
 
         self._credential = credential
         self._image = image

@@ -1,12 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from interpret.glassbox import LogisticRegression
 from six import raise_from
 
-from .tutils import assert_valid_explanation
-from .tutils import synthetic_classification
-
-from interpret.glassbox import LogisticRegression
+from .tutils import assert_valid_explanation, synthetic_classification
 
 
 def test_import_demo_extension_classes():
@@ -30,9 +28,9 @@ def test_import_demo_extension_classes():
 
 def test_demo_blackbox_explainer():
     from interpret.ext.blackbox import ExampleBlackboxExplainer
-    from interpret.ext.greybox import ExampleGreyboxExplainer
-    from interpret.ext.glassbox import ExampleGlassboxExplainer
     from interpret.ext.data import ExampleDataExplainer
+    from interpret.ext.glassbox import ExampleGlassboxExplainer
+    from interpret.ext.greybox import ExampleGreyboxExplainer
     from interpret.ext.perf import ExamplePerfExplainer
 
     data = synthetic_classification()

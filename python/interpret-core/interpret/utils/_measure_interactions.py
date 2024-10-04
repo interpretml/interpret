@@ -10,25 +10,20 @@ of the interaction of all pairs of features in a dataset.
 """
 
 import logging
+from itertools import combinations, count
 
-from itertools import count
 import numpy as np
-from itertools import combinations
-
-from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
+from sklearn.utils.multiclass import type_of_target
 
-from ._clean_x import preclean_X
 from ._clean_simple import (
     clean_dimensions,
-    typify_classification,
     clean_init_score_and_X,
+    typify_classification,
 )
-
-from ._preprocessor import construct_bins
-from ._native import Native
 from ._compressed_dataset import bin_native_by_dimension
-
+from ._native import Native
+from ._preprocessor import construct_bins
 from ._rank_interactions import rank_interactions
 
 _log = logging.getLogger(__name__)
@@ -207,7 +202,7 @@ def measure_interactions(
                 raise ValueError(
                     "diagreement between the number of classes in y and in the init_score shape"
                 )
-        elif 3 <= n_classes:
+        elif n_classes >= 3:
             if init_score.ndim != 2 or init_score.shape[1] != n_classes:
                 raise ValueError(
                     "diagreement between the number of classes in y and in the init_score shape"
@@ -215,7 +210,7 @@ def measure_interactions(
         else:  # 1 class
             # what the init_score should be for mono-classifiction is somewhat abiguous,
             # so allow either 0 or 1 (which means the dimension is eliminated)
-            if init_score.ndim == 2 and 2 <= init_score.shape[1]:
+            if init_score.ndim == 2 and init_score.shape[1] >= 2:
                 raise ValueError(
                     "diagreement between the number of classes in y and in the init_score shape"
                 )

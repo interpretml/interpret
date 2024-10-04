@@ -296,24 +296,24 @@ def run_azure_process(
     """
 
     import time
-    from azure.mgmt.containerinstance.models import (
-        ContainerGroup,
-        Container,
-        ContainerGroupRestartPolicy,
-        EnvironmentVariable,
-        ResourceRequests,
-        ResourceRequirements,
-        OperatingSystemTypes,
-    )
-    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
-    from azure.mgmt.resource import ResourceManagementClient
+    import uuid
+    from multiprocessing.pool import MaybeEncodingError
+
+    from azure.core.exceptions import HttpResponseError
     from azure.identity import ClientSecretCredential
     from azure.mgmt.authorization import AuthorizationManagementClient
     from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
-    from azure.core.exceptions import HttpResponseError
-    from multiprocessing.pool import MaybeEncodingError
-
-    import uuid
+    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
+    from azure.mgmt.containerinstance.models import (
+        Container,
+        ContainerGroup,
+        ContainerGroupRestartPolicy,
+        EnvironmentVariable,
+        OperatingSystemTypes,
+        ResourceRequests,
+        ResourceRequirements,
+    )
+    from azure.mgmt.resource import ResourceManagementClient
 
     client_id = azure_json["client_id"]
 
@@ -483,4 +483,3 @@ def run_azure_process(
                 except HttpResponseError:
                     time.sleep(1)
 
-    return None

@@ -1,29 +1,26 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+import re
+from copy import deepcopy
 from itertools import count
+
+import numpy as np
+import pandas as pd
 from sklearn.base import ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
 
 from ..api.base import ExplainerMixin, ExplanationMixin
+from ..utils._clean_simple import clean_dimensions, typify_classification
+from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
     gen_perf_dicts,
 )
-
-from copy import deepcopy
-import numpy as np
-import pandas as pd
-import re
-
-from ..utils._clean_x import preclean_X
-from ..utils._clean_simple import clean_dimensions, typify_classification
-
 from ..utils._unify_data import unify_data
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -100,16 +97,16 @@ class RulesExplanation(ExplanationMixin):
             return rules_to_html(data_dict, title="Triggered Rule")
 
         # Handle global feature graphs
-        elif self.explanation_type == "global":
+        if self.explanation_type == "global":
             return rules_to_html(
                 data_dict,
-                title="Rules with Feature: {0}".format(self.feature_names[key]),
+                title=f"Rules with Feature: {self.feature_names[key]}",
             )
         # Handle everything else as invalid
-        else:  # pragma: no cover
-            msg = "Not suppported: {0}, {1}".format(self.explanation_type, key)
-            _log.error(msg)
-            raise Exception(msg)
+        # pragma: no cover
+        msg = f"Not suppported: {self.explanation_type}, {key}"
+        _log.error(msg)
+        raise Exception(msg)
 
 
 class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
@@ -148,8 +145,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         try:
             from skrules import SkopeRules as SR
         except ImportError:  # NOTE: skoperules loves six, shame it's deprecated.
-            import six
             import sys
+
+            import six
 
             sys.modules["sklearn.externals.six"] = six
             from skrules import SkopeRules as SR
@@ -278,7 +276,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
     def _extract_rules(self, rules):
         rules = deepcopy(rules)
-        rules = list(sorted(rules, key=lambda x: x[1][0], reverse=True))
+        rules = sorted(rules, key=lambda x: x[1][0], reverse=True)
 
         rule_li = []
         prec_li = []
@@ -298,7 +296,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             rule = rule_rec[0]
             rule_round = " ".join(
                 [
-                    "{0:.2f}".format(float(x)) if x.replace(".", "", 1).isdigit() else x
+                    f"{float(x):.2f}" if x.replace(".", "", 1).isdigit() else x
                     for x in rule.split(" ")
                 ]
             )

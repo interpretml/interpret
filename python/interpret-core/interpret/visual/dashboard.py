@@ -1,21 +1,20 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from IPython import display
-import re
-import requests
-import threading
+import logging
 import os
-from . import _udash
-
-from gevent.pywsgi import WSGIServer
-from flask import Flask
-
-import socket
 import random
+import re
+import socket
+import threading
 from string import Template
 
-import logging
+import requests
+from flask import Flask
+from gevent.pywsgi import WSGIServer
+from IPython import display
+
+from . import _udash
 
 _log = logging.getLogger(__name__)
 
@@ -31,9 +30,8 @@ app.logger.disabled = True
 
 def _build_path(path, base_url=None):
     if base_url:
-        return "{0}/{1}".format(base_url, path)
-    else:
-        return path
+        return f"{base_url}/{path}"
+    return path
 
 
 class AppRunner:
@@ -54,11 +52,11 @@ class AppRunner:
             for _ in range(max_attempts):
                 if self._local_port_available(port, rais=False):
                     self.port = port
-                    _log.info("Found open port: {0}".format(port))
+                    _log.info(f"Found open port: {port}")
                     break
-                else:  # pragma: no cover
-                    _log.info("Port already in use: {0}".format(port))
-                    port = random.randint(7002, 7999)
+                # pragma: no cover
+                _log.info(f"Port already in use: {port}")
+                port = random.randint(7002, 7999)
 
             else:  # pragma: no cover
                 msg = """Could not find open port.
@@ -85,13 +83,12 @@ class AppRunner:
             # sock.bind(("::1", port))
             # sock.listen(backlog)
             # sock.close()
-        except socket.error:  # pragma: no cover
+        except OSError:  # pragma: no cover
             if rais:
                 raise RuntimeError(
-                    "The server is already running on port {0}".format(port)
+                    f"The server is already running on port {port}"
                 )
-            else:
-                return False
+            return False
         return True
 
     def stop(self):
@@ -102,11 +99,11 @@ class AppRunner:
         _log.info("Triggering shutdown")
         try:
             path = _build_path("shutdown")
-            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
+            url = f"http://{self.ip}:{self.port}/{path}"
             r = requests.post(url)
             _log.debug(r)
         except requests.exceptions.RequestException as e:  # pragma: no cover
-            _log.info("Dashboard stop failed: {0}".format(e))
+            _log.info(f"Dashboard stop failed: {e}")
             return False
 
         if self._thread is not None:
@@ -135,7 +132,7 @@ class AppRunner:
         return str(id(obj))
 
     def start(self):
-        _log.info("Running app runner on: {0}:{1}".format(self.ip, self.port))
+        _log.info(f"Running app runner on: {self.ip}:{self.port}")
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -145,12 +142,12 @@ class AppRunner:
 
         try:
             path = _build_path("")
-            url = "http://{0}:{1}/{2}".format(self.ip, self.port, path)
+            url = f"http://{self.ip}:{self.port}/{path}"
             requests.get(url)
             _log.info("Dashboard ping succeeded")
             return True
         except requests.exceptions.RequestException as e:  # pragma: no cover
-            _log.info("Dashboard ping failed: {0}".format(e))
+            _log.info(f"Dashboard ping failed: {e}")
             return False
 
     def status(self):
@@ -174,34 +171,29 @@ class AppRunner:
         path = (
             obj_path
             if self.base_url is None
-            else "{0}/{1}".format(self.base_url, obj_path)
+            else f"{self.base_url}/{obj_path}"
         )
         start_url = (
             "/"
             if self.use_relative_links
-            else "http://{0}:{1}/".format(self.ip, self.port)
+            else f"http://{self.ip}:{self.port}/"
         )
 
-        url = "{0}{1}".format(start_url, path)
-        _log.info("Display URL: {0}".format(url))
+        url = f"{start_url}{path}"
+        _log.info(f"Display URL: {url}")
 
         return url
 
     def display(self, ctx, width="100%", height=800, open_link=False):
         url = self.display_link(ctx)
 
-        html_str = "<!-- {0} -->\n".format(url)
+        html_str = f"<!-- {url} -->\n"
         if open_link:
-            html_str += r'<a href="{url}" target="_new">Open in new window</a>'.format(
-                url=url
-            )
+            html_str += rf'<a href="{url}" target="_new">Open in new window</a>'
 
-        html_str += """<iframe src="{url}" width={width} height={height} frameBorder="0"></iframe>""".format(
-            url=url, width=width, height=height
-        )
+        html_str += f"""<iframe src="{url}" width={width} height={height} frameBorder="0"></iframe>"""
 
         display.display_html(html_str, raw=True)
-        return None
 
 
 class DispatcherApp:
@@ -223,7 +215,7 @@ class DispatcherApp:
             self.app_pattern = re.compile(r"/?(.+?)(/|$)")
         else:
             self.app_pattern = re.compile(
-                r"/?(?:{0}/)?(.+?)(/|$)".format(self.base_url)
+                rf"/?(?:{self.base_url}/)?(.+?)(/|$)"
             )
 
     def obj_id(self, obj):
@@ -232,11 +224,11 @@ class DispatcherApp:
     def register(self, ctx, share_tables=None):
         ctx_id = self.obj_id(ctx)
         if ctx_id not in self.pool:
-            _log.info("Creating App Entry: {0}".format(ctx_id))
+            _log.info(f"Creating App Entry: {ctx_id}")
             ctx_path = (
-                "/{0}/".format(ctx_id)
+                f"/{ctx_id}/"
                 if self.base_url is None
-                else "/{0}/{1}/".format(self.base_url, ctx_id)
+                else f"/{self.base_url}/{ctx_id}/"
             )
             app = _udash.generate_app(
                 ctx,
@@ -250,13 +242,13 @@ class DispatcherApp:
 
             self.pool[ctx_id] = app.server
         else:
-            _log.debug("App Entry found: {0}".format(ctx_id))
+            _log.debug(f"App Entry found: {ctx_id}")
 
     def __call__(self, environ, start_response):
         path_info = environ.get("PATH_INFO", "")
         script_name = environ.get("SCRIPT_NAME", "")
-        _log.debug("PATH INFO  : {0}".format(path_info))
-        _log.debug("SCRIPT NAME: {0}".format(script_name))
+        _log.debug(f"PATH INFO  : {path_info}")
+        _log.debug(f"SCRIPT NAME: {script_name}")
 
         try:
             if path_info == self.root_path:
@@ -270,7 +262,7 @@ class DispatcherApp:
                 server = self.config["server"]
                 server.stop()
                 start_response("200 OK", [("content-type", "text/html")])
-                return ["Shutdown".encode("utf-8")]
+                return [b"Shutdown"]
 
             if path_info == self.favicon_path:
                 _log.info("Favicon requested.")
@@ -281,16 +273,16 @@ class DispatcherApp:
 
             match = re.search(self.app_pattern, path_info)
             if match is None or self.pool.get(match.group(1), None) is None:
-                msg = "URL not supported: {0}".format(path_info)
+                msg = f"URL not supported: {path_info}"
                 _log.error(msg)
                 start_response("400 BAD REQUEST ERROR", [("content-type", "text/html")])
                 return [msg.encode("utf-8")]
 
             ctx_id = match.group(1)
-            _log.info("Routing request: {0}".format(ctx_id))
+            _log.info(f"Routing request: {ctx_id}")
             app = self.pool[ctx_id]
             if self.base_url and not environ["PATH_INFO"].startswith(
-                "/{0}".format(self.base_url)
+                f"/{self.base_url}"
             ):
                 _log.info("No base url in path. Rewrite to include in path.")
                 environ["PATH_INFO"] = "/{0}{1}".format(
@@ -308,9 +300,7 @@ class DispatcherApp:
             except Exception:
                 pass
             return [
-                "Internal Server Error caught by Dispatcher. See logs if available.".encode(
-                    "utf-8"
-                )
+                b"Internal Server Error caught by Dispatcher. See logs if available."
             ]
 
     def _root_content(self):
@@ -421,9 +411,9 @@ body {
                 [
                     r'<li><a href="{0}">{1}</a></li>'.format(
                         (
-                            "/{0}/".format(key)
+                            f"/{key}/"
                             if self.base_url is None
-                            else "/{0}/{1}/".format(self.base_url, key)
+                            else f"/{self.base_url}/{key}/"
                         ),
                         key,
                     )

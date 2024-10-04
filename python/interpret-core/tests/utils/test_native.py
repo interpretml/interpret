@@ -1,10 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.utils._native import Native
-
 import numpy as np
-
+from interpret.utils._native import Native
 from scipy.stats import normaltest, shapiro
 
 
@@ -78,7 +76,7 @@ def test_suggest_graph_bound_no_min_max():
     cuts = [25, 50, 75]
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts)
     assert low_graph_bound < 25
-    assert 75 < high_graph_bound
+    assert high_graph_bound > 75
 
 
 def test_suggest_graph_bound_no_cuts():

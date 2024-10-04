@@ -1,7 +1,7 @@
 import json
 
-from slicer import Slicer as S
 from interpret.newapi.component import Component
+from slicer import Slicer as S
 
 # TODO: .component and .append to be made protected for minimal API surface.
 

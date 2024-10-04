@@ -62,11 +62,10 @@ def rank_interactions(
                 item = (strength, feature_idxs)
                 if n_output_interactions <= 0:
                     interaction_strengths.append(item)
+                elif len(interaction_strengths) == n_output_interactions:
+                    heapq.heappushpop(interaction_strengths, item)
                 else:
-                    if len(interaction_strengths) == n_output_interactions:
-                        heapq.heappushpop(interaction_strengths, item)
-                    else:
-                        heapq.heappush(interaction_strengths, item)
+                    heapq.heappush(interaction_strengths, item)
 
         interaction_strengths.sort(reverse=True)
         return interaction_strengths

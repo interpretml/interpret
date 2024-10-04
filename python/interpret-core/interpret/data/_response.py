@@ -1,15 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import gen_name_from_class, gen_global_selector
-
 import numpy as np
 from scipy.stats import pearsonr
 
-from ..utils._clean_x import preclean_X
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
 
 
@@ -93,7 +91,7 @@ class Marginal(ExplainerMixin):
 
         # Sample down
         n_samples = (
-            self.max_scatter_samples if len(y) > self.max_scatter_samples else len(y)
+            min(len(y), self.max_scatter_samples)
         )
         idx = np.random.choice(np.arange(len(y)), n_samples, replace=False)
         X_sample = X[idx, :]
@@ -108,7 +106,7 @@ class Marginal(ExplainerMixin):
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
             else:
-                raise Exception("Cannot support type: {0}".format(feature_type))
+                raise Exception(f"Cannot support type: {feature_type}")
 
             feat_density_data_dict = {"names": values, "scores": counts}
             specific_dict = {
@@ -192,8 +190,9 @@ class MarginalExplanation(ExplanationMixin):
         Returns:
             A Plotly figure.
         """
-        from ..visual.plot import plot_density
         import plotly.graph_objs as go
+
+        from ..visual.plot import plot_density
 
         data_dict = self.data(key)
         if data_dict is None:
@@ -279,7 +278,7 @@ class MarginalExplanation(ExplanationMixin):
             xaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
             yaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
             title=(
-                "Pearson Correlation: {0:.3f}".format(corr) if corr is not None else ""
+                f"Pearson Correlation: {corr:.3f}" if corr is not None else ""
             ),
         )
         fig = go.Figure(data=data, layout=layout)
@@ -423,8 +422,9 @@ class ClassHistogramExplanation(ExplanationMixin):
         Returns:
             A Plotly figure.
         """
-        from ..visual.plot import plot_density, COLORS
         import plotly.graph_objs as go
+
+        from ..visual.plot import COLORS, plot_density
 
         data_dict = self.data(key)
         if data_dict is None:
@@ -450,7 +450,7 @@ class ClassHistogramExplanation(ExplanationMixin):
 
         column_name = self.feature_names[key]
 
-        classes = list(sorted(set(y)))
+        classes = sorted(set(y))
         data = []
         is_categorical = (
             self.feature_types[key] == "nominal" or self.feature_types[key] == "ordinal"

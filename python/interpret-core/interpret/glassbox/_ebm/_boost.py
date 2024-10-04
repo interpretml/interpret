@@ -1,15 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ...utils._native import Native, Booster
+import heapq
+import logging
 
 import numpy as np
 
-import heapq
-from ...utils._native import Native
 from ... import develop
-
-import logging
+from ...utils._native import Booster, Native
 
 _log = logging.getLogger(__name__)
 
@@ -82,9 +80,9 @@ def boost(
 
             while step_idx < max_steps:
                 term_boost_flags_local = term_boost_flags
-                if 0 <= state_idx:
+                if state_idx >= 0:
                     # cyclic
-                    if 0 == state_idx:
+                    if state_idx == 0:
                         # starting a fresh cyclic round. Clear the priority queue
                         bestkey = None
                         heap = []
@@ -93,7 +91,7 @@ def boost(
                             step_idx == 0
                             and develop._randomize_initial_feature_order
                             or develop._randomize_greedy_feature_order
-                            and 0 < greedy_steps
+                            and greedy_steps > 0
                             or develop._randomize_feature_order
                         ):
                             # TODO: test if shuffling during pure cyclic is better
@@ -104,14 +102,14 @@ def boost(
                     contains_nominals = any(
                         nominals[i] for i in term_features[term_idx]
                     )
-                    if 0 < smoothing_rounds and (
+                    if smoothing_rounds > 0 and (
                         nominal_smoothing or not contains_nominals
                     ):
                         # modify some of our parameters temporarily
                         term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
 
                     make_progress = False
-                    if 1.0 <= cyclic_state or 0 < smoothing_rounds:
+                    if cyclic_state >= 1.0 or smoothing_rounds > 0:
                         # if cyclic_state is above 1.0 we make progress
                         step_idx += 1
                         make_progress = True
@@ -121,7 +119,7 @@ def boost(
                     step_idx += 1
                     _, _, term_idx = heapq.heappop(heap)
 
-                if bestkey is None or 0 <= state_idx:
+                if bestkey is None or state_idx >= 0:
                     term_monotone = None
                     if monotone_constraints is not None:
                         term_monotone = np.array(
@@ -217,7 +215,7 @@ def boost(
                         pass
                     min_metric = min(cur_metric, min_metric)
 
-                    if 0 < len(circular) and smoothing_rounds <= 0:
+                    if len(circular) > 0 and smoothing_rounds <= 0:
                         # during smoothing, do not use early stopping because smoothing
                         # is using random cuts, which means gain is highly variable
                         toss = circular[circular_idx]
@@ -230,15 +228,15 @@ def boost(
 
                 state_idx = state_idx + 1
                 if len(term_features) <= state_idx:
-                    if 0 < smoothing_rounds:
+                    if smoothing_rounds > 0:
                         state_idx = 0  # all smoothing rounds are cyclic rounds
                         smoothing_rounds -= 1
                     else:
                         state_idx = -greedy_steps
-                        if 1.0 <= cyclic_state:
+                        if cyclic_state >= 1.0:
                             cyclic_state -= 1.0
                         cyclic_state += cyclic_progress
-            if 0 < len(circular):
+            if len(circular) > 0:
                 model_update = booster.get_best_model()
             else:
                 model_update = booster.get_current_model()

@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 name = "interpret"
 # NOTE: Version is replaced by a regex script.

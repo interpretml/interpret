@@ -47,7 +47,7 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
 
     # For multiclass we take the average of contributions per class
     # TODO this is consistent to what Interpret is doing but might be changed
-    if hasattr(ebm, "classes_") and 2 < len(ebm.classes_):
+    if hasattr(ebm, "classes_") and len(ebm.classes_) > 2:
         contributions = np.average(np.abs(contributions), axis=-1)
 
     abs_sum_per_row = np.empty(len(contributions), np.float64)
@@ -118,13 +118,12 @@ def append_group_importance(
             raise ValueError(
                 f"The provided explanation is {global_exp.explanation_type} but a global explanation is expected."
             )
-        elif (
+        if (
             global_exp._internal_obj is None
             or global_exp._internal_obj["overall"] is None
         ):
             raise ValueError("The global explanation object is incomplete.")
-        else:
-            global_explanation = global_exp
+        global_explanation = global_exp
     else:
         global_explanation = ebm.explain_global(global_exp_name)
 
@@ -162,7 +161,7 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
     """
     if not isinstance(term_groups_list, list):
         raise ValueError("term_groups_list should be a list.")
-    elif len(term_groups_list) == 0:
+    if len(term_groups_list) == 0:
         raise ValueError("term_groups_list should be a non-empty list.")
 
     if contributions is None:

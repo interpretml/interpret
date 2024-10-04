@@ -44,10 +44,9 @@ def _detect_ipython_zmq():
         shell = get_ipython().__class__.__name__
         if shell == "ZMQInteractiveShell":
             return True  # Jupyter notebook or qtconsole
-        elif shell == "TerminalInteractiveShell":
+        if shell == "TerminalInteractiveShell":
             return False  # Terminal running IPython
-        else:
-            return False  # Other type (?)
+        return False  # Other type (?)
     except NameError:  # pragma: no cover
         return False  # Probably standard Python interpreter
 
@@ -137,13 +136,12 @@ def is_cloud_env(detected):
         and len(set(non_cloud_env).intersection(detected)) == 0
     ):
         return ENV_DETECTED.CLOUD
-    elif (
+    if (
         len(set(cloud_env).intersection(detected)) != 0
         and len(set(non_cloud_env).intersection(detected)) != 0
     ):
         return ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD
-    else:
-        return ENV_DETECTED.NON_CLOUD
+    return ENV_DETECTED.NON_CLOUD
 
 
 class EnvironmentDetector:

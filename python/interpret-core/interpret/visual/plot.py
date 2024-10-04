@@ -3,14 +3,13 @@
 
 # NOTE: This module is going to through some major refactoring shortly. Do not use directly.
 
-import plotly.graph_objs as go
-import numpy as np
-from plotly import subplots
-import matplotlib.pyplot as plt
+import logging
 from numbers import Number
 
-
-import logging
+import matplotlib.pyplot as plt
+import numpy as np
+import plotly.graph_objs as go
+from plotly import subplots
 
 _log = logging.getLogger(__name__)
 
@@ -38,12 +37,12 @@ def plot_performance_curve(
 
     width = 2
 
-    auc_str = "{0} = {1:.4f}".format(auc_prefix, auc)
+    auc_str = f"{auc_prefix} = {auc:.4f}"
     auc_trace = go.Scatter(
         x=x_values,
         y=y_values,
         mode="lines",
-        text=["Threshold ({0:.3f})".format(x) for x in thresholds],
+        text=[f"Threshold ({x:.3f})" for x in thresholds],
         hoverinfo="text+x+y",
         line=dict(color="darkorange", width=width),
         name=auc_str,
@@ -127,7 +126,7 @@ def plot_continuous_bar(
     if multiclass:
         for i in range(y_vals.shape[1]):
             class_name = (
-                "Class {}".format(i)
+                f"Class {i}"
                 if "meta" not in data_dict
                 else data_dict["meta"]["label_names"][i]
             )
@@ -205,13 +204,13 @@ def plot_continuous_bar(
 # Taken from:
 # https://stackoverflow.com/questions/579310/formatting-long-numbers-as-strings-in-python
 def _human_format(num):
-    num = float("{:.3g}".format(num))
+    num = float(f"{num:.3g}")
     magnitude = 0
     while abs(num) >= 1000:
         magnitude += 1
         num /= 1000.0
     return "{}{}".format(
-        "{:f}".format(num).rstrip("0").rstrip("."), ["", "K", "M", "B", "T"][magnitude]
+        f"{num:f}".rstrip("0").rstrip("."), ["", "K", "M", "B", "T"][magnitude]
     )
 
 
@@ -249,9 +248,7 @@ def plot_density(
     if not is_categorical:
         x_text = []
         for indx in range(len(edges) - 1):
-            new_val = "{0} - {1}".format(
-                _pretty_number(edges[indx]), _pretty_number(edges[indx + 1])
-            )
+            new_val = f"{_pretty_number(edges[indx])} - {_pretty_number(edges[indx + 1])}"
             x_text.append(new_val)
         x_vals = [np.mean([i, j]) for i, j in zip(edges, edges[1:])]
     else:
@@ -438,7 +435,7 @@ def plot_bar(data_dict, title="", xtitle="", ytitle=""):
     if multiclass:
         for i in range(y.shape[1]):
             class_name = (
-                "Class {}".format(i)
+                f"Class {i}"
                 if "meta" not in data_dict
                 else data_dict["meta"]["label_names"][i]
             )
@@ -490,11 +487,11 @@ def _names_with_values(names, values):
     li = []
     for name, value in zip(names, values):
         if value == "":
-            li.append("{0}".format(name))
+            li.append(f"{name}")
         elif isinstance(value, Number):
-            li.append("{0} ({1:.2f})".format(name, value))
+            li.append(f"{name} ({value:.2f})")
         else:
-            li.append("{0} ({1})".format(name, value))
+            li.append(f"{name} ({value})")
 
     return li
 
@@ -539,10 +536,10 @@ def plot_horizontal_bar(
         else:  # Regression titles
             if not np.isnan(actual):
                 actual_score = _pretty_number(actual_score)
-                title_items.append("Actual: {}".format(actual_score))
+                title_items.append(f"Actual: {actual_score}")
 
             predicted_score = _pretty_number(predicted_score)
-            title_items.append("Predicted: {}".format(predicted_score))
+            title_items.append(f"Predicted: {predicted_score}")
 
         title = " | ".join(title_items)
     if not multiclass:
@@ -689,8 +686,7 @@ def sort_take(
 def get_sort_indexes(data, sort_fn=None, top_n=None):
     if isinstance(data[0], list):
         return get_sort_indexes_2d(data, sort_fn=sort_fn, top_n=top_n)
-    else:
-        return get_sort_indexes_1d(data, sort_fn=sort_fn, top_n=top_n)
+    return get_sort_indexes_1d(data, sort_fn=sort_fn, top_n=top_n)
 
 
 def get_sort_indexes_1d(data, sort_fn=None, top_n=None):
@@ -700,8 +696,7 @@ def get_sort_indexes_1d(data, sort_fn=None, top_n=None):
     if sort_fn is not None:
         scored_vals = list(map(sort_fn, data))
         return np.argsort(scored_vals)[:top_n]
-    else:
-        return np.arange(top_n)
+    return np.arange(top_n)
 
 
 def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
@@ -714,8 +709,7 @@ def get_sort_indexes_2d(data, sort_fn=None, top_n=None):
             sorted_vals = list(map(sort_fn, data_instance))
             out_list.append(np.argsort(sorted_vals)[:top_n])
         return out_list
-    else:
-        return np.arange(top_n)
+    return np.arange(top_n)
 
 
 def mli_sort_take(data, sort_indexes, reverse_results=False):
@@ -729,8 +723,7 @@ def mli_sort_take(data, sort_indexes, reverse_results=False):
         return out_list
     if reverse_results:
         return [data[i] for i in reversed(sort_indexes)]
-    else:
-        return [data[i] for i in sort_indexes]
+    return [data[i] for i in sort_indexes]
 
 
 def get_explanation_index(explanation_list, explanation_type):
@@ -840,9 +833,7 @@ def plot_ebm_multiple_booleans(
                 counter += 1
             else:
                 print(
-                    "Feature: {} is not observed as a Boolean variable.".format(
-                        feat_name
-                    )
+                    f"Feature: {feat_name} is not observed as a Boolean variable."
                 )
     if mpl_style:
         _ = plt.figure(figsize=(12, 12))

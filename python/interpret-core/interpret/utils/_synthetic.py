@@ -106,7 +106,7 @@ def make_synthetic(
 
             y = (rng.uniform(0.0, 1.0, n_samples) < prob).astype(np.int64)
 
-            if 2 < n_classes:
+            if n_classes > 2:
                 # multiclass. To keep things simple, randomly select classes above
                 # the 0th class with equal probability between the classes above 0.
                 y = np.where(
@@ -251,10 +251,10 @@ def _make_synthetic_features(
         raise ValueError(f"missing must be bool or float, but is {type(missing)}")
 
     if missing < 0.0:
-        raise ValueError(f"missing cannot be negative")
-    elif 1.0 < missing:
-        raise ValueError(f"missing cannot be more than 1.0")
-    elif missing == 0.0:
+        raise ValueError("missing cannot be negative")
+    if missing > 1.0:
+        raise ValueError("missing cannot be more than 1.0")
+    if missing == 0.0:
         mask = None
     else:
         mask = rng.choice(

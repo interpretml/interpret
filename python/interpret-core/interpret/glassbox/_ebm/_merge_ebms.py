@@ -1,22 +1,22 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+import warnings
+from itertools import chain, count
 from math import isnan
-from ._utils import (
-    remove_unused_higher_bins,
-    order_terms,
-    generate_term_names,
-    process_terms,
-    convert_categorical_to_continuous,
-    deduplicate_bins,
-)
-from ...utils._native import Native
 
 import numpy as np
-import warnings
-from itertools import count, chain
 
-import logging
+from ...utils._native import Native
+from ._utils import (
+    convert_categorical_to_continuous,
+    deduplicate_bins,
+    generate_term_names,
+    order_terms,
+    process_terms,
+    remove_unused_higher_bins,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ def _harmonize_tensor(
                 # to the same index in old_feature_bins otherwise they would have been
                 # split into two categories
                 old_bin_idx = old_feature_bins.get(new_categories[0], -1)
-                if 0 <= old_bin_idx:
+                if old_bin_idx >= 0:
                     percentage.append(
                         len(new_categories) / len(old_reversed[old_bin_idx])
                     )
@@ -190,17 +190,9 @@ def _harmonize_tensor(
                         # located
                         percentage.append(0.0)
                     else:
-                        if new_low < old_low:
-                            # this can't happen except at the lowest bin where the new min can be
-                            # lower than the old min.  In that case we know the old data
-                            # had zero contribution between the new min to the old min.
-                            new_low = old_low
+                        new_low = max(new_low, old_low)
 
-                        if old_high < new_high:
-                            # this can't happen except at the lowest bin where the new max can be
-                            # higher than the old max.  In that case we know the old data
-                            # had zero contribution between the new max to the old max.
-                            new_high = old_high
+                        new_high = min(old_high, new_high)
 
                         if old_high == old_low:
                             # I think this only happens when all the values in the
@@ -224,7 +216,7 @@ def _harmonize_tensor(
     new_shape = tuple(len(lookup) for lookup in lookups)
     n_cells = np.prod(new_shape)
 
-    if 1 < n_multiclasses:
+    if n_multiclasses > 1:
         # for multiclass we need to add another dimension for the scores of each class
         new_shape += (n_multiclasses,)
 
@@ -233,7 +225,7 @@ def _harmonize_tensor(
     mapping.reverse()
 
     # now we need to inflate it
-    intermediate_shape = (n_cells, n_multiclasses) if 1 < n_multiclasses else n_cells
+    intermediate_shape = (n_cells, n_multiclasses) if n_multiclasses > 1 else n_cells
     new_tensor = np.empty(intermediate_shape, np.float64)
     for cell_idx in range(n_cells):
         remainder = cell_idx
@@ -359,9 +351,8 @@ def merge_ebms(models):
     if isnan(link_param):
         if not all(isnan(model.link_param_) for model in models):
             raise Exception("Models with different link param values cannot be merged")
-    else:
-        if any(model.link_param_ != link_param for model in models):
-            raise Exception("Models with different link param values cannot be merged")
+    elif any(model.link_param_ != link_param for model in models):
+        raise Exception("Models with different link param values cannot be merged")
     ebm.link_param_ = link_param
 
     # self.bins_ is the only feature based attribute that we absolutely require
@@ -473,7 +464,7 @@ def merge_ebms(models):
             else:
                 # continuous
 
-                if 1 != len(bin_types):
+                if len(bin_types) != 1:
                     # We have both categorical and continuous.  We can't convert continuous
                     # to categorical since we lack the original labels, but we can convert
                     # categoricals to continuous.  If the feature flavors are similar, which
@@ -529,7 +520,7 @@ def merge_ebms(models):
 
     min_feature_vals = [bounds[:, 0] for bounds in old_bounds if bounds is not None]
     max_feature_vals = [bounds[:, 1] for bounds in old_bounds if bounds is not None]
-    if 0 < len(min_feature_vals):  # max_feature_vals has the same len
+    if len(min_feature_vals) > 0:  # max_feature_vals has the same len
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
 
@@ -582,7 +573,7 @@ def merge_ebms(models):
 
         n_outer_bags = -1
         if hasattr(model, "bagged_scores_"):
-            if 0 < len(model.bagged_scores_):
+            if len(model.bagged_scores_) > 0:
                 n_outer_bags = len(model.bagged_scores_[0])
 
         model_bag_weights = getattr(model, "bag_weights_", None)
@@ -687,7 +678,7 @@ def merge_ebms(models):
         bin_weight_percentages = bin_weight_percentages / bin_weight_percentages.sum()
 
         additive_shape = bin_weight_percentages.shape
-        if 2 < n_classes:
+        if n_classes > 2:
             additive_shape = tuple(list(additive_shape) + [n_classes])
 
         new_bin_weights = []
@@ -697,7 +688,7 @@ def merge_ebms(models):
         ):
             n_outer_bags = -1
             if hasattr(model, "bagged_scores_"):
-                if 0 < len(model.bagged_scores_):
+                if len(model.bagged_scores_) > 0:
                     n_outer_bags = len(model.bagged_scores_[0])
 
             term_idx = fg_dict.get(sorted_fg)

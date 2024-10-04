@@ -59,7 +59,7 @@ class ExplanationMixin(abc.ABC):
         Returns:
             A serializable dictionary.
         """
-        pass  # pragma: no cover
+        # pragma: no cover
 
     @abc.abstractmethod
     def visualize(self, key=None):
@@ -73,7 +73,7 @@ class ExplanationMixin(abc.ABC):
         Returns:
             A Plotly figure, html as string, or a Dash component.
         """
-        pass  # pragma: no cover
+        # pragma: no cover
 
     name = "An Explanation"
     selector = None

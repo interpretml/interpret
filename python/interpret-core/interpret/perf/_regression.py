@@ -1,17 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import gen_name_from_class
-
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from ..utils._clean_x import preclean_X
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions
-
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_name_from_class
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 class RegressionPerf(ExplainerMixin):
@@ -53,7 +51,7 @@ class RegressionPerf(ExplainerMixin):
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, _ = determine_classes(self.model, X, n_samples)
-        if 0 <= n_classes:
+        if n_classes >= 0:
             raise Exception("Classification not supported by the RegressionPerf class")
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 

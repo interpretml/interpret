@@ -2,16 +2,16 @@
 # Distributed under the MIT software license
 
 
-from interpret.glassbox import LinearRegression
 from interpret.api.base import ExplainerMixin
 from interpret.ext.extension import (
     _is_valid_blackbox_explainer,
-    _is_valid_provider,
+    _is_valid_data_explainer,
     _is_valid_glassbox_explainer,
     _is_valid_greybox_explainer,
-    _is_valid_data_explainer,
     _is_valid_perf_explainer,
+    _is_valid_provider,
 )
+from interpret.glassbox import LinearRegression
 
 
 class NotEvenAnExplainer:

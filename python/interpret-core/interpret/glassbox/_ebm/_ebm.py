@@ -24,7 +24,6 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted
 
 from ... import develop
-
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...provider import JobLibProvider

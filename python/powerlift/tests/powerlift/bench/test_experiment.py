@@ -1,10 +1,10 @@
-from powerlift.bench import Store, Benchmark
+import os
 
+import pytest
+from powerlift.bench import Benchmark
+from powerlift.executors.azure_ci import AzureContainerInstance
 from powerlift.executors.docker import InsecureDocker
 from powerlift.executors.localmachine import LocalMachine
-from powerlift.executors.azure_ci import AzureContainerInstance
-import pytest
-import os
 
 
 def _add(x, y):
@@ -22,15 +22,15 @@ def _trials(task):
 
 
 def _benchmark(trial):
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.svm import LinearSVC
     from sklearn.calibration import CalibratedClassifierCV
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import roc_auc_score
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import OneHotEncoder, FunctionTransformer
     from sklearn.compose import ColumnTransformer
+    from sklearn.ensemble import RandomForestClassifier
     from sklearn.impute import SimpleImputer
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import train_test_split
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
+    from sklearn.svm import LinearSVC
 
     if trial.task.problem == "binary" and trial.task.origin in [
         "openml",

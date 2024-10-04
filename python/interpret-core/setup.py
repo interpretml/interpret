@@ -1,13 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import subprocess
-import os
 import glob
+import os
 import shutil
+import subprocess
+
+from setuptools import find_packages, setup
 from setuptools.command.build import build
 from setuptools.command.install import install
-from setuptools import setup, find_packages
 from setuptools.command.sdist import sdist
 
 # NOTE: Version is replaced by a regex script.
@@ -32,11 +33,10 @@ def _copy_native_code_to_setup():
             shutil.copy(
                 os.path.join(root_path, file_name), os.path.join(sym_path, file_name)
             )
-    else:  # Otherwise, ensure that native code exists for setup.py.
-        if not os.path.exists(target_shared_path):
-            raise Exception(
-                "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
-            )
+    elif not os.path.exists(target_shared_path):
+        raise Exception(
+            "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
+        )
 
 
 def build_libebm():
@@ -91,7 +91,7 @@ def build_vis_if_needed():
 
     # JavaScript compile
     js_path = os.path.join(script_path, "..", "..", "shared", "vis")
-    subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
+    subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True, check=False)
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)

@@ -2,25 +2,22 @@
 """
 
 import enum
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
+
 from sqlalchemy import (
     Column,
-    Integer,
+    DateTime,
     Float,
+    ForeignKey,
+    Index,
+    Integer,
     String,
     Text,
-    Index,
-    desc,
-    ForeignKey,
-    DateTime,
-    Enum,
-    Table,
     UniqueConstraint,
+    desc,
     text,
 )
-from sqlalchemy.sql.expression import null
-from sqlalchemy.sql.sqltypes import Boolean, Numeric, LargeBinary
+from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.sql.sqltypes import LargeBinary
 
 # The following are often used as titles, keep length small.
 PROBLEM_LEN = 256

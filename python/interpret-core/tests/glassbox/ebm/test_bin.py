@@ -1,13 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import numpy as np
 import math
 
+import numpy as np
 from interpret.glassbox._ebm._bin import (
+    ebm_predict_scores,
     eval_terms,
     make_bin_weights,
-    ebm_predict_scores,
 )
 from interpret.utils._clean_x import preclean_X
 

@@ -1,15 +1,13 @@
-from math import ceil, floor
+import numpy as np
+import pytest
 from interpret.glassbox._ebm._utils import (
-    make_bag,
+    _create_proportional_tensor,
     convert_categorical_to_continuous,
     convert_to_cuts,
     convert_to_intervals,
-    _create_proportional_tensor,
     deduplicate_bins,
+    make_bag,
 )
-
-import numpy as np
-import pytest
 
 
 def test_deduplicate_bins():

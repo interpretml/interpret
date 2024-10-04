@@ -1,13 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.develop import print_debug_info, debug_info
-from interpret.develop import register_log, debug_mode
+from interpret.develop import debug_info, debug_mode, print_debug_info, register_log
 
 
 def test_debug_mode():
-    import sys
     import logging
+    import sys
+
     import pytest
 
     handler = debug_mode(log_filename=sys.stderr, log_level="INFO", native_debug=False)
@@ -35,8 +35,8 @@ def test_print_debug_info():
 def test_register_log():
     # Light smoke test.
     import logging
-    import sys
     import os
+    import sys
     import tempfile
 
     # Output to stream

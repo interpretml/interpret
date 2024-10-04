@@ -1,16 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.templates import FeatureValueExplanation
-from ._explanation import gen_name_from_class, gen_perf_dicts, gen_local_selector
-
 import numpy as np
 
-from ..utils._clean_x import preclean_X
+from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._clean_x import preclean_X
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ._explanation import gen_local_selector, gen_name_from_class, gen_perf_dicts
 
 
 def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
@@ -40,7 +38,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     X, n_samples = preclean_X(X, feature_names, feature_types, n_samples)
 
     predict_fn, n_classes, classes = determine_classes(explainer.model, X, n_samples)
-    if 3 <= n_classes:
+    if n_classes >= 3:
         raise Exception("multiclass SHAP not supported")
     predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
@@ -53,7 +51,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     X = X.astype(np.float64, order="C", copy=False)
 
     if y is not None:
-        if 0 <= n_classes:
+        if n_classes >= 0:
             y = typify_classification(y)
         else:
             y = y.astype(np.float64, copy=False)

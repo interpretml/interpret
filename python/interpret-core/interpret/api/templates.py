@@ -73,18 +73,16 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             A Plotly figure.
         """
         from ..visual.plot import (
-            plot_line,
+            get_explanation_index,
+            get_sort_indexes,
+            is_multiclass_local_data_dict,
+            mli_plot_horizontal_bar,
+            mli_sort_take,
             plot_bar,
             plot_horizontal_bar,
-            mli_plot_horizontal_bar,
-            is_multiclass_local_data_dict,
-        )
-        from ..visual.plot import (
-            get_sort_indexes,
-            get_explanation_index,
-            sort_take,
-            mli_sort_take,
+            plot_line,
             plot_pairwise_heatmap,
+            sort_take,
         )
 
         data_dict = self.data(key)
@@ -103,7 +101,7 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             if isinstance(key, tuple) and len(key) == 2:
                 provider, key = key
                 # TODO: MLI should handle multiclass at a future date.
-                if "mli" == provider and "mli" in self.data(-1):
+                if provider == "mli" and "mli" in self.data(-1):
                     explanation_list = self.data(-1)["mli"]
                     explanation_index = get_explanation_index(
                         explanation_list, "local_feature_importance"
@@ -127,23 +125,22 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
                         values=instances[key],
                         perf=perf[key],
                     )
-                else:  # pragma: no cover
-                    raise RuntimeError(
-                        "Visual provider {} not supported".format(provider)
-                    )
-            else:
-                is_multiclass = is_multiclass_local_data_dict(data_dict)
-                if is_multiclass:
-                    # Sort by predicted class' abs feature values
-                    pred_idx = data_dict["perf"]["predicted"]
-                    sort_fn = lambda x: -abs(x[pred_idx])
-                else:
-                    # Sort by abs feature values
-                    sort_fn = lambda x: -abs(x)
-                data_dict = sort_take(
-                    data_dict, sort_fn=sort_fn, top_n=15, reverse_results=True
+                # pragma: no cover
+                raise RuntimeError(
+                    f"Visual provider {provider} not supported"
                 )
-                return plot_horizontal_bar(data_dict, multiclass=is_multiclass)
+            is_multiclass = is_multiclass_local_data_dict(data_dict)
+            if is_multiclass:
+                # Sort by predicted class' abs feature values
+                pred_idx = data_dict["perf"]["predicted"]
+                sort_fn = lambda x: -abs(x[pred_idx])
+            else:
+                # Sort by abs feature values
+                sort_fn = lambda x: -abs(x)
+            data_dict = sort_take(
+                data_dict, sort_fn=sort_fn, top_n=15, reverse_results=True
+            )
+            return plot_horizontal_bar(data_dict, multiclass=is_multiclass)
 
         # Handle global feature graphs
         feature_type = self.feature_types[key]
@@ -151,9 +148,9 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             title = self.feature_names[key]
         if feature_type == "continuous":
             return plot_line(data_dict, title=title)
-        elif feature_type == "nominal" or feature_type == "ordinal":
+        if feature_type == "nominal" or feature_type == "ordinal":
             return plot_bar(data_dict, title=title)
-        elif feature_type == "interaction":
+        if feature_type == "interaction":
             # TODO: Generalize this out.
             xtitle = self.feature_names[key].split(" & ")[0]
             ytitle = self.feature_names[key].split(" & ")[1]
@@ -163,7 +160,5 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
 
         # Handle everything else as invalid
         raise Exception(  # pragma: no cover
-            "Not supported configuration: {0}, {1}".format(
-                self.explanation_type, feature_type
-            )
+            f"Not supported configuration: {self.explanation_type}, {feature_type}"
         )

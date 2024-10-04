@@ -1,8 +1,9 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from joblib import Parallel, delayed
 from abc import ABC, abstractmethod
+
+from joblib import Parallel, delayed
 
 
 class ComputeProvider(ABC):

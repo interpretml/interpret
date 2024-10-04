@@ -57,8 +57,8 @@ def dynamic_system_info():
         A dictionary containing dynamic system information.
     """
 
-    import psutil
     import numpy as np
+    import psutil
 
     try:
         cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
@@ -97,6 +97,7 @@ def static_system_info():
         A dictionary containing static system information.
     """
     import platform
+
     import psutil
 
     system_info = {
@@ -149,13 +150,13 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
     """
     import json
     import logging
+
     from .utils._native import Native
 
     # Exit fast on second call.
     if _current_module.is_debug_mode:
         raise Exception("Cannot call debug_mode more than once in the same session.")
-    else:
-        _current_module.is_debug_mode = True
+    _current_module.is_debug_mode = True
 
     # Register log
     handler = register_log(log_filename, log_level)
@@ -204,12 +205,13 @@ def register_log(filename, level="DEBUG"):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import pytest
     import os
+
+    import pytest
 
     register_log("test-log.txt")
 
     script_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "tests"
     )
-    pytest.main(["--rootdir={0}".format(script_path), script_path])
+    pytest.main([f"--rootdir={script_path}", script_path])

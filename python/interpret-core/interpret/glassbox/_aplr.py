@@ -1,20 +1,21 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
+from typing import Dict, List, Tuple
+from warnings import warn
+
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Dict
-from warnings import warn
 from sklearn.base import ClassifierMixin, RegressorMixin
+
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
+from ..utils._clean_simple import clean_dimensions
 from ..utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
     gen_perf_dicts,
 )
-from ..utils._clean_simple import clean_dimensions
-
 
 FloatVector = np.ndarray
 FloatMatrix = np.ndarray
@@ -405,14 +406,13 @@ def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[floa
 def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
     if isinstance(X, np.ndarray):
         return X
-    elif isinstance(X, pd.DataFrame):
+    if isinstance(X, pd.DataFrame):
         return X.values
-    elif isinstance(X, list):
+    if isinstance(X, list):
         return np.array(X)
-    else:
-        raise TypeError(
-            "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
-        )
+    raise TypeError(
+        "X must either be a numpy matrix, a pandas dataframe or a list of float lists."
+    )
 
 
 def calculate_unique_values(X: FloatMatrix) -> List[int]:
@@ -424,8 +424,7 @@ def define_feature_names(X_names: List[str], X: FloatMatrix) -> List[str]:
     if len(X_names) == 0:
         names = [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
         return names
-    else:
-        return list(X_names)
+    return list(X_names)
 
 
 def create_values(
@@ -830,9 +829,9 @@ class APLRExplanation(FeatureValueExplanation):
             A Plotly figure.
         """
         from ..visual.plot import (
+            plot_horizontal_bar,
             plot_line,
             plot_pairwise_heatmap,
-            plot_horizontal_bar,
             sort_take,
         )
 
@@ -867,9 +866,7 @@ class APLRExplanation(FeatureValueExplanation):
 
         # Per term global explanation
         if self.explanation_type == "global":
-            title = "Term: {0} ({1})".format(
-                self.feature_names[key], self.feature_types[key]
-            )
+            title = f"Term: {self.feature_names[key]} ({self.feature_types[key]})"
 
             if self.feature_types[key] == "univariate":
                 xtitle = self.feature_names[key]
@@ -887,14 +884,12 @@ class APLRExplanation(FeatureValueExplanation):
                 )
             else:  # pragma: no cover
                 raise Exception(
-                    "Not supported configuration: {0}, {1}".format(
-                        self.explanation_type, self.feature_types[key]
-                    )
+                    f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
                 )
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
-                "{0} to the linear predictor.".format(self.feature_names[key])
+                f"{self.feature_names[key]} to the linear predictor."
             )
 
             return figure

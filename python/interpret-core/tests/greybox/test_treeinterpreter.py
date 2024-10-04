@@ -3,11 +3,11 @@
 
 
 import warnings
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.datasets import load_diabetes
-from interpret.greybox import TreeInterpreter
 
 import pytest
+from interpret.greybox import TreeInterpreter
+from sklearn.datasets import load_diabetes
+from sklearn.ensemble import RandomForestRegressor
 
 
 @pytest.mark.skip(reason="treeinterpreter no longer maintained")

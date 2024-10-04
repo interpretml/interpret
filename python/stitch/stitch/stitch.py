@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 # Copyright (c) InterpretML.
 # Distributed under the terms of the Modified BSD License.
@@ -10,6 +9,7 @@ Stitch Widget that allows bidirectional comms from Jupyter and JavaScript.
 
 from ipywidgets import DOMWidget
 from traitlets import Unicode
+
 from ._frontend import module_name, module_version
 
 

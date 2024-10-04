@@ -2,15 +2,15 @@
 # Distributed under the MIT software license
 
 # TODO: Add unit tests for internal EBM interfacing
-import platform
 import ctypes as ct
-from ctypes.util import find_library
-import numpy as np
-import os
-import struct
 import logging
-from contextlib import AbstractContextManager
+import os
+import platform
+import struct
 import sys
+from contextlib import AbstractContextManager
+
+import numpy as np
 
 _log = logging.getLogger(__name__)
 
@@ -121,48 +121,47 @@ class Native:
     def _get_native_exception(error_code, native_function):  # pragma: no cover
         if error_code == -1:
             return Exception(f"Out of memory in {native_function}")
-        elif error_code == -2:
+        if error_code == -2:
             return Exception(f"Unexpected internal error in {native_function}")
-        elif error_code == -3:
+        if error_code == -3:
             return Exception(f"Illegal native parameter value in {native_function}")
-        elif error_code == -4:
+        if error_code == -4:
             return Exception(f"User native parameter value error in {native_function}")
-        elif error_code == -5:
+        if error_code == -5:
             return Exception(f"Thread start failed in {native_function}")
-        elif error_code == -10:
+        if error_code == -10:
             return Exception(f"Objective constructor exception in {native_function}")
-        elif error_code == -11:
+        if error_code == -11:
             return Exception("Objective parameter unknown")
-        elif error_code == -12:
+        if error_code == -12:
             return Exception("Objective parameter value malformed")
-        elif error_code == -13:
+        if error_code == -13:
             return Exception("Objective parameter value out of range")
-        elif error_code == -14:
+        if error_code == -14:
             return Exception("Objective parameter mismatch")
-        elif error_code == -15:
+        if error_code == -15:
             return Exception("Unrecognized objective type")
-        elif error_code == -16:
+        if error_code == -16:
             return Exception("Illegal objective registration name")
-        elif error_code == -17:
+        if error_code == -17:
             return Exception("Illegal objective parameter name")
-        elif error_code == -18:
+        if error_code == -18:
             return Exception("Duplicate objective parameter name")
-        elif error_code == -19:
+        if error_code == -19:
             return Exception("Differential Privacy not supported by the objective")
-        elif error_code == -20:
+        if error_code == -20:
             return Exception(
                 "Differential Privacy not supported by an objective parameter value"
             )
-        elif error_code == -21:
+        if error_code == -21:
             return Exception("Illegal value in y for the objective")
-        else:
-            return Exception(
-                f"Unrecognized native return code {error_code} in {native_function}"
-            )
+        return Exception(
+            f"Unrecognized native return code {error_code} in {native_function}"
+        )
 
     @staticmethod
     def get_count_scores_c(n_classes):
-        return n_classes if 2 < n_classes else 1
+        return n_classes if n_classes > 2 else 1
 
     def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -227,7 +226,7 @@ class Native:
                 )
             if len(weights) != n_bags:
                 raise Exception(
-                    f"weights must contain the same number of items as there are bags in tensor."
+                    "weights must contain the same number of items as there are bags in tensor."
                 )
 
         n_tensor_bins = 1
@@ -257,7 +256,7 @@ class Native:
                 )
             if len(weights) != n_bags:
                 raise Exception(
-                    f"weights must contain the same number of items as there are bags in tensor."
+                    "weights must contain the same number of items as there are bags in tensor."
                 )
 
         n_tensor_bins = 1
@@ -282,7 +281,7 @@ class Native:
         if random_state is None:
             return None  # non-deterministic
 
-        if random_state < -2147483648 or 2147483647 < random_state:
+        if random_state < -2147483648 or random_state > 2147483647:
             msg = f'random_state of "{random_state}" must be cleaned to be a 32-bit signed integer before calling create_rng'
             _log.error(msg)
             raise Exception(msg)
@@ -394,7 +393,7 @@ class Native:
         return impurities
 
     def purify(self, scores, weights, tolerance, is_randomized):
-        if np.isnan(tolerance) or tolerance < 0.0 or 1.0 <= tolerance:
+        if np.isnan(tolerance) or tolerance < 0.0 or tolerance >= 1.0:
             raise Exception(
                 f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
             )
@@ -418,7 +417,7 @@ class Native:
         intercept = np.zeros(n_multi_scores, np.float64)
 
         impurity = None
-        if 2 <= len(shape_classless):
+        if len(shape_classless) >= 2:
             n_tensor = 1
             for n_bins in shape_classless:
                 n_tensor *= n_bins
@@ -455,7 +454,7 @@ class Native:
             raise Native._get_native_exception(return_code, "Purify")
 
         impurities = []
-        if 2 <= len(shape_classless):
+        if len(shape_classless) >= 2:
             base_idx = 0
             for exclude_idx in range(len(shape_classless) - 1, -1, -1):
                 count = n_tensor // shape_classless[exclude_idx]
@@ -543,8 +542,8 @@ class Native:
         high_graph_bound = ct.c_double(np.nan)
         return_code = self._unsafe.SuggestGraphBounds(
             len(cuts),
-            cuts[0] if 0 < len(cuts) else np.nan,
-            cuts[-1] if 0 < len(cuts) else np.nan,
+            cuts[0] if len(cuts) > 0 else np.nan,
+            cuts[-1] if len(cuts) > 0 else np.nan,
             min_feature_val,
             max_feature_val,
             ct.byref(low_graph_bound),
@@ -875,7 +874,7 @@ class Native:
                     # first check for the general name
                     lib_file = os.path.join(lib_path, "libebm" + extension)
                     if os.path.isfile(lib_file):
-                        _log.info(f"Loading EBM library {str(lib_file)}")
+                        _log.info(f"Loading EBM library {lib_file!s}")
                         return lib_file
 
                     # next check for a specific platform
@@ -892,7 +891,7 @@ class Native:
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
         else:
             # root should at least contain the visualization javascript. If root does
@@ -907,7 +906,7 @@ class Native:
                         # first check for the general name
                         lib_file = os.path.join(lib_path, "libebm" + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
 
                     # next check for a specific platform
@@ -924,7 +923,7 @@ class Native:
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
 
             # TODO: if the library does not exists, build it using build.sh or build.bat
@@ -946,7 +945,7 @@ class Native:
         if lib_path is not None:
             lib_file = os.path.join(lib_path, "libebm" + extension)
             if os.path.isfile(lib_file):
-                _log.info(f"Loading EBM library {str(lib_file)}")
+                _log.info(f"Loading EBM library {lib_file!s}")
                 return lib_file
 
         if debug:
@@ -1715,12 +1714,12 @@ class Booster(AbstractContextManager):
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
                     raise ValueError(
-                        f"init_scores should have ndim == 1 for regression or binary classification"
+                        "init_scores should have ndim == 1 for regression or binary classification"
                     )
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
                     raise ValueError(
-                        f"init_scores should have ndim == 2 for multiclass"
+                        "init_scores should have ndim == 2 for multiclass"
                     )
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")
@@ -1736,7 +1735,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(self.dataset, np.ubyte),
             Native._make_pointer(self.bag, np.int8, is_null_allowed=True),
             Native._make_pointer(
-                init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
+                init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
@@ -2009,7 +2008,6 @@ class Booster(AbstractContextManager):
 
         self._term_idx = term_idx
 
-        return
 
 
 class InteractionDetector(AbstractContextManager):
@@ -2089,12 +2087,12 @@ class InteractionDetector(AbstractContextManager):
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
                     raise ValueError(
-                        f"init_scores should have ndim == 1 for regression or binary classification"
+                        "init_scores should have ndim == 1 for regression or binary classification"
                     )
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
                     raise ValueError(
-                        f"init_scores should have ndim == 2 for multiclass"
+                        "init_scores should have ndim == 2 for multiclass"
                     )
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
                     raise ValueError(f"init_scores should have {n_class_scores} scores")

@@ -1,10 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from itertools import count
-import numpy as np
-
 import logging
+from itertools import count
+
+import numpy as np
 
 _log = logging.getLogger(__name__)
 
@@ -17,17 +17,16 @@ def trim_tensor(tensor, trim_low=None, trim_high=None):
             slice(0, -1 if is_high else None)
             for dim_len, is_high in zip(tensor.shape, trim_high)
         ]
+    elif trim_high is None:
+        dim_slices = [
+            slice(int(is_low), None)
+            for dim_len, is_low in zip(tensor.shape, trim_low)
+        ]
     else:
-        if trim_high is None:
-            dim_slices = [
-                slice(int(is_low), None)
-                for dim_len, is_low in zip(tensor.shape, trim_low)
-            ]
-        else:
-            dim_slices = [
-                slice(int(is_low), -1 if is_high else None)
-                for dim_len, is_low, is_high in zip(tensor.shape, trim_low, trim_high)
-            ]
+        dim_slices = [
+            slice(int(is_low), -1 if is_high else None)
+            for dim_len, is_low, is_high in zip(tensor.shape, trim_low, trim_high)
+        ]
     return tensor[tuple(dim_slices)]
 
 

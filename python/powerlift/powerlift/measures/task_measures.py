@@ -1,8 +1,9 @@
 """ Task related measures. """
 
-from math import log, e
+from math import e, log
 from numbers import Number
-from typing import Iterable, List, Tuple
+from typing import Iterable
+
 import numpy as np
 import pandas as pd
 
@@ -40,8 +41,7 @@ def entropy(labels: Iterable, base: Number = None, normalized: bool = False) -> 
 
     if normalized:
         return ent / log(len(value), base)
-    else:
-        return ent
+    return ent
 
 
 def class_stats(y: pd.Series, meta):

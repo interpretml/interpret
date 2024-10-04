@@ -3,16 +3,14 @@
 The experiment and its associate classes.
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, Iterable
-from typing import Type, TypeVar
-from typing import Union, Optional, List
 from dataclasses import dataclass
 from numbers import Number
-import time
+from typing import Dict, List, Optional, Union
 
-from powerlift.bench.store import Store, MIMETYPE_DF, MIMETYPE_SERIES
+import numpy as np
+import pandas as pd
+
+from powerlift.bench.store import MIMETYPE_DF, MIMETYPE_SERIES, Store
 
 
 @dataclass(frozen=True)

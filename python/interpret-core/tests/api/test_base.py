@@ -10,7 +10,7 @@ def test_that_explainer_throws_exceptions_for_incomplete():
         pass
 
     with pytest.raises(Exception):
-        _ = IncompleteExplainer()  # noqa: F841
+        _ = IncompleteExplainer()
 
 
 def test_that_explainer_works_for_complete():
@@ -31,7 +31,7 @@ def test_that_explanation_throws_exceptions_for_incomplete():
         pass
 
     with pytest.raises(Exception):
-        _ = IncompleteExplanation()  # noqa: F841
+        _ = IncompleteExplanation()
 
 
 def test_that_explanation_works_for_complete():
@@ -57,4 +57,4 @@ def test_that_explanation_works_for_complete():
         assert explanation.data(0) is None
         assert explanation.visualize(0) == str(None)
     except Exception as e:
-        pytest.fail("Unexpected exception raised: {0}".format(e))
+        pytest.fail(f"Unexpected exception raised: {e}")

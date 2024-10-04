@@ -1,11 +1,11 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from aplr import APLRRegressor as APLRRegressorNative
-from aplr import APLRClassifier as APLRClassifierNative
-from interpret.glassbox import APLRRegressor, APLRClassifier
-from sklearn.datasets import load_breast_cancer, load_diabetes
 import numpy as np
+from aplr import APLRClassifier as APLRClassifierNative
+from aplr import APLRRegressor as APLRRegressorNative
+from interpret.glassbox import APLRClassifier, APLRRegressor
+from sklearn.datasets import load_breast_cancer, load_diabetes
 
 
 def test_regression():

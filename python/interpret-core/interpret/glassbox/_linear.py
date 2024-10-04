@@ -1,26 +1,24 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from abc import abstractmethod
+
+import numpy as np
+from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
+from sklearn.linear_model import LinearRegression as SKLinear
+from sklearn.linear_model import LogisticRegression as SKLogistic
+from sklearn.utils.validation import check_is_fitted
+
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
+from ..utils._clean_simple import clean_dimensions, typify_classification
+from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
+    gen_perf_dicts,
 )
-from ..utils._explanation import gen_perf_dicts
-
-from abc import abstractmethod
-from sklearn.base import is_classifier
-from sklearn.utils.validation import check_is_fitted
-import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin
-from sklearn.linear_model import LogisticRegression as SKLogistic
-from sklearn.linear_model import LinearRegression as SKLinear
-
-from ..utils._clean_x import preclean_X
-from ..utils._clean_simple import clean_dimensions, typify_classification
-
 from ..utils._unify_data import unify_data
 
 
@@ -98,7 +96,7 @@ class BaseLinear:
 
         for i, feature_type in enumerate(self.feature_types_in_):
             if feature_type == "nominal" or feature_type == "ordinal":
-                self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
+                self.categorical_uniq_[i] = sorted(set(X[:, i]))
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx in range(len(self.feature_names_in_)):
@@ -379,18 +377,18 @@ class LinearExplanation(FeatureValueExplanation):
             A Plotly figure.
         """
         from ..visual.plot import (
-            sort_take,
-            mli_sort_take,
-            get_sort_indexes,
             get_explanation_index,
-            plot_horizontal_bar,
+            get_sort_indexes,
             mli_plot_horizontal_bar,
+            mli_sort_take,
+            plot_horizontal_bar,
+            sort_take,
         )
 
         if isinstance(key, tuple) and len(key) == 2:
             provider, key = key
             if (
-                "mli" == provider
+                provider == "mli"
                 and "mli" in self.data(-1)
                 and self.explanation_type == "global"
             ):
@@ -413,21 +411,20 @@ class LinearExplanation(FeatureValueExplanation):
                     sorted_names,
                     title="Overall Importance:<br>Coefficients",
                 )
-            else:  # pragma: no cover
-                raise RuntimeError("Visual provider {} not supported".format(provider))
-        else:
-            data_dict = self.data(key)
-            if data_dict is None:
-                return None
+            # pragma: no cover
+            raise RuntimeError(f"Visual provider {provider} not supported")
+        data_dict = self.data(key)
+        if data_dict is None:
+            return None
 
-            if self.explanation_type == "global" and key is None:
-                data_dict = sort_take(
-                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
-                )
-                figure = plot_horizontal_bar(
-                    data_dict, title="Overall Importance:<br>Coefficients"
-                )
-                return figure
+        if self.explanation_type == "global" and key is None:
+            data_dict = sort_take(
+                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+            )
+            figure = plot_horizontal_bar(
+                data_dict, title="Overall Importance:<br>Coefficients"
+            )
+            return figure
 
         return super().visualize(key)
 

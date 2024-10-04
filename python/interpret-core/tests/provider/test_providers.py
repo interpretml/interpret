@@ -1,17 +1,17 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.provider import JobLibProvider
+import pytest
+from interpret.glassbox import LogisticRegression
 from interpret.provider import (
     AutoVisualizeProvider,
     DashProvider,
-    PreserveProvider,
     InlineProvider,
+    JobLibProvider,
+    PreserveProvider,
 )
-import pytest
 
 from ..tutils import synthetic_classification
-from interpret.glassbox import LogisticRegression
 
 
 def task_fn(x, y):

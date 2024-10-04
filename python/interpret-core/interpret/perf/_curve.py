@@ -2,17 +2,21 @@
 # Distributed under the MIT software license
 
 from itertools import count
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import gen_name_from_class
-from sklearn.metrics import roc_curve, auc
-from sklearn.metrics import precision_recall_curve, average_precision_score
 
 import numpy as np
-from ..utils._clean_x import preclean_X
-from ..utils._clean_simple import clean_dimensions, typify_classification
+from sklearn.metrics import (
+    auc,
+    average_precision_score,
+    precision_recall_curve,
+    roc_curve,
+)
 
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..api.base import ExplainerMixin, ExplanationMixin
+from ..utils._clean_simple import clean_dimensions, typify_classification
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_name_from_class
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 class PR(ExplainerMixin):

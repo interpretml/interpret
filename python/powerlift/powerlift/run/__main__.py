@@ -12,18 +12,19 @@ def run_trials(
     return_after_one=False,
 ):
     """Runs trials. Includes wheel installation and timeouts."""
-    from powerlift.bench.store import Store
-    import traceback
-    from powerlift.executors.base import timed_run
     import ast
     import gc
+    import traceback
+
+    from powerlift.bench.store import Store
+    from powerlift.executors.base import timed_run
 
     store = Store(db_url, print_exceptions=print_exceptions, max_attempts=max_attempts)
 
     trial_run_fn = None
     if return_after_one:
         try:
-            with open("trial_run_fn.py", "r") as file:
+            with open("trial_run_fn.py") as file:
                 trial_run_fn = file.read()
         except FileNotFoundError:
             pass
@@ -85,8 +86,8 @@ def run_trials(
 if __name__ == "__main__":
     print("STARTING POWERLIFT RUNNER")
 
-    import traceback
     import sys
+    import traceback
 
     try:
         import os

@@ -1,8 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from math import isnan
 import logging
+from math import isnan
 
 import numpy as np
 

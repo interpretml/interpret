@@ -1,13 +1,14 @@
+from itertools import islice
+
+import pandas as pd
+import pytest
+from powerlift import db
 from powerlift.bench.store import (
     Store,
+    populate_with_datasets,
     retrieve_openml,
     retrieve_pmlb,
-    populate_with_datasets,
 )
-import pandas as pd
-from powerlift import db
-import pytest
-from itertools import islice
 
 
 @pytest.mark.skip("high bandwidth test")

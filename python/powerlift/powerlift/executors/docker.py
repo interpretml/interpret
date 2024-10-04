@@ -4,11 +4,12 @@ This is handy for testing if dockerfiles work with powerlift before
 sending it a remote container service.
 """
 
-from powerlift.bench.store import Store
-from powerlift.executors.localmachine import LocalMachine
-from powerlift.executors.base import handle_err
-from typing import Iterable, List
 import multiprocessing
+from typing import List
+
+from powerlift.bench.store import Store
+from powerlift.executors.base import handle_err
+from powerlift.executors.localmachine import LocalMachine
 
 
 def _run_docker(experiment_id, runner_id, db_url, timeout, image):

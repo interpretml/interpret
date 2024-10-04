@@ -1,9 +1,9 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import numpy as np
-
 import logging
+
+import numpy as np
 
 _log = logging.getLogger(__name__)
 
@@ -48,14 +48,13 @@ def link_func(predictions, link, link_param=np.nan):
         if predictions.ndim == 0:
             if predictions == 1.0:
                 return -np.inf
-            elif np.isnan(predictions):
+            if np.isnan(predictions):
                 return np.nan
-            else:
-                msg = "monoclassification with 1 element must be 1.0 or NaN"
-                _log.error(msg)
-                raise ValueError(msg)
+            msg = "monoclassification with 1 element must be 1.0 or NaN"
+            _log.error(msg)
+            raise ValueError(msg)
         scores = np.full(predictions.shape[:-1], -np.inf, np.float64)
-        if 1 == predictions.shape[-1]:
+        if predictions.shape[-1] == 1:
             predictions = predictions.squeeze(-1)
             bools = np.isnan(predictions)
             scores[bools] = np.nan
@@ -64,12 +63,12 @@ def link_func(predictions, link, link_param=np.nan):
                 msg = "monoclassification with 1 element must have all 1.0s or NaN"
                 _log.error(msg)
                 raise ValueError(msg)
-        elif 0 != predictions.shape[-1]:
+        elif predictions.shape[-1] != 0:
             msg = f"predictions must have 1 element in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
             raise ValueError(msg)
         return scores
-    elif link == "logit":
+    if link == "logit":
         if predictions.ndim == 0:
             val = predictions
         elif predictions.shape[-1] == 1:
@@ -90,7 +89,7 @@ def link_func(predictions, link, link_param=np.nan):
             val = val.item()
 
         return val
-    elif link == "vlogit":
+    if link == "vlogit":
         if predictions.shape[-1] <= 1:
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
@@ -103,7 +102,7 @@ def link_func(predictions, link, link_param=np.nan):
             np.log(val, out=val)
 
         return val
-    elif link == "mlogit":
+    if link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if predictions.shape[-1] <= 1:
             msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
@@ -116,9 +115,9 @@ def link_func(predictions, link, link_param=np.nan):
             np.log(val, out=val)
 
         return val
-    elif link == "identity":
+    if link == "identity":
         return predictions.copy()
-    elif link == "log":
+    if link == "log":
         with np.errstate(divide="ignore"):
             # log(0.0) gives warning otherwise
             return np.log(predictions)
@@ -151,7 +150,7 @@ def inv_link(scores, link, link_param=np.nan):
             raise ValueError(msg)
 
         return preds
-    elif link == "logit":
+    if link == "logit":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise from overflow
             val = np.expand_dims(np.exp(scores), axis=-1)
@@ -163,7 +162,7 @@ def inv_link(scores, link, link_param=np.nan):
         val[inf_bool] = 1.0
         np.subtract(1.0, val, out=tmp)
         return np.c_[tmp, val]
-    elif link == "vlogit":
+    if link == "vlogit":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise
             val = np.exp(scores)
@@ -173,7 +172,7 @@ def inv_link(scores, link, link_param=np.nan):
             val /= val + 1.0
         val[inf_bool] = 1.0
         return val
-    elif link == "mlogit":
+    if link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if scores.shape[-1] <= 1:
             msg = f"scores must have 2 or more elements in the last dimensions, but has {scores.shape[-1]}."
@@ -197,9 +196,9 @@ def inv_link(scores, link, link_param=np.nan):
         np.sum(val, axis=-1, keepdims=True, out=reduced_float)
         val /= reduced_float
         return val
-    elif link == "identity":
+    if link == "identity":
         return scores.copy()
-    elif link == "log":
+    if link == "log":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise
             return np.exp(scores)

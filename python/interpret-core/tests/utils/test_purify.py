@@ -2,10 +2,9 @@
 # Distributed under the MIT software license
 # Author: Paul Koch <code@koch.ninja>
 
-import numpy as np
-import pytest
 import itertools
 
+import numpy as np
 from interpret.utils import purify
 from interpret.utils._purify import _measure_impurity
 

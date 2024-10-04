@@ -1,22 +1,20 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import numpy as np
-import numpy.ma as ma
-import pandas as pd
-import scipy as sp
-
 from itertools import repeat
 
-
+import numpy as np
+import pandas as pd
+import scipy as sp
 from interpret.utils._clean_x import (
-    preclean_X,
-    unify_feature_names,
-    unify_columns,
-    _process_column_initial,
     _encode_categorical_existing,
+    _process_column_initial,
     _process_continuous,
+    preclean_X,
+    unify_columns,
+    unify_feature_names,
 )
+from numpy import ma
 
 
 class StringHolder:
@@ -178,7 +176,7 @@ def check_pandas_missings(dtype, val1, val2):
             X, [(0, None), (1, None), (2, None), (3, None)], feature_names_in, None, 3
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
 
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -229,7 +227,7 @@ def check_pandas_missings(dtype, val1, val2):
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
 
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -280,7 +278,7 @@ def check_pandas_missings(dtype, val1, val2):
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
 
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -330,7 +328,7 @@ def check_pandas_missings(dtype, val1, val2):
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
 
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
@@ -400,7 +398,7 @@ def check_pandas_float(dtype, val1, val2):
             min_unique_continuous=0,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
 
     assert X_cols[0][0] == "continuous"
     assert X_cols[0][3] is None
@@ -979,7 +977,7 @@ def test_encode_categorical_existing_obj_bool():
 def test_encode_categorical_existing_obj_int_small():
     c = {"-2": 1, "3": 2, "1": 3}
     encoded, bad = _encode_categorical_existing(
-        np.array([int(1), np.int8(-2), np.uint64(3)], dtype=np.object_), None, c
+        np.array([1, np.int8(-2), np.uint64(3)], dtype=np.object_), None, c
     )
     assert bad is None
     assert np.array_equal(encoded, np.array([c["1"], c["-2"], c["3"]], dtype=np.int64))
@@ -989,7 +987,7 @@ def test_encode_categorical_existing_obj_int_big():
     c = {"-2": 1, "18446744073709551615": 2, "1": 3}
     encoded, bad = _encode_categorical_existing(
         np.array(
-            [int(1), np.int8(-2), np.uint64("18446744073709551615")], dtype=np.object_
+            [1, np.int8(-2), np.uint64("18446744073709551615")], dtype=np.object_
         ),
         None,
         c,
@@ -1012,7 +1010,7 @@ def test_encode_categorical_existing_obj_floats():
     encoded, bad = _encode_categorical_existing(
         np.array(
             [
-                float(1.1),
+                1.1,
                 np.float16(2.2),
                 np.float32(3.3),
                 np.float64(4.4),
@@ -1036,7 +1034,7 @@ def test_encode_categorical_existing_obj_floats():
 def test_encode_categorical_existing_obj_str_int():
     c = {"abc": 1, "1": 2}
     encoded, bad = _encode_categorical_existing(
-        np.array(["abc", int(1)], dtype=np.object_), None, c
+        np.array(["abc", 1], dtype=np.object_), None, c
     )
     assert bad is None
     assert np.array_equal(encoded, np.array([c["abc"], c["1"]], dtype=np.int64))
@@ -1045,7 +1043,7 @@ def test_encode_categorical_existing_obj_str_int():
 def test_encode_categorical_existing_obj_str_float():
     c = {"abc": 1, "1.1": 2}
     encoded, bad = _encode_categorical_existing(
-        np.array(["abc", float(1.1)], dtype=np.object_), None, c
+        np.array(["abc", 1.1], dtype=np.object_), None, c
     )
     assert bad is None
     assert np.array_equal(encoded, np.array([c["abc"], c["1.1"]], dtype=np.int64))
@@ -1075,7 +1073,7 @@ def test_encode_categorical_existing_int_float():
     # this test is hard since np.unique seems to think int(4) == float(4) so naively it returns just "4"
     c = {"4": 1, "4.0": 2}
     encoded, bad = _encode_categorical_existing(
-        np.array([int(4), 4.0], dtype=np.object_), None, c
+        np.array([4, 4.0], dtype=np.object_), None, c
     )
     assert bad is None
     assert np.array_equal(encoded, np.array([c["4"], c["4.0"]], dtype=np.int64))
@@ -1090,7 +1088,7 @@ def test_encode_categorical_existing_int_float32():
     # serialize them to the same string.  The our model has ["0.1", "0.1"] as the categories!!
     c = {"4": 1, "0.10000000149011612": 2}
     encoded, bad = _encode_categorical_existing(
-        np.array([int(4), np.float32(0.1)], dtype=np.object_), None, c
+        np.array([4, np.float32(0.1)], dtype=np.object_), None, c
     )
     assert bad is None
     assert np.array_equal(
@@ -1232,7 +1230,7 @@ def test_unify_columns_numpy1():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert np.array_equal(X_cols[0][1], np.array([X_cols[0][2]["1"]], dtype=np.int64))
     assert np.array_equal(X_cols[1][1], np.array([X_cols[1][2]["2"]], dtype=np.int64))
     assert np.array_equal(X_cols[2][1], np.array([X_cols[2][2]["3"]], dtype=np.int64))
@@ -1252,7 +1250,7 @@ def test_unify_columns_numpy2():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert np.array_equal(
         X_cols[0][1], np.array([X_cols[0][2]["1"], X_cols[0][2]["4"]], dtype=np.int64)
     )
@@ -1279,7 +1277,7 @@ def test_unify_columns_numpy_ignore():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][0] == "ignore"
     assert X_cols[0][2] is None
     assert X_cols[0][1] is None
@@ -1308,7 +1306,7 @@ def test_unify_columns_scipy():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     assert np.array_equal(
         X_cols[0][1], np.array([X_cols[0][2]["1"], X_cols[0][2]["4"]], dtype=np.int64)
@@ -1339,7 +1337,7 @@ def test_unify_columns_dict1():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     assert X_cols[0][1][0] == 0
     assert X_cols[1][1].dtype == np.int64
@@ -1364,7 +1362,7 @@ def test_unify_columns_dict2():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     assert np.array_equal(
         X_cols[0][1], np.array([X_cols[0][2]["3"], X_cols[0][2]["6"]], dtype=np.int64)
@@ -1393,7 +1391,7 @@ def test_unify_columns_list1():
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
     assert X_cols[0][1].dtype == np.int64
     assert X_cols[0][1][0] == X_cols[0][2]["1"]
     assert X_cols[1][1].dtype == np.int64
@@ -1443,7 +1441,7 @@ def test_unify_columns_list2():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     c = X_cols[0][2]
     assert np.array_equal(
@@ -1538,7 +1536,7 @@ def test_unify_columns_tuple1():
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
     assert X_cols[0][1].dtype == np.int64
     assert X_cols[0][1][0] == X_cols[0][2]["1"]
     assert X_cols[1][1].dtype == np.int64
@@ -1574,7 +1572,7 @@ def test_unify_columns_tuple2():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     c = X_cols[0][2]
     assert np.array_equal(
@@ -1651,7 +1649,7 @@ def test_unify_columns_generator1():
             3,
         )
     )
-    assert 4 == len(X_cols)
+    assert len(X_cols) == 4
     assert X_cols[0][1].dtype == np.int64
     assert X_cols[0][1][0] == X_cols[0][2]["1"]
     assert X_cols[1][1].dtype == np.int64
@@ -1690,7 +1688,7 @@ def test_unify_columns_generator2():
             3,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1].dtype == np.int64
     c = X_cols[0][2]
     assert np.array_equal(
@@ -2128,7 +2126,7 @@ def test_unify_columns_pandas_categorical():
             3,
         )
     )
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert len(X_cols[0][2]) == 3
@@ -2163,7 +2161,7 @@ def test_unify_columns_pandas_ordinal():
             3,
         )
     )
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "ordinal"
     assert X_cols[0][3] is None
     assert len(X_cols[0][2]) == 3
@@ -2191,7 +2189,7 @@ def test_unify_columns_pandas_categorical_shorter():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is c
@@ -2215,7 +2213,7 @@ def test_unify_columns_pandas_categorical_equals():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is c
@@ -2241,7 +2239,7 @@ def test_unify_columns_pandas_categorical_longer():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
         X_cols[0][3],
@@ -2268,7 +2266,7 @@ def test_unify_columns_pandas_categorical_reordered_shorter():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is c
@@ -2292,7 +2290,7 @@ def test_unify_columns_pandas_categorical_reordered_equals():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is c
@@ -2318,7 +2316,7 @@ def test_unify_columns_pandas_categorical_reordered_longer1():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
         X_cols[0][3],
@@ -2347,7 +2345,7 @@ def test_unify_columns_pandas_categorical_reordered_longer2():
     feature_names_in = unify_feature_names(X)
     c = {"a": 1, "0": 2, "bcd": 3}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert np.array_equal(
         X_cols[0][3],
@@ -2376,7 +2374,7 @@ def test_unify_columns_pandas_categorical_compressed_categories():
     # in JSON this can be expressed as the equivalent of [["a", "0"], "bcd"]
     c = {"a": 1, "0": 1, "bcd": 2}
     X_cols = list(unify_columns(X, [(0, c)], feature_names_in, None, 3))
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "nominal"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is c
@@ -2400,7 +2398,7 @@ def test_unify_feature_names_numpy1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[1][1][0] == 2.0
     assert X_cols[2][1][0] == 3.0
@@ -2420,7 +2418,7 @@ def test_unify_feature_names_numpy2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2443,7 +2441,7 @@ def test_unify_feature_names_data_frame1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2469,7 +2467,7 @@ def test_unify_feature_names_data_frame2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2492,7 +2490,7 @@ def test_unify_feature_names_scipy():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2515,7 +2513,7 @@ def test_unify_feature_names_dict1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[1][1][0] == 2.0
     assert X_cols[2][1][0] == 3.0
@@ -2535,7 +2533,7 @@ def test_unify_feature_names_dict2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 2.0
     assert X_cols[0][1][1] == 5.0
     assert X_cols[1][1][0] == 1.0
@@ -2558,7 +2556,7 @@ def test_unify_feature_names_list1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[1][1][0] == 2.0
     assert X_cols[2][1][0] == 3.0
@@ -2578,7 +2576,7 @@ def test_unify_feature_names_list2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2601,7 +2599,7 @@ def test_unify_feature_names_tuple1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[1][1][0] == 2.0
     assert X_cols[2][1][0] == 3.0
@@ -2621,7 +2619,7 @@ def test_unify_feature_names_tuple2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2646,7 +2644,7 @@ def test_unify_feature_names_feature_types1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2671,7 +2669,7 @@ def test_unify_feature_names_feature_types2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -2694,7 +2692,7 @@ def test_unify_feature_names_feature_types3():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -2720,7 +2718,7 @@ def test_unify_feature_names_pandas_feature_types1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2748,7 +2746,7 @@ def test_unify_pandas_ignored_existing():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -2773,7 +2771,7 @@ def test_unify_feature_names_pandas_feature_types3():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -2794,7 +2792,7 @@ def test_unify_feature_names_names1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2818,7 +2816,7 @@ def test_unify_feature_names_names2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2844,7 +2842,7 @@ def test_unify_feature_names_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2870,7 +2868,7 @@ def test_unify_feature_names_pandas_names2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2899,7 +2897,7 @@ def test_unify_feature_names_types_names1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2928,7 +2926,7 @@ def test_unify_feature_names_types_names2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2960,7 +2958,7 @@ def test_unify_feature_names_types_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -2992,7 +2990,7 @@ def test_unify_feature_names_types_pandas_names2():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -3021,7 +3019,7 @@ def test_unify_feature_names_types_ignored_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3048,7 +3046,7 @@ def test_unify_feature_names_types_ignored_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3078,7 +3076,7 @@ def test_unify_feature_names_types_ignored_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3108,7 +3106,7 @@ def test_unify_feature_names_types_ignored_pandas_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3135,7 +3133,7 @@ def test_unify_feature_names_types_dropped_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3162,7 +3160,7 @@ def test_unify_feature_names_types_dropped_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3191,7 +3189,7 @@ def test_unify_feature_names_types_dropped_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3220,7 +3218,7 @@ def test_unify_feature_names_types_dropped_pandas_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3245,7 +3243,7 @@ def test_unify_feature_names_types_nondropped2_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3275,7 +3273,7 @@ def test_unify_feature_names_types_nondropped2_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3300,7 +3298,7 @@ def test_unify_feature_names_types_dropped2_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3329,7 +3327,7 @@ def test_unify_feature_names_types_dropped2_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3355,7 +3353,7 @@ def test_unify_feature_names_types_keep_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 2.0
@@ -3383,7 +3381,7 @@ def test_unify_feature_names_types_dropped3_pandas_names1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3408,7 +3406,7 @@ def test_unify_feature_names_types_dropped3_pandas_names2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 1.0
     assert X_cols[0][1][1] == 4.0
     assert X_cols[1][1][0] == 3.0
@@ -3438,7 +3436,7 @@ def test_unify_feature_names_types_rearrange1_drop1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3467,7 +3465,7 @@ def test_unify_feature_names_types_rearrange1_drop2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3497,7 +3495,7 @@ def test_unify_feature_names_types_rearrange2_drop1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3526,7 +3524,7 @@ def test_unify_feature_names_types_rearrange2_drop2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3557,7 +3555,7 @@ def test_unify_feature_names_types_rearrange_more1():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3588,7 +3586,7 @@ def test_unify_feature_names_types_rearrange_more2():
             min_unique_continuous=0,
         )
     )
-    assert 2 == len(X_cols)
+    assert len(X_cols) == 2
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 1.0
@@ -3619,7 +3617,7 @@ def test_unify_feature_names_types_rearrange_more3():
             min_unique_continuous=0,
         )
     )
-    assert 3 == len(X_cols)
+    assert len(X_cols) == 3
     assert X_cols[0][1][0] == 3.0
     assert X_cols[0][1][1] == 6.0
     assert X_cols[1][1][0] == 8.0
@@ -3638,7 +3636,7 @@ def test_unify_columns_ma_no_mask():
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "continuous"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is None
@@ -3658,7 +3656,7 @@ def test_unify_columns_ma_empty_mask():
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "continuous"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is None
@@ -3681,7 +3679,7 @@ def test_unify_columns_ma_objects():
     X_cols = list(
         unify_columns(X, [(0, None)], feature_names_in, min_unique_continuous=0)
     )
-    assert 1 == len(X_cols)
+    assert len(X_cols) == 1
     assert X_cols[0][0] == "continuous"
     assert X_cols[0][3] is None
     assert X_cols[0][2] is None

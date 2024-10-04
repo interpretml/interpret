@@ -1,10 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.visual.dashboard import AppRunner
 from time import sleep
 
 import pytest
+from interpret.visual.dashboard import AppRunner
 
 
 @pytest.mark.slow

@@ -1,14 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+
 import numpy as np
-import numpy.ma as ma
+from numpy import ma
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_x import preclean_X
 from ._link import link_func
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ def clean_dimensions(data, param_name):
             return data
 
         if data.dtype.type is not np.object_:
-            if 3 <= data.ndim:
+            if data.ndim >= 3:
                 msg = f"{param_name} cannot have 3rd dimension"
                 _log.error(msg)
                 raise TypeError(msg)
@@ -221,12 +221,10 @@ def clean_dimensions(data, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
-    else:
-        # data != data is a check for nan that works even with mixed types, since nan != nan
-        if (data == _none_ndarray).any() or (data != data).any():
-            msg = f"{param_name} cannot contain missing values"
-            _log.error(msg)
-            raise ValueError(msg)
+    elif (data == _none_ndarray).any() or (data != data).any():
+        msg = f"{param_name} cannot contain missing values"
+        _log.error(msg)
+        raise ValueError(msg)
 
     return data
 
@@ -313,7 +311,7 @@ def clean_init_score_and_X(
         probs = probs.astype(np.float64, copy=False)
         init_score = link_func(probs, link, link_param)
         return init_score, X, n_samples
-    elif is_regressor(init_score):
+    if is_regressor(init_score):
         predictions = clean_dimensions(init_score.predict(X), "init_score")
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source

@@ -1,6 +1,6 @@
 from typing import List
-from slicer import Alias
-from slicer import Obj
+
+from slicer import Alias, Obj
 
 
 class Component:

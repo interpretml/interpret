@@ -18,32 +18,29 @@ Near future support:
 # TODO(nopdive): Review how seq_num (integrity) are done with measure outcomes.
 """
 
-import pytz
-import base64
-from dataclasses import dataclass
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type, Mapping
-import random
-from powerlift.db.actions import drop_tables, create_db, create_tables
-from powerlift.measures import class_stats, data_stats, regression_stats
-from sqlalchemy.exc import IntegrityError
-from tqdm import tqdm
-from itertools import chain
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
-from sqlalchemy import create_engine
 import io
-import os
-from powerlift.db import schema as db
+import json
 import numbers
-from datetime import datetime
+import os
 import pathlib
-import numpy as np
-import pandas as pd
-import ast
+import random
 import time
 import traceback as tb
-import json
+from dataclasses import dataclass
+from itertools import chain
+from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Tuple
 
+import numpy as np
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
+from tqdm import tqdm
+
+from powerlift.db import schema as db
+from powerlift.db.actions import create_db, create_tables, drop_tables
+from powerlift.measures import class_stats, data_stats, regression_stats
 
 MIMETYPE_DF = "application/vnd.interpretml/parquet-df"
 MIMETYPE_SERIES = "application/vnd.interpretml/parquet-series"
@@ -55,6 +52,7 @@ class BytesParser:
     def deserialize(cls, mimetype, bytes):
         import io
         import json
+
         import pandas as pd
 
         if not isinstance(bytes, io.BytesIO):
@@ -64,20 +62,18 @@ class BytesParser:
 
         if mimetype == MIMETYPE_JSON:
             return json.load(bstream)
-        elif mimetype == MIMETYPE_DF:
+        if mimetype == MIMETYPE_DF:
             return pd.read_parquet(bstream)
-        elif mimetype == MIMETYPE_SERIES:
+        if mimetype == MIMETYPE_SERIES:
             return pd.read_parquet(bstream)["Target"]
-        else:
-            return None
+        return None
 
     @classmethod
     def serialize(cls, obj):
         import io
         import json
+
         import pandas as pd
-        from types import FunctionType
-        import inspect
 
         bstream = io.BytesIO()
         mimetype = None
@@ -206,7 +202,7 @@ class Store:
             raise Exception("Must reset before entering the Store context.")
 
         # on first re-attempt, do not sleep
-        if 2 <= self._attempts:
+        if self._attempts >= 2:
             sleep_time = (
                 self._wait_secs
                 * (self._wait_lengthing**self._attempts)
@@ -476,7 +472,7 @@ WHERE id = :trial_id
         return self.from_db_task(task_orm)
 
     def get_trial_fn(self, experiment_id) -> str:
-        sql_text = text(f"SELECT trial_fn FROM experiment WHERE id = :experiment_id")
+        sql_text = text("SELECT trial_fn FROM experiment WHERE id = :experiment_id")
         params = {"experiment_id": experiment_id}
 
         self.reset()
@@ -486,8 +482,7 @@ WHERE id = :trial_id
         return trial_fn
 
     def pick_trial(self, experiment_id, runner_id):
-        from powerlift.bench.experiment import Task
-        from powerlift.bench.experiment import Trial
+        from powerlift.bench.experiment import Task, Trial
 
         # trials are inserted in the order we want them processed
         # (biggest to smallest) so ordering by ascending "id"
@@ -508,7 +503,7 @@ WHERE id = :trial_id
         # or it could mean another runner stole our tentatively taken trial
         # so we need to recheck if all trials are taken to exit
         sql_assign = text(
-            f"""
+            """
 UPDATE trial
 SET runner_id = :runner_id, start_time = CURRENT_TIMESTAMP
 WHERE id = (
@@ -532,7 +527,7 @@ AND (runner_id = :runner_id OR runner_id = -1)
         params_check = {"experiment_id": experiment_id}
 
         sql_query = text(
-            f"""
+            """
 SELECT
   ta.id AS task_id,
   ta.name AS name,
@@ -568,7 +563,7 @@ LIMIT 1
             with self:
                 while True:
                     result = self.session.execute(sql_assign, params)
-                    if 0 < result.rowcount:
+                    if result.rowcount > 0:
                         break
                     result = self.session.execute(sql_check, params_check)
                     if not result.scalar():
@@ -605,8 +600,7 @@ LIMIT 1
         exp_orm = self.session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             return None
-        else:
-            return exp_orm.id
+        return exp_orm.id
 
     def create_experiment(
         self,
@@ -685,7 +679,7 @@ LIMIT 1
 
     def get_status(self, experiment_name: str):
         sql_text = text(
-            f"""
+            """
 SELECT
   t.id AS trial_id,
   ta.name AS task,
@@ -748,7 +742,7 @@ WHERE
 
     def get_results(self, experiment_name: str):
         sql_text = text(
-            f"""
+            """
 SELECT
   mo.id AS id,
   ta.name AS task,
@@ -802,7 +796,7 @@ WHERE
         return df
 
     def get_assets(self, task_id: int):
-        sql_text = text(f"SELECT x, y FROM task WHERE id = :task_id")
+        sql_text = text("SELECT x, y FROM task WHERE id = :task_id")
 
         params = {"task_id": task_id}
 
@@ -844,7 +838,7 @@ WHERE
         from powerlift.bench.experiment import Task
 
         sql_text = text(
-            f"""
+            """
 SELECT
   ta.id as id,
   ta.name as name,
@@ -926,10 +920,10 @@ FROM
     def create_task_with_data(self, data, exist_ok):
         if isinstance(data, SupervisedDataset):
             return self._create_task_with_supervised(data, exist_ok)
-        elif isinstance(data, DataFrameDataset):
+        if isinstance(data, DataFrameDataset):
             return self._create_task_with_dataframe(data, exist_ok)
-        else:  # pragma: no cover
-            raise ValueError(f"Does not support {type(data)}")
+        # pragma: no cover
+        raise ValueError(f"Does not support {type(data)}")
 
     def _create_task_with_supervised(self, supervised, exist_ok):
         X_bstream, y_bstream, _ = SupervisedDataset.serialize(supervised)
@@ -994,7 +988,7 @@ FROM
                     # we need to flush here to get the exception if it exists
                     self.session.flush()
                     ret = True
-                except IntegrityError as e:
+                except IntegrityError:
                     ret = False
 
         if ret is False and not exist_ok:
@@ -1140,7 +1134,6 @@ class SupervisedDataset(Dataset):
 class DatasetAlreadyExistsError(Exception):
     """Raised when dataset already exists in store."""
 
-    pass
 
 
 def populate_with_datasets(
@@ -1442,7 +1435,7 @@ def retrieve_pmlb(cache_dir: str = None) -> Generator[SupervisedDataset, None, N
     Yields:
         Generator[SupervisedDataset]: Yields datasets.
     """
-    from pmlb import fetch_data, classification_dataset_names, regression_dataset_names
+    from pmlb import classification_dataset_names, fetch_data, regression_dataset_names
 
     if cache_dir is not None:
         cache_dir = pathlib.Path(cache_dir, "pmlb")

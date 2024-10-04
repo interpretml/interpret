@@ -38,7 +38,7 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
     # start = time.time()
     while sizeS < m:
         remainingElements = remainingElements[
-            ~cp.in1d(cp.array(remainingElements), cp.array(chosenElements))
+            ~cp.isin(cp.array(remainingElements), cp.array(chosenElements))
         ]
         temp1 = cp.maximum(currMinCostValues - C, 0)
         temp1 = cp.matmul(temp1, targetMarginal.T)
@@ -59,7 +59,7 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
         if sizeS == m - 1:
             # print("targetMarginal", targetMarginal);
             gammaOpt = csr_matrix(
-                (targetMarginal[0], (currMinSourceIndex[0], range(0, numX))),
+                (targetMarginal[0], (currMinSourceIndex[0], range(numX))),
                 shape=(m, numX),
             )
             # print("gammaOpt \n", gammaOpt);

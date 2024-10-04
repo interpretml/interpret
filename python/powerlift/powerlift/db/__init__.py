@@ -13,13 +13,15 @@ TODO:
 - Consider migration
 """
 
-from .schema import (
-    Experiment,
-    Trial,
-    Task,
-    MeasureOutcome,
-)
-from .schema import NAME_LEN, PROBLEM_LEN, DESCRIPTION_LEN
-from .schema import TypeEnum, StatusEnum
-
 from .actions import create_db, delete_db
+from .schema import (
+    DESCRIPTION_LEN,
+    NAME_LEN,
+    PROBLEM_LEN,
+    Experiment,
+    MeasureOutcome,
+    StatusEnum,
+    Task,
+    Trial,
+    TypeEnum,
+)

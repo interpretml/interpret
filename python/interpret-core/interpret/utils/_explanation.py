@@ -121,8 +121,8 @@ def gen_global_selector(
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
-    else:  # pragma: no cover
-        return df
+    # pragma: no cover
+    return df
 
 
 def gen_local_selector(data_dicts, round=3, is_classification=True):
@@ -150,8 +150,8 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
     df = pd.DataFrame.from_records(records, columns=columns)
     if round is not None:
         return df.round(round)
-    else:  # pragma: no cover
-        return df
+    # pragma: no cover
+    return df
 
 
 def gen_name_from_class(obj):

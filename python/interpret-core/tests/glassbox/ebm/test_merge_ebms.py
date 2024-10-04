@@ -1,18 +1,17 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import warnings
+
+import numpy as np
+from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
 from interpret.utils import make_synthetic
+from sklearn.model_selection import train_test_split
 
 from ...tutils import (
     iris_classification,
     smoke_test_explanations,
 )
-
-from sklearn.model_selection import train_test_split
-from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
-
-import numpy as np
-import warnings
 
 
 def valid_ebm(ebm):

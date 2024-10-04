@@ -1,13 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+
 import numpy as np
-from scipy.stats import norm
 from scipy.optimize import brentq
+from scipy.stats import norm
 
 from ._native import Native
-
-import logging
 
 _log = logging.getLogger(__name__)
 

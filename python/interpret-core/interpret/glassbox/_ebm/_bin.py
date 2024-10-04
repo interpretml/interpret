@@ -5,8 +5,8 @@ import logging
 
 import numpy as np
 
-from ...utils._native import Native
 from ...utils._clean_x import unify_columns
+from ...utils._native import Native
 
 _log = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # continuous feature
                 request = (feature_idx, None)
                 key = feature_idx
-            waiting_list = waiting.get(key, None)
+            waiting_list = waiting.get(key)
             if waiting_list is None:
                 requests.append(request)
                 waiting[key] = [requirements]
@@ -144,7 +144,7 @@ def ebm_predict_scores(
         shape = (n_samples, len(intercept))
     sample_scores = np.full(shape, intercept, dtype=np.float64)
 
-    if 0 < n_samples:
+    if n_samples > 0:
         for term_idx, bin_indexes in eval_terms(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):
@@ -172,7 +172,7 @@ def ebm_eval_terms(
         shape = (n_samples, len(term_features), n_scores)
     explanations = np.empty(shape, dtype=np.float64)
 
-    if 0 < n_samples:
+    if n_samples > 0:
         for term_idx, bin_indexes in eval_terms(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):

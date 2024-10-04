@@ -3,8 +3,7 @@
 
 import numpy as np
 import pytest
-
-from interpret.utils import link_func, inv_link
+from interpret.utils import inv_link, link_func
 
 
 def test_link_func_monoclassification_22():

@@ -6,21 +6,12 @@
 # TODO PK add a test with more than 1 multiclass interaction
 
 import json
-import math
 import warnings
 from io import StringIO
 
 import numpy as np
 import pandas as pd  # type: ignore
 import pytest
-from sklearn.metrics import (
-    accuracy_score,  # type: ignore
-    log_loss,
-)
-from sklearn.model_selection import train_test_split  # type: ignore
-from sklearn.utils import estimator_checks
-from sklearn.utils.estimator_checks import check_estimator  # type: ignore
-
 from interpret.glassbox import (
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
@@ -30,6 +21,13 @@ from interpret.privacy import (
     DPExplainableBoostingRegressor,
 )
 from interpret.utils import inv_link, make_synthetic
+from sklearn.metrics import (
+    accuracy_score,  # type: ignore
+    log_loss,
+)
+from sklearn.model_selection import train_test_split  # type: ignore
+from sklearn.utils import estimator_checks
+
 from ...tutils import (
     iris_classification,
     smoke_test_explanations,
@@ -136,7 +134,7 @@ def test_binarize():
 
     logloss_binary = log_loss(y_test, probas)
     ratio = logloss_binary / logloss_multinomial
-    assert 0.8 < ratio and ratio < 1.9
+    assert ratio > 0.8 and ratio < 1.9
 
     logloss_ovr = log_loss(y_test, ovr.predict_proba(X_test))
 
@@ -147,7 +145,7 @@ def test_binarize():
     logloss_original = log_loss(y_test, original.predict_proba(X_test))
 
     ratio2 = logloss_original / logloss_multinomial
-    assert 0.75 < ratio and ratio < 1.75
+    assert ratio > 0.75 and ratio < 1.75
 
 
 def test_monotonize():

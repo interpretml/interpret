@@ -1,22 +1,20 @@
 """User facing benchmark class."""
 
+import inspect
+import os
+import pathlib
+import random
 from types import FunctionType
 from typing import Optional, Union
 
+import numpy as np
+import pandas as pd
+
 from powerlift.bench.experiment import Experiment
 from powerlift.bench.store import Store
-from powerlift.executors.base import Executor
-from powerlift.executors import LocalMachine
-import pandas as pd
-import random
-import time
-import pathlib
 from powerlift.db import schema as db
-
-import os
-import numpy as np
-import inspect
-import json
+from powerlift.executors import LocalMachine
+from powerlift.executors.base import Executor
 
 
 class Benchmark:
@@ -58,7 +56,7 @@ class Benchmark:
         script_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "..", "run", "__main__.py"
         )
-        with open(script_file, "r") as file:
+        with open(script_file) as file:
             script_contents = file.read()
 
         shell_install = None

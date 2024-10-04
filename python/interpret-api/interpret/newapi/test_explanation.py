@@ -1,9 +1,9 @@
-from .explanation import *
-from slicer import Obj as O
-from slicer import Alias as A
-
+from interpret.newapi.component import Attribution, BinnedData
 from interpret.newapi.explanation import AttribExplanation
-from interpret.newapi.component import BinnedData, Attribution
+from slicer import Alias as A
+from slicer import Obj as O
+
+from .explanation import *
 
 
 def test_explanation_serialize():

@@ -1,16 +1,16 @@
-import pytest
-import numpy as np
 from math import isclose
 
-from sklearn.linear_model import LinearRegression, LogisticRegression
+import numpy as np
+import pytest
+from interpret.utils import measure_interactions
 from sklearn.dummy import DummyClassifier
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 from ..tutils import (
-    synthetic_regression,
     synthetic_classification,
     synthetic_multiclass,
+    synthetic_regression,
 )
-from interpret.utils import measure_interactions
 
 
 @pytest.fixture(scope="module")
@@ -28,10 +28,10 @@ def test_init_regression_model(regression_data):
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
     ranked_pairs = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_binary_model():
@@ -46,10 +46,10 @@ def test_init_binary_model():
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
     ranked_pairs = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_multiclass_model():
@@ -64,7 +64,7 @@ def test_init_multiclass_model():
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_multiclass_scores():
@@ -78,7 +78,7 @@ def test_init_multiclass_scores():
     init_scores = np.random.rand(X.shape[0], n_classes)
 
     ranked_pairs = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_binary_dummy_model():
@@ -91,7 +91,7 @@ def test_init_binary_dummy_model():
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_binary_dummy_scores():
@@ -102,7 +102,7 @@ def test_init_binary_dummy_scores():
     init_scores = np.random.rand(X.shape[0])
 
     ranked_pairs = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_multiclass_dummy_model():
@@ -117,7 +117,7 @@ def test_init_multiclass_dummy_model():
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_init_multiclass_dummy_scores():
@@ -131,7 +131,7 @@ def test_init_multiclass_dummy_scores():
     init_scores = np.random.rand(X.shape[0], n_classes)
 
     ranked_pairs = measure_interactions(X, y, init_score=init_scores)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_inconsistent_objective(regression_data):
@@ -165,7 +165,7 @@ def test_sample_weigth(regression_data):
 
     ranked_pairs = measure_interactions(X, y, sample_weight=sample_weight)
     # 4 features
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_feature_names_and_types(regression_data):
@@ -178,7 +178,7 @@ def test_feature_names_and_types(regression_data):
     ranked_pairs = measure_interactions(
         X, y, feature_names=feature_names, feature_types=feature_types
     )
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_max_bins_and_binning_options(regression_data):
@@ -192,14 +192,14 @@ def test_max_bins_and_binning_options(regression_data):
     ranked_pairs = measure_interactions(
         X, y, max_interaction_bins=max_interaction_bins, feature_types=feature_types
     )
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
     feature_types[0] = "rounded_quantile"
 
     ranked_pairs = measure_interactions(
         X, y, max_interaction_bins=max_interaction_bins, feature_types=feature_types
     )
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_min_hessian_samples(regression_data):
@@ -211,23 +211,23 @@ def test_min_hessian_samples(regression_data):
     ranked_pairs = measure_interactions(
         X, y, min_samples_leaf=min_samples_leaf, min_hessian=min_hessian
     )
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_num_output_interactions(regression_data):
     X, y = regression_data
 
     ranked_pairs = measure_interactions(X, y, interactions=3)
-    assert 3 == len(ranked_pairs)
+    assert len(ranked_pairs) == 3
 
     ranked_pairs = measure_interactions(X, y, interactions=100)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
     ranked_pairs = measure_interactions(X, y, interactions=0)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
     ranked_pairs = measure_interactions(X, y, interactions=-2)
-    assert 6 == len(ranked_pairs)
+    assert len(ranked_pairs) == 6
 
 
 def test_output_list(regression_data):
@@ -235,7 +235,7 @@ def test_output_list(regression_data):
 
     ranked_pairs_list = measure_interactions(X, y)
     assert type(ranked_pairs_list) is list
-    assert 6 == len(ranked_pairs_list)
+    assert len(ranked_pairs_list) == 6
     for key, value in ranked_pairs_list:
         assert isinstance(key, tuple)
         assert isinstance(value, float)
@@ -245,10 +245,10 @@ def test_specific_results(regression_data):
     X, y = regression_data
 
     baseline = dict(measure_interactions(X, y))
-    assert 6 == len(baseline)
+    assert len(baseline) == 6
 
     specific = dict(measure_interactions(X, y, interactions=[(2, 1), (2, 0)]))
-    assert 2 == len(specific)
+    assert len(specific) == 2
 
     assert isclose(specific[(2, 1)], baseline[(1, 2)])
     assert isclose(specific[(2, 0)], baseline[(0, 2)])
@@ -264,7 +264,7 @@ def test_regression_task():
     ranked_strengths = measure_interactions(X, y)
 
     # 10 features
-    assert 45 == len(ranked_strengths)
+    assert len(ranked_strengths) == 45
 
 
 def test_classification_task():
@@ -277,7 +277,7 @@ def test_classification_task():
     ranked_strengths = measure_interactions(X, y)
 
     # 30 features
-    assert 435 == len(ranked_strengths)
+    assert len(ranked_strengths) == 435
 
 
 def test_nulticlass_task():
@@ -289,7 +289,7 @@ def test_nulticlass_task():
 
     ranked_strengths = measure_interactions(X, y)
 
-    assert 45 == len(ranked_strengths)
+    assert len(ranked_strengths) == 45
 
 
 def test_impure_interaction_is_zero():

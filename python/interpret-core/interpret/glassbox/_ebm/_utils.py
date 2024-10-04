@@ -156,9 +156,21 @@ def process_bag_terms(intercept, term_scores, bin_weights):
             #       non-overfit benefit of the lower dimensional interactions has already been extracted.
             scores[:] = new_scores
             intercept += add_intercept
+        elif scores.ndim == weights.ndim:
+            temp_scores = scores.flatten().copy()
+            temp_weights = weights.flatten().copy()
+
+            ignored = ~np.isfinite(temp_scores)
+            temp_scores[ignored] = 0.0
+            temp_weights[ignored] = 0.0
+
+            if temp_weights.sum() != 0:
+                mean = np.average(temp_scores, 0, temp_weights)
+                intercept += mean
+                scores -= mean
         else:
-            if scores.ndim == weights.ndim:
-                temp_scores = scores.flatten().copy()
+            for i in range(scores.shape[-1]):
+                temp_scores = scores[..., i].flatten().copy()
                 temp_weights = weights.flatten().copy()
 
                 ignored = ~np.isfinite(temp_scores)
@@ -167,21 +179,8 @@ def process_bag_terms(intercept, term_scores, bin_weights):
 
                 if temp_weights.sum() != 0:
                     mean = np.average(temp_scores, 0, temp_weights)
-                    intercept += mean
-                    scores -= mean
-            else:
-                for i in range(scores.shape[-1]):
-                    temp_scores = scores[..., i].flatten().copy()
-                    temp_weights = weights.flatten().copy()
-
-                    ignored = ~np.isfinite(temp_scores)
-                    temp_scores[ignored] = 0.0
-                    temp_weights[ignored] = 0.0
-
-                    if temp_weights.sum() != 0:
-                        mean = np.average(temp_scores, 0, temp_weights)
-                        intercept[i] += mean
-                        scores[..., i] -= mean
+                    intercept[i] += mean
+                    scores[..., i] -= mean
 
         # We could apply the algorithm proposed by Xuezhou Zhang here, however that algorithm doesn't work
         # for nominal categoricals since there is no concept of adjacency, so for nominal categoricals we
@@ -246,15 +245,14 @@ def order_terms(term_features, *args):
         # in Python if only 1 item exists then the item is returned and not a tuple
         if len(args) == 0:
             return []
-        else:
-            return tuple([] for _ in range(len(args) + 1))
+        return tuple([] for _ in range(len(args) + 1))
     keys = (
         [len(feature_idxs), *sorted(feature_idxs)] for feature_idxs in term_features
     )
     sorted_items = sorted(zip(keys, term_features, *args))
     ret = tuple(list(x) for x in islice(zip(*sorted_items), 1, None))
     # in Python if only 1 item exists then the item is returned and not a tuple
-    return ret if 2 <= len(ret) else ret[0]
+    return ret if len(ret) >= 2 else ret[0]
 
 
 def remove_unused_higher_bins(term_features, bins):
@@ -376,5 +374,4 @@ def make_bag(y, test_size, rng, is_stratified):
         return native.sample_without_replacement_stratified(
             rng, n_classes, n_train_samples, n_test_samples, y
         )
-    else:
-        return native.sample_without_replacement(rng, n_train_samples, n_test_samples)
+    return native.sample_without_replacement(rng, n_train_samples, n_test_samples)

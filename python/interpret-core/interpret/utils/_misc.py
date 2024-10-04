@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 import logging
 from itertools import count
+
 import numpy as np
 
 _log = logging.getLogger(__name__)
