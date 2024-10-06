@@ -48,15 +48,15 @@ def _harmonize_tensor(
     # greater than the old model's lowest cut.
     # eg:  new:      |    |            |   |    |
     #      old:                        |        |
-    #   other1:      |    |   proprotion   |
+    #   other1:      |    |   proportion   |
     #   other2:      |        proportion        |
     # One wrinkle is that for pairs, we'll be using the pair cuts and we need to
-    # one-dimensionalize any existing pair weights onto their respective 1D axies
-    # before proportionating them.  Annother issue is that we might not even have
+    # one-dimensionalize any existing pair weights onto their respective 1D axes
+    # before proportionating them.  Another issue is that we might not even have
     # another term_feature that uses some particular feature that we use in our model
     # so we don't have any weights.  We can solve that issue by dropping any feature's
     # bins for terms that we have no information for.  After we do this we'll have
-    # guaranteed that we only have new bin cuts for feature axies that we have inside
+    # guaranteed that we only have new bin cuts for feature axes that we have inside
     # the bin level that we're handling!
 
     old_feature_idxs = list(old_feature_idxs)
@@ -279,7 +279,7 @@ def _harmonize_tensor(
 
 
 def merge_ebms(models):
-    """Merges EBM models trained on similar datasets that have the same set of features.
+    """Merge EBM models trained on similar datasets that have the same set of features.
 
     Args:
         models: List of EBM models to be merged.
@@ -287,7 +287,6 @@ def merge_ebms(models):
     Returns:
         An EBM model with averaged mean and standard deviation of input models.
     """
-
     if len(models) == 0:  # pragma: no cover
         msg = "0 models to merge."
         raise Exception(msg)
@@ -369,34 +368,39 @@ def merge_ebms(models):
             raise Exception(msg)
 
         feature_names_in = getattr(model, "feature_names_in_", None)
-        if feature_names_in is not None:
-            if n_features != len(feature_names_in):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+        if feature_names_in is not None and n_features != len(
+            feature_names_in
+        ):  # pragma: no cover
+            msg = "Inconsistent numbers of features in the models."
+            raise Exception(msg)
 
         feature_types_in = getattr(model, "feature_types_in_", None)
-        if feature_types_in is not None:
-            if n_features != len(feature_types_in):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+        if feature_types_in is not None and n_features != len(
+            feature_types_in
+        ):  # pragma: no cover
+            msg = "Inconsistent numbers of features in the models."
+            raise Exception(msg)
 
         feature_bounds = getattr(model, "feature_bounds_", None)
-        if feature_bounds is not None:
-            if n_features != feature_bounds.shape[0]:  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+        if (
+            feature_bounds is not None and n_features != feature_bounds.shape[0]
+        ):  # pragma: no cover
+            msg = "Inconsistent numbers of features in the models."
+            raise Exception(msg)
 
         histogram_weights = getattr(model, "histogram_weights_", None)
-        if histogram_weights is not None:
-            if n_features != len(histogram_weights):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+        if histogram_weights is not None and n_features != len(
+            histogram_weights
+        ):  # pragma: no cover
+            msg = "Inconsistent numbers of features in the models."
+            raise Exception(msg)
 
         unique_val_counts = getattr(model, "unique_val_counts_", None)
-        if unique_val_counts is not None:
-            if n_features != len(unique_val_counts):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+        if unique_val_counts is not None and n_features != len(
+            unique_val_counts
+        ):  # pragma: no cover
+            msg = "Inconsistent numbers of features in the models."
+            raise Exception(msg)
 
     old_bounds = []
     old_mapping = []
@@ -471,7 +475,7 @@ def merge_ebms(models):
                 # order and also handling merged categories (where two categories map to a single score)
                 # We should first try to progress in order along each set of keys and see if we can
                 # establish the perfect order which might work if there are isolated missing categories
-                # and if we can't get a unique guaranteed sorted order that way then examime all the
+                # and if we can't get a unique guaranteed sorted order that way then examine all the
                 # different known sort order and figure out if any of the possible orderings match
                 merged_bins = dict(zip(merged_keys, count(1)))
             else:
@@ -545,17 +549,19 @@ def merge_ebms(models):
                     list(zip(min_feature_vals, max_feature_vals)), np.float64
                 )
 
-    if not is_dp:
-        if all(
+    if (
+        not is_dp
+        and hasattr(ebm, "feature_bounds_")
+        and all(
             hasattr(model, "histogram_weights_") and hasattr(model, "feature_bounds_")
             for model in models
-        ):
-            if hasattr(ebm, "feature_bounds_"):
-                # TODO: estimate the histogram bin counts by taking the min of the mins and the max of the maxes
-                # and re-apportioning the counts based on the distributions of the previous histograms.  Proprotion
-                # them to the floor of their counts and then assign any remaining integers based on how much
-                # they reduce the RMSE of the integer counts from the ideal floating point counts.
-                pass
+        )
+    ):
+        # TODO: estimate the histogram bin counts by taking the min of the mins and the max of the maxes
+        # and re-apportioning the counts based on the distributions of the previous histograms.  Proportion
+        # them to the floor of their counts and then assign any remaining integers based on how much
+        # they reduce the RMSE of the integer counts from the ideal floating point counts.
+        pass
 
     if is_classification:
         ebm.classes_ = models[0].classes_.copy()
@@ -625,7 +631,7 @@ def merge_ebms(models):
 
     # TODO: in the future we might at this point try and figure out the most
     #       common feature ordering within the terms.  Take the mode first
-    #       and amonst the orderings that tie, choose the one that's best sorted by
+    #       and amongst the orderings that tie, choose the one that's best sorted by
     #       feature indexes
     ebm.term_features_ = sorted_fgs
 
@@ -636,26 +642,26 @@ def merge_ebms(models):
         # interaction mismatches where an interaction will be in one model, but not the other.
         # We need to estimate the bin_weight_ tensors that would have existed in this case.
         # We'll use the interaction terms that we do have in other models to estimate the
-        # distribution in the essense of the data, which should be roughly consistent or you
+        # distribution in the essence of the data, which should be roughly consistent or you
         # shouldn't be attempting to merge the models in the first place.  We'll then scale
-        # the percentage distribution by the total weight of the model that we're fillin in the
+        # the percentage distribution by the total weight of the model that we're filling in the
         # details for.
 
         # TODO: this algorithm has some problems.  The estimated tensor that we get by taking the
         # model weight and distributing it by a per-cell percentage measure means that we get
-        # inconsistent weight distibutions along the axis.  We can take our resulting weight tensor
+        # inconsistent weight distributions along the axis.  We can take our resulting weight tensor
         # and sum the columns/rows to get the weights on each individual feature axis.  Our model
         # however comes with a known set of weights on each feature, and the result of our operation
         # will not match the existing distribution in almost all cases.  I think there might be
         # some algorithm where we start with the per-feature weights and use the distribution hints
         # from the other models to inform where we place our exact weights that we know about in our
-        # model from each axis.  The problem is that the sums in both axies need to agree, and each
+        # model from each axis.  The problem is that the sums in both axes need to agree, and each
         # change we make influences both.  I'm not sure we can even guarantee that there is an answer
         # and if there was one I'm not sure how we'd go about generating it.  I'm going to leave
         # this problem for YOU: a future person who is smarter than me and has more time to solve this.
         # One hint: I think a possible place to start would be an iterative algorithm that's similar
         # to purification where you randomly select a row/column and try to get closer at each step
-        # to the rigth answer.  Good luck!
+        # to the right answer.  Good luck!
         #
         # Oh, there's also another deeper problem.. let's say you had a crazy 5 way interaction in the
         # model eg: (0,1,2,3,4) and you had 2 and 3 way interactions that either overlap or not.
@@ -698,9 +704,8 @@ def merge_ebms(models):
             count(), models, fg_dicts, model_weights
         ):
             n_outer_bags = -1
-            if hasattr(model, "bagged_scores_"):
-                if len(model.bagged_scores_) > 0:
-                    n_outer_bags = len(model.bagged_scores_[0])
+            if hasattr(model, "bagged_scores_") and len(model.bagged_scores_) > 0:
+                n_outer_bags = len(model.bagged_scores_[0])
 
             term_idx = fg_dict.get(sorted_fg)
             if term_idx is None:
@@ -772,7 +777,7 @@ def merge_ebms(models):
     # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
     deduplicate_bins(ebm.bins_)
 
-    # dependent attributes (can be re-derrived after serialization)
+    # dependent attributes (can be re-derived after serialization)
     ebm.n_features_in_ = len(ebm.bins_)  # scikit-learn specified name
     ebm.term_names_ = generate_term_names(ebm.feature_names_in_, ebm.term_features_)
 
