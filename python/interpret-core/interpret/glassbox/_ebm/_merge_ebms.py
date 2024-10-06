@@ -419,6 +419,24 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
     return new_bins, new_feature_types
 
 
+def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
+    """Fully initialize new model from existing `models`."""
+    weights = np.fromiter(
+        (np.sum(model.bag_weights_) for model in models), dtype=np.float64
+    )
+    kdws = models[0].get_params()
+    # treated manually
+    for key in ["feature_names", "feature_types"]:
+        del kdws[key]
+    # TODO: treat special cases: exclude, interactions
+    for key in kdws:
+        values = np.array([getattr(model, key, np.nan) for model in models])
+        nan_weight = np.copy(weights)
+        nan_weight[np.isnan(values)] = 0
+        kdws[key] = np.average(values, weights=nan_weight)
+    return ebm_type(**kdws)
+
+
 def merge_ebms(models):
     """Merge EBM models trained on similar datasets that have the same set of features.
 
@@ -473,9 +491,7 @@ def merge_ebms(models):
         msg = "Inconsistent model types being merged."
         raise Exception(msg)
 
-    # TODO: create the ExplainableBoostingClassifier etc, type directly
-    # by name instead of using __new__ from ebm_type
-    ebm = ebm_type.__new__(ebm_type)
+    ebm = _initialize_ebm(models, ebm_type=ebm_type)
 
     if any(
         not getattr(model, "has_fitted_", False) for model in models
