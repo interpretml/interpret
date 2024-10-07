@@ -1,6 +1,80 @@
 """This is called to run a trial by worker nodes (local / remote)."""
 
 
+def assign_delete_permissions(
+    aci_client,
+    auth_client,
+    max_undead_containers,
+    credential,
+    subscription_id,
+    client_id,
+    resource_group_name,
+    container_groups,
+):
+    from heapq import heappush, heappop
+    from datetime import datetime
+    import time
+    import uuid
+    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
+    from azure.mgmt.authorization import AuthorizationManagementClient
+    from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
+    from azure.core.exceptions import HttpResponseError
+
+    # Contributor Role
+    role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+
+    while max_undead_containers < len(container_groups):
+        _, container_group_name, started = heappop(container_groups)
+        try:
+            if started is not None:
+                if not started.done():
+                    heappush(
+                        container_groups,
+                        (datetime.now(), container_group_name, started),
+                    )
+                    time.sleep(1)
+                    continue
+                started = None
+
+            if aci_client is None:
+                aci_client = ContainerInstanceManagementClient(
+                    credential, subscription_id
+                )
+
+            container_group = aci_client.container_groups.get(
+                resource_group_name, container_group_name
+            )
+
+            role_assignment_params1 = RoleAssignmentCreateParameters(
+                role_definition_id=role_definition_id,
+                principal_id=container_group.identity.principal_id,
+                principal_type="ServicePrincipal",
+            )
+            role_assignment_params2 = RoleAssignmentCreateParameters(
+                role_definition_id=role_definition_id,
+                principal_id=client_id,
+                principal_type="User",
+            )
+            scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.ContainerInstance/containerGroups/{container_group_name}"
+
+            if auth_client is None:
+                auth_client = AuthorizationManagementClient(credential, subscription_id)
+
+            auth_client.role_assignments.create(
+                scope, str(uuid.uuid4()), role_assignment_params1
+            )
+            auth_client.role_assignments.create(
+                scope, str(uuid.uuid4()), role_assignment_params2
+            )
+        except HttpResponseError:
+            aci_client = None
+            auth_client = None
+            heappush(container_groups, (datetime.now(), container_group_name, started))
+            time.sleep(1)
+
+    return aci_client, auth_client
+
+
 def run_azure_process(
     experiment_id,
     n_runners,
@@ -16,7 +90,16 @@ def run_azure_process(
 ):
     startup_script = """
         self_delete() {
-            echo "Attempt to self-delete this container group. Exit code was $1."
+            echo "Attempt to self-delete this container group. Exit code was: $1"
+
+            if [ $1 -ne 0 ]; then
+                echo "Waiting 10 mintues to allow inspection of the logs..."
+                sleep 600
+            fi
+
+            SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
+            RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
+            CONTAINER_GROUP_NAME=${CONTAINER_GROUP_NAME}
 
             retry_count=0
             while true; do
@@ -24,38 +107,16 @@ def run_azure_process(
 
                 curl -sL https://aka.ms/InstallAzureCLIDeb -o install_script.sh
                 exit_code=$?
-                if [ $exit_code -eq 0 ]; then
-                    break
+                if [ $exit_code -ne 0 ]; then
+                    echo "curl failed with exit code $exit_code."
                 fi
 
-                echo "curl failed with exit code $exit_code."
-                if [ $retry_count -ge 300 ]; then
-                    echo "Maximum number of retries reached. Command failed."
-                    exit 62
+                bash install_script.sh
+                exit_code=$?
+                if [ $exit_code -ne 0 ]; then
+                    echo "Failed to install azure tools with exit code $exit_code. Attempting to delete anyway."
                 fi
-                retry_count=$((retry_count + 1))
-                echo "Sleeping."
-                sleep 300
-                echo "Retrying."
-            done
-            
-            bash install_script.sh
-            exit_code=$?
-            if [ $exit_code -ne 0 ]; then
-                echo "Failed to install azure tools with exit code $exit_code. Attempting to delete anyway."
-            fi
 
-            SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
-            RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
-            CONTAINER_GROUP_NAME=${CONTAINER_GROUP_NAME}
-
-            if [ $1 -ne 0 ]; then
-                echo "Waiting 10 mintues to allow inspection of the logs..."
-                sleep 600
-            fi
-
-            retry_count=0
-            while true; do
                 echo "Logging into azure to delete this container."
                 az login --identity
                 exit_code=$?
@@ -78,8 +139,10 @@ def run_azure_process(
                     break
                 fi
                 retry_count=$((retry_count + 1))
-            done
 
+                echo "Retrying."
+            done
+            
             exit $1  # failed to self-kill the container we are running this on.
         }
     
@@ -297,12 +360,10 @@ def run_azure_process(
 
     import time
     import uuid
-    from multiprocessing.pool import MaybeEncodingError
-
+    from heapq import heappush
+    from datetime import datetime
     from azure.core.exceptions import HttpResponseError
     from azure.identity import ClientSecretCredential
-    from azure.mgmt.authorization import AuthorizationManagementClient
-    from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
     from azure.mgmt.containerinstance import ContainerInstanceManagementClient
     from azure.mgmt.containerinstance.models import (
         Container,
@@ -314,6 +375,8 @@ def run_azure_process(
         ResourceRequirements,
     )
     from azure.mgmt.resource import ResourceManagementClient
+
+    max_undead_containers = 20
 
     client_id = azure_json["client_id"]
 
@@ -327,11 +390,15 @@ def run_azure_process(
     resource_group_name = azure_json["resource_group"]
     subscription_id = azure_json["subscription_id"]
 
-    aci_client = ContainerInstanceManagementClient(credential, subscription_id)
+    aci_client = None
+    auth_client = None
+    container_groups = []
     res_client = ResourceManagementClient(credential, subscription_id)
 
     # If this first call fails, then allow the Exception to propagate.
-    resource_group = res_client.resource_groups.get(resource_group_name)
+    resource_group_location = res_client.resource_groups.get(
+        resource_group_name
+    ).location
 
     container_resource_requests = ResourceRequests(
         cpu=num_cores,
@@ -342,7 +409,6 @@ def run_azure_process(
     )
 
     container_group_names = set()
-    starts = []
     for runner_id in range(n_runners):
         container_group_name = f"powerlift-container-group-{batch_id}-{runner_id:04}"
 
@@ -366,85 +432,52 @@ def run_azure_process(
             environment_variables=env_vars,
         )
         container_group = ContainerGroup(
-            location=resource_group.location,
+            location=resource_group_location,
             containers=[container],
             os_type=OperatingSystemTypes.linux,
             restart_policy=ContainerGroupRestartPolicy.never,
             identity={"type": "SystemAssigned"},
         )
 
+        if aci_client is None:
+            aci_client = ContainerInstanceManagementClient(credential, subscription_id)
+
         while True:
             try:
                 # begin_create_or_update returns LROPoller,
                 # but this is only indicates when the containter is started
                 started = aci_client.container_groups.begin_create_or_update(
-                    resource_group.name, container_group_name, container_group
+                    resource_group_name, container_group_name, container_group
                 )
                 break
             except HttpResponseError:
                 time.sleep(1)
 
-        starts.append(started)
-
         container_group_names.add(container_group_name)
+        heappush(container_groups, (datetime.now(), container_group_name, started))
+        aci_client, auth_client = assign_delete_permissions(
+            aci_client,
+            auth_client,
+            max_undead_containers,
+            credential,
+            subscription_id,
+            client_id,
+            resource_group_name,
+            container_groups,
+        )
 
-    # make sure they have all started before exiting the process
-    for started in starts:
-        while True:
-            try:
-                while not started.done():
-                    time.sleep(1)
-                break
-            except HttpResponseError:
-                time.sleep(1)
+    assign_delete_permissions(
+        aci_client,
+        auth_client,
+        0,
+        credential,
+        subscription_id,
+        client_id,
+        resource_group_name,
+        container_groups,
+    )
 
     if delete_group_container_on_complete:
-        auth_client = AuthorizationManagementClient(credential, subscription_id)
-
-        # Contributor Role
-        role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-
-        for container_group_name in container_group_names:
-            while True:
-                try:
-                    container_group = aci_client.container_groups.get(
-                        resource_group_name, container_group_name
-                    )
-                    break
-                except HttpResponseError:
-                    time.sleep(1)
-
-            scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.ContainerInstance/containerGroups/{container_group_name}"
-            role_assignment_params = RoleAssignmentCreateParameters(
-                role_definition_id=role_definition_id,
-                principal_id=container_group.identity.principal_id,
-                principal_type="ServicePrincipal",
-            )
-
-            while True:
-                try:
-                    auth_client.role_assignments.create(
-                        scope, str(uuid.uuid4()), role_assignment_params
-                    )
-                    break
-                except HttpResponseError:
-                    time.sleep(1)
-
-            role_assignment_params = RoleAssignmentCreateParameters(
-                role_definition_id=role_definition_id,
-                principal_id=client_id,
-                principal_type="User",
-            )
-
-            while True:
-                try:
-                    auth_client.role_assignments.create(
-                        scope, str(uuid.uuid4()), role_assignment_params
-                    )
-                    break
-                except HttpResponseError:
-                    time.sleep(1)
-
         deletes = []
         while len(container_group_names) != 0:
             remove_after = []
@@ -466,7 +499,7 @@ def run_azure_process(
                             )
                             deletes.append(deleted)
                             remove_after.append(container_group_name)
-                except (HttpResponseError, MaybeEncodingError):
+                except HttpResponseError:
                     pass
 
             for container_group_name in remove_after:

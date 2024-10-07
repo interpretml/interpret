@@ -622,6 +622,7 @@ We also build on top of many great packages. Please check them out!
 
 # Papers that use or compare EBMs
 
+- [Challenging the Performance-Interpretability Trade-off: An Evaluation of Interpretable Machine Learning Models](https://arxiv.org/pdf/2409.14429)
 - [Data Science with LLMs and Interpretable Models](https://arxiv.org/pdf/2402.14474v1.pdf)
 - [DimVis: Interpreting Visual Clusters in Dimensionality Reduction With Explainable Boosting Machine](https://arxiv.org/pdf/2402.06885.pdf)
 - [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
