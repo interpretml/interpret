@@ -396,7 +396,7 @@ class EBMModel(BaseEstimator):
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # In the future we might replace min_samples_leaf=4 with min_samples_bin=3 so
         # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
         # slightly, but it might be worth the speedup. Unfortunately, with outer bags
@@ -2448,10 +2448,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greedy_ratio : float, default=1.5
+    greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool or float, default=True
+    cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
         as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
@@ -2460,13 +2460,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=50
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2485,9 +2485,9 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    min_samples_leaf : int, default=2
+    min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-4
+    min_hessian : float, default=1e-5
         Minimum hessian required to consider a potential split valid.
     reg_alpha : float, default=0.0
         L1 regularization.
@@ -2495,7 +2495,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    max_leaves : int, default=3
+    max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
@@ -2641,20 +2641,20 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 200,
+        greedy_ratio: Optional[float] = 12.0,
+        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
+        smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
+        min_samples_leaf: Optional[int] = 4,
+        min_hessian: Optional[float] = 1e-5,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        max_leaves: int = 3,
+        max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall
@@ -2794,10 +2794,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of inner bags. 0 turns off inner bagging.
     learning_rate : float, default=0.01
         Learning rate for boosting.
-    greedy_ratio : float, default=1.5
+    greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool or float, default=True
+    cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
         as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
@@ -2806,13 +2806,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
     interaction_smoothing_rounds : int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=50
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2831,9 +2831,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    min_samples_leaf : int, default=2
+    min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-4
+    min_hessian : float, default=1e-5
         Minimum hessian required to consider a potential split valid.
     reg_alpha : float, default=0.0
         L1 regularization.
@@ -2841,7 +2841,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    max_leaves : int, default=3
+    max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
@@ -2987,20 +2987,20 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.01,
-        greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 200,
+        greedy_ratio: Optional[float] = 12.0,
+        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
+        smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
+        min_samples_leaf: Optional[int] = 4,
+        min_hessian: Optional[float] = 1e-5,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        max_leaves: int = 3,
+        max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
         # Overall

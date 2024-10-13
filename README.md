@@ -623,6 +623,7 @@ We also build on top of many great packages. Please check them out!
 # Papers that use or compare EBMs
 
 - [Challenging the Performance-Interpretability Trade-off: An Evaluation of Interpretable Machine Learning Models](https://arxiv.org/pdf/2409.14429)
+- [GAMFORMER: In-context Learning for Generalized Additive Models](https://arxiv.org/pdf/2410.04560v1)
 - [Data Science with LLMs and Interpretable Models](https://arxiv.org/pdf/2402.14474v1.pdf)
 - [DimVis: Interpreting Visual Clusters in Dimensionality Reduction With Explainable Boosting Machine](https://arxiv.org/pdf/2402.06885.pdf)
 - [Distill knowledge of additive tree models into generalized linear models](https://detralytics.com/wp-content/uploads/2023/10/Detra-Note_Additive-tree-ensembles.pdf)
@@ -688,6 +689,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machines for Slope Failure Spatial Predictive Modeling](https://www.mdpi.com/2072-4292/13/24/4991/htm)
 - [Micromodels for Efficient, Explainable, and Reusable Systems: A Case Study on Mental Health](https://arxiv.org/pdf/2109.13770.pdf)
 - [Identifying main and interaction effects of risk factors to predict intensive care admission in patients hospitalized with COVID-19](https://www.medrxiv.org/content/10.1101/2020.06.30.20143651v1.full.pdf)
+- [Leveraging interpretable machine learning in intensive care](https://link.springer.com/article/10.1007/s10479-024-06226-8#Tab10)
 - [Development of prediction models for one-year brain tumour survival using machine learning: a comparison of accuracy and interpretability](https://www.pure.ed.ac.uk/ws/portalfiles/portal/343114800/1_s2.0_S0169260723001487_main.pdf)
 - [Using Interpretable Machine Learning to Predict Maternal and Fetal Outcomes](https://arxiv.org/pdf/2207.05322.pdf)
 - [Calibrate: Interactive Analysis of Probabilistic Model Output](https://arxiv.org/pdf/2207.13770.pdf)

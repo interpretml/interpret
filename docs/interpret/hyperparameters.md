@@ -6,11 +6,18 @@ The parameters below are ordered by tuning importance, with the most important h
 
 
 ## smoothing_rounds
-default: 200
+default: 100
 
-hyperparameters: [0, 50, 100, 200, 500, 1000, 2000, 4000]
+hyperparameters: [0, 50, 100, 200, 500, 1000]
 
 guidance: This is an important hyperparameter to tune.  The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
+
+## learning_rate
+default: 0.01
+
+hyperparameters: [0.2, 0.1, 0.05, 0.025, 0.01, 0.005, 0.0025]
+
+guidance: This is an important hyperparameter to tune.  The conventional wisdom is that a lower learning rate is generally better, but we have found the relationship to be more complex. In general, regression seems to prefer a higher learning rate, binary classification seems to prefer a lower learning rate, and multiclass is in-between.
 
 ## interactions
 default: 0.9
@@ -45,18 +52,18 @@ hyperparameters: [8, 16, 32, 64, 128, 256]
 guidance: For max_interaction_bins, more is not necessarily better, unlike with max_bins. A good value on many datasets seems to be 32, but it's worth trying higher and lower values.
 
 ## greedy_ratio
-default: 1.5
+default: 12.0
 
-hyperparameters: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 4.0]
+hyperparameters: [0.0, 1.0, 2.0, 5.0, 12.0, 20.0]
 
 guidance: greedy_ratio is a good candidate for hyperparameter tuning as the best value is dataset dependent.
 
 ## cyclic_progress
-default: 1.0
+default: 0.0
 
-hyperparameters: [0.0, 0.5, 1.0]
+hyperparameters: [0.0, 1.0]
 
-guidance: cyclic_progress is a good candidate for hyperparameter tuning as the best value is dataset dependent.
+guidance: Try both.
 
 ## outer_bags
 default: 14
@@ -74,31 +81,24 @@ hyperparameters: [0, 50, 100, 500]
 
 guidance: interaction_smoothing_rounds appears to have only a minor impact on model accuracy. 0 is often the best choice.  0 is often the most accurate choice, but the interaction shape plots will be smoother and easier to interpret with more interaction_smoothing_rounds.
 
-## learning_rate
-default: 0.01
-
-hyperparameters: [0.1, 0.025, 0.01, 0.005, 0.0025]
-
-guidance: A smaller learning_rate promotes finer model adjustments during fitting, but may require more iterations. Generally, we believe a smaller learning_rate should improve the model, but sometimes hyperparameter tuning seems to be needed to select the best value.
-
 ## max_leaves
-default: 3
-
-hyperparameters: [2, 3, 4]
-
-guidance: Generally, the default setting is effective, but it's worth checking if changing to either 2 or 4 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
-
-## min_samples_leaf
 default: 2
 
 hyperparameters: [2, 3, 4]
 
+guidance: Generally, the default setting is effective, but it's worth checking if changing to either 3 or 4 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
+
+## min_samples_leaf
+default: 4
+
+hyperparameters: [2, 3, 4, 5, 6]
+
 guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets.
 
 ## min_hessian
-default: 0.0001
+default: 1e-5
 
-hyperparameters: [0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001]
+hyperparameters: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8]
 
 guidance: The default min_hessian is a solid starting point.
 
@@ -112,7 +112,7 @@ hyperparameters: [1000000000]
 guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid premature early stopping. Consider increasing it if small yet consistent gains are observed in longer trainings.
 
 ## early_stopping_rounds
-default: 50
+default: 100
 
 guidance: We typically do not advise changing early_stopping_rounds. The default is appropriate for most cases, adequately capturing the optimal model without incurring unnecessary computational costs.
 
