@@ -2466,7 +2466,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=100
+    early_stopping_rounds : int, default=200
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2487,7 +2487,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         the ensemble as a whole.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-5
+    min_hessian : float, default=0.0
         Minimum hessian required to consider a potential split valid.
     reg_alpha : float, default=0.0
         L1 regularization.
@@ -2646,11 +2646,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 100,
+        early_stopping_rounds: Optional[int] = 200,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
         min_samples_leaf: Optional[int] = 4,
-        min_hessian: Optional[float] = 1e-5,
+        min_hessian: Optional[float] = 0.0,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
@@ -2792,7 +2792,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.01
+    learning_rate : float, default=0.05
         Learning rate for boosting.
     greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
@@ -2812,7 +2812,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=100
+    early_stopping_rounds : int, default=200
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2833,7 +2833,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         the ensemble as a whole.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-5
+    min_hessian : float, default=0.0
         Minimum hessian required to consider a potential split valid.
     reg_alpha : float, default=0.0
         L1 regularization.
@@ -2986,17 +2986,17 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.05,
         greedy_ratio: Optional[float] = 12.0,
         cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 100,
+        early_stopping_rounds: Optional[int] = 200,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
         min_samples_leaf: Optional[int] = 4,
-        min_hessian: Optional[float] = 1e-5,
+        min_hessian: Optional[float] = 0.0,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,

@@ -86,7 +86,6 @@ def boost(
                         # starting a fresh cyclic round. Clear the priority queue
                         bestkey = None
                         heap = []
-                        # if pure cyclical then only randomize at start
                         if (
                             step_idx == 0
                             and develop._randomize_initial_feature_order
@@ -94,7 +93,6 @@ def boost(
                             and greedy_steps > 0
                             or develop._randomize_feature_order
                         ):
-                            # TODO: test if shuffling during pure cyclic is better
                             native.shuffle(rng, random_cyclic_ordering)
 
                     term_idx = random_cyclic_ordering[state_idx]
