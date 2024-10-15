@@ -13,7 +13,7 @@ hyperparameters: [0, 50, 100, 200, 500, 1000]
 guidance: This is an important hyperparameter to tune.  The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
 
 ## learning_rate
-default: 0.01
+default: 0.01 (classification), 0.05 (regression)
 
 hyperparameters: [0.2, 0.1, 0.05, 0.025, 0.01, 0.005, 0.0025]
 
@@ -40,7 +40,7 @@ guidance: The default inner_bags value of 0 disables inner bagging. Setting this
 ## max_bins
 default: 1024
 
-hyperparameters: [1024, 4096, 16384, 65536]
+hyperparameters: [256, 512, 1024, 4096, 16384, 65536]
 
 guidance: Higher max_bins values can improve model accuracy by allowing more granular discretization of features. While the default minimizes memory consumption and speeds up training, we suggest testing larger values if resources permit.
 
@@ -68,11 +68,11 @@ guidance: Try both.
 ## outer_bags
 default: 14
 
-ideal: 50 (diminishing returns beyond this point)
+ideal: 14 (diminishing returns beyond this point)
 
-hyperparameters: [50]
+hyperparameters: [14]
 
-guidance: We suggest increasing the number of outer bags if computational resources permit, ideally up to 50 outer bags where improvements plateau. Ideally up to 50-100 outer bags.  As with bagging, improvement starts to plateau around 25 and usually there is little advantage to going above 100.
+guidance: Increasing outer bags beyond 14 provides no benefit.  Reducing outer_bags below 14 might improve fitting time on machines with less than 14 cores.
 
 ## interaction_smoothing_rounds
 default: 50
@@ -84,9 +84,9 @@ guidance: interaction_smoothing_rounds appears to have only a minor impact on mo
 ## max_leaves
 default: 2
 
-hyperparameters: [2, 3, 4]
+hyperparameters: [2, 3]
 
-guidance: Generally, the default setting is effective, but it's worth checking if changing to either 3 or 4 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
+guidance: Generally, the default setting is effective, but it's worth checking if changing to 3 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
 
 ## min_samples_leaf
 default: 4
@@ -96,11 +96,11 @@ hyperparameters: [2, 3, 4, 5, 6]
 guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets.
 
 ## min_hessian
-default: 1e-5
+default: 0.0
 
-hyperparameters: [1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8]
+hyperparameters: [1e-4, 0.0]
 
-guidance: The default min_hessian is a solid starting point.
+guidance: Generally 0.0 is the best choice for min_hessian, but on some datasets it might be useful to set min_hessian.
 
 ## max_rounds
 default: 25000
@@ -112,16 +112,16 @@ hyperparameters: [1000000000]
 guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid premature early stopping. Consider increasing it if small yet consistent gains are observed in longer trainings.
 
 ## early_stopping_rounds
-default: 100
+default: 200
 
 guidance: We typically do not advise changing early_stopping_rounds. The default is appropriate for most cases, adequately capturing the optimal model without incurring unnecessary computational costs.
 
 ## early_stopping_tolerance
-default: 1e-5
+default: 0.0
 
-hyperparameters: [1e-5, 1e-7, 0.0]
+hyperparameters: [0.0]
 
-guidance: early_stopping_tolerance is set to 1e-5 because it decreases the fitting time by 25%, however setting early_stopping_tolerance to 0.0, or even a negative value sometimes yields slightly higher accuracy. EBMs are a bagged ensemble model, so overfitting each individual bag a little can be beneficial because after the models are averaged together in the ensemble averaging decreases the variance due to overfitting. Using a negative value for early_stopping_tolerance allows the individual models to be overfit.
+guidance: early_stopping_tolerance is set to 0.0 by default, however setting it to a negative value sometimes yields slightly higher accuracy. EBMs are a bagged ensemble model, so overfitting each individual bag a little can be beneficial because after the models are averaged together in the ensemble averaging decreases the variance due to overfitting. Using a negative value for early_stopping_tolerance allows the individual models to be overfit.
 
 ## validation_size
 default: 0.15

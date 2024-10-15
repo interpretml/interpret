@@ -2469,7 +2469,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     early_stopping_rounds : int, default=200
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=1e-5
+    early_stopping_tolerance : float, default=0.0
         Tolerance that dictates the smallest delta required to be considered an
         improvement which prevents the algorithm from early stopping.
         early_stopping_tolerance is expressed as a percentage of the early
@@ -2647,7 +2647,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 200,
-        early_stopping_tolerance: Optional[float] = 1e-5,
+        early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 0.0,
@@ -2815,7 +2815,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     early_stopping_rounds : int, default=200
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
-    early_stopping_tolerance : float, default=1e-5
+    early_stopping_tolerance : float, default=0.0
         Tolerance that dictates the smallest delta required to be considered an
         improvement which prevents the algorithm from early stopping.
         early_stopping_tolerance is expressed as a percentage of the early
@@ -2993,7 +2993,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 200,
-        early_stopping_tolerance: Optional[float] = 1e-5,
+        early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 0.0,
