@@ -1,6 +1,6 @@
 # Hyperparameters
 
-Explainable Boosting Machines (EBMs) are often robust with default settings, however hyperparameter tuning can potentially improve model accuracy by a modest amount. The default parameters aim to balance computational efficiency with model accuracy. For some parameters we have a clear understanding of which direction they should be changed in order to improve the model. For these parameters, hyperparameter turning is not recommended and you should set them in accordance with how much time you can afford to fit the model.
+Explainable Boosting Machines (EBMs) often have good performance using the default settings, however hyperparameter tuning can potentially improve model accuracy by a modest amount. The default parameters aim to balance computational efficiency with model accuracy. For some parameters we have a clear understanding of which direction they should be changed in order to improve the model. For these parameters, hyperparameter turning is not recommended and you should set them in accordance with how much time you can afford to fit the model.
 
 The parameters below are ordered by tuning importance, with the most important hyperparameters to tune at the top, and the least important ones to tune at the bottom.
 
@@ -10,21 +10,23 @@ default: 100
 
 hyperparameters: [0, 50, 100, 200, 500, 1000]
 
-guidance: This is an important hyperparameter to tune.  The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
+guidance: This is an important hyperparameter to tune. The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
 
 ## learning_rate
 default: 0.01 (classification), 0.05 (regression)
 
-hyperparameters: [0.2, 0.1, 0.05, 0.025, 0.01, 0.005, 0.0025]
+hyperparameters: [0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002]
 
-guidance: This is an important hyperparameter to tune.  The conventional wisdom is that a lower learning rate is generally better, but we have found the relationship to be more complex. In general, regression seems to prefer a higher learning rate, binary classification seems to prefer a lower learning rate, and multiclass is in-between.
+guidance: This is an important hyperparameter to tune. The conventional wisdom is that a lower learning rate is generally better, but we have found the relationship to be more complex for EBMs. In general, regression seems to prefer a higher learning rate, binary classification seems to prefer a lower learning rate, and multiclass is in-between.
 
 ## interactions
 default: 0.9
 
+ideal: As many as possible
+
 hyperparameters: [0, 0.5, 0.75, 0.9, 0.95, 5, 10, 25, 50, 100, 250]
 
-guidance: Introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1.0 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.75 will automatically detect and use 75 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction, and 50 would create 50.
+guidance: Introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1.0 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.75 will automatically detect and use 75 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50.
 
 ## inner_bags
 default: 0
@@ -35,21 +37,21 @@ ideal: 50 (diminishing returns beyond this point)
 
 hyperparameters: [0] OR if you can afford it [0, 50]
 
-guidance: The default inner_bags value of 0 disables inner bagging. Setting this parameter to 1 or other low values will typically make the model worse since model fitting will then only use a subset of the data but not do enough inner bagging to compensate. Increasing the number of inner bags to 50 can improve model accuracy at the cost of significantly longer training times. If computation time is not a constraint, we suggest trying both 0 and 50, but not other values in between.
+guidance: The default inner_bags value of 0 disables inner bagging. Setting this parameter to 1 or other low values will typically make the model worse since model fitting will then only use a subset of the data but not do enough inner bagging to compensate. Increasing the number of inner bags to 50 can improve model accuracy at the cost of significantly longer fitting times. If computation time is not a constraint, we suggest trying both 0 and 50, but not other values in between.
 
 ## max_bins
 default: 1024
 
 hyperparameters: [256, 512, 1024, 4096, 16384, 65536]
 
-guidance: Higher max_bins values can improve model accuracy by allowing more granular discretization of features. While the default minimizes memory consumption and speeds up training, we suggest testing larger values if resources permit.
+guidance: Higher max_bins values can improve model accuracy by allowing more granular discretization of features, although increasing max_bins beyond 1024 sometimes decreases model performance. While the default minimizes memory consumption and speeds up training, we suggest testing larger values if resources permit.
 
 ## max_interaction_bins
 default: 32
 
 hyperparameters: [8, 16, 32, 64, 128, 256]
 
-guidance: For max_interaction_bins, more is not necessarily better, unlike with max_bins. A good value on many datasets seems to be 32, but it's worth trying higher and lower values.
+guidance: For max_interaction_bins, more is not necessarily better. A good value on many datasets seems to be 32, but it's worth trying higher and lower values.
 
 ## greedy_ratio
 default: 12.0
@@ -63,7 +65,7 @@ default: 0.0
 
 hyperparameters: [0.0, 1.0]
 
-guidance: Try both.
+guidance: Generally, turning off cyclic_progress by setting it to 0.0 is slightly better, although it can take more time to fit if greedy_ratio is close to 1.
 
 ## outer_bags
 default: 14
@@ -86,14 +88,14 @@ default: 2
 
 hyperparameters: [2, 3]
 
-guidance: Generally, the default setting is effective, but it's worth checking if changing to 3 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
+guidance: Generally, the default setting of 2 is better, but it's worth checking if changing to 3 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
 
 ## min_samples_leaf
 default: 4
 
-hyperparameters: [2, 3, 4, 5, 6]
+hyperparameters: [2, 3, 4, 5, 10, 20, 50]
 
-guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets.
+guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets. For smaller datasets, having a low value might be better. On larger datasets this parameter seems to have little effect.
 
 ## min_hessian
 default: 0.0
@@ -109,12 +111,16 @@ ideal: 1000000000 (early stopping should stop long before this point)
 
 hyperparameters: [1000000000]
 
-guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid premature early stopping. Consider increasing it if small yet consistent gains are observed in longer trainings.
+guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid premature early stopping provided fitting times are reasonable. Consider increasing it if small yet consistent gains are observed in longer trainings.
 
 ## early_stopping_rounds
-default: 200
+default: 100
 
-guidance: We typically do not advise changing early_stopping_rounds. The default is appropriate for most cases, adequately capturing the optimal model without incurring unnecessary computational costs.
+ideal: 200 (diminishing returns beyond this point)
+
+hyperparameters: [100, 200]
+
+guidance: Having 200 early_stopping_rounds results in a slightly better model than the default of 100, but it requires significantly more time to fit in some cases.  early_stopping_rounds beyond 200 does not seem to improve the model.
 
 ## early_stopping_tolerance
 default: 0.0

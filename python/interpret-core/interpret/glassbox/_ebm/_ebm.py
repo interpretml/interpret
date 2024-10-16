@@ -396,12 +396,14 @@ class EBMModel(BaseEstimator):
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=4 with min_samples_bin=3 so
+        # In the future we might replace min_samples_leaf=4 with min_samples_bin=4 so
         # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
         # slightly, but it might be worth the speedup. Unfortunately, with outer bags
         # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
-        # a boosting restriction.
+        # a boosting restriction. Another option would be to add tail restrictions
+        # like min_samples_tail since when max_leaves is 2 the restriction only applies
+        # to the tails anyways.
         min_samples_bin = 1
 
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
@@ -2466,7 +2468,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=200
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=0.0
@@ -2646,7 +2648,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 200,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 4,
@@ -2812,7 +2814,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=200
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=0.0
@@ -2992,7 +2994,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         smoothing_rounds: Optional[int] = 100,
         interaction_smoothing_rounds: Optional[int] = 50,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 200,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 0.0,
         # Trees
         min_samples_leaf: Optional[int] = 4,
