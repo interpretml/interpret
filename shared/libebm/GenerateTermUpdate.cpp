@@ -1155,37 +1155,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
       LOG_0(Trace_Verbose, "GenerateTermUpdate done sampling set loop");
 
-      bool bBad;
       // we need to divide by the number of sampling sets that we constructed this from.
       // We also need to slow down our growth so that the more relevant Features get a chance to grow first so we
       // multiply by a user defined learning rate
-      if(size_t{2} == cScores) {
-         // if(0 <= k_iZeroLogit || ptrdiff_t { 2 } == pBoosterCore->m_cClasses && bExpandBinaryLogits) {
-         //    EBM_ASSERT(ptrdiff_t { 2 } <= pBoosterCore->m_cClasses);
-         //    // TODO : for classification with logit zeroing, is our learning rate essentially being inflated as
-         //        pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by
-         //        pBoosterCore->m_cClasses here to keep learning rates as equivalent as possible..
-         //        Actually, I think the real solution here is that
-         //    pBoosterCore->m_pTermUpdate->Multiply(
-         //       learningRateFloat / cInnerBagsAfterZero * (pBoosterCore->m_cClasses - 1) /
-         //       pBoosterCore->m_cClasses
-         //    );
-         // } else {
-         //    // TODO : for classification, is our learning rate essentially being inflated as
-         //         pBoosterCore->m_cClasses goes up?  If so, maybe we should divide by
-         //         pBoosterCore->m_cClasses here to keep learning rates equivalent as possible
-         //    pBoosterCore->m_pTermUpdate->Multiply(learningRateFloat / cInnerBagsAfterZero);
-         // }
-
-         // TODO: When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K (see above), per:
-         // https://arxiv.org/pdf/1810.09092v2.pdf (forumla 5) and also the
-         // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
-         // https://arxiv.org/pdf/1006.5051.pdf
-
-         bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple * 0.5);
-      } else {
-         bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
-      }
+      bool bBad = pBoosterShell->GetTermUpdate()->MultiplyAndCheckForIssues(multiple);
 
       if(UNLIKELY(bBad)) {
          // our update contains a NaN or -inf or +inf and we cannot tollerate a model that does this, so destroy it

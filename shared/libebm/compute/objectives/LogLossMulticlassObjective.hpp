@@ -15,6 +15,8 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          k_cItemsPerBitPackUndefined,
          k_cItemsPerBitPackUndefined)
 
+   double m_hessianFactor;
+
    inline LogLossMulticlassObjective(const Config& config) {
       if(1 == config.cOutputs) {
          // we share the tag "log_loss" with binary classification
@@ -28,6 +30,12 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
       if(config.isDifferentialPrivacy) {
          throw NonPrivateRegistrationException();
       }
+
+      // When NewtonBoosting is enabled, we need to multiply our rate by (K - 1)/K, per:
+      // https://arxiv.org/pdf/1810.09092v2.pdf (forumla 5) and also the
+      // Ping Li paper (algorithm #1, line 5, (K - 1) / K )
+      // https://arxiv.org/pdf/1006.5051.pdf
+      m_hessianFactor = static_cast<double>(config.cOutputs) / static_cast<double>(config.cOutputs - 1);
    }
 
    inline double LinkParam() const noexcept { return std::numeric_limits<double>::quiet_NaN(); }
@@ -54,7 +62,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
 
    inline double GradientConstant() const noexcept { return 1.0; }
 
-   inline double HessianConstant() const noexcept { return 1.0; }
+   inline double HessianConstant() const noexcept { return m_hessianFactor; }
 
    inline double FinishMetric(const double metricSum) const noexcept { return metricSum; }
 

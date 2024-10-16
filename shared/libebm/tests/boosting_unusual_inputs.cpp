@@ -162,26 +162,26 @@ TEST_CASE("negative learning rate, boosting, multiclass") {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1288361512023379, double{1e-1});
             const double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
-            CHECK_APPROX(termScore, 0.04500000000000000);
+            CHECK_APPROX(termScore, 0.03);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX(termScore, 0.04500000000000000);
+            CHECK_APPROX(termScore, 0.03);
          }
          if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.1602122411839852, double{1e-1});
             const double zeroLogit = test.GetCurrentTermScore(iTerm, {}, 0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
-            CHECK_APPROX_TOLERANCE(termScore, 0.091033038217642897, double{1e-2});
+            CHECK_APPROX_TOLERANCE(termScore, 0.060338810750421350, double{1e-2});
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX_TOLERANCE(termScore, 0.091033038217642897, double{1e-2});
+            CHECK_APPROX_TOLERANCE(termScore, 0.060338810750421350, double{1e-2});
          }
       }
    }
-   CHECK_APPROX_TOLERANCE(validationMetric, 2.0611718475324357, double{1e-1});
+   CHECK_APPROX_TOLERANCE(validationMetric, 1.5713119506835938, double{1e-1});
    const double zeroLogit1 = test.GetCurrentTermScore(0, {}, 0);
    termScore = test.GetCurrentTermScore(0, {}, 1) - zeroLogit1;
-   CHECK_APPROX_TOLERANCE(termScore, 1.23185585569831419, double{1e-1});
+   CHECK_APPROX_TOLERANCE(termScore, 0.70734588332837767, double{1e-1});
    termScore = test.GetCurrentTermScore(0, {}, 2) - zeroLogit1;
-   CHECK_APPROX_TOLERANCE(termScore, 1.23185585569831419, double{1e-1});
+   CHECK_APPROX_TOLERANCE(termScore, 0.70734588332837767, double{1e-1});
 }
 
 TEST_CASE("zero minSamplesLeaf, boosting, regression") {
@@ -666,20 +666,20 @@ TEST_CASE("Zero validation samples, boosting, multiclass") {
          const double zeroLogit = test.GetCurrentTermScore(0, {0}, 0);
          CHECK_APPROX(zeroLogit, test.GetCurrentTermScore(0, {1}, 0));
          termScore = test.GetCurrentTermScore(0, {0}, 1) - zeroLogit;
-         CHECK_APPROX(termScore, -0.04500000000000000);
+         CHECK_APPROX(termScore, -0.03);
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 1) - zeroLogit);
          termScore = test.GetCurrentTermScore(0, {0}, 2) - zeroLogit;
-         CHECK_APPROX(termScore, -0.04500000000000000);
+         CHECK_APPROX(termScore, -0.03);
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 2) - zeroLogit);
       }
       if(1 == iEpoch) {
          const double zeroLogit = test.GetCurrentTermScore(0, {0}, 0);
          CHECK_APPROX(zeroLogit, test.GetCurrentTermScore(0, {1}, 0));
          termScore = test.GetCurrentTermScore(0, {0}, 1) - zeroLogit;
-         CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double{1e-2});
+         CHECK_APPROX_TOLERANCE(termScore, -0.059670291487725124, double{1e-2});
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 1) - zeroLogit);
          termScore = test.GetCurrentTermScore(0, {0}, 2) - zeroLogit;
-         CHECK_APPROX_TOLERANCE(termScore, -0.089007468617193456, double{1e-2});
+         CHECK_APPROX_TOLERANCE(termScore, -0.059670291487725124, double{1e-2});
          CHECK_APPROX(termScore, test.GetCurrentTermScore(0, {1}, 2) - zeroLogit);
       }
       CHECK_APPROX(test.GetCurrentTermScore(0, {0}, 0), test.GetBestTermScore(0, {0}, 0));
@@ -900,7 +900,7 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX(termScore, 0.0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX(termScore, 0.011249999580904845);
+            CHECK_APPROX(termScore, 0.0074999999999999997);
          }
          if(0 == iTerm && 1 == iEpoch) {
             CHECK_APPROX_TOLERANCE(validationMetric, 1.0401627411809615, double{1e-1});
@@ -908,7 +908,7 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX(termScore, 0.0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX(termScore, 0.022359380227138834);
+            CHECK_APPROX(termScore, 0.014937448346408581);
          }
       }
    }
@@ -1146,7 +1146,7 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
             CHECK_APPROX(termScore1, 0.0f);
 
             double termScore2 = test.GetCurrentTermScore(iTerm, {1}, 2) - zeroLogit;
-            CHECK_APPROX(termScore2, -0.0225f);
+            CHECK_APPROX(termScore2, -0.015f);
          }
       }
    }
@@ -1232,7 +1232,7 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
       }
    }
 
-   CHECK(validationMetric <= 0.00017711094447544644 * 1.3);
+   CHECK(validationMetric <= 0.00068252183319557282 * 1.3);
 
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i2 = 0; i2 < cStates; ++i2) {
@@ -1294,7 +1294,7 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
                                   .validationMetric;
       }
    }
-   CHECK(validationMetric <= 0.0091562298922079986 * 1.4);
+   CHECK(validationMetric <= 0.024179781143588853 * 1.4);
 
    for(IntEbm i0 = 0; i0 < cStates; ++i0) {
       for(IntEbm i1 = 0; i1 < cStates; ++i1) {
