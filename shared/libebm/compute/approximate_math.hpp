@@ -518,74 +518,40 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(
    // EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
    // EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
 
-   const bool bPassNaN = bNaNPossible && !bNegativePossible && UNLIKELY(EbmIsNaN(val));
-   if(LIKELY(!bPassNaN)) {
-      const bool bPassInfinity = bPositiveInfinityPossible && std::is_same<T, float>::value &&
-            UNLIKELY(std::numeric_limits<T>::infinity() == val);
-      if(LIKELY(!bPassInfinity)) {
-         if(bNegativePossible) {
-            // according to IEEE 754, comparing NaN to anything returns false (except itself), so checking if it's
-            // greater or equal to zero will yield false if val is a NaN, and then true after the negation, so this
-            // checks for both of our NaN output conditions.  This needs to be compiled with strict floating point!
-            if(UNLIKELY(!(std::numeric_limits<T>::min() <= val))) {
-               if(bZeroPossible) {
-                  return PREDICTABLE(T{0} <= val) ?
-                        (bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity()) :
-                        std::numeric_limits<T>::quiet_NaN();
-               } else {
-                  return std::numeric_limits<T>::quiet_NaN();
-               }
-            }
-         } else {
-            if(bZeroPossible) {
-               if(UNLIKELY(!(std::numeric_limits<T>::min() <= val))) {
-                  return bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity();
-               }
-            }
-         }
-         if(!std::is_same<T, float>::value) {
-            if(UNLIKELY(static_cast<T>(std::numeric_limits<float>::max()) < val)) {
-               // if val is a non-float32, and it has a value outside of the float range, then it would result in
-               // undefined behavior if we converted it to a float, so check it here and return
-               return bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity();
-            }
-         }
 
-         // if val is a float, there are no values which would invoke undefined behavior for the code below since
-         // we bit-convert our float to an integer, which will be legal for all possible integer outputs.
-         // We then conver that integer to a float with a cast, which should be ok too since there are no integers
-         // that cannot be converted to a float, so there are no undefined behavior possibilities.
-         // if val is a double though, and it has a value outside of the float range, then it would result in
-         // undefined behavior if we converted it to a float, so we check for that above.
+   // It's debatable, but I think on a compiler with IEEE-754 values, any double value between the float max
+   // and double +inf should be convertable to a float infinity because those values should be between the float
+   // max and float +inf.
+   const float valFloat = static_cast<float>(val);
 
-         const float valFloat = static_cast<float>(val);
-
-         int32_t retInt;
-
-         static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
-         static_assert(sizeof(retInt) == sizeof(valFloat), "both binary conversion types better have the same size");
-         memcpy(&retInt, &valFloat, sizeof(retInt));
-
-         float retFloat = static_cast<float>(retInt);
-
-         // TODO: it might be possible and useful to add addLogSchraudolphTerm / k_logMultiple to retInt before
-         // converting it from int to float which would use an integer add instead of a float add. I'm not
-         // sure if this causes an overflow, or if it's better since we can use a fused multiply add instruction
-         // at least for SIMD with this construction, which makes the add part zero cost.
-         if(bNegateOutput) {
-            retFloat = (-k_logMultiple) * retFloat + (-addLogSchraudolphTerm);
-         } else {
-            retFloat = k_logMultiple * retFloat + addLogSchraudolphTerm;
-         }
-
-         val = static_cast<T>(retFloat);
+   int32_t retInt;
+   static_assert(std::numeric_limits<float>::is_iec559, "This hacky function requires IEEE 754 binary layout");
+   static_assert(sizeof(retInt) == sizeof(valFloat), "both binary conversion types better have the same size");
+   memcpy(&retInt, &valFloat, sizeof(retInt));
+   float result = static_cast<float>(retInt);
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         result = valFloat < std::numeric_limits<float>::infinity() ? result : valFloat;
       } else {
-         if(bNegateOutput) {
-            val = -std::numeric_limits<T>::infinity();
-         }
+         result = std::isnan(valFloat) ? valFloat : result;
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         result = std::numeric_limits<float>::infinity() == valFloat ? valFloat : result;
       }
    }
-   return val;
+   if(bNegateOutput) {
+      result = (-k_logMultiple) * result + (-addLogSchraudolphTerm);
+   } else {
+      result = k_logMultiple * result + addLogSchraudolphTerm;
+   }
+   if(bZeroPossible) {
+      result = valFloat < std::numeric_limits<float>::min() ? (bNegateOutput ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity()) : result;
+   }
+   if(bNegativePossible) {
+      result = valFloat < float{0} ? std::numeric_limits<float>::quiet_NaN() : result;
+   }
+   return static_cast<T>(result);
 }
 
 #ifdef NEVER

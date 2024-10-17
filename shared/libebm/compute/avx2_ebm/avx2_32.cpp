@@ -132,6 +132,10 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
       return Avx2_32_Int(_mm256_blendv_epi8(falseVal.m_data, trueVal.m_data, cmp.m_data));
    }
 
+   friend inline Avx2_32_Int IfAdd(const Avx2_32_Int& cmp, const Avx2_32_Int& base, const Avx2_32_Int& addend) noexcept {
+      return base + (cmp & addend);
+   }
+
    friend inline Avx2_32_Int PermuteForInterleaf(const Avx2_32_Int& val) noexcept {
       // this function permutes the values into positions that the Interleaf function expects
       // but for any SIMD implementation the positions can be variable as long as they work together
@@ -533,6 +537,11 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, cmp.m_data));
    }
 
+   friend inline Avx2_32_Float IfAdd(
+         const Avx2_32_Float& cmp, const Avx2_32_Float& base, const Avx2_32_Float& addend) noexcept {
+      return base + (ReinterpretFloat(ReinterpretInt(cmp) & ReinterpretInt(addend)));
+   }
+
    friend inline Avx2_32_Float IfEqual(const Avx2_32_Float& cmp1,
          const Avx2_32_Float& cmp2,
          const Avx2_32_Float& trueVal,
@@ -704,17 +713,21 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       // and also see approximate_math.hpp
       const __m256i retInt = _mm256_castps_si256(val.m_data);
       Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
+      if(bNaNPossible) {
+         if(bPositiveInfinityPossible) {
+            result = IfLess(val, std::numeric_limits<T>::infinity(), result, val);
+         } else {
+            result = IfNaN(val, val, result);
+         }
+      } else {
+         if(bPositiveInfinityPossible) {
+            result = IfEqual(std::numeric_limits<T>::infinity(), val, val, result);
+         }
+      }
       if(bNegateOutput) {
          result = FusedMultiplyAdd(result, -k_logMultiple, -addLogSchraudolphTerm);
       } else {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
-      }
-      // TODO: combine this with the NaN (we simply pass it through if it's +inf (with negation if required)
-      if(bPositiveInfinityPossible) {
-         result = IfEqual(std::numeric_limits<T>::infinity(),
-               val,
-               bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(),
-               result);
       }
       if(bZeroPossible) {
          result = IfLess(val,
@@ -724,9 +737,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       }
       if(bNegativePossible) {
          result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
-      }
-      if(bNaNPossible) {
-         result = IfNaN(val, val, result);
       }
       return result;
    }

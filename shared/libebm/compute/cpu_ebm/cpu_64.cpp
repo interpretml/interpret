@@ -99,8 +99,13 @@ struct Cpu_64_Int final {
 
    inline Cpu_64_Int operator|(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data | other.m_data); }
 
-   friend inline Cpu_64_Int IfThenElse(const int cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
+   friend inline Cpu_64_Int IfThenElse(
+         const int64_t cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
       return cmp ? trueVal : falseVal;
+   }
+
+   friend inline Cpu_64_Int IfAdd(const int64_t cmp, const Cpu_64_Int& base, const Cpu_64_Int& addend) noexcept {
+      return cmp ? base + addend : base;
    }
 
  private:
@@ -211,8 +216,9 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
-   friend inline int operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
-      return left.m_data <= right.m_data ? -1 : 0; // use all bits so that we can negate it ~
+   friend inline int64_t operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      // use all bits of an equally wide datatype so that we can negate it with ~, or AND/OR it
+      return left.m_data <= right.m_data ? int64_t{-1} : int64_t{0}; 
    }
 
    inline static Cpu_64_Float Load(const T* const a) noexcept { return Cpu_64_Float(*a); }
@@ -244,8 +250,12 @@ struct Cpu_64_Float final {
    }
 
    friend inline Cpu_64_Float IfThenElse(
-         const int cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
+         const int64_t cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
       return cmp ? trueVal : falseVal;
+   }
+
+   friend inline Cpu_64_Float IfAdd(const int64_t cmp, const Cpu_64_Float& base, const Cpu_64_Float& addend) noexcept {
+      return cmp ? base + addend : base;
    }
 
    friend inline Cpu_64_Float IfEqual(const Cpu_64_Float& cmp1,

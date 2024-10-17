@@ -145,6 +145,11 @@ struct alignas(k_cAlignment) Avx512f_32_Int final {
             _mm512_mask_blend_ps(cmp, _mm512_castsi512_ps(falseVal.m_data), _mm512_castsi512_ps(trueVal.m_data))));
    }
 
+   friend inline Avx512f_32_Int IfAdd(
+         const __mmask16& cmp, const Avx512f_32_Int& base, const Avx512f_32_Int& addend) noexcept {
+      return Avx512f_32_Int(_mm512_mask_add_epi32(base.m_data, cmp, base.m_data, addend.m_data));
+   }
+
    friend inline Avx512f_32_Int PermuteForInterleaf(const Avx512f_32_Int& val) noexcept {
       // this function permutes the values into positions that the Interleaf function expects
       // but for any SIMD implementation the positions can be variable as long as they work together
@@ -591,6 +596,12 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_mask_blend_ps(cmp, falseVal.m_data, trueVal.m_data));
    }
 
+   friend inline Avx512f_32_Float IfAdd(
+         const __mmask16& cmp, const Avx512f_32_Float& base, const Avx512f_32_Float& addend) noexcept {
+      return Avx512f_32_Float(_mm512_mask_add_ps(base.m_data, cmp, base.m_data, addend.m_data));
+   }
+
+
    friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Float& cmp1,
          const Avx512f_32_Float& cmp2,
          const Avx512f_32_Float& trueVal,
@@ -759,17 +770,21 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       // and also see approximate_math.hpp
       const __m512i retInt = _mm512_castps_si512(val.m_data);
       Avx512f_32_Float result = Avx512f_32_Float(_mm512_cvtepi32_ps(retInt));
+      if(bNaNPossible) {
+         if(bPositiveInfinityPossible) {
+            result = IfLess(val, std::numeric_limits<T>::infinity(), result, val);
+         } else {
+            result = IfNaN(val, val, result);
+         }
+      } else {
+         if(bPositiveInfinityPossible) {
+            result = IfEqual(std::numeric_limits<T>::infinity(), val, val, result);
+         }
+      }
       if(bNegateOutput) {
          result = FusedMultiplyAdd(result, -k_logMultiple, -addLogSchraudolphTerm);
       } else {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
-      }
-      // TODO: combine this with the NaN check (we simply pass it through if it's +inf (with negation if required)
-      if(bPositiveInfinityPossible) {
-         result = IfEqual(std::numeric_limits<T>::infinity(),
-               val,
-               bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(),
-               result);
       }
       if(bZeroPossible) {
          result = IfLess(val,
@@ -779,9 +794,6 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       }
       if(bNegativePossible) {
          result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
-      }
-      if(bNaNPossible) {
-         result = IfNaN(val, val, result);
       }
       return result;
    }
