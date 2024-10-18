@@ -148,7 +148,7 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
       rounded = Round(val * TFloat{1.44269504088896340736f});
       x = FusedMultiplyAdd(rounded, TFloat{-0.693359375f}, val);
    }
-   x = FusedNegateMultiplyAdd(rounded, TFloat{-2.12194440e-4f}, x);
+   x = FusedMultiplyAdd(rounded, TFloat{2.12194440e-4f}, x);
 
    const TFloat x2 = x * x;
    TFloat ret = Polynomial32(x,
@@ -233,7 +233,7 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    ret *= x2 * x;
 
    ret = FusedMultiplyAdd(exponentFloat, TFloat{-2.12194440E-4f}, ret);
-   ret += FusedNegateMultiplyAdd(x2, TFloat{0.5f}, x);
+   ret += FusedMultiplyAdd(x2, TFloat{-0.5f}, x);
 
    // exponentFloat must be a finite number, so use ret if we want an inf or NaN ret value
    if(bNaNPossible) {
@@ -298,7 +298,7 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
       rounded = Round(val * TFloat{1.44269504088896340736});
       x = FusedMultiplyAdd(rounded, TFloat{-0.693145751953125}, val);
    }
-   x = FusedNegateMultiplyAdd(rounded, TFloat{1.42860682030941723212E-6}, x);
+   x = FusedMultiplyAdd(rounded, TFloat{-1.42860682030941723212E-6}, x);
 
    TFloat ret = Polynomial64(x,
          TFloat{1} / TFloat{2},
@@ -389,7 +389,7 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    TFloat ret = poly1 / poly2;
 
    ret = FusedMultiplyAdd(exponent, TFloat{-2.121944400546905827679E-4}, ret);
-   ret += FusedNegateMultiplyAdd(x2, TFloat{0.5}, x);
+   ret += FusedMultiplyAdd(x2, TFloat{-0.5}, x);
 
    // exponent must be a finite number, so use ret if we want an inf or NaN ret value
    if(bNaNPossible) {
