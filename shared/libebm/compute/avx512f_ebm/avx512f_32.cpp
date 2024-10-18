@@ -602,15 +602,8 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    }
 
 
-   friend inline Avx512f_32_Float IfNaN(
-         const Avx512f_32_Float& cmp, const Avx512f_32_Float& trueVal, const Avx512f_32_Float& falseVal) noexcept {
-      // rely on the fact that a == a can only be false if a is a NaN
-      //
-      // TODO: _mm256_cmp_ps has a latency of 4 and a throughput of 0.5.  It might be faster to convert to integers,
-      //       use an AND with _mm256_and_si256 to select just the NaN bits, then compare to zero with
-      //       _mm256_cmpeq_epi32, but that has an overall latency of 2 and a throughput of 0.83333, which is lower
-      //       throughput, so experiment with this
-      return IfThenElse(cmp == cmp, falseVal, trueVal);
+   friend inline __mmask16 IsNaN(const Avx512f_32_Float& cmp) noexcept {
+      return _mm512_cmp_ps_mask(cmp.m_data, cmp.m_data, _CMP_UNORD_Q);
    }
 
    static inline Avx512f_32_Int ReinterpretInt(const Avx512f_32_Float& val) noexcept {
@@ -714,7 +707,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          }
       }
       if(bNaNPossible) {
-         result = IfNaN(val, val, result);
+         result = IfThenElse(IsNaN(val), val, result);
       }
       return result;
    }
@@ -756,7 +749,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          if(bPositiveInfinityPossible) {
             result = IfThenElse(val < std::numeric_limits<T>::infinity(), result, val);
          } else {
-            result = IfNaN(val, val, result);
+            result = IfThenElse(IsNaN(val), val, result);
          }
       } else {
          if(bPositiveInfinityPossible) {

@@ -178,7 +178,7 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
       }
    }
    if(bNaNPossible) {
-      ret = IfNaN(val, val, ret);
+      ret = IfThenElse(IsNaN(val), val, ret);
    }
 
 #ifndef NDEBUG
@@ -249,7 +249,7 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
       if(bPositiveInfinityPossible) {
          ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
       } else {
-         ret = IfNaN(val, val, ret);
+         ret = IfThenElse(IsNaN(val), val, ret);
       }
    } else {
       if(bPositiveInfinityPossible) {
@@ -328,7 +328,7 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
       }
    }
    if(bNaNPossible) {
-      ret = IfNaN(val, val, ret);
+      ret = IfThenElse(IsNaN(val), val, ret);
    }
 
 #ifndef NDEBUG
@@ -401,7 +401,7 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
       if(bPositiveInfinityPossible) {
          ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
       } else {
-         ret = IfNaN(val, val, ret);
+         ret = IfThenElse(IsNaN(val), val, ret);
       }
    } else {
       if(bPositiveInfinityPossible) {

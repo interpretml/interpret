@@ -265,9 +265,8 @@ struct Cpu_64_Float final {
       return cmp.m_data ? base + addend : base;
    }
 
-   friend inline Cpu_64_Float IfNaN(
-         const Cpu_64_Float& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
-      return std::isnan(cmp.m_data) ? trueVal : falseVal;
+   friend inline Cpu_64_Int IsNaN(const Cpu_64_Float& cmp) noexcept {
+      return std::isnan(cmp.m_data) ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
    }
 
    static inline Cpu_64_Int ReinterpretInt(const Cpu_64_Float& val) noexcept {
