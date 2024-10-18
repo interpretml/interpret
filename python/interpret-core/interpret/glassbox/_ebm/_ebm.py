@@ -2426,7 +2426,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
-    max_interaction_bins : int, default=32
+    max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
     interactions : int, float, or list of tuples of feature indices, default=0.9
 
@@ -2448,7 +2448,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.016
+    learning_rate : float, default=0.015
         Learning rate for boosting.
     greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
@@ -2464,7 +2464,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2631,7 +2631,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         ] = None,
         # Preprocessor
         max_bins: int = 1024,
-        max_interaction_bins: int = 32,
+        max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
@@ -2642,11 +2642,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.016,
+        learning_rate: float = 0.015,
         greedy_ratio: Optional[float] = 12.0,
         cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 100,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        interaction_smoothing_rounds: Optional[int] = 100,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 0.0,
@@ -2772,7 +2772,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
-    max_interaction_bins : int, default=32
+    max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
     interactions : int, float, or list of tuples of feature indices, default=0.9
 
@@ -2794,7 +2794,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.06
+    learning_rate : float, default=0.04
         Learning rate for boosting.
     greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
@@ -2810,7 +2810,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
@@ -2977,7 +2977,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         ] = None,
         # Preprocessor
         max_bins: int = 1024,
-        max_interaction_bins: int = 32,
+        max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
@@ -2988,11 +2988,11 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.06,
+        learning_rate: float = 0.04,
         greedy_ratio: Optional[float] = 12.0,
         cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 100,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        interaction_smoothing_rounds: Optional[int] = 100,
         max_rounds: Optional[int] = 25000,
         early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 0.0,
