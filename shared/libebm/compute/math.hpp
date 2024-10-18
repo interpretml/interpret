@@ -235,6 +235,19 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    ret = FusedMultiplyAdd(exponentFloat, TFloat{-2.12194440E-4f}, ret);
    ret += FusedNegateMultiplyAdd(x2, TFloat{0.5f}, x);
 
+   // exponentFloat must be a finite number, so use ret if we want an inf or NaN ret value
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, val);
+      } else {
+         ret = IfThenElse(IsNaN(val), val, ret);
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val, val, ret);
+      }
+   }
+
    if(bNegateOutput) {
       ret = FusedMultiplySubtract(exponentFloat, TFloat{-0.693359375f}, ret);
    } else {
@@ -249,20 +262,6 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    }
    if(bNegativePossible) {
       ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
-   }
-   if(bNaNPossible) {
-      if(bPositiveInfinityPossible) {
-         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
-      } else {
-         ret = IfThenElse(IsNaN(val), val, ret);
-      }
-   } else {
-      if(bPositiveInfinityPossible) {
-         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val,
-               bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
-                               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
-      }
    }
 
 #ifndef NDEBUG
@@ -392,6 +391,19 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    ret = FusedMultiplyAdd(exponent, TFloat{-2.121944400546905827679E-4}, ret);
    ret += FusedNegateMultiplyAdd(x2, TFloat{0.5}, x);
 
+   // exponent must be a finite number, so use ret if we want an inf or NaN ret value
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, val);
+      } else {
+         ret = IfThenElse(IsNaN(val), val, ret);
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val, val, ret);
+      }
+   }
+
    if(bNegateOutput) {
       ret = FusedMultiplySubtract(exponent, TFloat{-0.693359375}, ret);
    } else {
@@ -406,20 +418,6 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    }
    if(bNegativePossible) {
       ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
-   }
-   if(bNaNPossible) {
-      if(bPositiveInfinityPossible) {
-         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
-      } else {
-         ret = IfThenElse(IsNaN(val), val, ret);
-      }
-   } else {
-      if(bPositiveInfinityPossible) {
-         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val,
-               bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
-                               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
-      }
    }
 
 #ifndef NDEBUG
