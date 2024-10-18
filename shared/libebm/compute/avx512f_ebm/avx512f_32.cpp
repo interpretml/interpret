@@ -55,10 +55,6 @@ inline Avx512f_32_Float Log(const Avx512f_32_Float& val) noexcept;
 
 struct alignas(k_cAlignment) Avx512f_32_Int final {
    friend Avx512f_32_Float;
-   friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Int& cmp1,
-         const Avx512f_32_Int& cmp2,
-         const Avx512f_32_Float& trueVal,
-         const Avx512f_32_Float& falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = __m512i;
@@ -109,6 +105,10 @@ struct alignas(k_cAlignment) Avx512f_32_Int final {
 
    inline static Avx512f_32_Int MakeIndexes() noexcept {
       return Avx512f_32_Int(_mm512_set_epi32(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+   }
+
+   friend inline __mmask16 operator==(const Avx512f_32_Int& left, const Avx512f_32_Int& right) noexcept {
+      return _mm512_cmpeq_epi32_mask(left.m_data, right.m_data);
    }
 
    inline Avx512f_32_Int operator+(const Avx512f_32_Int& other) const noexcept {
@@ -271,6 +271,14 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
 
    friend inline Avx512f_32_Float operator/(const float val, const Avx512f_32_Float& other) noexcept {
       return Avx512f_32_Float(val) / other;
+   }
+
+   friend inline __mmask16 operator==(const Avx512f_32_Float& left, const Avx512f_32_Float& right) noexcept {
+      return _mm512_cmp_ps_mask(left.m_data, right.m_data, _CMP_EQ_OQ);
+   }
+
+   friend inline __mmask16 operator<(const Avx512f_32_Float& left, const Avx512f_32_Float& right) noexcept {
+      return _mm512_cmp_ps_mask(left.m_data, right.m_data, _CMP_LT_OQ);
    }
 
    friend inline __mmask16 operator<=(const Avx512f_32_Float& left, const Avx512f_32_Float& right) noexcept {
@@ -583,14 +591,6 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       func(15, a0[15], a1[15], a2[15], a3[15], a4[15]);
    }
 
-   friend inline Avx512f_32_Float IfLess(const Avx512f_32_Float& cmp1,
-         const Avx512f_32_Float& cmp2,
-         const Avx512f_32_Float& trueVal,
-         const Avx512f_32_Float& falseVal) noexcept {
-      const __mmask16 mask = _mm512_cmp_ps_mask(cmp1.m_data, cmp2.m_data, _CMP_LT_OQ);
-      return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
-   }
-
    friend inline Avx512f_32_Float IfThenElse(
          const __mmask16& cmp, const Avx512f_32_Float& trueVal, const Avx512f_32_Float& falseVal) noexcept {
       return Avx512f_32_Float(_mm512_mask_blend_ps(cmp, falseVal.m_data, trueVal.m_data));
@@ -602,14 +602,6 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
    }
 
 
-   friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Float& cmp1,
-         const Avx512f_32_Float& cmp2,
-         const Avx512f_32_Float& trueVal,
-         const Avx512f_32_Float& falseVal) noexcept {
-      const __mmask16 mask = _mm512_cmp_ps_mask(cmp1.m_data, cmp2.m_data, _CMP_EQ_OQ);
-      return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
-   }
-
    friend inline Avx512f_32_Float IfNaN(
          const Avx512f_32_Float& cmp, const Avx512f_32_Float& trueVal, const Avx512f_32_Float& falseVal) noexcept {
       // rely on the fact that a == a can only be false if a is a NaN
@@ -618,15 +610,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       //       use an AND with _mm256_and_si256 to select just the NaN bits, then compare to zero with
       //       _mm256_cmpeq_epi32, but that has an overall latency of 2 and a throughput of 0.83333, which is lower
       //       throughput, so experiment with this
-      return IfEqual(cmp, cmp, falseVal, trueVal);
-   }
-
-   friend inline Avx512f_32_Float IfEqual(const Avx512f_32_Int& cmp1,
-         const Avx512f_32_Int& cmp2,
-         const Avx512f_32_Float& trueVal,
-         const Avx512f_32_Float& falseVal) noexcept {
-      const __mmask16 mask = _mm512_cmpeq_epi32_mask(cmp1.m_data, cmp2.m_data);
-      return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
+      return IfThenElse(cmp == cmp, falseVal, trueVal);
    }
 
    static inline Avx512f_32_Int ReinterpretInt(const Avx512f_32_Float& val) noexcept {
@@ -713,20 +697,20 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
 #endif // EXP_INT_SIMD
       Avx512f_32_Float result = Avx512f_32_Float(_mm512_castsi512_ps(retInt));
       if(bSpecialCaseZero) {
-         result = IfEqual(0.0, val, 1.0, result);
+         result = IfThenElse(0.0 == val, 1.0, result);
       }
       if(bOverflowPossible) {
          if(bNegateInput) {
-            result = IfLess(val, static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(val < static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
          } else {
-            result = IfLess(static_cast<T>(k_expOverflowPoint), val, std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(static_cast<T>(k_expOverflowPoint) < val, std::numeric_limits<T>::infinity(), result);
          }
       }
       if(bUnderflowPossible) {
          if(bNegateInput) {
-            result = IfLess(static_cast<T>(-k_expUnderflowPoint), val, 0.0, result);
+            result = IfThenElse(static_cast<T>(-k_expUnderflowPoint) < val, 0.0, result);
          } else {
-            result = IfLess(val, static_cast<T>(k_expUnderflowPoint), 0.0, result);
+            result = IfThenElse(val < static_cast<T>(k_expUnderflowPoint), 0.0, result);
          }
       }
       if(bNaNPossible) {
@@ -770,13 +754,13 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       Avx512f_32_Float result = Avx512f_32_Float(_mm512_cvtepi32_ps(retInt));
       if(bNaNPossible) {
          if(bPositiveInfinityPossible) {
-            result = IfLess(val, std::numeric_limits<T>::infinity(), result, val);
+            result = IfThenElse(val < std::numeric_limits<T>::infinity(), result, val);
          } else {
             result = IfNaN(val, val, result);
          }
       } else {
          if(bPositiveInfinityPossible) {
-            result = IfEqual(std::numeric_limits<T>::infinity(), val, val, result);
+            result = IfThenElse(std::numeric_limits<T>::infinity() == val, val, result);
          }
       }
       if(bNegateOutput) {
@@ -785,13 +769,12 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
       }
       if(bZeroPossible) {
-         result = IfLess(val,
-               std::numeric_limits<T>::min(),
+         result = IfThenElse(val < std::numeric_limits<T>::min(),
                bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(),
                result);
       }
       if(bNegativePossible) {
-         result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
+         result = IfThenElse(val < T{0}, std::numeric_limits<T>::quiet_NaN(), result);
       }
       return result;
    }

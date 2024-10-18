@@ -161,21 +161,20 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(val, TFloat{-k_expOverflow},
+         ret = IfThenElse(val < TFloat{-k_expOverflow},
                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);
       } else {
-         ret = IfLess(TFloat{k_expOverflow},
-               val,
+         ret = IfThenElse(TFloat{k_expOverflow} < val,
                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);
       }
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(TFloat{-k_expUnderflow}, val, TFloat{0}, ret);
+         ret = IfThenElse(TFloat{-k_expUnderflow} < val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, TFloat{k_expUnderflow}, TFloat{0}, ret);
+         ret = IfThenElse(val < TFloat{k_expUnderflow}, TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
@@ -238,25 +237,23 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    }
 
    if(bZeroPossible) {
-      ret = IfLess(val,
-            std::numeric_limits<typename TFloat::T>::min(),
+      ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::min(),
             bNegateOutput ? std::numeric_limits<typename TFloat::T>::infinity() :
                             -std::numeric_limits<typename TFloat::T>::infinity(),
             ret);
    }
    if(bNegativePossible) {
-      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
+      ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
    }
    if(bNaNPossible) {
       if(bPositiveInfinityPossible) {
-         ret = IfLess(val, std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
       } else {
          ret = IfNaN(val, val, ret);
       }
    } else {
       if(bPositiveInfinityPossible) {
-         ret = IfEqual(std::numeric_limits<typename TFloat::T>::infinity(),
-               val,
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val,
                bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
                                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);
@@ -314,21 +311,20 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(val, TFloat{-k_expOverflow},
+         ret = IfThenElse(val < TFloat{-k_expOverflow},
                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);
       } else {
-         ret = IfLess(TFloat{k_expOverflow},
-               val,
+         ret = IfThenElse(TFloat{k_expOverflow} < val,
                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);
       }
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(TFloat{-k_expUnderflow}, val, TFloat{0}, ret);
+         ret = IfThenElse(TFloat{-k_expUnderflow} < val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, TFloat{k_expUnderflow}, TFloat{0}, ret);
+         ret = IfThenElse(val < TFloat{k_expUnderflow}, TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
@@ -393,25 +389,23 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    }
 
    if(bZeroPossible) {
-      ret = IfLess(val,
-            std::numeric_limits<typename TFloat::T>::min(),
+      ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::min(),
             bNegateOutput ? std::numeric_limits<typename TFloat::T>::infinity() :
                             -std::numeric_limits<typename TFloat::T>::infinity(),
             ret);
    }
    if(bNegativePossible) {
-      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
+      ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
    }
    if(bNaNPossible) {
       if(bPositiveInfinityPossible) {
-         ret = IfLess(val, std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
       } else {
          ret = IfNaN(val, val, ret);
       }
    } else {
       if(bPositiveInfinityPossible) {
-         ret = IfEqual(std::numeric_limits<typename TFloat::T>::infinity(),
-               val,
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val,
                bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
                                std::numeric_limits<typename TFloat::T>::infinity(),
                ret);

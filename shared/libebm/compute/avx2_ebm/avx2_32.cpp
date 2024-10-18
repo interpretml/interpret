@@ -55,10 +55,6 @@ inline Avx2_32_Float Log(const Avx2_32_Float& val) noexcept;
 
 struct alignas(k_cAlignment) Avx2_32_Int final {
    friend Avx2_32_Float;
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Int& cmp1,
-         const Avx2_32_Int& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = __m256i;
@@ -105,6 +101,10 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
 
    inline Avx2_32_Int operator~() const noexcept {
       return Avx2_32_Int(_mm256_xor_si256(m_data, _mm256_set1_epi32(-1)));
+   }
+
+   friend inline Avx2_32_Int operator==(const Avx2_32_Int& left, const Avx2_32_Int& right) noexcept {
+      return Avx2_32_Int(_mm256_cmpeq_epi32(left.m_data, right.m_data));
    }
 
    inline Avx2_32_Int operator+(const Avx2_32_Int& other) const noexcept {
@@ -260,6 +260,14 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 
    friend inline Avx2_32_Float operator/(const float val, const Avx2_32_Float& other) noexcept {
       return Avx2_32_Float(val) / other;
+   }
+
+   friend inline Avx2_32_Int operator==(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_EQ_OQ)));
+   }
+
+   friend inline Avx2_32_Int operator<(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LT_OQ)));
    }
 
    friend inline Avx2_32_Int operator<=(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
@@ -524,14 +532,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       func(7, a0[7], a1[7], a2[7], a3[7], a4[7]);
    }
 
-   friend inline Avx2_32_Float IfLess(const Avx2_32_Float& cmp1,
-         const Avx2_32_Float& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_LT_OQ);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
-   }
-
    friend inline Avx2_32_Float IfThenElse(
          const Avx2_32_Int& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
       return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, ReinterpretFloat(cmp).m_data));
@@ -542,14 +542,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return base + ReinterpretFloat(cmp & ReinterpretInt(addend));
    }
 
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Float& cmp1,
-         const Avx2_32_Float& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_EQ_OQ);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
-   }
-
    friend inline Avx2_32_Float IfNaN(
          const Avx2_32_Float& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
       // rely on the fact that a == a can only be false if a is a NaN
@@ -558,15 +550,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       //       use an AND with _mm256_and_si256 to select just the NaN bits, then compare to zero with
       //       _mm256_cmpeq_epi32, but that has an overall latency of 2 and a throughput of 0.83333, which is lower
       //       throughput, so experiment with this
-      return IfEqual(cmp, cmp, falseVal, trueVal);
-   }
-
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Int& cmp1,
-         const Avx2_32_Int& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256i mask = _mm256_cmpeq_epi32(cmp1.m_data, cmp2.m_data);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, _mm256_castsi256_ps(mask)));
+      return IfThenElse(cmp == cmp, falseVal, trueVal);
    }
 
    static inline Avx2_32_Int ReinterpretInt(const Avx2_32_Float& val) noexcept {
@@ -658,20 +642,20 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 #endif // EXP_INT_SIMD
       Avx2_32_Float result = Avx2_32_Float(_mm256_castsi256_ps(retInt));
       if(bSpecialCaseZero) {
-         result = IfEqual(0.0, val, 1.0, result);
+         result = IfThenElse(0.0 == val, 1.0, result);
       }
       if(bOverflowPossible) {
          if(bNegateInput) {
-            result = IfLess(val, static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(val < static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
          } else {
-            result = IfLess(static_cast<T>(k_expOverflowPoint), val, std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(static_cast<T>(k_expOverflowPoint) < val, std::numeric_limits<T>::infinity(), result);
          }
       }
       if(bUnderflowPossible) {
          if(bNegateInput) {
-            result = IfLess(static_cast<T>(-k_expUnderflowPoint), val, 0.0, result);
+            result = IfThenElse(static_cast<T>(-k_expUnderflowPoint) < val, 0.0, result);
          } else {
-            result = IfLess(val, static_cast<T>(k_expUnderflowPoint), 0.0, result);
+            result = IfThenElse(val < static_cast<T>(k_expUnderflowPoint), 0.0, result);
          }
       }
       if(bNaNPossible) {
@@ -715,13 +699,13 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
       if(bNaNPossible) {
          if(bPositiveInfinityPossible) {
-            result = IfLess(val, std::numeric_limits<T>::infinity(), result, val);
+            result = IfThenElse(val < std::numeric_limits<T>::infinity(), result, val);
          } else {
             result = IfNaN(val, val, result);
          }
       } else {
          if(bPositiveInfinityPossible) {
-            result = IfEqual(std::numeric_limits<T>::infinity(), val, val, result);
+            result = IfThenElse(std::numeric_limits<T>::infinity() == val, val, result);
          }
       }
       if(bNegateOutput) {
@@ -730,13 +714,12 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
       }
       if(bZeroPossible) {
-         result = IfLess(val,
-               std::numeric_limits<T>::min(),
+         result = IfThenElse(val < std::numeric_limits<T>::min(),
                bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(),
                result);
       }
       if(bNegativePossible) {
-         result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
+         result = IfThenElse(val < T{0}, std::numeric_limits<T>::quiet_NaN(), result);
       }
       return result;
    }

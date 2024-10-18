@@ -51,10 +51,6 @@ inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept;
 
 struct Cpu_64_Int final {
    friend Cpu_64_Float;
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int& cmp1,
-         const Cpu_64_Int& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept;
    friend inline Cpu_64_Float IfThenElse(
          const Cpu_64_Int& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept;
    friend inline Cpu_64_Float IfAdd(
@@ -90,6 +86,10 @@ struct Cpu_64_Int final {
    inline static Cpu_64_Int MakeIndexes() noexcept { return Cpu_64_Int(0); }
 
    inline Cpu_64_Int operator~() const noexcept { return Cpu_64_Int(~m_data); }
+
+   friend inline Cpu_64_Int operator==(const Cpu_64_Int& left, const Cpu_64_Int& right) noexcept {
+      return left.m_data == right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
 
    inline Cpu_64_Int operator+(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data + other.m_data); }
 
@@ -222,9 +222,16 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
+   friend inline Cpu_64_Int operator==(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data == right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
+
+   friend inline Cpu_64_Int operator<(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data < right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
+
    friend inline Cpu_64_Int operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
-      // use all bits of an equally wide datatype so that we can negate it with ~, or AND/OR it
-      return left.m_data <= right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0}; 
+      return left.m_data <= right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
    }
 
    inline static Cpu_64_Float Load(const T* const a) noexcept { return Cpu_64_Float(*a); }
@@ -248,13 +255,6 @@ struct Cpu_64_Float final {
       func(0, (args.m_data)...);
    }
 
-   friend inline Cpu_64_Float IfLess(const Cpu_64_Float& cmp1,
-         const Cpu_64_Float& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
-   }
-
    friend inline Cpu_64_Float IfThenElse(
          const Cpu_64_Int& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
       return cmp.m_data ? trueVal : falseVal;
@@ -265,23 +265,9 @@ struct Cpu_64_Float final {
       return cmp.m_data ? base + addend : base;
    }
 
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Float& cmp1,
-         const Cpu_64_Float& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
-   }
-
    friend inline Cpu_64_Float IfNaN(
          const Cpu_64_Float& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
       return std::isnan(cmp.m_data) ? trueVal : falseVal;
-   }
-
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int& cmp1,
-         const Cpu_64_Int& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
    }
 
    static inline Cpu_64_Int ReinterpretInt(const Cpu_64_Float& val) noexcept {

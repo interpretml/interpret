@@ -218,7 +218,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //       with a TEMPLATED parameter that indicates it if should negative sampleScore within the function
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
 
-               TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
+               TFloat metric = IfThenElse(typename TFloat::TInt(0) == target, sampleScore, -sampleScore);
                metric = TFloat::template ApproxExp<bDisableApprox, false>(metric);
                metric += 1.0;
                // zero and negative are impossible since 1.0 is the lowest possible value
@@ -267,8 +267,9 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //                sampleScore));
                // !!! IMPORTANT: SEE ABOVE
 
-               const TFloat numerator = IfEqual(typename TFloat::TInt(0), target, TFloat(1), TFloat(-1));
-               TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
+               auto cmp = typename TFloat::TInt(0) == target;
+               const TFloat numerator = IfThenElse(cmp, TFloat(1), TFloat(-1));
+               TFloat denominator = IfThenElse(cmp, -sampleScore, sampleScore);
                denominator = TFloat::template ApproxExp<bDisableApprox, false>(denominator);
                denominator += 1.0;
 
