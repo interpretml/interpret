@@ -580,20 +580,20 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 
    friend inline Avx2_32_Float FusedMultiplyAdd(
          const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& add) noexcept {
-      // For AVX, Intel initially built FMA3, and AMD built FMA4, but AMD later depricated FMA4 and supported
-      // FMA3 by the time AVX2 rolled out.  We only support AVX2 and above (not AVX) since we benefit from the
-      // integer parts of AVX2. Just to be sure though we also check the cpuid for FMA3 during init
+      // equivalent to: mul1 * mul2 + add
       return Avx2_32_Float(_mm256_fmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }
 
    friend inline Avx2_32_Float FusedNegateMultiplyAdd(
          const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& add) noexcept {
-      // For AVX, Intel initially built FMA3, and AMD built FMA4, but AMD later depricated FMA4 and supported
-      // FMA3 by the time AVX2 rolled out.  We only support AVX2 and above (not AVX) since we benefit from the
-      // integer parts of AVX2. Just to be sure though we also check the cpuid for FMA3 during init
-
       // equivalent to: -(mul1 * mul2) + add
       return Avx2_32_Float(_mm256_fnmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
+   }
+
+   friend inline Avx2_32_Float FusedMultiplySubtract(
+         const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& subtract) noexcept {
+      // equivalent to: mul1 * mul2 - subtract
+      return Avx2_32_Float(_mm256_fmsub_ps(mul1.m_data, mul2.m_data, subtract.m_data));
    }
 
    friend inline Avx2_32_Float Sqrt(const Avx2_32_Float& val) noexcept {

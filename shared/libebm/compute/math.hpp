@@ -139,10 +139,15 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
    static constexpr float k_expUnderflow = -87.25f; // this is exactly representable in IEEE 754
    static constexpr float k_expOverflow = 87.25f; // this is exactly representable in IEEE 754
 
-   // TODO: make this negation more efficient
-   TFloat x = bNegateInput ? -val : val;
-   const TFloat rounded = Round(x * TFloat{1.44269504088896340736f});
-   x = FusedNegateMultiplyAdd(rounded, TFloat{0.693359375f}, x);
+   TFloat rounded;
+   TFloat x;
+   if (bNegateInput) {
+      rounded = Round(val * TFloat{-1.44269504088896340736f});
+      x = FusedMultiplySubtract(rounded, TFloat{-0.693359375f}, val);
+   } else {
+      rounded = Round(val * TFloat{1.44269504088896340736f});
+      x = FusedMultiplyAdd(rounded, TFloat{-0.693359375f}, val);
+   }
    x = FusedNegateMultiplyAdd(rounded, TFloat{-2.12194440e-4f}, x);
 
    const TFloat x2 = x * x;
@@ -229,11 +234,11 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
 
    ret = FusedMultiplyAdd(exponentFloat, TFloat{-2.12194440E-4f}, ret);
    ret += FusedNegateMultiplyAdd(x2, TFloat{0.5f}, x);
-   ret = FusedMultiplyAdd(exponentFloat, TFloat{0.693359375f}, ret);
 
    if(bNegateOutput) {
-      // TODO: do this with an alternate to FusedMultiplyAdd
-      ret = -ret;
+      ret = FusedMultiplySubtract(exponentFloat, TFloat{-0.693359375f}, ret);
+   } else {
+      ret = FusedMultiplyAdd(exponentFloat, TFloat{0.693359375f}, ret);
    }
 
    if(bZeroPossible) {
@@ -285,10 +290,15 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
    static constexpr double k_expUnderflow = -708.25; // this is exactly representable in IEEE 754
    static constexpr double k_expOverflow = 708.25; // this is exactly representable in IEEE 754
 
-   // TODO: make this negation more efficient
-   TFloat x = bNegateInput ? -val : val;
-   const TFloat rounded = Round(x * TFloat{1.44269504088896340736});
-   x = FusedNegateMultiplyAdd(rounded, TFloat{0.693145751953125}, x);
+   TFloat rounded;
+   TFloat x;
+   if(bNegateInput) {
+      rounded = Round(val * TFloat{-1.44269504088896340736});
+      x = FusedMultiplySubtract(rounded, TFloat{-0.693145751953125}, val);
+   } else {
+      rounded = Round(val * TFloat{1.44269504088896340736});
+      x = FusedMultiplyAdd(rounded, TFloat{-0.693145751953125}, val);
+   }
    x = FusedNegateMultiplyAdd(rounded, TFloat{1.42860682030941723212E-6}, x);
 
    TFloat ret = Polynomial64(x,
@@ -381,11 +391,11 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
 
    ret = FusedMultiplyAdd(exponent, TFloat{-2.121944400546905827679E-4}, ret);
    ret += FusedNegateMultiplyAdd(x2, TFloat{0.5}, x);
-   ret = FusedMultiplyAdd(exponent, TFloat{0.693359375}, ret);
 
    if(bNegateOutput) {
-      // TODO: do this with an alternate to FusedMultiplyAdd
-      ret = -ret;
+      ret = FusedMultiplySubtract(exponent, TFloat{-0.693359375}, ret);
+   } else {
+      ret = FusedMultiplyAdd(exponent, TFloat{0.693359375}, ret);
    }
 
    if(bZeroPossible) {

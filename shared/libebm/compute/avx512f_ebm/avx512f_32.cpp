@@ -651,6 +651,12 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_fnmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }
 
+   friend inline Avx512f_32_Float FusedMultiplySubtract(
+         const Avx512f_32_Float& mul1, const Avx512f_32_Float& mul2, const Avx512f_32_Float& subtract) noexcept {
+      // equivalent to: mul1 * mul2 - subtract
+      return Avx512f_32_Float(_mm512_fmsub_ps(mul1.m_data, mul2.m_data, subtract.m_data));
+   }
+
    friend inline Avx512f_32_Float Sqrt(const Avx512f_32_Float& val) noexcept {
       return Avx512f_32_Float(_mm512_sqrt_ps(val.m_data));
    }

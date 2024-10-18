@@ -303,6 +303,11 @@ struct Cpu_64_Float final {
       return add - mul1 * mul2;
    }
 
+   friend inline Cpu_64_Float FusedMultiplySubtract(
+         const Cpu_64_Float& mul1, const Cpu_64_Float& mul2, const Cpu_64_Float& subtract) noexcept {
+      return mul1 * mul2 - subtract;
+   }
+
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::sqrt(val.m_data)); }
 
    template<bool bDisableApprox,
