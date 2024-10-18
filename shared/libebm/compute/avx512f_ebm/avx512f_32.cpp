@@ -629,8 +629,6 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_mask_blend_ps(mask, falseVal.m_data, trueVal.m_data));
    }
 
-   static inline __mmask16 ReinterpretInt(const __mmask16& val) noexcept { return val; }
-
    static inline Avx512f_32_Int ReinterpretInt(const Avx512f_32_Float& val) noexcept {
       return Avx512f_32_Int(_mm512_castps_si512(val.m_data));
    }

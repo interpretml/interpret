@@ -103,6 +103,10 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
 
    inline static Avx2_32_Int MakeIndexes() noexcept { return Avx2_32_Int(_mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 
+   inline Avx2_32_Int operator~() const noexcept {
+      return Avx2_32_Int(_mm256_xor_si256(m_data, _mm256_set1_epi32(-1)));
+   }
+
    inline Avx2_32_Int operator+(const Avx2_32_Int& other) const noexcept {
       return Avx2_32_Int(_mm256_add_epi32(m_data, other.m_data));
    }
@@ -190,10 +194,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
             _mm256_castsi256_ps(_mm256_xor_si256(_mm256_castps_si256(m_data), _mm256_set1_epi32(0x80000000))));
    }
 
-   inline Avx2_32_Float operator~() const noexcept {
-      return Avx2_32_Float(_mm256_xor_ps(m_data, _mm256_castsi256_ps(_mm256_set1_epi32(-1))));
-   }
-
    inline Avx2_32_Float operator+(const Avx2_32_Float& other) const noexcept {
       return Avx2_32_Float(_mm256_add_ps(m_data, other.m_data));
    }
@@ -262,8 +262,8 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Avx2_32_Float(val) / other;
    }
 
-   friend inline Avx2_32_Float operator<=(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
-      return Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LE_OQ));
+   friend inline Avx2_32_Int operator<=(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LE_OQ)));
    }
 
    inline static Avx2_32_Float Load(const T* const a) noexcept { return Avx2_32_Float(_mm256_load_ps(a)); }
@@ -533,13 +533,13 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    }
 
    friend inline Avx2_32_Float IfThenElse(
-         const Avx2_32_Float& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, cmp.m_data));
+         const Avx2_32_Int& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
+      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, ReinterpretFloat(cmp).m_data));
    }
 
    friend inline Avx2_32_Float IfAdd(
-         const Avx2_32_Float& cmp, const Avx2_32_Float& base, const Avx2_32_Float& addend) noexcept {
-      return base + (ReinterpretFloat(ReinterpretInt(cmp) & ReinterpretInt(addend)));
+         const Avx2_32_Int& cmp, const Avx2_32_Float& base, const Avx2_32_Float& addend) noexcept {
+      return base + ReinterpretFloat(cmp & ReinterpretInt(addend));
    }
 
    friend inline Avx2_32_Float IfEqual(const Avx2_32_Float& cmp1,

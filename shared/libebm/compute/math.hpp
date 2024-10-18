@@ -209,7 +209,7 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
 
    const auto comparison = x <= TFloat{float{1.41421356237309504880} * 0.5f};
    x = IfAdd(comparison, x, x);
-   exponent = IfAdd(TFloat::ReinterpretInt(~comparison), exponent, typename TFloat::TInt{1});
+   exponent = IfAdd(~comparison, exponent, typename TFloat::TInt{1});
 
    TFloat exponentFloat = TFloat(exponent);
 
