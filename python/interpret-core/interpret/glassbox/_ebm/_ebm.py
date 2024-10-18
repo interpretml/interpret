@@ -2448,7 +2448,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.01
+    learning_rate : float, default=0.016
         Learning rate for boosting.
     greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
@@ -2642,7 +2642,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.016,
         greedy_ratio: Optional[float] = 12.0,
         cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 100,
@@ -2794,7 +2794,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.05
+    learning_rate : float, default=0.06
         Learning rate for boosting.
     greedy_ratio : float, default=12.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
@@ -2988,7 +2988,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         outer_bags: int = 14,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.05,
+        learning_rate: float = 0.06,
         greedy_ratio: Optional[float] = 12.0,
         cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
         smoothing_rounds: Optional[int] = 100,

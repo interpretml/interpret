@@ -13,7 +13,9 @@ hyperparameters: [0, 50, 100, 200, 500, 1000]
 guidance: This is an important hyperparameter to tune. The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
 
 ## learning_rate
-default: 0.01 (classification), 0.05 (regression)
+default: 0.016 (classification), 0.06 (regression)
+
+NOTE: 0.018 is better for multiclass. 0.016 optimizes for binary classification
 
 hyperparameters: [0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002]
 
