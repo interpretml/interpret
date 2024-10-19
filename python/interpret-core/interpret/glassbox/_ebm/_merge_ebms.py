@@ -3,6 +3,7 @@
 
 import logging
 import warnings
+from collections.abc import Sequence
 from itertools import chain, count
 from math import isnan
 from typing import List
@@ -426,15 +427,77 @@ def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
     )
     kdws = models[0].get_params()
     # treated manually
-    for key in ["feature_names", "feature_types"]:
+    for key in [
+        "feature_names",
+        "feature_types",
+        "objective",
+        "exclude",
+        "interactions",
+        "monotone_constraints",
+    ]:
         del kdws[key]
+    manual_kdws = {}
+
+    # handle `exclude`
+    if all(getattr(model, "exclude", None) is not None for model in models):
+        # none of the models contains all feature_idxs
+        # merged EBM should exclude features included by none of the models
+        # -> overlap of all features
+        # following algorithm works only if all models use the same feature names
+        # interactions are probably not handled correctly
+        excluded = {(feat,) for feat in models[0].feature_names_in_}
+        for model in models:
+            if model.exclude == "mains":
+                excluded &= set(models[0].feature_names_in_)
+                continue
+            excluded &= set(model.exclude)
+        manual_kdws["exclude"] = list(excluded) if excluded else None
+
+    # handle `interactions`
+    if all(
+        isinstance(getattr(model, "interactions", None), Sequence) for model in models
+    ):
+        # merge all interactions, use sorted for deterministic outcome
+        manual_kdws["interactions"] = sorted(
+            {term for model in models for term in model.interactions}
+        )
+    else:  # convert all
+
+        def get_float_interactions(model: EBMModel) -> float:
+            interactions = model.interactions
+            if isinstance(interactions, Sequence):
+                interactions = len(interactions)
+            if isinstance(interactions, int):
+                interactions /= model.n_features_in_
+            return interactions
+
+        values = [get_float_interactions(model) for model in models]
+        manual_kdws["interactions"] = np.average(values, weights=weights)
+
+    # handle `monotone_constraints`
+    if all(
+        getattr(model, "monotone_constraints", None) is not None for model in models
+    ):
+        # if all models apply monotonicity constrains we can validate them
+        def monotone(args) -> int:
+            if all(val == +1 for val in args):
+                return +1
+            if all(val == -1 for val in args):
+                return -1
+            return 0
+
+        manual_kdws["monotone_constraints"] = [
+            monotone(item)
+            for item in zip(*(model.monotone_constraints for model in models))
+        ]
+
     # TODO: treat special cases: exclude, interactions
     for key in kdws:
         values = np.array([getattr(model, key, np.nan) for model in models])
         nan_weight = np.copy(weights)
         nan_weight[np.isnan(values)] = 0
         kdws[key] = np.average(values, weights=nan_weight)
-    return ebm_type(**kdws)
+    return ebm_type(**kdws, **manual_kdws)
 
 
 def merge_ebms(models):
