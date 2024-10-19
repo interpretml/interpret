@@ -158,19 +158,35 @@ def _harmonize_tensor(
                 for new_idx_minus_one, old_idx in enumerate(lookup):
                     # TODO: if nan OR out of bounds from the cuts, estimate it.
                     # If -inf or +inf, change it to min/max for float
-                    new_low = new_bounds[feature_idx, 0] if new_idx_minus_one == 0 else new_feature_bins[new_idx_minus_one - 1]
+                    new_low = (
+                        new_bounds[feature_idx, 0]
+                        if new_idx_minus_one == 0
+                        else new_feature_bins[new_idx_minus_one - 1]
+                    )
 
                     # TODO: if nan OR out of bounds from the cuts, estimate it.
                     # If -inf or +inf, change it to min/max for float
-                    new_high = new_bounds[feature_idx, 1] if len(new_feature_bins) <= new_idx_minus_one else new_feature_bins[new_idx_minus_one]
+                    new_high = (
+                        new_bounds[feature_idx, 1]
+                        if len(new_feature_bins) <= new_idx_minus_one
+                        else new_feature_bins[new_idx_minus_one]
+                    )
 
                     # TODO: if nan OR out of bounds from the cuts, estimate it.
                     # If -inf or +inf, change it to min/max for float
-                    old_low = old_bounds[feature_idx, 0] if old_idx == 1 else old_feature_bins[old_idx - 2]
+                    old_low = (
+                        old_bounds[feature_idx, 0]
+                        if old_idx == 1
+                        else old_feature_bins[old_idx - 2]
+                    )
 
                     # TODO: if nan OR out of bounds from the cuts, estimate it.
                     # If -inf or +inf, change it to min/max for float
-                    old_high = old_bounds[feature_idx, 1] if len(old_feature_bins) < old_idx else old_feature_bins[old_idx - 1]
+                    old_high = (
+                        old_bounds[feature_idx, 1]
+                        if len(old_feature_bins) < old_idx
+                        else old_feature_bins[old_idx - 1]
+                    )
 
                     if old_high <= new_low or new_high <= old_low:
                         # if there are bins in the area above where the old data extended, then
