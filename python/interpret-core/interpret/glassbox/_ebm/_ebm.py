@@ -2497,7 +2497,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    max_leaves : int, default=2
+    max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
@@ -2656,7 +2656,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        max_leaves: int = 2,
+        max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall

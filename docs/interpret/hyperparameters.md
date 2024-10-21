@@ -86,11 +86,11 @@ hyperparameters: [0, 25, 50, 75, 100, 200, 500, 1000]
 guidance: interaction_smoothing_rounds appears to have only a minor impact on model accuracy. 100 is a good default choice, but it might be worth trying other values when optimizing a model.
 
 ## max_leaves
-default: 2
+default: 3 (classification) 2 (regression)
 
 hyperparameters: [2, 3]
 
-guidance: Generally, the default setting of 2 is better, but it's worth checking if changing to 3 can offer better accuracy on your specific data. The max_leaves parameter only applies to main effects.
+guidance: Datasets with categoricals or continuous features with many sharp transitions often benefit from max_leaves being 3. Datasets with smooth continuous features tend to perform better with max_leaves set to 2. The max_leaves parameter only applies to main effects.
 
 ## min_samples_leaf
 default: 4
