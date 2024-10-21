@@ -6,11 +6,11 @@ The parameters below are ordered by tuning importance, with the most important h
 
 
 ## smoothing_rounds
-default: 100
+default: 75 (classification) 500 (regression)
 
-hyperparameters: [0, 50, 100, 200, 500, 1000]
+hyperparameters: [0, 25, 50, 75, 100, 150, 200, 350, 500, 750, 1000, 1500, 2000, 4000]
 
-guidance: This is an important hyperparameter to tune. The optimal smoothing_rounds value will vary depending on the dataset's characteristics. Adjust based on the prevalence of smooth feature response curves.
+guidance: This is an important hyperparameter to tune. Classification seems to prefer a dataset dependent number centered around 75. Regression seems to prefer more smoothing_rounds. The default smoothing_rounds of 500 was chosen based on fitting time, however even higher values seem to improve model performance.
 
 ## learning_rate
 default: 0.015 (classification), 0.04 (regression)
@@ -22,11 +22,11 @@ guidance: This is an important hyperparameter to tune. The conventional wisdom i
 ## interactions
 default: 0.9
 
-ideal: As many as possible
+ideal: As many as possible within interpretability limits.
 
 hyperparameters: [0.0, 0.9, 0.95, 0.99, 100, 250, 1000]
 
-guidance: Introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1.0 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.7 will automatically detect and use 70 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50.
+guidance: Generally, this parameter should be chosen based on interpretability considerations as having too many interactions makes the model less interpretable. A reasonable stragegy is to initially include more interactions than desired then drop the less important interactions in post processing after fitting. See the [remove_terms](./python/api/ExplainableBoostingClassifier.html#interpret.glassbox.ExplainableBoostingClassifier.remove_terms) function. In terms of model performance, introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1.0 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.7 will automatically detect and use 70 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50.
 
 ## inner_bags
 default: 0
@@ -56,9 +56,9 @@ hyperparameters: [64]
 guidance: For max_interaction_bins, more is typically better in term of model performance, however fitting times go up significantly above 64 bins for very little benefit. We recommend using 64 as the default for this reason. If your fitting times are acceptable however, setting max_interaction_bins to 256 or even more might improve the model slightly.
 
 ## greedy_ratio
-default: 12.0
+default: 10.0
 
-hyperparameters: [0.0, 1.0, 2.0, 5.0, 10.0, 12.0, 20.0]
+hyperparameters: [0.0, 1.0, 2.0, 5.0, 10.0, 20.0]
 
 guidance: Values of greedy_ratio above 5.0 seem to result in similar model performance.
 
@@ -79,9 +79,9 @@ hyperparameters: [14]
 guidance: Increasing outer bags beyond 14 provides no observable benefit. Reducing outer_bags below 14 might improve fitting time on machines with less than 14 cores. Setting outer_bags to 8 is reasonable on many datasets, and can improve fitting time.
 
 ## interaction_smoothing_rounds
-default: 100
+default: 75 (classification) 100 (regression)
 
-hyperparameters: [0, 50, 100, 200, 500, 1000]
+hyperparameters: [0, 25, 50, 75, 100, 200, 500, 1000]
 
 guidance: interaction_smoothing_rounds appears to have only a minor impact on model accuracy. 100 is a good default choice, but it might be worth trying other values when optimizing a model.
 
@@ -100,11 +100,11 @@ hyperparameters: [2, 3, 4, 5, 10, 20, 50]
 guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets. For smaller datasets, having a low value might be better. On larger datasets this parameter seems to have little effect.
 
 ## min_hessian
-default: 0.0
+default: 1e-4 (classification) 0.0 (regression)
 
-hyperparameters: [0.0, 1e-4]
+hyperparameters: [0.0, 1e-6, 1e-4, 1e-2]
 
-guidance: Generally 0.0 is close to the best choice for min_hessian, but on some datasets it might be useful to set min_hessian to a small non-zero value.
+guidance: For RMSE regression min_hessian below the min_samples_leaf value has no effect. For classification this has a minimal impact provided it is a small number.
 
 ## max_rounds
 default: 25000
@@ -125,11 +125,11 @@ hyperparameters: [100, 200]
 guidance: Having 200 early_stopping_rounds results in a slightly better model than the default of 100, but it requires significantly more time to fit in some cases.  early_stopping_rounds beyond 200 does not seem to improve the model.
 
 ## early_stopping_tolerance
-default: 0.0
+default: 1e-5
 
-hyperparameters: [0.0]
+hyperparameters: [0.0, 1e-5]
 
-guidance: Setting early_stopping_tolerance to a small positive value in the range of 1e-4 can help reduce fitting times on some datasets with minimal degradation in model performance. Setting it to a negative value sometimes yields slightly better models. EBMs are a bagged ensemble model, so overfitting each individual bag a little can be beneficial because after the models are averaged together in the ensemble averaging decreases the variance due to overfitting. Using a negative value for early_stopping_tolerance allows the individual models to be overfit.
+guidance: early_stopping_tolerance is set to 1e-5 by default due to fitting time considerations, however setting early_stopping_tolerance to 0.0, or even a negative value sometimes yields slightly higher accuracy. EBMs are a bagged ensemble model, so overfitting each individual bag a little can be beneficial because after the models are averaged together in the ensemble averaging decreases the variance due to overfitting. Using a negative value for early_stopping_tolerance allows the individual models to be overfit.
 
 ## validation_size
 default: 0.15
