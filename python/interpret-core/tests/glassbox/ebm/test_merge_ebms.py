@@ -13,6 +13,13 @@ from ...tutils import (
     smoke_test_explanations,
 )
 
+# arguments for faster fitting time to reduce test time
+# we want to test the interface, not get good results
+_fast_kwds = {
+    "outer_bags": 2,
+    "max_rounds": 100,
+}
+
 
 def valid_ebm(ebm):
     assert ebm.term_features_[0] == (0,)
@@ -57,6 +64,7 @@ def test_merge_ebms():
             max_bins=10,
             max_interaction_bins=5,
             interactions=[(8, 3, 0)],
+            **_fast_kwds,
         )
         ebm1.fit(X_train, y_train)
 
@@ -70,6 +78,7 @@ def test_merge_ebms():
             max_bins=11,
             max_interaction_bins=4,
             interactions=[(8, 2), (7, 3), (1, 2)],
+            **_fast_kwds,
         )
         ebm2.fit(X_train, y_train)
 
@@ -83,6 +92,7 @@ def test_merge_ebms():
             max_bins=12,
             max_interaction_bins=3,
             interactions=[(1, 2), (2, 8)],
+            **_fast_kwds,
         )
         ebm3.fit(X_train, y_train)
 
@@ -102,6 +112,7 @@ def test_merge_ebms():
             max_bins=13,
             max_interaction_bins=8,
             interactions=2,
+            **_fast_kwds,
         )
         ebm4.fit(X_train, y_train)
 
@@ -121,6 +132,7 @@ def test_merge_ebms():
             max_bins=14,
             max_interaction_bins=8,
             interactions=2,
+            **_fast_kwds,
         )
         ebm5.fit(X_train, y_train)
 
@@ -146,6 +158,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=10,
+        **_fast_kwds,
     )
     ebm1.fit(X_train, y_train)
 
@@ -157,6 +170,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=11,
+        **_fast_kwds,
     )
     ebm2.fit(X_train, y_train)
 
@@ -168,6 +182,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=12,
+        **_fast_kwds,
     )
     ebm3.fit(X_train, y_train)
 
@@ -182,7 +197,10 @@ def test_merge_ebms_multiclass():
         X, y, test_size=0.10, random_state=random_state
     )
     ebm4 = ExplainableBoostingClassifier(
-        random_state=random_state, interactions=0, max_bins=13
+        random_state=random_state,
+        interactions=0,
+        max_bins=13,
+        # **_fast_kwds,
     )
     ebm4.fit(X_train, y_train)
 
@@ -197,7 +215,10 @@ def test_merge_ebms_multiclass():
         X, y, test_size=0.50, random_state=random_state
     )
     ebm5 = ExplainableBoostingClassifier(
-        random_state=random_state, interactions=0, max_bins=14
+        random_state=random_state,
+        interactions=0,
+        max_bins=14,
+        # **_fast_kwds,
     )
     ebm5.fit(X_train, y_train)
 
