@@ -141,7 +141,7 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
    TFloat rounded;
    TFloat x;
-   if (bNegateInput) {
+   if(bNegateInput) {
       rounded = Round(val * TFloat{-1.44269504088896340736f});
       x = FusedMultiplySubtract(rounded, TFloat{-0.693359375f}, val);
    } else {
@@ -166,13 +166,9 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfThenElse(val < TFloat{-k_expOverflow},
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(val < TFloat{-k_expOverflow}, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       } else {
-         ret = IfThenElse(TFloat{k_expOverflow} < val,
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(TFloat{k_expOverflow} < val, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       }
    }
    if(bUnderflowPossible) {
@@ -320,13 +316,9 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfThenElse(val < TFloat{-k_expOverflow},
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(val < TFloat{-k_expOverflow}, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       } else {
-         ret = IfThenElse(TFloat{k_expOverflow} < val,
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(TFloat{k_expOverflow} < val, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       }
    }
    if(bUnderflowPossible) {

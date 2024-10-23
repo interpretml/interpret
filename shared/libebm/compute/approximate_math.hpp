@@ -408,42 +408,6 @@ GPU_DEVICE INLINE_ALWAYS static T ExpApproxSchraudolph(
    return val;
 }
 
-#ifdef NEVER
-template<bool bNegateInput = false, typename T>
-GPU_DEVICE INLINE_ALWAYS static T ExpForBinaryClassification(const T val) {
-#ifdef FAST_EXP
-   // the optimal addExpSchraudolphTerm would be different between binary
-   // and multiclass since the softmax form we use is different
-
-   // TODO : tune addExpSchraudolphTerm specifically for binary classification.
-   //        k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit was tuned for softmax with 3 classes and one of them
-   //        zeroed. For binary classification we can assume large positive logits typically, unlike multiclass
-
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(
-         val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
-#else // FAST_EXP
-   return std::exp(bNegateInput ? -val : val);
-#endif // FAST_EXP
-}
-
-template<bool bNegateInput = false, typename T> GPU_DEVICE INLINE_ALWAYS static T ExpForMulticlass(const T val) {
-#ifdef FAST_EXP
-   // the optimal addExpSchraudolphTerm would be different between binary
-   // and multiclass since the softmax form we use is different
-
-   // TODO : tune addExpSchraudolphTerm specifically for multiclass classification.  Currently (at the time that
-   //        I'm writing this, although we have plans to change it) we aren't zeroing a
-   //        logit and k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit is really the wrong constant since it was
-   //        tuned for softmax with a zeroed logit
-
-   return ExpApproxSchraudolph<bNegateInput, true, true, true, false, T>(
-         val, k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit);
-#else // FAST_EXP
-   return std::exp(bNegateInput ? -val : val);
-#endif // FAST_EXP
-}
-#endif // NEVER
-
 ///////////////////////////////////////////// LOG SECTION
 
 // this constant does not change for any variation in optimizing for different objectives in Schraudolph
@@ -518,7 +482,6 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(
    // EBM_ASSERT(k_logTermLowerBound <= addLogSchraudolphTerm);
    // EBM_ASSERT(addLogSchraudolphTerm <= k_logTermUpperBound);
 
-
    // It's debatable, but I think on a compiler with IEEE-754 values, any double value between the float max
    // and double +inf should be convertable to a float infinity because those values should be between the float
    // max and float +inf.
@@ -546,49 +509,15 @@ GPU_DEVICE INLINE_ALWAYS static T LogApproxSchraudolph(
       result = k_logMultiple * result + addLogSchraudolphTerm;
    }
    if(bZeroPossible) {
-      result = valFloat < std::numeric_limits<float>::min() ? (bNegateOutput ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity()) : result;
+      result = valFloat < std::numeric_limits<float>::min() ?
+            (bNegateOutput ? std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity()) :
+            result;
    }
    if(bNegativePossible) {
       result = valFloat < float{0} ? std::numeric_limits<float>::quiet_NaN() : result;
    }
    return static_cast<T>(result);
 }
-
-#ifdef NEVER
-template<bool bNegateOutput = false, typename T> GPU_DEVICE INLINE_ALWAYS static T LogForLogLoss(const T val) {
-
-   // the log function is only used to calculate the log loss on the valididation set only in our codebase
-   // the log loss is calculated for the validation set and then returned as a single number to the caller
-   // it never gets used as an input to anything inside our code, so any errors won't cyclically grow
-
-   // for log, we always sum the outputs, and those outputs are used only for early stopping, and early stopping
-   // only cares about relative changes (we compare against other log losses computed by this same function),
-   // so we should be insensitive to shifts in the output provided they are by a constant amount
-   // The only reason to want balanced sums would be if we report the log loss to the user because then we want
-   // the most accurate value we can give them, otherwise we should be re-computing it for the user if they want
-   // an exact value
-
-   // boosting will tend to push us towards lower and lower log losses.  Our input can't be less than 1
-   // (without floating point imprecision considerations), so 0 is our lowest output, and the input shouldn't be
-   // much more than 2 (which returns about 0.69, which is random chance), and probably quite a bit smaller than that
-   // in general
-
-#ifdef FAST_LOG
-
-   // it is possible in theory for val to be +infinity if the logits get to above k_expOverflowPoint, BUT
-   // we don't get undefined behavior if bPositiveInfinityPossible is set to false.  What we get out is a very
-   // big positive number.  In fact, we get the biggest legal positive value, which should terminate boosting
-   // at that point if early stopping is enabled.  If we return a large positive result here instead of infinity
-   // there shouldn't be any real consequences.
-   // val can't be negative or zero from the formulas that we calculate before calling this log function
-   return LogApproxSchraudolph<bNegateOutput, true, false, false, false, T>(val, k_logTermLowerBoundInputCloseToOne);
-#else // FAST_LOG
-   T ret = std::log(val);
-   ret = bNegateOutput ? -ret : ret;
-   return ret;
-#endif // FAST_LOG
-}
-#endif // NEVER
 
 } // namespace DEFINED_ZONE_NAME
 

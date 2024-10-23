@@ -136,7 +136,8 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
       return Avx2_32_Int(_mm256_blendv_epi8(falseVal.m_data, trueVal.m_data, cmp.m_data));
    }
 
-   friend inline Avx2_32_Int IfAdd(const Avx2_32_Int& cmp, const Avx2_32_Int& base, const Avx2_32_Int& addend) noexcept {
+   friend inline Avx2_32_Int IfAdd(
+         const Avx2_32_Int& cmp, const Avx2_32_Int& base, const Avx2_32_Int& addend) noexcept {
       return base + (cmp & addend);
    }
 

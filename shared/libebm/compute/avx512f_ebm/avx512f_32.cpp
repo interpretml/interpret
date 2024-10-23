@@ -601,7 +601,6 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_mask_add_ps(base.m_data, cmp, base.m_data, addend.m_data));
    }
 
-
    friend inline __mmask16 IsNaN(const Avx512f_32_Float& cmp) noexcept {
       return _mm512_cmp_ps_mask(cmp.m_data, cmp.m_data, _CMP_UNORD_Q);
    }

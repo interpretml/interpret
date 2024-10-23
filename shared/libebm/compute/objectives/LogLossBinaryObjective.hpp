@@ -214,7 +214,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
             if(bValidation) {
                // TODO: similar to the gradient calculation above, once we sort our data by the target values we
                //       will be able to pass all the targets==0 and target==1 in to a single call to this function
-               //       and we can therefore template the target value.  We can then call ExpForBinaryClassification
+               //       and we can therefore template the target value.  We can then call ApproxExp
                //       with a TEMPLATED parameter that indicates it if should negative sampleScore within the function
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
 
@@ -245,7 +245,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //    to be either +1 or -1 as a template controlled constant that doesn't need to be runtime selected
                // TODO : In the future we'll sort our data by the target value and process them together. Once that
                //    happens we can eliminate the runtime check that can negate sampleScore AND we can also
-               //    avoid the negation itself by calling ExpForBinaryClassification with a templated parameter
+               //    avoid the negation itself by calling ApproxExp with a templated parameter
                //    to use negative constants that will effectively take the exp of -sampleScore for no cost
                //
                // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients
@@ -263,7 +263,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //                error sums of zero. I've made a copy of this formula as a comment to reference to what
                //                is good in-case the formula is changed in the code without reading this comment const
                //                FLOAT gradient = (UNPREDICTABLE(0 == target) ? FLOAT { -1 } : FLOAT { 1 }) / (FLOAT{ 1
-               //                } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore :
+               //                } + ApproxExp(UNPREDICTABLE(0 == target) ? -sampleScore :
                //                sampleScore));
                // !!! IMPORTANT: SEE ABOVE
 
