@@ -908,7 +908,7 @@ TEST_CASE("Term with zero features, boosting, multiclass") {
             termScore = test.GetCurrentTermScore(iTerm, {}, 1) - zeroLogit;
             CHECK_APPROX(termScore, 0.0);
             termScore = test.GetCurrentTermScore(iTerm, {}, 2) - zeroLogit;
-            CHECK_APPROX(termScore, 0.014937448346408581);
+            CHECK_APPROX(termScore, 0.014915718091257543);
          }
       }
    }
@@ -1622,7 +1622,7 @@ TEST_CASE("purified boosting of impure input, multiclass") {
    for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {
       for(size_t iTerm = 0; iTerm < testPure.GetCountTerms(); ++iTerm) {
          double validationMetric0 = testPure.Boost(iTerm, TermBoostFlags_PurifyUpdate).validationMetric;
-         CHECK_APPROX(validationMetric0, 1.0398559570312500);
+         CHECK_APPROX(validationMetric0, 1.0986122886681096);
 
          double termScore01 = testPure.GetCurrentTermScore(iTerm, {0, 0}, 0);
          double termScore02 = testPure.GetCurrentTermScore(iTerm, {1, 0}, 0);
@@ -1740,7 +1740,7 @@ TEST_CASE("purified boosting and impure boosting identical for pure input, multi
          },
          {TestSample({0, 1}, 1)},
          0,
-         CreateBoosterFlags_DisableApprox,
+         CreateBoosterFlags_Default,
          AccelerationFlags_NONE);
 
    TestBoost testImpure = TestBoost(3,
@@ -1777,7 +1777,7 @@ TEST_CASE("purified boosting and impure boosting identical for pure input, multi
          },
          {TestSample({0, 1}, 1)},
          0,
-         CreateBoosterFlags_DisableApprox,
+         CreateBoosterFlags_Default,
          AccelerationFlags_NONE);
 
    for(int iEpoch = 0; iEpoch < 10; ++iEpoch) {

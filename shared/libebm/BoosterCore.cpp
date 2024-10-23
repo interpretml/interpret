@@ -323,7 +323,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
    // give ownership of our object back to the caller, even if there is a failure
    *ppBoosterCoreOut = pBoosterCore;
 
-   pBoosterCore->m_bDisableApprox = CreateBoosterFlags_DisableApprox & flags ? EBM_TRUE : EBM_FALSE;
+   pBoosterCore->m_bUseApprox = CreateBoosterFlags_UseApprox & flags ? EBM_TRUE : EBM_FALSE;
 
    UIntShared countSamples;
    size_t cFeatures;
@@ -917,7 +917,7 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
          data.m_cScores = cScores;
          data.m_cPack = k_cItemsPerBitPackUndefined;
          data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-         data.m_bDisableApprox = IsDisableApprox();
+         data.m_bUseApprox = IsUseApprox();
          data.m_bValidation = EBM_FALSE;
          data.m_aMulticlassMidwayTemp = aMulticlassMidwayTemp;
          // if FloatScore is type FloatSmall then some of the zones might use FloatBig as their type and then read

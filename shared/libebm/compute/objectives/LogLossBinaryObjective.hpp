@@ -67,7 +67,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
@@ -219,10 +219,10 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
 
                TFloat metric = IfThenElse(typename TFloat::TInt(0) == target, sampleScore, -sampleScore);
-               metric = TFloat::template ApproxExp<bDisableApprox, false>(metric);
+               metric = TFloat::template ApproxExp<bUseApprox, false>(metric);
                metric += 1.0;
                // zero and negative are impossible since 1.0 is the lowest possible value
-               metric = TFloat::template ApproxLog<bDisableApprox, false, true, false, false>(metric);
+               metric = TFloat::template ApproxLog<bUseApprox, false, true, false, false>(metric);
 
                if(bWeight) {
                   metricSum = FusedMultiplyAdd(metric, weight, metricSum);
@@ -270,7 +270,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                auto cmp = typename TFloat::TInt(0) == target;
                const TFloat numerator = IfThenElse(cmp, TFloat(1), TFloat(-1));
                TFloat denominator = IfThenElse(cmp, -sampleScore, sampleScore);
-               denominator = TFloat::template ApproxExp<bDisableApprox, false>(denominator);
+               denominator = TFloat::template ApproxExp<bUseApprox, false>(denominator);
                denominator += 1.0;
 
                // I think using FastApproxDivide means that sometimes the gradient can be slightly above 1.0

@@ -89,7 +89,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
@@ -245,7 +245,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                sampleScore.Store(pSampleScore);
                pSampleScore += TFloat::k_cSIMDPack;
 
-               const TFloat oneExp = TFloat::template ApproxExp<bDisableApprox, false>(sampleScore);
+               const TFloat oneExp = TFloat::template ApproxExp<bUseApprox, false>(sampleScore);
                oneExp.Store(&aExps[iScore1 << TFloat::k_cSIMDShift]);
                sumExp += oneExp;
 
@@ -269,8 +269,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
                const TFloat itemExp = TFloat::Load(aExps, target);
                const TFloat invertedProbability = FastApproxDivide(sumExp, itemExp);
                // zero and negative are impossible since 1.0 is the lowest possible value
-               TFloat metric =
-                     TFloat::template ApproxLog<bDisableApprox, false, true, false, false>(invertedProbability);
+               TFloat metric = TFloat::template ApproxLog<bUseApprox, false, true, false, false>(invertedProbability);
 
                if(bWeight) {
                   const TFloat weight = TFloat::Load(pWeight);

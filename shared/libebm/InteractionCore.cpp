@@ -180,7 +180,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
 
-   pInteractionCore->m_bDisableApprox = CreateInteractionFlags_DisableApprox & flags ? EBM_TRUE : EBM_FALSE;
+   pInteractionCore->m_bUseApprox = CreateInteractionFlags_UseApprox & flags ? EBM_TRUE : EBM_FALSE;
 
    size_t cBinsMax = 0;
 
@@ -550,7 +550,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_cScores = cScores;
             data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-            data.m_bDisableApprox = IsDisableApprox();
+            data.m_bUseApprox = IsUseApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
@@ -640,7 +640,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_cScores = 1;
             data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-            data.m_bDisableApprox = IsDisableApprox();
+            data.m_bUseApprox = IsUseApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;

@@ -660,26 +660,26 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return Avx512f_32_Float(_mm512_sqrt_ps(val.m_data));
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxExp(const Avx512f_32_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       UNUSED(addExpSchraudolphTerm);
       return Exp<bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxExp(const Avx512f_32_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
@@ -717,7 +717,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
       return result;
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -726,14 +726,14 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxLog(
          const Avx512f_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       UNUSED(addLogSchraudolphTerm);
       return Log<bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -742,7 +742,7 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Avx512f_32_Float ApproxLog(
          const Avx512f_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
@@ -784,11 +784,11 @@ struct alignas(k_cAlignment) Avx512f_32_Float final {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }

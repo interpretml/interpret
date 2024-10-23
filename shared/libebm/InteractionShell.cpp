@@ -158,7 +158,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(flags &
-         ~(CreateInteractionFlags_DifferentialPrivacy | CreateInteractionFlags_DisableApprox |
+         ~(CreateInteractionFlags_DifferentialPrivacy | CreateInteractionFlags_UseApprox |
                CreateInteractionFlags_BinaryAsMulticlass)) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector flags contains unknown flags. Ignoring extras.");
    }

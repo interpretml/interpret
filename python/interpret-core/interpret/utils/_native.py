@@ -26,7 +26,7 @@ class Native:
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
-    CreateBoosterFlags_DisableApprox = 0x00000002
+    CreateBoosterFlags_UseApprox = 0x00000002
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
@@ -40,7 +40,7 @@ class Native:
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
     CreateInteractionFlags_DifferentialPrivacy = 0x00000001
-    CreateInteractionFlags_DisableApprox = 0x00000002
+    CreateInteractionFlags_UseApprox = 0x00000002
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
@@ -970,7 +970,7 @@ class Native:
             if simd
             else Native.AccelerationFlags_NONE
         )
-        self.approximates = True
+        self.approximates = False
 
         self._log_callback_func = None
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
@@ -1733,8 +1733,8 @@ class Booster(AbstractContextManager):
                     raise ValueError(msg)
 
         flags = self.create_booster_flags
-        if not native.approximates:
-            flags |= Native.CreateBoosterFlags_DisableApprox
+        if native.approximates:
+            flags |= Native.CreateBoosterFlags_UseApprox
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
@@ -2107,8 +2107,8 @@ class InteractionDetector(AbstractContextManager):
                     raise ValueError(msg)
 
         flags = self.create_interaction_flags
-        if not native.approximates:
-            flags |= Native.CreateInteractionFlags_DisableApprox
+        if native.approximates:
+            flags |= Native.CreateInteractionFlags_UseApprox
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
