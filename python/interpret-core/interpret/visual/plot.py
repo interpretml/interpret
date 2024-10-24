@@ -215,9 +215,7 @@ def _human_format(num):
     while abs(num) >= 1000:
         magnitude += 1
         num /= 1000.0
-    return "{}{}".format(
-        f"{num:f}".rstrip("0").rstrip("."), suffixes[magnitude]
-    )
+    return "{}{}".format(f"{num:f}".rstrip("0").rstrip("."), suffixes[magnitude])
 
 
 # TODO: Clean this up after validation.
