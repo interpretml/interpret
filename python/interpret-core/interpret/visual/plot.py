@@ -203,15 +203,19 @@ def plot_continuous_bar(
 
 # Taken from:
 # https://stackoverflow.com/questions/579310/formatting-long-numbers-as-strings-in-python
+# Adapted to handle numbers larger than 1e15
 def _human_format(num):
     num = float(f"{num:.3g}")
     magnitude = 0
+    suffixes = ["", "K", "M", "B", "T"]
+
+    if abs(num) >= 1000 ** (len(suffixes)):  # 1000 ^ 5 == 1e15
+        return f"{num:.2e}"
+
     while abs(num) >= 1000:
         magnitude += 1
         num /= 1000.0
-    return "{}{}".format(
-        f"{num:f}".rstrip("0").rstrip("."), ["", "K", "M", "B", "T"][magnitude]
-    )
+    return "{}{}".format(f"{num:f}".rstrip("0").rstrip("."), suffixes[magnitude])
 
 
 # TODO: Clean this up after validation.
