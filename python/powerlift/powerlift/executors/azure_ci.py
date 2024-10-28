@@ -91,7 +91,7 @@ class AzureContainerInstance(Executor):
         del self._azure_json
 
     def submit(self, experiment_id, timeout=None):
-        from powerlift.run_azure import __main__ as remote_process
+        from powerlift.run import azure_ci as remote_process
 
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
