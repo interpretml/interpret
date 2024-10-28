@@ -4,7 +4,7 @@
 def assign_delete_permissions(
     aci_client,
     auth_client,
-    max_undead_containers,
+    max_undead,
     credential,
     subscription_id,
     client_id,
@@ -23,7 +23,7 @@ def assign_delete_permissions(
     # Contributor Role
     role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
 
-    while max_undead_containers < len(container_groups):
+    while max_undead < len(container_groups):
         _, container_group_name, started = heappop(container_groups)
         try:
             if started is not None:
@@ -85,6 +85,7 @@ def run_azure_process(
     credential,
     num_cores,
     mem_size_gb,
+    max_undead,
     delete_group_container_on_complete,
     batch_id,
 ):
@@ -376,8 +377,6 @@ def run_azure_process(
     )
     from azure.mgmt.resource import ResourceManagementClient
 
-    max_undead_containers = 20
-
     client_id = azure_json["client_id"]
 
     if credential is None:
@@ -458,7 +457,7 @@ def run_azure_process(
         aci_client, auth_client = assign_delete_permissions(
             aci_client,
             auth_client,
-            max_undead_containers,
+            max_undead,
             credential,
             subscription_id,
             client_id,
