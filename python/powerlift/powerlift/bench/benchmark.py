@@ -73,7 +73,7 @@ class Benchmark:
             pip_install = ""
 
         wheels = []
-        if hasattr(executor, "_wheel_paths"):
+        if hasattr(executor, "_wheel_filepaths"):
             wheel_filepaths = executor._wheel_filepaths
             if wheel_filepaths is not None:
                 for wheel_filepath in wheel_filepaths:
