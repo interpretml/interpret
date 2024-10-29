@@ -73,14 +73,15 @@ class Benchmark:
             pip_install = ""
 
         wheels = []
-        wheel_filepaths = executor._wheel_filepaths
-        if wheel_filepaths is not None:
-            for wheel_filepath in wheel_filepaths:
-                with open(wheel_filepath, "rb") as f:
-                    content = f.read()
-                name = pathlib.Path(wheel_filepath).name
-                wheel = db.Wheel(name=name, embedded=content)
-                wheels.append(wheel)
+        if hasattr(executor, "_wheel_paths"):
+            wheel_filepaths = executor._wheel_filepaths
+            if wheel_filepaths is not None:
+                for wheel_filepath in wheel_filepaths:
+                    with open(wheel_filepath, "rb") as f:
+                        content = f.read()
+                    name = pathlib.Path(wheel_filepath).name
+                    wheel = db.Wheel(name=name, embedded=content)
+                    wheels.append(wheel)
 
         trial_fn = inspect.getsource(trial_run_fn)
 
