@@ -1,4 +1,4 @@
-"""This is called to run a trial by worker nodes (local / remote)."""
+"""This is called to run a trial by worker nodes for Azure VMs."""
 
 
 def assign_delete_permissions(
@@ -80,11 +80,9 @@ def run_azure_process(
     n_instances,
     uri,
     timeout,
-    image,
     azure_json,
     credential,
-    num_cores,
-    mem_size_gb,
+    location,
     max_undead,
     delete_on_complete,
     batch_id,
@@ -100,7 +98,7 @@ def run_azure_process(
 
             SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
             RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
-            CONTAINER_GROUP_NAME=${CONTAINER_GROUP_NAME}
+            VM_NAME=${VM_NAME}
 
             retry_count=0
             while true; do
@@ -126,7 +124,7 @@ def run_azure_process(
                 fi
 
                 echo "Deleting the container."
-                az container delete --subscription $SUBSCRIPTION_ID --resource-group $RESOURCE_GROUP_NAME --name $CONTAINER_GROUP_NAME --yes
+                az vm delete --subscription $SUBSCRIPTION_ID --resource-group $RESOURCE_GROUP_NAME --name $VM_NAME --yes
                 exit_code=$?
                 if [ $exit_code -ne 0 ]; then
                     echo "az container delete failed with exit code $exit_code."
@@ -147,22 +145,10 @@ def run_azure_process(
             exit $1  # failed to self-kill the container we are running this on.
         }
     
-        is_updated=0
-        if ! command -v psql >/dev/null 2>&1; then
-            is_updated=1
-            apt-get --yes update
-            exit_code=$?
-            if [ $exit_code -ne 0 ]; then
-                echo "apt-get --yes update failed with exit code $exit_code."
-                self_delete $exit_code
-            fi
-            apt-get --yes install postgresql-client
-            exit_code=$?
-            if [ $exit_code -ne 0 ]; then
-                echo "apt-get --yes install postgresql-client failed with exit code $exit_code."
-                self_delete $exit_code
-            fi
-        fi
+        apt-get --yes update
+        apt-get --yes install python3 python3-pip postgresql-client
+        python3 -m pip install --upgrade pip setuptools wheel packaging
+
         retry_count=0
         while true; do
             shell_install=$(psql "$DB_URL" -c "SELECT shell_install FROM Experiment WHERE id = '$EXPERIMENT_ID' LIMIT 1;" -t -A)
@@ -181,15 +167,6 @@ def run_azure_process(
             echo "Retrying."
         done
         if [ -n "$shell_install" ]; then
-            if [ $is_updated -eq 0 ]; then
-                is_updated=1
-                apt-get --yes update
-                exit_code=$?
-                if [ $exit_code -ne 0 ]; then
-                    echo "apt-get --yes update failed with exit code $exit_code."
-                    self_delete $exit_code
-                fi
-            fi
             cmd="apt-get --yes install $shell_install"
             eval $cmd
             exit_code=$?
@@ -236,11 +213,11 @@ def run_azure_process(
                     sleep 300
                     echo "Retrying."
                 done
-                cmd="python -m pip install $filename"
+                cmd="python3 -m pip install $filename"
                 eval $cmd
                 exit_code=$?
                 if [ $exit_code -ne 0 ]; then
-                    echo "python -m pip install filename failed with exit code $exit_code."
+                    echo "python3 -m pip install filename failed with exit code $exit_code."
                     self_delete $exit_code
                 fi
             done
@@ -264,19 +241,19 @@ def run_azure_process(
             echo "Retrying."
         done
         if [ -n "$pip_install" ]; then
-            cmd="python -m pip install $pip_install"
+            cmd="python3 -m pip install $pip_install"
             eval $cmd
             exit_code=$?
             if [ $exit_code -ne 0 ]; then
-                echo "python -m pip install pip_install failed with exit code $exit_code."
+                echo "python3 -m pip install pip_install failed with exit code $exit_code."
                 self_delete $exit_code
             fi
         fi
 
-        python -m pip install psycopg2-binary powerlift
+        python3 -m pip install psycopg2-binary powerlift
         exit_code=$?
         if [ $exit_code -ne 0 ]; then
-            echo "python -m pip install psycopg2-binary powerlift failed with exit code $exit_code."
+            echo "python3 -m pip install psycopg2-binary powerlift failed with exit code $exit_code."
             self_delete $exit_code
         fi
 
@@ -301,7 +278,7 @@ def run_azure_process(
 
         while true; do
             echo "Running startup.py"
-            python startup.py
+            python3 startup.py
 
             # 0 means we are done
             # 1 means we have more work
@@ -360,22 +337,17 @@ def run_azure_process(
     """
 
     import time
-    import uuid
     from heapq import heappush
     from datetime import datetime
     from azure.core.exceptions import HttpResponseError
     from azure.identity import ClientSecretCredential
-    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
-    from azure.mgmt.containerinstance.models import (
-        Container,
-        ContainerGroup,
-        ContainerGroupRestartPolicy,
-        EnvironmentVariable,
-        OperatingSystemTypes,
-        ResourceRequests,
-        ResourceRequirements,
-    )
     from azure.mgmt.resource import ResourceManagementClient
+    from azure.mgmt.compute import ComputeManagementClient
+    from azure.mgmt.network import NetworkManagementClient
+    from azure.mgmt.compute.models import DiskCreateOptionTypes
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization
+    import base64
 
     client_id = azure_json["client_id"]
 
@@ -389,128 +361,149 @@ def run_azure_process(
     resource_group_name = azure_json["resource_group"]
     subscription_id = azure_json["subscription_id"]
 
-    aci_client = None
-    auth_client = None
-    container_groups = []
-    res_client = ResourceManagementClient(credential, subscription_id)
+    if location is None:
+        res_client = ResourceManagementClient(credential, subscription_id)
+        location = res_client.resource_groups.get(resource_group_name).location
 
-    # If this first call fails, then allow the Exception to propagate.
-    resource_group_location = res_client.resource_groups.get(
-        resource_group_name
-    ).location
+    compute_client = ComputeManagementClient(credential, subscription_id)
+    network_client = NetworkManagementClient(credential, subscription_id)
 
-    container_resource_requests = ResourceRequests(
-        cpu=num_cores,
-        memory_in_gb=mem_size_gb,
-    )
-    container_resource_requirements = ResourceRequirements(
-        requests=container_resource_requests
-    )
+    vnet_name = f"vnet-powerlift-{batch_id}"
+    subnet_name = f"subnet-powerlift-{batch_id}"
 
-    container_group_names = set()
-    for runner_id in range(n_instances):
-        container_group_name = f"powerlift-container-group-{batch_id}-{runner_id:04}"
-
-        env_vars = [
-            EnvironmentVariable(name="EXPERIMENT_ID", value=str(experiment_id)),
-            EnvironmentVariable(name="RUNNER_ID", value=str(runner_id)),
-            EnvironmentVariable(name="DB_URL", secure_value=uri),
-            EnvironmentVariable(name="TIMEOUT", value=timeout),
-            EnvironmentVariable(name="RESOURCE_GROUP_NAME", value=resource_group_name),
-            EnvironmentVariable(
-                name="CONTAINER_GROUP_NAME", value=container_group_name
-            ),
-            EnvironmentVariable(name="SUBSCRIPTION_ID", value=subscription_id),
-        ]
-
-        container = Container(
-            name="powerlift-container",
-            image=image,
-            resources=container_resource_requirements,
-            command=["/bin/sh", "-c", startup_script.replace("\r\n", "\n")],
-            environment_variables=env_vars,
-        )
-        container_group = ContainerGroup(
-            location=resource_group_location,
-            containers=[container],
-            os_type=OperatingSystemTypes.linux,
-            restart_policy=ContainerGroupRestartPolicy.never,
-            identity={"type": "SystemAssigned"},
-        )
-
-        if aci_client is None:
-            aci_client = ContainerInstanceManagementClient(credential, subscription_id)
-
-        while True:
-            try:
-                # begin_create_or_update returns LROPoller,
-                # but this is only indicates when the containter is started
-                started = aci_client.container_groups.begin_create_or_update(
-                    resource_group_name, container_group_name, container_group
-                )
-                break
-            except HttpResponseError:
-                time.sleep(1)
-
-        container_group_names.add(container_group_name)
-        heappush(container_groups, (datetime.now(), container_group_name, started))
-        aci_client, auth_client = assign_delete_permissions(
-            aci_client,
-            auth_client,
-            max_undead,
-            credential,
-            subscription_id,
-            client_id,
-            resource_group_name,
-            container_groups,
-        )
-
-    assign_delete_permissions(
-        aci_client,
-        auth_client,
-        0,
-        credential,
-        subscription_id,
-        client_id,
+    async_vnet_creation = network_client.virtual_networks.begin_create_or_update(
         resource_group_name,
-        container_groups,
+        vnet_name,
+        {"location": location, "address_space": {"address_prefixes": ["10.0.0.0/16"]}},
+    )
+    vnet = async_vnet_creation.result()
+
+    async_subnet_creation = network_client.subnets.begin_create_or_update(
+        resource_group_name, vnet_name, subnet_name, {"address_prefix": "10.0.0.0/24"}
+    )
+    subnet = async_subnet_creation.result()
+
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
+    public_key = (
+        private_key.public_key()
+        .public_bytes(
+            serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
+        )
+        .decode("utf-8")
     )
 
-    if delete_on_complete:
-        deletes = []
-        while len(container_group_names) != 0:
-            remove_after = []
-            for container_group_name in container_group_names:
-                try:
-                    container_group = aci_client.container_groups.get(
-                        resource_group_name, container_group_name
-                    )
-                    container = container_group.containers[0]
-                    iview = container.instance_view
-                    if iview is not None:
-                        state = iview.current_state.state
-                        if state == "Terminated":
-                            # TODO: begin_delete can delete on server but fail
-                            # so we should handle the exception that the resource
-                            # does not exist
-                            deleted = aci_client.container_groups.begin_delete(
-                                resource_group_name, container_group_name
-                            )
-                            deletes.append(deleted)
-                            remove_after.append(container_group_name)
-                except HttpResponseError:
-                    pass
+    for runner_id in range(n_instances):
+        vm_name = f"powerlift-vm-{batch_id}-{runner_id:04}"
+        nic_name = f"powerlift-nic-{batch_id}-{runner_id:04}"
 
-            for container_group_name in remove_after:
-                container_group_names.remove(container_group_name)
+        async_nic_creation = network_client.network_interfaces.begin_create_or_update(
+            resource_group_name,
+            nic_name,
+            {
+                "location": location,
+                "ip_configurations": [
+                    {
+                        "name": "ipConfig1",
+                        "subnet": {"id": subnet.id},
+                    }
+                ],
+            },
+        )
+        nic = async_nic_creation.result()
 
-            time.sleep(1)
+        admin_username = "azureuser"
 
-        for deleted in deletes:
-            while True:
-                try:
-                    while not deleted.done():
-                        time.sleep(1)
-                    break
-                except HttpResponseError:
-                    time.sleep(1)
+        full_startup_script = f"""#!/bin/bash
+export EXPERIMENT_ID="{experiment_id}"
+export RUNNER_ID="{runner_id}"
+export DB_URL="{uri}"
+export TIMEOUT="{timeout}"
+export RESOURCE_GROUP_NAME="{resource_group_name}"
+export VM_NAME="{vm_name}"
+export SUBSCRIPTION_ID="{subscription_id}"
+{startup_script}  
+"""
+
+        encoded_script = base64.b64encode(
+            full_startup_script.replace("\r\n", "\n").encode("utf-8")
+        ).decode("utf-8")
+
+        vm_parameters = {
+            "location": location,
+            "os_profile": {
+                "computer_name": vm_name,
+                "admin_username": admin_username,
+                "linux_configuration": {
+                    "disable_password_authentication": True,
+                    "ssh": {
+                        "public_keys": [
+                            {
+                                "path": f"/home/{admin_username}/.ssh/authorized_keys",
+                                "key_data": public_key,
+                            }
+                        ]
+                    },
+                },
+                "custom_data": encoded_script,
+            },
+            "hardware_profile": {"vm_size": "Standard_NC24ads_A100_v4"},
+            "storage_profile": {
+                "image_reference": {
+                    "publisher": "microsoft-dsvm",
+                    "offer": "ubuntu-2204",
+                    "sku": "2204-gen2",
+                    "version": "latest",
+                },
+                "os_disk": {
+                    "create_option": DiskCreateOptionTypes.FROM_IMAGE,
+                    "managed_disk": {"storage_account_type": "Standard_LRS"},
+                    "name": f"{vm_name}_osdisk",
+                },
+            },
+            "network_profile": {
+                "network_interfaces": [{"id": nic.id, "primary": True}]
+            },
+            "identity": {"type": "SystemAssigned"},
+        }
+
+        async_vm_creation = compute_client.virtual_machines.begin_create_or_update(
+            resource_group_name, vm_name, vm_parameters
+        )
+        vm = async_vm_creation.result()
+
+        # while True:
+        #     try:
+        #         # begin_create_or_update returns LROPoller,
+        #         # but this is only indicates when the containter is started
+        #         started = aci_client.container_groups.begin_create_or_update(
+        #             resource_group_name, container_group_name, container_group
+        #         )
+        #         break
+        #     except HttpResponseError:
+        #         time.sleep(1)
+
+        # heappush(container_groups, (datetime.now(), container_group_name, started))
+        # aci_client, auth_client = assign_delete_permissions(
+        #     aci_client,
+        #     auth_client,
+        #     max_undead,
+        #     credential,
+        #     subscription_id,
+        #     client_id,
+        #     resource_group_name,
+        #     container_groups,
+        # )
+
+    # assign_delete_permissions(
+    #     aci_client,
+    #     auth_client,
+    #     0,
+    #     credential,
+    #     subscription_id,
+    #     client_id,
+    #     resource_group_name,
+    #     container_groups,
+    # )
