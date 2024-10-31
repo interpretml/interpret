@@ -24,15 +24,15 @@ class AzureVMInstance(Executor):
         pip_install: Optional[str] = None,
         wheel_filepaths: Optional[List[str]] = None,
         n_instances: int = 1,
-        location: Optional[str] = None,
-        vm_size: str = "Standard_NC24ads_A100_v4",
-        image_publisher: str = "microsoft-dsvm",
-        image_offer: str = "ubuntu-2204",
-        image_sku: str = "2204-gen2",
+        location: Optional[str] = None,  # we use "canadacentral" or "southcentralus"
+        vm_size: str = "Standard_B16s_v2",  # can use "Standard_NC24ads_A100_v4" for GPUs
+        image_publisher: str = "canonical",
+        image_offer: str = "ubuntu-24_04-lts",
+        image_sku: str = "server",
         image_version: str = "latest",
-        disk_type: str = "Standard_LRS",
+        disk_type: str = "Standard_LRS",  # use "Premium_LRS" for SSDs
         docker_db_uri: Optional[str] = None,
-        max_undead: int = 20,
+        max_undead: int = 1,
         delete_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.

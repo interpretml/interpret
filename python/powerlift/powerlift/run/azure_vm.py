@@ -148,7 +148,9 @@ def run_azure_process(
         }
     
         apt-get --yes update
-        apt-get --yes install python3 python3-pip postgresql-client
+        apt-get --yes install python3 python3-pip python3-venv postgresql-client
+        python3 -m venv powerenv
+        source powerenv/bin/activate
         python3 -m pip install --upgrade pip setuptools wheel packaging
 
         retry_count=0
@@ -382,8 +384,8 @@ def run_azure_process(
     compute_client = ComputeManagementClient(credential, subscription_id)
     network_client = NetworkManagementClient(credential, subscription_id)
 
-    vnet_name = f"vnet-powerlift-{batch_id}"
-    subnet_name = f"subnet-powerlift-{batch_id}"
+    vnet_name = f"powerlift-vnet"
+    subnet_name = f"powerlift-subnet"
 
     async_vnet_creation = network_client.virtual_networks.begin_create_or_update(
         resource_group_name,
@@ -470,7 +472,13 @@ export SUBSCRIPTION_ID="{subscription_id}"
                 },
             },
             "network_profile": {
-                "network_interfaces": [{"id": nic.id, "primary": True}]
+                "network_interfaces": [
+                    {
+                        "id": nic.id,
+                        "primary": True,
+                        "properties": {"deleteOption": "Delete"},
+                    }
+                ]
             },
             "identity": {"type": "SystemAssigned"},
         }
