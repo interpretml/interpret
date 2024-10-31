@@ -2,20 +2,20 @@
 
 
 def assign_delete_permissions(
-    aci_client,
+    compute_client,
     auth_client,
     max_undead,
     credential,
     subscription_id,
     client_id,
     resource_group_name,
-    container_groups,
+    vms,
 ):
     from heapq import heappush, heappop
     from datetime import datetime
     import time
     import uuid
-    from azure.mgmt.containerinstance import ContainerInstanceManagementClient
+    from azure.mgmt.compute import ComputeManagementClient
     from azure.mgmt.authorization import AuthorizationManagementClient
     from azure.mgmt.authorization.models import RoleAssignmentCreateParameters
     from azure.core.exceptions import HttpResponseError
@@ -23,31 +23,27 @@ def assign_delete_permissions(
     # Contributor Role
     role_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
 
-    while max_undead < len(container_groups):
-        _, container_group_name, started = heappop(container_groups)
+    while max_undead < len(vms):
+        _, vm_name, started = heappop(vms)
         try:
             if started is not None:
                 if not started.done():
                     heappush(
-                        container_groups,
-                        (datetime.now(), container_group_name, started),
+                        vms,
+                        (datetime.now(), vm_name, started),
                     )
                     time.sleep(1)
                     continue
                 started = None
 
-            if aci_client is None:
-                aci_client = ContainerInstanceManagementClient(
-                    credential, subscription_id
-                )
+            if compute_client is None:
+                compute_client = ComputeManagementClient(credential, subscription_id)
 
-            container_group = aci_client.container_groups.get(
-                resource_group_name, container_group_name
-            )
+            vm = compute_client.virtual_machines.get(resource_group_name, vm_name)
 
             role_assignment_params1 = RoleAssignmentCreateParameters(
                 role_definition_id=role_definition_id,
-                principal_id=container_group.identity.principal_id,
+                principal_id=vm.identity.principal_id,
                 principal_type="ServicePrincipal",
             )
             role_assignment_params2 = RoleAssignmentCreateParameters(
@@ -55,7 +51,7 @@ def assign_delete_permissions(
                 principal_id=client_id,
                 principal_type="User",
             )
-            scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.ContainerInstance/containerGroups/{container_group_name}"
+            scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}/providers/Microsoft.Compute/virtualMachines/{vm_name}"
 
             if auth_client is None:
                 auth_client = AuthorizationManagementClient(credential, subscription_id)
@@ -67,12 +63,12 @@ def assign_delete_permissions(
                 scope, str(uuid.uuid4()), role_assignment_params2
             )
         except HttpResponseError:
-            aci_client = None
+            compute_client = None
             auth_client = None
-            heappush(container_groups, (datetime.now(), container_group_name, started))
+            heappush(vms, (datetime.now(), vm_name, started))
             time.sleep(1)
 
-    return aci_client, auth_client
+    return compute_client, auth_client
 
 
 def run_azure_process(
@@ -401,6 +397,8 @@ def run_azure_process(
     )
     subnet = async_subnet_creation.result()
 
+    auth_client = None
+    vms = []
     for runner_id in range(n_instances):
         nic_name = f"powerlift-nic-{batch_id}-{runner_id:04}"
         vm_name = f"powerlift-vm-{batch_id}-{runner_id:04}"
@@ -416,6 +414,7 @@ def run_azure_process(
                         "subnet": {"id": subnet.id},
                     }
                 ],
+                "delete_option": "Delete",
             },
         )
         nic = async_nic_creation.result()
@@ -467,6 +466,7 @@ export SUBSCRIPTION_ID="{subscription_id}"
                     "create_option": DiskCreateOptionTypes.FROM_IMAGE,
                     "managed_disk": {"storage_account_type": disk_type},
                     "name": f"{vm_name}_osdisk",
+                    "delete_option": "Delete",
                 },
             },
             "network_profile": {
@@ -475,41 +475,36 @@ export SUBSCRIPTION_ID="{subscription_id}"
             "identity": {"type": "SystemAssigned"},
         }
 
-        async_vm_creation = compute_client.virtual_machines.begin_create_or_update(
-            resource_group_name, vm_name, vm_parameters
+        while True:
+            try:
+                # begin_create_or_update returns LROPoller,
+                # but this is only indicates when the containter is started
+                started = compute_client.virtual_machines.begin_create_or_update(
+                    resource_group_name, vm_name, vm_parameters
+                )
+                break
+            except HttpResponseError:
+                time.sleep(1)
+
+        heappush(vms, (datetime.now(), vm_name, started))
+        compute_client, auth_client = assign_delete_permissions(
+            compute_client,
+            auth_client,
+            max_undead,
+            credential,
+            subscription_id,
+            client_id,
+            resource_group_name,
+            vms,
         )
-        vm = async_vm_creation.result()
 
-        # while True:
-        #     try:
-        #         # begin_create_or_update returns LROPoller,
-        #         # but this is only indicates when the containter is started
-        #         started = aci_client.container_groups.begin_create_or_update(
-        #             resource_group_name, container_group_name, container_group
-        #         )
-        #         break
-        #     except HttpResponseError:
-        #         time.sleep(1)
-
-        # heappush(container_groups, (datetime.now(), container_group_name, started))
-        # aci_client, auth_client = assign_delete_permissions(
-        #     aci_client,
-        #     auth_client,
-        #     max_undead,
-        #     credential,
-        #     subscription_id,
-        #     client_id,
-        #     resource_group_name,
-        #     container_groups,
-        # )
-
-    # assign_delete_permissions(
-    #     aci_client,
-    #     auth_client,
-    #     0,
-    #     credential,
-    #     subscription_id,
-    #     client_id,
-    #     resource_group_name,
-    #     container_groups,
-    # )
+    assign_delete_permissions(
+        compute_client,
+        auth_client,
+        0,
+        credential,
+        subscription_id,
+        client_id,
+        resource_group_name,
+        vms,
+    )
