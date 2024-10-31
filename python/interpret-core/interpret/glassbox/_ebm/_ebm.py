@@ -2271,6 +2271,10 @@ class EBMModel(BaseEstimator):
                 First column contains mean predictions (probabilities)
                 Second column contains uncertainties (standard deviations)
         """
+        if self.max_bins != self.max_interaction_bins:
+            msg = "pred_from_base_models_with_uncertainty is not supported for models with different max_bins and max_interaction_bins"
+            _log.error(msg)
+            raise ValueError(msg)
 
         binned_inst = self._preprocessor.transform(instances)
         preds_per_bag = np.zeros(shape=(instances.shape[0], len(self.bagged_scores_)))
