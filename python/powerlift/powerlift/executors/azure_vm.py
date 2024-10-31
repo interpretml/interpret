@@ -1,8 +1,4 @@
-"""Azure Container Instances runtime.
-
-# See more details here:
-https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?view=azure-python
-"""
+"""Azure VM Instances runtime."""
 
 import random
 from multiprocessing import Pool
@@ -12,8 +8,8 @@ from powerlift.bench.store import Store
 from powerlift.executors.base import Executor, handle_err
 
 
-class AzureContainerInstance(Executor):
-    """Runs trials on Azure Container Instances."""
+class AzureVMInstance(Executor):
+    """Runs trials on Azure VMs."""
 
     def __init__(
         self,
@@ -28,14 +24,15 @@ class AzureContainerInstance(Executor):
         pip_install: Optional[str] = None,
         wheel_filepaths: Optional[List[str]] = None,
         n_instances: int = 1,
-        num_cores: int = 4,
-        mem_size_gb: int = 16,
-        # other images available at:
-        # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
-        # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
-        image: str = "mcr.microsoft.com/devcontainers/python:latest",
+        location: Optional[str] = None,  # we use "canadacentral" or "southcentralus"
+        vm_size: str = "Standard_B16s_v2",  # can use "Standard_NC24ads_A100_v4" for GPUs
+        image_publisher: str = "canonical",
+        image_offer: str = "ubuntu-24_04-lts",
+        image_sku: str = "server",
+        image_version: str = "latest",
+        disk_type: str = "Standard_LRS",  # use "Premium_LRS" for SSDs
         docker_db_uri: Optional[str] = None,
-        max_undead: int = 20,
+        max_undead: int = 1,
         delete_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.
@@ -52,25 +49,33 @@ class AzureContainerInstance(Executor):
             pip_install (str): pip install parameters.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             n_instances (int, optional): Max number of containers to run simultaneously. Defaults to 1.
-            num_cores (int, optional): Number of cores per container. Defaults to 1.
-            mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
-            image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
+            location (str, optional): Azure location to create the resources
+            vm_size (str): Azure vm_size parameter for the VM
+            image_publisher (str): Azure publisher parameter for the VM
+            image_offer (str): Azure offer parameter for the VM
+            image_sku (str): Azure sku parameter for the VM
+            image_version (str): Azure version parameter for the VM
+            disk_type (str): Azure disk type parameter for the VM
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             max_undead (int): maximum number of containers that are allowed to be left alive if there is an error during initialization. Higher numbers increase the speed of initialization, but might incur higher cost if any zombies escape.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
 
         self._credential = credential
-        self._image = image
         self._shell_install = shell_install
         self._pip_install = pip_install
         self._n_instances = n_instances
-        self._num_cores = num_cores
-        self._mem_size_gb = mem_size_gb
+        self._location = location
+        self._vm_size = vm_size
+        self._image_publisher = image_publisher
+        self._image_offer = image_offer
+        self._image_sku = image_sku
+        self._image_version = image_version
+        self._disk_type = disk_type
+        self._docker_db_uri = docker_db_uri
         self._max_undead = max_undead
         self._delete_on_complete = delete_on_complete
 
-        self._docker_db_uri = docker_db_uri
         self._azure_json = {
             "tenant_id": azure_tenant_id,
             "client_id": azure_client_id,
@@ -94,7 +99,7 @@ class AzureContainerInstance(Executor):
         del self._azure_json
 
     def submit(self, experiment_id, timeout=None):
-        from powerlift.run import azure_ci as remote_process
+        from powerlift.run import azure_vm as remote_process
 
         uri = (
             self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
@@ -105,11 +110,15 @@ class AzureContainerInstance(Executor):
             self._n_instances,
             uri,
             timeout,
-            self._image,
             self._azure_json,
             self._credential,
-            self._num_cores,
-            self._mem_size_gb,
+            self._location,
+            self._vm_size,
+            self._image_publisher,
+            self._image_offer,
+            self._image_sku,
+            self._image_version,
+            self._disk_type,
             self._max_undead,
             self._delete_on_complete,
             self._batch_id,

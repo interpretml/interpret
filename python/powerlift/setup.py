@@ -54,7 +54,10 @@ setuptools.setup(
             "azure-mgmt-resource",
             "azure-mgmt-containerinstance",
             "azure-mgmt-authorization",
+            "azure-mgmt-compute",
+            "azure-mgmt-network",
             "azure-identity",
+            "cryptography",
         ],
         "testing": [
             "pytest",

@@ -58,7 +58,7 @@ class Benchmark:
             os.path.dirname(os.path.abspath(__file__)), "..", "run", "__main__.py"
         )
         with open(script_file) as file:
-            script_contents = file.read()
+            script_contents = file.read().replace("\r\n", "\n")
 
         shell_install = None
         if hasattr(executor, "_shell_install"):
