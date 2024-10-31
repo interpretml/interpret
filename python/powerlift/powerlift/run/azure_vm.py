@@ -83,6 +83,12 @@ def run_azure_process(
     azure_json,
     credential,
     location,
+    vm_size,
+    image_publisher,
+    image_offer,
+    image_sku,
+    image_version,
+    disk_type,
     max_undead,
     delete_on_complete,
     batch_id,
@@ -349,6 +355,18 @@ def run_azure_process(
     from cryptography.hazmat.primitives import serialization
     import base64
 
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
+    public_key = (
+        private_key.public_key()
+        .public_bytes(
+            serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
+        )
+        .decode("utf-8")
+    )
+
     client_id = azure_json["client_id"]
 
     if credential is None:
@@ -383,21 +401,9 @@ def run_azure_process(
     )
     subnet = async_subnet_creation.result()
 
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
-    public_key = (
-        private_key.public_key()
-        .public_bytes(
-            serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
-        )
-        .decode("utf-8")
-    )
-
     for runner_id in range(n_instances):
-        vm_name = f"powerlift-vm-{batch_id}-{runner_id:04}"
         nic_name = f"powerlift-nic-{batch_id}-{runner_id:04}"
+        vm_name = f"powerlift-vm-{batch_id}-{runner_id:04}"
 
         async_nic_creation = network_client.network_interfaces.begin_create_or_update(
             resource_group_name,
@@ -449,17 +455,17 @@ export SUBSCRIPTION_ID="{subscription_id}"
                 },
                 "custom_data": encoded_script,
             },
-            "hardware_profile": {"vm_size": "Standard_NC24ads_A100_v4"},
+            "hardware_profile": {"vm_size": vm_size},
             "storage_profile": {
                 "image_reference": {
-                    "publisher": "microsoft-dsvm",
-                    "offer": "ubuntu-2204",
-                    "sku": "2204-gen2",
-                    "version": "latest",
+                    "publisher": image_publisher,
+                    "offer": image_offer,
+                    "sku": image_sku,
+                    "version": image_version,
                 },
                 "os_disk": {
                     "create_option": DiskCreateOptionTypes.FROM_IMAGE,
-                    "managed_disk": {"storage_account_type": "Standard_LRS"},
+                    "managed_disk": {"storage_account_type": disk_type},
                     "name": f"{vm_name}_osdisk",
                 },
             },

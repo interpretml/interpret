@@ -25,6 +25,12 @@ class AzureVMInstance(Executor):
         wheel_filepaths: Optional[List[str]] = None,
         n_instances: int = 1,
         location: Optional[str] = None,
+        vm_size: str = "Standard_NC24ads_A100_v4",
+        image_publisher: str = "microsoft-dsvm",
+        image_offer: str = "ubuntu-2204",
+        image_sku: str = "2204-gen2",
+        image_version: str = "latest",
+        disk_type: str = "Standard_LRS",
         docker_db_uri: Optional[str] = None,
         max_undead: int = 20,
         delete_on_complete: bool = True,
@@ -44,6 +50,12 @@ class AzureVMInstance(Executor):
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             n_instances (int, optional): Max number of containers to run simultaneously. Defaults to 1.
             location (str, optional): Azure location to create the resources
+            vm_size (str): Azure vm_size parameter for the VM
+            image_publisher (str): Azure publisher parameter for the VM
+            image_offer (str): Azure offer parameter for the VM
+            image_sku (str): Azure sku parameter for the VM
+            image_version (str): Azure version parameter for the VM
+            disk_type (str): Azure disk type parameter for the VM
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             max_undead (int): maximum number of containers that are allowed to be left alive if there is an error during initialization. Higher numbers increase the speed of initialization, but might incur higher cost if any zombies escape.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
@@ -54,6 +66,12 @@ class AzureVMInstance(Executor):
         self._pip_install = pip_install
         self._n_instances = n_instances
         self._location = location
+        self._vm_size = vm_size
+        self._image_publisher = image_publisher
+        self._image_offer = image_offer
+        self._image_sku = image_sku
+        self._image_version = image_version
+        self._disk_type = disk_type
         self._docker_db_uri = docker_db_uri
         self._max_undead = max_undead
         self._delete_on_complete = delete_on_complete
@@ -95,6 +113,12 @@ class AzureVMInstance(Executor):
             self._azure_json,
             self._credential,
             self._location,
+            self._vm_size,
+            self._image_publisher,
+            self._image_offer,
+            self._image_sku,
+            self._image_version,
+            self._disk_type,
             self._max_undead,
             self._delete_on_complete,
             self._batch_id,
