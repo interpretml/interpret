@@ -2434,7 +2434,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
-            - List of tuples: The tuples contain the indices of the features within the additive term
+            - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
+              the interactions parameter accepts higher order interactions. It also accepts single feature terms which will cause
+              the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
+              as interactions, the exclude parameter should usually be set to 'mains'.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
@@ -2780,7 +2783,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
-            - List of tuples: The tuples contain the indices of the features within the additive term
+            - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
+              the interactions parameter accepts higher order interactions. It also accepts single feature terms which will cause
+              the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
+              as interactions, the exclude parameter should usually be set to 'mains'.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
