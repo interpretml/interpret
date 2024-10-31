@@ -746,6 +746,7 @@ class EBMModel(BaseEstimator):
         missing_val_counts = binning_result[6]
         unique_val_counts = binning_result[7]
         noise_scale_binning = binning_result[8]
+        self._preprocessor = binning_result[9]
 
         if np.count_nonzero(missing_val_counts):
             warn(
@@ -2254,6 +2255,37 @@ class EBMModel(BaseEstimator):
         self.standard_deviations_[term] *= factor
 
         return self
+
+    def pred_from_base_models_with_uncertainty(self, instances):
+        """Gets predictions and uncertainties from the bagged base models.
+
+        Generates predictions by averaging outputs across all bagged models, and estimates
+        uncertainty using the standard deviation of predictions across bags.
+
+        Args:
+            instances: ndarray of shape (n_samples, n_features)
+                The input samples to predict on.
+
+        Returns:
+            ndarray of shape (n_samples, 2)
+                First column contains mean predictions (probabilities)
+                Second column contains uncertainties (standard deviations)
+        """
+
+        binned_inst = self._preprocessor.transform(instances)
+        preds_per_bag = np.zeros(shape=(instances.shape[0], len(self.bagged_scores_)))
+        for bag_index, core_ebm in enumerate(self.bagged_scores_):
+            output = np.zeros(shape=(instances.shape[0]))
+            for i in range(instances.shape[0]):
+                term_contribs = [None] * instances.shape[1]
+                for feature, bin_index in enumerate(binned_inst[i]):
+                    term_contribs[feature] = core_ebm[feature][bin_index]
+
+                output[i] = np.sum(term_contribs)
+            preds_per_bag[:, bag_index] = 1 / (1 + np.exp(-output))
+
+        # Calc mean and stdev
+        return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
 
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
