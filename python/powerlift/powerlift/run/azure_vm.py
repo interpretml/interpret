@@ -1,7 +1,7 @@
 """This is called to run a trial by worker nodes for Azure VMs."""
 
 
-def assign_delete_permissions(
+def assign_contributor_permissions(
     compute_client,
     auth_client,
     max_undead,
@@ -9,6 +9,7 @@ def assign_delete_permissions(
     subscription_id,
     client_id,
     resource_group_name,
+    resource_uris,
     vms,
 ):
     from heapq import heappush, heappop
@@ -59,6 +60,11 @@ def assign_delete_permissions(
             auth_client.role_assignments.create(
                 scope, str(uuid.uuid4()), role_assignment_params1
             )
+            if resource_uris is not None:
+                for resource_uri in resource_uris:
+                    auth_client.role_assignments.create(
+                        resource_uri, str(uuid.uuid4()), role_assignment_params1
+                    )
             auth_client.role_assignments.create(
                 scope, str(uuid.uuid4()), role_assignment_params2
             )
@@ -75,6 +81,7 @@ def run_azure_process(
     experiment_id,
     n_instances,
     uri,
+    resource_uris,
     timeout,
     azure_json,
     credential,
@@ -384,9 +391,9 @@ def run_azure_process(
     compute_client = ComputeManagementClient(credential, subscription_id)
     network_client = NetworkManagementClient(credential, subscription_id)
 
-    vnet_name = f"powerlift-vnet"
-    subnet_name = f"powerlift-subnet"
-
+    vnet_name = f"powerlift-vnet-{location}"
+    subnet_name = f"powerlift-subnet-{location}"
+    
     async_vnet_creation = network_client.virtual_networks.begin_create_or_update(
         resource_group_name,
         vnet_name,
@@ -495,7 +502,7 @@ export SUBSCRIPTION_ID="{subscription_id}"
                 time.sleep(1)
 
         heappush(vms, (datetime.now(), vm_name, started))
-        compute_client, auth_client = assign_delete_permissions(
+        compute_client, auth_client = assign_contributor_permissions(
             compute_client,
             auth_client,
             max_undead,
@@ -503,10 +510,11 @@ export SUBSCRIPTION_ID="{subscription_id}"
             subscription_id,
             client_id,
             resource_group_name,
+            resource_uris,
             vms,
         )
 
-    assign_delete_permissions(
+    assign_contributor_permissions(
         compute_client,
         auth_client,
         0,
@@ -514,5 +522,6 @@ export SUBSCRIPTION_ID="{subscription_id}"
         subscription_id,
         client_id,
         resource_group_name,
+        resource_uris,
         vms,
     )

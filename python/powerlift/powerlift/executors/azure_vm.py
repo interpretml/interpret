@@ -32,6 +32,7 @@ class AzureVMInstance(Executor):
         image_version: str = "latest",
         disk_type: str = "Standard_LRS",  # use "Premium_LRS" for SSDs
         docker_db_uri: Optional[str] = None,
+        resource_uris: Optional[List[str]] = None,
         max_undead: int = 1,
         delete_on_complete: bool = True,
     ):
@@ -57,6 +58,7 @@ class AzureVMInstance(Executor):
             image_version (str): Azure version parameter for the VM
             disk_type (str): Azure disk type parameter for the VM
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
+            resource_uris (List[str], optional): Azure resources to grant contributor access permissions to.
             max_undead (int): maximum number of containers that are allowed to be left alive if there is an error during initialization. Higher numbers increase the speed of initialization, but might incur higher cost if any zombies escape.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
@@ -73,6 +75,7 @@ class AzureVMInstance(Executor):
         self._image_version = image_version
         self._disk_type = disk_type
         self._docker_db_uri = docker_db_uri
+        self._resource_uris = resource_uris
         self._max_undead = max_undead
         self._delete_on_complete = delete_on_complete
 
@@ -109,6 +112,7 @@ class AzureVMInstance(Executor):
             experiment_id,
             self._n_instances,
             uri,
+            self._resource_uris,
             timeout,
             self._azure_json,
             self._credential,
