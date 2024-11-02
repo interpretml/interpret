@@ -63,10 +63,6 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return pBinLastOrChildren;
    }
 
-   inline const TreeNode* AFTER_GetChildren() const {
-      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      return reinterpret_cast<const TreeNode*>(pBinLastOrChildren);
-   }
    inline TreeNode* AFTER_GetChildren() {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
       return reinterpret_cast<TreeNode*>(pBinLastOrChildren);
@@ -139,14 +135,6 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       m_UNION.m_deconstruct.m_pParent = pParent;
    }
 
-   inline UIntMain GetCountSamples() const { return m_bin.GetCountSamples(); }
-
-   inline FloatMain GetWeight() const { return m_bin.GetWeight(); }
-
-   inline const GradientPair<FloatMain, bHessian>* GetGradientPairs() const { return m_bin.GetGradientPairs(); }
-   inline GradientPair<FloatMain, bHessian>* GetGradientPairs() { return m_bin.GetGradientPairs(); }
-
-   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() const { return &m_bin; }
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() { return &m_bin; }
 
    template<size_t cNewCompilerScores> inline TreeNode<bHessian, cNewCompilerScores>* Upgrade() {
@@ -234,12 +222,6 @@ inline static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores) 
 template<bool bHessian, size_t cCompilerScores>
 inline static TreeNode<bHessian, cCompilerScores>* IndexTreeNode(
       TreeNode<bHessian, cCompilerScores>* const pTreeNode, const size_t iByte) {
-   return IndexByte(pTreeNode, iByte);
-}
-
-template<bool bHessian, size_t cCompilerScores>
-inline static const TreeNode<bHessian, cCompilerScores>* IndexTreeNode(
-      const TreeNode<bHessian, cCompilerScores>* const pTreeNode, const size_t iByte) {
    return IndexByte(pTreeNode, iByte);
 }
 

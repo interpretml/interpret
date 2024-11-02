@@ -393,7 +393,7 @@ def run_azure_process(
 
     vnet_name = f"powerlift-vnet-{location}"
     subnet_name = f"powerlift-subnet-{location}"
-    
+
     async_vnet_creation = network_client.virtual_networks.begin_create_or_update(
         resource_group_name,
         vnet_name,

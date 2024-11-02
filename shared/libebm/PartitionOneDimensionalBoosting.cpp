@@ -151,13 +151,12 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
    const auto* const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
-   auto* pTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
+   auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
+   auto* pTreeNode = pRootTreeNode;
 
    TreeNode<bHessian>* pParent = nullptr;
    size_t iEdge;
    while(true) {
-
-   moved_down:;
       if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
 #ifndef NDEBUG
          pTreeNode->SetDebugProgression(2);
@@ -166,14 +165,15 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          pTreeNode->DECONSTRUCT_SetParent(pParent);
          pParent = pTreeNode;
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren());
-         goto moved_down;
+         continue;
       } else {
          const void* pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
          if(pBinLastOrChildren < aBins || pBinsEnd <= pBinLastOrChildren) {
-            EBM_ASSERT(pTreeNode <= pBinLastOrChildren &&
-                  pBinLastOrChildren < IndexTreeNode(pTreeNode, pBoosterCore->GetCountBytesTreeNodes()));
+            EBM_ASSERT(IndexTreeNode(pTreeNode, cBytesPerTreeNode) <= pBinLastOrChildren &&
+                  pBinLastOrChildren <=
+                        IndexTreeNode(pRootTreeNode, pBoosterCore->GetCountBytesTreeNodes() - cBytesPerTreeNode));
 
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
@@ -187,7 +187,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          EBM_ASSERT(pBinLast < pBinsEnd);
          iEdge = CountBins(pBinLast, aBins, cBytesPerBin) + 1;
 
-         const auto* aGradientPair = pTreeNode->GetGradientPairs();
+         const auto* aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
          size_t iScore = 0;
          do {
             FloatCalc updateScore;
@@ -199,7 +199,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                      deltaStepMax);
             } else {
                updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
-                     static_cast<FloatCalc>(pTreeNode->GetWeight()),
+                     static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight()),
                      regAlpha,
                      regLambda,
                      deltaStepMax);
@@ -212,34 +212,29 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          } while(cScores != iScore);
 
          pTreeNode = pParent;
-         if(nullptr != pTreeNode) {
-            goto moved_up;
-         }
-         break; // this can only happen if our tree has zero splits, but we need to check it
       }
 
-   moved_up:;
-      auto* pChildren = pTreeNode->AFTER_GetChildren();
-      if(nullptr != pChildren) {
-         // we checked earlier that countBins could be converted to a UIntSplit
-         EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
-         *pSplit = static_cast<UIntSplit>(iEdge);
-         ++pSplit;
-
-         pParent = pTreeNode;
-         pTreeNode->AFTER_SetChildren(nullptr);
-         pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
-         goto moved_down;
-      } else {
-         pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
-         if(nullptr != pTreeNode) {
-            goto moved_up;
+      while(true) {
+         if(nullptr == pTreeNode) {
+            LOG_0(Trace_Verbose, "Exited Flatten");
+            return Error_None;
          }
-         break;
+         auto* pChildren = pTreeNode->AFTER_GetChildren();
+         if(nullptr != pChildren) {
+            // we checked earlier that countBins could be converted to a UIntSplit
+            EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
+            *pSplit = static_cast<UIntSplit>(iEdge);
+            ++pSplit;
+
+            pParent = pTreeNode;
+            pTreeNode->AFTER_SetChildren(nullptr);
+            pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
+            break;
+         } else {
+            pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
+         }
       }
    }
-   LOG_0(Trace_Verbose, "Exited Flatten");
-   return Error_None;
 }
 
 // TODO: it would be easy for us to implement a -1 lookback where we make the first split, find the second split,
@@ -305,13 +300,14 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
    static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
    const auto* const aParentGradientPairs =
-         bUseStackMemory ? binParent.GetGradientPairs() : pTreeNode->GetGradientPairs();
-   auto* const aLeftGradientPairs = bUseStackMemory ? binLeft.GetGradientPairs() : pLeftChild->GetGradientPairs();
+         bUseStackMemory ? binParent.GetGradientPairs() : pTreeNode->GetBin()->GetGradientPairs();
+   auto* const aLeftGradientPairs =
+         bUseStackMemory ? binLeft.GetGradientPairs() : pLeftChild->GetBin()->GetGradientPairs();
    if(bUseStackMemory) {
       binParent.Copy(cScores, *pTreeNode->GetBin());
    } else {
-      binParent.SetCountSamples(pTreeNode->GetCountSamples());
-      binParent.SetWeight(pTreeNode->GetWeight());
+      binParent.SetCountSamples(pTreeNode->GetBin()->GetCountSamples());
+      binParent.SetWeight(pTreeNode->GetBin()->GetWeight());
    }
    binLeft.Zero(cScores, aLeftGradientPairs);
 
@@ -579,7 +575,7 @@ done:;
          binParent.GetCountSamples() - pBestSplitsStart->GetLeftSum()->GetCountSamples());
    pRightChild->GetBin()->SetWeight(binParent.GetWeight() - pBestSplitsStart->GetLeftSum()->GetWeight());
 
-   auto* const aRightGradientPairs = pRightChild->GetGradientPairs();
+   auto* const aRightGradientPairs = pRightChild->GetBin()->GetGradientPairs();
    const auto* const aBestGradientPairs = pBestSplitsStart->GetLeftSum()->GetGradientPairs();
    size_t iScoreCopy = 0;
    do {
