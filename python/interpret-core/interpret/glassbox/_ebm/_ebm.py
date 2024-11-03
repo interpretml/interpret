@@ -2269,13 +2269,14 @@ class EBMModel(BaseEstimator):
                 First column contains mean predictions
                 Second column contains uncertainties
         """
+        check_is_fitted(self, "has_fitted_")
+
         X, n_samples = preclean_X(
             instances, self.feature_names_in_, self.feature_types_in_
         )
-        preds_per_bag = np.zeros((n_samples, len(self.bagged_scores_)))
-
+        preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
         # Get predictions from each bagged model
-        for bag_index in range(len(self.bagged_scores_)):
+        for bag_index in range(len(self.bagged_intercept_)):
             # Use slices from bagged parameters for this specific model
             scores = ebm_predict_scores(
                 X=X,
