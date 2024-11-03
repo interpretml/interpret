@@ -485,7 +485,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                         # X_col could be a slice that has a stride.  We need contiguous for caling into C
                         X_col = X_col.copy()
 
-                    X_col = native.discretize(X_col, bins[-1])
+                    X_col = native.discretize(X_col, bins)
 
                 if np.count_nonzero(X_col) != len(X_col):
                     msg = "missing values in X not supported in transform"
@@ -550,7 +550,6 @@ def construct_bins(
     privacy_bounds=None,
 ):
     is_mains = True
-    main_preprocessor = None
 
     for max_bins in max_bins_leveled:
         preprocessor = EBMPreprocessor(
@@ -583,7 +582,6 @@ def construct_bins(
             missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
             noise_scale = preprocessor.noise_scale_
-            main_preprocessor = preprocessor
 
         else:
             if feature_names_in != preprocessor.feature_names_in_:
@@ -609,5 +607,4 @@ def construct_bins(
         missing_val_counts,
         unique_val_counts,
         noise_scale,
-        main_preprocessor,
     )

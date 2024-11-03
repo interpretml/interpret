@@ -746,7 +746,6 @@ class EBMModel(BaseEstimator):
         missing_val_counts = binning_result[6]
         unique_val_counts = binning_result[7]
         noise_scale_binning = binning_result[8]
-        self._preprocessor = binning_result[9]
 
         if np.count_nonzero(missing_val_counts):
             warn(
@@ -2257,8 +2256,7 @@ class EBMModel(BaseEstimator):
         return self
 
     def pred_from_base_models_with_uncertainty(self, instances):
-        """Gets predictions and uncertainties from the bagged base models.
-
+        """Gets raw scores and uncertainties from the bagged base models.
         Generates predictions by averaging outputs across all bagged models, and estimates
         uncertainty using the standard deviation of predictions across bags.
 
@@ -2268,27 +2266,30 @@ class EBMModel(BaseEstimator):
 
         Returns:
             ndarray of shape (n_samples, 2)
-                First column contains mean predictions (probabilities)
-                Second column contains uncertainties (standard deviations)
+                First column contains mean predictions
+                Second column contains uncertainties
         """
-        if self.max_bins != self.max_interaction_bins:
-            msg = "pred_from_base_models_with_uncertainty is not supported for models with different max_bins and max_interaction_bins"
-            _log.error(msg)
-            raise ValueError(msg)
+        X, n_samples = preclean_X(
+            instances, self.feature_names_in_, self.feature_types_in_
+        )
+        preds_per_bag = np.zeros((n_samples, len(self.bagged_scores_)))
 
-        binned_inst = self._preprocessor.transform(instances)
-        preds_per_bag = np.zeros(shape=(instances.shape[0], len(self.bagged_scores_)))
-        for bag_index, core_ebm in enumerate(self.bagged_scores_):
-            output = np.zeros(shape=(instances.shape[0]))
-            for i in range(instances.shape[0]):
-                term_contribs = [None] * instances.shape[1]
-                for feature, bin_index in enumerate(binned_inst[i]):
-                    term_contribs[feature] = core_ebm[feature][bin_index]
+        # Get predictions from each bagged model
+        for bag_index in range(len(self.bagged_scores_)):
+            # Use slices from bagged parameters for this specific model
+            scores = ebm_predict_scores(
+                X=X,
+                n_samples=n_samples,
+                feature_names_in=self.feature_names_in_,
+                feature_types_in=self.feature_types_in_,
+                bins=self.bins_,
+                intercept=self.bagged_intercept_[bag_index],
+                term_scores=[scores[bag_index] for scores in self.bagged_scores_],
+                term_features=self.term_features_,
+            )
+            preds_per_bag[:, bag_index] = scores
 
-                output[i] = np.sum(term_contribs)
-            preds_per_bag[:, bag_index] = 1 / (1 + np.exp(-output))
-
-        # Calc mean and stdev
+        # Calculate mean predictions and uncertainties
         return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
 
     def _multinomialize(self, passthrough=0.0):
