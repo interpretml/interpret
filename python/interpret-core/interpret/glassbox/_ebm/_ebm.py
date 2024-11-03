@@ -882,7 +882,7 @@ class EBMModel(BaseEstimator):
             noise_scale_boosting = None
             bin_data_weights = None
             term_boost_flags = Native.TermBoostFlags_Default
-            if develop._purify_boosting:
+            if develop.get_option("purify_boosting"):
                 term_boost_flags |= Native.TermBoostFlags_PurifyUpdate
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
@@ -972,6 +972,7 @@ class EBMModel(BaseEstimator):
                     ),
                     objective,
                     None,
+                    develop._develop_options,
                 )
             )
 
@@ -1094,6 +1095,8 @@ class EBMModel(BaseEstimator):
                             ),
                             objective,
                             None,
+                            0,
+                            develop._develop_options,
                         )
                     )
 
@@ -1229,6 +1232,7 @@ class EBMModel(BaseEstimator):
                         ),
                         objective,
                         None,
+                        develop._develop_options,
                     )
                 )
 

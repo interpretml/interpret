@@ -12,6 +12,7 @@ of the interaction of all pairs of features in a dataset.
 import logging
 from itertools import combinations, count
 
+from .. import develop
 import numpy as np
 from sklearn.base import is_classifier, is_regressor
 from sklearn.utils.multiclass import type_of_target
@@ -286,6 +287,7 @@ def measure_interactions(
         objective=objective,
         experimental_params=None,
         n_output_interactions=n_output_interactions,
+        develop_options=develop._develop_options,
     )
 
     if isinstance(ranked_interactions, Exception):

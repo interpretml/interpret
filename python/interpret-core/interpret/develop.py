@@ -7,11 +7,22 @@ _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
 
 # Global options
-_purify_boosting = False
-_purify_result = False
-_randomize_initial_feature_order = True
-_randomize_greedy_feature_order = True  # randomize feature order if greedy enabled.
-_randomize_feature_order = False  # Randomize feature order. No cost to results.
+_develop_options = {
+    "purify_boosting": False,
+    "purify_result": False,
+    "randomize_initial_feature_order": True,
+    "randomize_greedy_feature_order": True,  # Randomize feature order if greedy.
+    "randomize_feature_order": False,  # Randomize feature order. No cost to results.
+    "simd": True,
+}
+
+
+def get_option(name):
+    return _develop_options[name]
+
+
+def set_option(name, value):
+    _develop_options[name] = value
 
 
 def print_debug_info(file=None):
@@ -131,14 +142,13 @@ def _sizeof_fmt(num, suffix="B"):
     return "{:.1f}{}{}".format(num, "Yi", suffix)  # pragma: no cover
 
 
-def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd=True):
+def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     """Sets package into debug mode.
 
     Args:
         log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
         log_level: Logging level. For example, "DEBUG".
         native_debug: Load debug versions of native libraries if True.
-        simd: Turns on or off the use of SIMD on systems that support it.
 
     Returns:
         Logging handler.
@@ -164,7 +174,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
     root.info(debug_str)
 
     # Load native libraries in debug mode if needed
-    native = Native.get_native_singleton(is_debug=native_debug, simd=simd)
+    native = Native.get_native_singleton(is_debug=native_debug)
     native.set_logging(log_level)
 
     return handler

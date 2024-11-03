@@ -596,6 +596,7 @@ We also build on top of many great packages. Please check them out!
 - [Interpreting Machine Learning Models with InterpretML](https://www.youtube.com/watch?v=ERNuFfsknhk)
 - [Machine Learning Model Interpretability using AzureML & InterpretML (Explainable Boosting Machine)](https://www.youtube.com/watch?v=0ocVtXU8o1I)
 - [A Case Study of Using Explainable Boosting Machines](https://uncch.hosted.panopto.com/Panopto/Pages/Embed.aspx?id=063d6839-e8db-40e0-8df4-b0fc012e709b&start=0)
+- [From SHAP to EBM: Explain your Gradient Boosting Models in Python](https://media.ccc.de/v/sps24-56262-from-shap-to-ebm-explain-you)
 
 # External links
 

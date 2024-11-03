@@ -39,9 +39,11 @@ def boost(
     rng,
     create_booster_flags,
     objective,
-    experimental_params=None,
+    experimental_params,
+    develop_options,
 ):
     try:
+        develop._develop_options = develop_options  # restore these in this process
         step_idx = 0
         with Booster(
             dataset,
@@ -88,10 +90,10 @@ def boost(
                         heap = []
                         if (
                             step_idx == 0
-                            and develop._randomize_initial_feature_order
-                            or develop._randomize_greedy_feature_order
+                            and develop.get_option("randomize_initial_feature_order")
+                            or develop.get_option("randomize_greedy_feature_order")
                             and greedy_steps > 0
-                            or develop._randomize_feature_order
+                            or develop.get_option("randomize_feature_order")
                         ):
                             native.shuffle(rng, random_cyclic_ordering)
 

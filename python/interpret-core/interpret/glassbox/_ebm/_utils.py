@@ -149,7 +149,7 @@ def _create_proportional_tensor(axis_weights):
 
 def process_bag_terms(intercept, term_scores, bin_weights):
     for scores, weights in zip(term_scores, bin_weights):
-        if develop._purify_result:
+        if develop.get_option("purify_result"):
             new_scores, add_impurities, add_intercept = purify(scores, weights)
             # TODO: benchmark if it is better to add new_impurities to the existing model scores,
             #       or better to discard them.  Discarding might be better if we assume the
