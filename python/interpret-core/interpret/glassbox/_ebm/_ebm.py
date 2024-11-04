@@ -2255,6 +2255,44 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def pred_from_base_models_with_uncertainty(self, instances):
+        """Gets raw scores and uncertainties from the bagged base models.
+        Generates predictions by averaging outputs across all bagged models, and estimates
+        uncertainty using the standard deviation of predictions across bags.
+
+        Args:
+            instances: ndarray of shape (n_samples, n_features)
+                The input samples to predict on.
+
+        Returns:
+            ndarray of shape (n_samples, 2)
+                First column contains mean predictions
+                Second column contains uncertainties
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        X, n_samples = preclean_X(
+            instances, self.feature_names_in_, self.feature_types_in_
+        )
+        preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
+        # Get predictions from each bagged model
+        for bag_index in range(len(self.bagged_intercept_)):
+            # Use slices from bagged parameters for this specific model
+            scores = ebm_predict_scores(
+                X=X,
+                n_samples=n_samples,
+                feature_names_in=self.feature_names_in_,
+                feature_types_in=self.feature_types_in_,
+                bins=self.bins_,
+                intercept=self.bagged_intercept_[bag_index],
+                term_scores=[scores[bag_index] for scores in self.bagged_scores_],
+                term_features=self.term_features_,
+            )
+            preds_per_bag[:, bag_index] = scores
+
+        # Calculate mean predictions and uncertainties
+        return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
+
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 

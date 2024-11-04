@@ -550,6 +550,7 @@ def construct_bins(
     privacy_bounds=None,
 ):
     is_mains = True
+
     for max_bins in max_bins_leveled:
         preprocessor = EBMPreprocessor(
             feature_names_given,
@@ -566,7 +567,6 @@ def construct_bins(
         )
 
         seed = increment_seed(seed)
-
         preprocessor.fit(X, y, sample_weight)
         if is_mains:
             is_mains = False
@@ -582,6 +582,7 @@ def construct_bins(
             missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
             noise_scale = preprocessor.noise_scale_
+
         else:
             if feature_names_in != preprocessor.feature_names_in_:
                 msg = "Mismatched feature_names"
