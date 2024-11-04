@@ -192,21 +192,43 @@ INTERNAL_IMPORT_EXPORT_BODY void AlignedFree(void* const p) {
       free(*(REINTERPRET_CAST(void**, p) - 1));
    }
 }
-INTERNAL_IMPORT_EXPORT_BODY void* AlignedRealloc(void* const p, const size_t cOldBytes, const size_t cNewBytes) {
-   EBM_ASSERT(NULL != p);
-   EBM_ASSERT(0 != cOldBytes);
-   EBM_ASSERT(0 != cNewBytes);
-   EBM_ASSERT(cOldBytes < cNewBytes);
-
-   void* const pNew = AlignedAlloc(cNewBytes);
-   if(pNew == NULL) {
-      // identically to realloc, we do NOT free the old memory if there is not enough memory
-      return NULL;
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm AlignedGrow(
+      void** const pp, size_t* const pcOldBytes, const size_t cRequiredBytes, const BoolEbm bCopy) {
+   const size_t cOldBytes = *pcOldBytes;
+   if(cOldBytes < cRequiredBytes) {
+      // Grow by about 50%
+      const size_t cAddBytes = (cRequiredBytes >> 1) + size_t{16}; // Cannot overflow. Cannot be zero.
+      if(SIZE_MAX - (sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1) - cAddBytes < cRequiredBytes) {
+         return Error_OutOfMemory;
+      }
+      const size_t cPaddedBytes = sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1 + cAddBytes + cRequiredBytes;
+      if(EBM_FALSE == bCopy) {
+         AlignedFree(*pp);
+         *pp = NULL;
+      }
+      char* const p = REINTERPRET_CAST(char*, malloc(cPaddedBytes));
+      if(NULL == p) {
+         return Error_OutOfMemory;
+      }
+      uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
+      pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1)) &
+            STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
+      char* const pNew = REINTERPRET_CAST(char*, pointer);
+      EBM_ASSERT(p < pNew);
+      *(REINTERPRET_CAST(void**, pNew) - 1) = p;
+      const size_t cRemoveBytes = pNew - p;
+      EBM_ASSERT(cRemoveBytes < cPaddedBytes);
+      const size_t cAllocatedBytes = cPaddedBytes - cRemoveBytes;
+      EBM_ASSERT(cRequiredBytes <= cAllocatedBytes);
+      *pcOldBytes = cAllocatedBytes;
+      if(EBM_FALSE != bCopy) {
+         void* pOld = *pp;
+         memcpy(pNew, pOld, cOldBytes);
+         AlignedFree(pOld);
+      }
+      *pp = pNew;
    }
-   memcpy(pNew, p, cOldBytes); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-
-   AlignedFree(p);
-   return pNew;
+   return Error_None;
 }
 
 #ifdef __cplusplus

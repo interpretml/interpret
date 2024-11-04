@@ -195,7 +195,8 @@ INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN
 
 INTERNAL_IMPORT_EXPORT_INCLUDE void* AlignedAlloc(const size_t cBytes);
 INTERNAL_IMPORT_EXPORT_INCLUDE void AlignedFree(void* const p);
-INTERNAL_IMPORT_EXPORT_INCLUDE void* AlignedRealloc(void* const p, const size_t cOldBytes, const size_t cNewBytes);
+INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm AlignedGrow(
+      void** const pp, size_t* const pcOldBytes, const size_t cRequiredBytes, const BoolEbm bCopy);
 
 static const char k_registrationSeparator = ',';
 
