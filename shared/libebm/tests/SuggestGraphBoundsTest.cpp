@@ -330,7 +330,7 @@ TEST_CASE("SafeMean, -inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == -INFINITY);
+   CHECK(mean == double{-INFINITY});
 }
 
 TEST_CASE("SafeMean, +inf") {
@@ -340,7 +340,7 @@ TEST_CASE("SafeMean, +inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == INFINITY);
+   CHECK(mean == double{INFINITY});
 }
 
 TEST_CASE("SafeMean, nan") {
@@ -370,7 +370,7 @@ TEST_CASE("SafeMean, +inf and -inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == INFINITY);
+   CHECK(mean == double{INFINITY});
 }
 
 TEST_CASE("SafeMean, -inf and +inf") {
@@ -380,7 +380,7 @@ TEST_CASE("SafeMean, -inf and +inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == INFINITY);
+   CHECK(mean == double{INFINITY});
 }
 
 TEST_CASE("SafeMean, more -inf") {
@@ -390,7 +390,7 @@ TEST_CASE("SafeMean, more -inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == -INFINITY);
+   CHECK(mean == double{-INFINITY});
 }
 
 TEST_CASE("SafeMean, more +inf") {
@@ -400,7 +400,7 @@ TEST_CASE("SafeMean, more +inf") {
 
    const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
    CHECK(Error_None == error);
-   CHECK(mean == INFINITY);
+   CHECK(mean == double{INFINITY});
 }
 
 TEST_CASE("SafeMean, no overflow positive") {
@@ -561,7 +561,7 @@ TEST_CASE("SafeStandardDeviation, -inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, +inf") {
@@ -571,7 +571,7 @@ TEST_CASE("SafeStandardDeviation, +inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, nan") {
@@ -601,7 +601,7 @@ TEST_CASE("SafeStandardDeviation, +inf and -inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, -inf and +inf") {
@@ -611,7 +611,7 @@ TEST_CASE("SafeStandardDeviation, -inf and +inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, more -inf") {
@@ -621,7 +621,7 @@ TEST_CASE("SafeStandardDeviation, more -inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, more +inf") {
@@ -631,7 +631,7 @@ TEST_CASE("SafeStandardDeviation, more +inf") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, no overflow positive") {
@@ -685,7 +685,7 @@ TEST_CASE("SafeStandardDeviation, -inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, +inf, weighted") {
@@ -696,7 +696,7 @@ TEST_CASE("SafeStandardDeviation, +inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, nan, weighted") {
@@ -729,7 +729,7 @@ TEST_CASE("SafeStandardDeviation, +inf and -inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, -inf and +inf, weighted") {
@@ -740,7 +740,7 @@ TEST_CASE("SafeStandardDeviation, -inf and +inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, more -inf, weighted") {
@@ -751,7 +751,7 @@ TEST_CASE("SafeStandardDeviation, more -inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, more +inf, weighted") {
@@ -762,7 +762,7 @@ TEST_CASE("SafeStandardDeviation, more +inf, weighted") {
 
    const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
    CHECK(Error_None == error);
-   CHECK(stddev == INFINITY);
+   CHECK(stddev == double{INFINITY});
 }
 
 TEST_CASE("SafeStandardDeviation, no overflow positive, weighted") {
