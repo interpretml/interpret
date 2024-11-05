@@ -35,6 +35,7 @@ class AzureContainerInstance(Executor):
         # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
         image: str = "mcr.microsoft.com/devcontainers/python:latest",
         docker_db_uri: Optional[str] = None,
+        resource_uris: Optional[List[str]] = None,
         max_undead: int = 20,
         delete_on_complete: bool = True,
     ):
@@ -56,6 +57,7 @@ class AzureContainerInstance(Executor):
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
             image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
+            resource_uris (List[str], optional): Azure resources to grant contributor access permissions to.
             max_undead (int): maximum number of containers that are allowed to be left alive if there is an error during initialization. Higher numbers increase the speed of initialization, but might incur higher cost if any zombies escape.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
@@ -71,6 +73,7 @@ class AzureContainerInstance(Executor):
         self._delete_on_complete = delete_on_complete
 
         self._docker_db_uri = docker_db_uri
+        self._resource_uris = resource_uris
         self._azure_json = {
             "tenant_id": azure_tenant_id,
             "client_id": azure_client_id,
@@ -104,6 +107,7 @@ class AzureContainerInstance(Executor):
             experiment_id,
             self._n_instances,
             uri,
+            self._resource_uris,
             timeout,
             self._image,
             self._azure_json,

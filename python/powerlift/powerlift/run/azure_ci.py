@@ -1,7 +1,7 @@
 """This is called to run a trial by worker nodes (local / remote)."""
 
 
-def assign_delete_permissions(
+def assign_contributor_permissions(
     aci_client,
     auth_client,
     max_undead,
@@ -9,6 +9,7 @@ def assign_delete_permissions(
     subscription_id,
     client_id,
     resource_group_name,
+    resource_uris,
     container_groups,
 ):
     from heapq import heappush, heappop
@@ -63,6 +64,11 @@ def assign_delete_permissions(
             auth_client.role_assignments.create(
                 scope, str(uuid.uuid4()), role_assignment_params1
             )
+            if resource_uris is not None:
+                for resource_uri in resource_uris:
+                    auth_client.role_assignments.create(
+                        resource_uri, str(uuid.uuid4()), role_assignment_params1
+                    )
             auth_client.role_assignments.create(
                 scope, str(uuid.uuid4()), role_assignment_params2
             )
@@ -79,6 +85,7 @@ def run_azure_process(
     experiment_id,
     n_instances,
     uri,
+    resource_uris,
     timeout,
     image,
     azure_json,
@@ -454,7 +461,7 @@ def run_azure_process(
 
         container_group_names.add(container_group_name)
         heappush(container_groups, (datetime.now(), container_group_name, started))
-        aci_client, auth_client = assign_delete_permissions(
+        aci_client, auth_client = assign_contributor_permissions(
             aci_client,
             auth_client,
             max_undead,
@@ -462,10 +469,11 @@ def run_azure_process(
             subscription_id,
             client_id,
             resource_group_name,
+            resource_uris,
             container_groups,
         )
 
-    assign_delete_permissions(
+    assign_contributor_permissions(
         aci_client,
         auth_client,
         0,
@@ -473,6 +481,7 @@ def run_azure_process(
         subscription_id,
         client_id,
         resource_group_name,
+        resource_uris,
         container_groups,
     )
 
