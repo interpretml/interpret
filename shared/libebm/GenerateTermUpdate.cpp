@@ -101,6 +101,8 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
+      double* const aTensorWeights,
+      double* const aTensorHess,
       double* const pTotalGain
 #ifndef NDEBUG
       ,
@@ -431,6 +433,8 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             deltaStepMax,
             aAuxiliaryBins,
             aWeights,
+            nullptr,
+            nullptr,
             pTotalGain
 #ifndef NDEBUG
             ,
