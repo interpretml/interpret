@@ -45,6 +45,7 @@ void BoosterShell::Free(BoosterShell* const pBoosterShell) {
       AlignedFree(pBoosterShell->m_aMulticlassMidwayTemp);
       AlignedFree(pBoosterShell->m_aSplitPositionsTemp);
       AlignedFree(pBoosterShell->m_aTreeNodesTemp);
+      AlignedFree(pBoosterShell->m_aTemp1);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -162,6 +163,7 @@ ErrorEbm BoosterShell::FillAllocations() {
          if(nullptr == m_aTreeNodesTemp) {
             goto failed_allocation;
          }
+         m_cTreeNodesTempBytes = m_pBoosterCore->GetCountBytesTreeNodes();
       }
    }
 

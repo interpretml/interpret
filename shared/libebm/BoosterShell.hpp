@@ -46,7 +46,12 @@ class BoosterShell final {
    // right?
    void* m_aMulticlassMidwayTemp;
 
+   size_t m_cTemp1Bytes;
+   void* m_aTemp1;
+
+   size_t m_cTreeNodesTempBytes;
    void* m_aTreeNodesTemp;
+
    void* m_aSplitPositionsTemp;
 
 #ifndef NDEBUG
@@ -70,6 +75,11 @@ class BoosterShell final {
       m_aBoostingFastBinsTemp = nullptr;
       m_aBoostingMainBins = nullptr;
       m_aMulticlassMidwayTemp = nullptr;
+
+      m_cTemp1Bytes = 0;
+      m_aTemp1 = nullptr;
+
+      m_cTreeNodesTempBytes = 0;
       m_aTreeNodesTemp = nullptr;
       m_aSplitPositionsTemp = nullptr;
    }
@@ -124,6 +134,17 @@ class BoosterShell final {
    template<bool bHessian, size_t cCompilerScores = 1>
    INLINE_ALWAYS TreeNode<bHessian, cCompilerScores>* GetTreeNodesTemp() {
       return static_cast<TreeNode<bHessian, cCompilerScores>*>(m_aTreeNodesTemp);
+   }
+
+   INLINE_ALWAYS void* GetTreeNodeMultiTemp() { return m_aTreeNodesTemp; }
+
+   INLINE_ALWAYS ErrorEbm ReserveTreeNodesTemp(const size_t cBytes) {
+      return AlignedGrow(static_cast<void**>(&m_aTreeNodesTemp), &m_cTreeNodesTempBytes, cBytes, EBM_FALSE);
+   }
+
+   INLINE_ALWAYS void* GetTemp1() { return m_aTemp1; }
+   INLINE_ALWAYS ErrorEbm ReserveTemp1(const size_t cBytes) {
+      return AlignedGrow(static_cast<void**>(&m_aTemp1), &m_cTemp1Bytes, cBytes, EBM_FALSE);
    }
 
    template<bool bHessian, size_t cCompilerScores = 1>

@@ -22,6 +22,7 @@
 #include "Term.hpp"
 #include "Tensor.hpp"
 #include "TensorTotalsSum.hpp"
+#include "TreeNode.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 
@@ -246,7 +247,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const FloatCalc deltaStepMax,
          BinBase* const aAuxiliaryBinsBase,
          double* const aWeights,
-         double* const pTotalGain
+         double* const pTotalGain,
+         const size_t cPossibleSplits,
+         unsigned char** const aaSplits
 #ifndef NDEBUG
          ,
          const BinBase* const aDebugCopyBinsBase
@@ -265,6 +268,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       const size_t cRuntimeScores = pBoosterCore->GetCountScores();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, cRuntimeScores);
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
+      const size_t cBytesTreeNodeMulti = GetTreeNodeMultiSize(bHessian, cScores);
+
+      auto* const pRootTreeNode = reinterpret_cast<TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>*>(
+            pBoosterShell->GetTreeNodeMultiTemp());
+      auto* const pLowTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 1);
+      auto* const pHighTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 2);
+      auto* const pLowLowTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 3);
+      auto* const pLowHighTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 4);
+      auto* const pHighLowTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 5);
+      auto* const pHighHighTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 6);
+      const auto* const pTreeNodeEnd = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 7);
 
       auto* const aAuxiliaryBins =
             aAuxiliaryBinsBase
@@ -403,6 +417,43 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   memcpy(pTotals1LowHighBest, pTotals2LowHighBest, cBytesPerBin);
                   memcpy(pTotals1HighLowBest, pTotals2HighLowBest, cBytesPerBin);
                   memcpy(pTotals1HighHighBest, pTotals2HighHighBest, cBytesPerBin);
+
+                  pRootTreeNode->SetSplitGain(0.0);
+                  pRootTreeNode->SetDimensionIndex(0);
+                  pRootTreeNode->SetSplitIndex(iBin1);
+                  pRootTreeNode->SetParent(nullptr);
+                  pRootTreeNode->SplitNode();
+                  pRootTreeNode->SetChildren(pLowTreeNode);
+
+                  pLowTreeNode->SetSplitGain(0.0);
+                  pLowTreeNode->SetDimensionIndex(1);
+                  pLowTreeNode->SetSplitIndex(splitSecond1LowBest);
+                  pLowTreeNode->SetParent(pRootTreeNode);
+                  pLowTreeNode->SplitNode();
+                  pLowTreeNode->SetChildren(pLowLowTreeNode);
+
+                  pHighTreeNode->SetSplitGain(0.0);
+                  pHighTreeNode->SetDimensionIndex(1);
+                  pHighTreeNode->SetSplitIndex(splitSecond1HighBest);
+                  pHighTreeNode->SetParent(pRootTreeNode);
+                  pHighTreeNode->SplitNode();
+                  pHighTreeNode->SetChildren(pHighLowTreeNode);
+
+                  pLowLowTreeNode->SetSplitGain(0.0);
+                  pLowLowTreeNode->SetParent(pLowTreeNode);
+                  memcpy(pLowLowTreeNode->GetBin(), pTotals2LowLowBest, cBytesPerBin);
+
+                  pLowHighTreeNode->SetSplitGain(0.0);
+                  pLowHighTreeNode->SetParent(pLowTreeNode);
+                  memcpy(pLowHighTreeNode->GetBin(), pTotals2LowHighBest, cBytesPerBin);
+
+                  pHighLowTreeNode->SetSplitGain(0.0);
+                  pHighLowTreeNode->SetParent(pHighTreeNode);
+                  memcpy(pHighLowTreeNode->GetBin(), pTotals2HighLowBest, cBytesPerBin);
+
+                  pHighHighTreeNode->SetSplitGain(0.0);
+                  pHighHighTreeNode->SetParent(pHighTreeNode);
+                  memcpy(pHighHighTreeNode->GetBin(), pTotals2HighHighBest, cBytesPerBin);
                } else {
                   EBM_ASSERT(!std::isnan(gain));
                }
@@ -507,6 +558,43 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   memcpy(pTotals2HighHighBest, pTotals1HighHighBestInner, cBytesPerBin);
 
                   bSplitFirst2 = true;
+
+                  pRootTreeNode->SetSplitGain(0.0);
+                  pRootTreeNode->SetDimensionIndex(1);
+                  pRootTreeNode->SetSplitIndex(iBin2);
+                  pRootTreeNode->SetParent(nullptr);
+                  pRootTreeNode->SplitNode();
+                  pRootTreeNode->SetChildren(pLowTreeNode);
+
+                  pLowTreeNode->SetSplitGain(0.0);
+                  pLowTreeNode->SetDimensionIndex(0);
+                  pLowTreeNode->SetSplitIndex(splitSecond2LowBest);
+                  pLowTreeNode->SetParent(pRootTreeNode);
+                  pLowTreeNode->SplitNode();
+                  pLowTreeNode->SetChildren(pLowLowTreeNode);
+
+                  pHighTreeNode->SetSplitGain(0.0);
+                  pHighTreeNode->SetDimensionIndex(0);
+                  pHighTreeNode->SetSplitIndex(splitSecond2HighBest);
+                  pHighTreeNode->SetParent(pRootTreeNode);
+                  pHighTreeNode->SplitNode();
+                  pHighTreeNode->SetChildren(pHighLowTreeNode);
+
+                  pLowLowTreeNode->SetSplitGain(0.0);
+                  pLowLowTreeNode->SetParent(pLowTreeNode);
+                  memcpy(pLowLowTreeNode->GetBin(), pTotals1LowLowBestInner, cBytesPerBin);
+
+                  pLowHighTreeNode->SetSplitGain(0.0);
+                  pLowHighTreeNode->SetParent(pLowTreeNode);
+                  memcpy(pLowHighTreeNode->GetBin(), pTotals1LowHighBestInner, cBytesPerBin);
+
+                  pHighLowTreeNode->SetSplitGain(0.0);
+                  pHighLowTreeNode->SetParent(pHighTreeNode);
+                  memcpy(pHighLowTreeNode->GetBin(), pTotals1HighLowBestInner, cBytesPerBin);
+
+                  pHighHighTreeNode->SetSplitGain(0.0);
+                  pHighHighTreeNode->SetParent(pHighTreeNode);
+                  memcpy(pHighHighTreeNode->GetBin(), pTotals1HighHighBestInner, cBytesPerBin);
                } else {
                   EBM_ASSERT(!std::isnan(gain));
                }
@@ -581,61 +669,147 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                *pTotalGain = 0;
                if(LIKELY(k_gainMin <= bestGain)) {
                   *pTotalGain = static_cast<double>(bestGain);
-                  if(bSplitFirst2) {
-                     // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero
-                     // splits
-                     error = pInnerTermUpdate->SetCountSlices(iDimension2, 2);
+
+                  size_t acSplits[k_cDimensionsMax];
+                  memset(acSplits, 0, sizeof(acSplits[0]) * pTerm->GetCountRealDimensions());
+                  memset(aaSplits[0], 0, cPossibleSplits * sizeof(*aaSplits[0]));
+                  auto* pTreeNode = pRootTreeNode;
+                  do {
+                     if(pTreeNode->IsSplit()) {
+                        const size_t iDimension = pTreeNode->GetDimensionIndex();
+                        const size_t iSplit = pTreeNode->GetSplitIndex();
+                        unsigned char* const aSplits = aaSplits[iDimension];
+                        if(!aSplits[iSplit]) {
+                           aSplits[iSplit] = 1;
+                           ++acSplits[iDimension];
+                        }
+                     }
+                     pTreeNode = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
+                  } while(pTreeNodeEnd != pTreeNode);
+
+                  size_t cTensorCells = 1;
+                  for(size_t iDimension = 0; iDimension < 2; ++iDimension) {
+                     const size_t iRealDimension = 0 == iDimension ? iDimension1 : iDimension2;
+
+                     const size_t cSplits = acSplits[iDimension];
+                     const size_t cSlices = cSplits + 1;
+                     error = pInnerTermUpdate->SetCountSlices(iRealDimension, cSlices);
                      if(Error_None != error) {
                         // already logged
                         return error;
                      }
-                     const size_t temp1 = splitFirst2Best + 1;
-                     pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp1);
+
+                     cTensorCells *= cSlices;
+
+                     UIntSplit* pSplits = pInnerTermUpdate->GetSplitPointer(iRealDimension);
+                     EBM_ASSERT(1 <= cSplits);
+                     UIntSplit* pSplitsLast = pSplits + (cSplits - 1);
+                     size_t iSplit = 0;
+                     unsigned char* const aSplits = aaSplits[iDimension];
+                     while(true) {
+                        if(aSplits[iSplit]) {
+                           *pSplits = iSplit + 1;
+                           if(pSplitsLast == pSplits) {
+                              break;
+                           }
+                           ++pSplits;
+                        }
+                        ++iSplit;
+                     }
+                  }
+
+                  error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cTensorCells);
+                  if(Error_None != error) {
+                     // already logged
+                     return error;
+                  }
+
+                  FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+                  FloatScore* pUpdateScores = aUpdateScores;
+
+                  UIntSplit* aSplits1 = pInnerTermUpdate->GetSplitPointer(iDimension1);
+                  UIntSplit* aSplits2 = pInnerTermUpdate->GetSplitPointer(iDimension2);
+                  const size_t cSplits1 = acSplits[0];
+                  const size_t cSplits2 = acSplits[1];
+                  size_t aTensorIndexes[k_cDimensionsMax];
+                  size_t iSplit2 = 0;
+                  aTensorIndexes[1] = 0;
+                  while(true) {
+                     size_t iSplit1 = 0;
+                     aTensorIndexes[0] = 0;
+                     while(true) {
+                        pTreeNode = pRootTreeNode;
+                        while(pTreeNode->IsSplit()) {
+                           const size_t iDimension = pTreeNode->GetDimensionIndex();
+                           const size_t iSplitTree = pTreeNode->GetSplitIndex();
+                           const size_t iSplitTensor = aTensorIndexes[iDimension];
+                           pTreeNode = pTreeNode->GetChildren();
+                           if(iSplitTree < iSplitTensor) {
+                              pTreeNode = GetRightNode(pTreeNode, cBytesTreeNodeMulti);
+                           } else {
+                              pTreeNode = GetLeftNode(pTreeNode);
+                           }
+                        }
+
+                        FloatCalc weight = static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight());
+                        auto* pGradientPair = pTreeNode->GetBin()->GetGradientPairs();
+                        for(size_t iScore = 0; iScore < cScores; ++iScore) {
+                           if(bUpdateWithHessian) {
+                              weight = static_cast<FloatCalc>(pGradientPair->GetHess());
+                           }
+
+                           FloatCalc prediction =
+                                 -CalcNegUpdate<false>(static_cast<FloatCalc>(pGradientPair->m_sumGradients),
+                                       weight,
+                                       regAlpha,
+                                       regLambda,
+                                       deltaStepMax);
+
+                           *pUpdateScores = prediction;
+                           ++pUpdateScores;
+                           ++pGradientPair;
+                        }
+
+                        if(cSplits1 == iSplit1) {
+                           break;
+                        }
+                        aTensorIndexes[0] = static_cast<size_t>(aSplits1[iSplit1]);
+                        ++iSplit1;
+                     }
+                     if(cSplits2 == iSplit2) {
+                        break;
+                     }
+                     aTensorIndexes[1] = static_cast<size_t>(aSplits2[iSplit2]);
+                     ++iSplit2;
+                  }
+
+                  if(bSplitFirst2) {
+                     // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero
+                     // splits
+
+                     EBM_ASSERT(1 == acSplits[1]);
+                     EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
+                           static_cast<UIntSplit>(splitFirst2Best + 1));
 
                      if(splitFirst2LowBest < splitFirst2HighBest) {
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 3);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp2 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp2);
-                        const size_t temp3 = splitFirst2HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = static_cast<UIntSplit>(temp3);
+                        EBM_ASSERT(cTensorCells == 6);
+                        EBM_ASSERT(2 == acSplits[0]);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
+                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[1] ==
+                              static_cast<UIntSplit>(splitFirst2HighBest + 1));
                      } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 3);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp4 = splitFirst2HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp4);
-                        const size_t temp5 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[1] = static_cast<UIntSplit>(temp5);
+                        EBM_ASSERT(cTensorCells == 6);
+                        EBM_ASSERT(2 == acSplits[0]);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
+                              static_cast<UIntSplit>(splitFirst2HighBest + 1));
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[1] ==
+                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
                      } else {
-                        error = pInnerTermUpdate->SetCountSlices(iDimension1, 2);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp6 = splitFirst2LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp6);
+                        EBM_ASSERT(1 == acSplits[0]);
+                        EBM_ASSERT(cTensorCells == 4);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
+                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
                      }
 
                      auto* const pGradientPairTotals2LowLowBest = pTotals2LowLowBest->GetGradientPairs();
@@ -713,14 +887,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                                  deltaStepMax);
                         }
 
-                        FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst2LowBest < splitFirst2HighBest) {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 6 * iScore] = static_cast<double>(weightLowHigh);
@@ -730,12 +908,16 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                               aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
                            }
                         } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
-                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 6 * iScore] = static_cast<double>(weightLowLow);
@@ -745,10 +927,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                               aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
                            }
                         } else {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 4 * iScore] = static_cast<double>(weightLowHigh);
@@ -758,11 +943,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         }
                      }
                   } else {
-                     error = pInnerTermUpdate->SetCountSlices(iDimension1, 2);
-                     if(Error_None != error) {
-                        // already logged
-                        return error;
-                     }
+                     EBM_ASSERT(1 == acSplits[0]);
 
                      // The Clang static analyzer believes that splitFirst1Best could contain uninitialized garbage
                      // We can only reach here if bSplitFirst2 is false and if k_illegalGainFloat != bestGain
@@ -770,54 +951,30 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                      // our code path above must have gone through the section that set both bestGain and
                      // splitFirst1Best.  The Clang static analyzer does not seem to recognize this, so stop it
                      StopClangAnalysis();
-                     const size_t temp7 = splitFirst1Best + 1;
-                     pInnerTermUpdate->GetSplitPointer(iDimension1)[0] = static_cast<UIntSplit>(temp7);
+                     EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
+                           static_cast<UIntSplit>(splitFirst1Best + 1));
 
                      if(splitFirst1LowBest < splitFirst1HighBest) {
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
+                        EBM_ASSERT(cTensorCells == 6);
 
-                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 3);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp8 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp8);
-                        const size_t temp9 = splitFirst1HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = static_cast<UIntSplit>(temp9);
+                        EBM_ASSERT(2 == acSplits[1]);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
+                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[1] ==
+                              static_cast<UIntSplit>(splitFirst1HighBest + 1));
                      } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 6);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
+                        EBM_ASSERT(cTensorCells == 6);
 
-                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 3);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp10 = splitFirst1HighBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp10);
-                        const size_t temp11 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[1] = static_cast<UIntSplit>(temp11);
+                        EBM_ASSERT(2 == acSplits[1]);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
+                              static_cast<UIntSplit>(splitFirst1HighBest + 1));
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[1] ==
+                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
                      } else {
-                        error = pInnerTermUpdate->SetCountSlices(iDimension2, 2);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * 4);
-                        if(Error_None != error) {
-                           // already logged
-                           return error;
-                        }
-                        const size_t temp12 = splitFirst1LowBest + 1;
-                        pInnerTermUpdate->GetSplitPointer(iDimension2)[0] = static_cast<UIntSplit>(temp12);
+                        EBM_ASSERT(1 == acSplits[1]);
+                        EBM_ASSERT(cTensorCells == 4);
+                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
+                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
                      }
 
                      auto* const pGradientPairTotals1LowLowBest = pTotals1LowLowBest->GetGradientPairs();
@@ -894,14 +1051,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                                  regLambda,
                                  deltaStepMax);
                         }
-                        FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
                         if(splitFirst1LowBest < splitFirst1HighBest) {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
@@ -911,12 +1072,16 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                               aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
                            }
                         } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
-                           aUpdateScores[4 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[5 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
@@ -926,10 +1091,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                               aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
                            }
                         } else {
-                           aUpdateScores[0 * cScores + iScore] = static_cast<FloatScore>(predictionLowLow);
-                           aUpdateScores[1 * cScores + iScore] = static_cast<FloatScore>(predictionHighLow);
-                           aUpdateScores[2 * cScores + iScore] = static_cast<FloatScore>(predictionLowHigh);
-                           aUpdateScores[3 * cScores + iScore] = static_cast<FloatScore>(predictionHighHigh);
+                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
+                           EBM_ASSERT(
+                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
+                           EBM_ASSERT(
+                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
                            if(nullptr != aWeights) {
                               aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
                               aWeights[1 + 4 * iScore] = static_cast<double>(weightHighLow);
@@ -1019,7 +1187,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
-         double* const pTotalGain
+         double* const pTotalGain,
+         const size_t cPossibleSplits,
+         unsigned char** const aaSplits
 #ifndef NDEBUG
          ,
          const BinBase* const aDebugCopyBinsBase
@@ -1038,7 +1208,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
@@ -1056,7 +1228,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
@@ -1081,7 +1255,9 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
-         double* const pTotalGain
+         double* const pTotalGain,
+         const size_t cPossibleSplits,
+         unsigned char** const aaSplits
 #ifndef NDEBUG
          ,
          const BinBase* const aDebugCopyBinsBase
@@ -1098,7 +1274,9 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             deltaStepMax,
             aAuxiliaryBinsBase,
             aWeights,
-            pTotalGain
+            pTotalGain,
+            cPossibleSplits,
+            aaSplits
 #ifndef NDEBUG
             ,
             aDebugCopyBinsBase
@@ -1126,12 +1304,82 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
 ) {
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
+   const bool bHessian = pBoosterCore->IsHessian();
+
+   if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cRuntimeScores)) {
+      // TODO: move this to init
+      return Error_OutOfMemory;
+   }
+
+   if(IsOverflowTreeNodeMultiSize(bHessian, cRuntimeScores)) {
+      // TODO: move this to init
+      return Error_OutOfMemory;
+   }
+
+   size_t cPossibleSplits = 0;
+
+   size_t cBytes = 1;
+   const size_t* pcBins = acBins;
+   const size_t* const acBinsEnd = acBins + pTerm->GetCountRealDimensions();
+   do {
+      const size_t cBins = *pcBins;
+      const size_t cSplits = cBins - 1;
+      if(IsAddError(cPossibleSplits, cSplits)) {
+         return Error_OutOfMemory;
+      }
+      cPossibleSplits += cSplits;
+      if(IsMultiplyError(cBins, cBytes)) {
+         return Error_OutOfMemory;
+      }
+      cBytes *= cBins;
+      ++pcBins;
+   } while(acBinsEnd != pcBins);
+   // For pairs, this calculates the exact max number of splits. For higher dimensions
+   // the max number of splits will be less, but it should be close enough.
+   // Each bin gets a tree node to record the gradient totals, and each split gets a TreeNode
+   // during construction. Each split contains a minimum of 1 bin on each side, so we have
+   // cBins - 1 potential splits.
+
+   if(IsAddError(cBytes, cBytes - 1)) {
+      return Error_OutOfMemory;
+   }
+   cBytes = cBytes + cBytes - 1;
+
+   const size_t cBytesTreeNodeMulti = GetTreeNodeMultiSize(bHessian, cRuntimeScores);
+
+   if(IsMultiplyError(cBytesTreeNodeMulti, cBytes)) {
+      return Error_OutOfMemory;
+   }
+   cBytes *= cBytesTreeNodeMulti;
+
+   ErrorEbm error = pBoosterShell->ReserveTreeNodesTemp(cBytes);
+   if(Error_None != error) {
+      return error;
+   }
+
+   error = pBoosterShell->ReserveTemp1(cPossibleSplits * sizeof(unsigned char));
+   if(Error_None != error) {
+      return error;
+   }
+
+   unsigned char* pSplits = static_cast<unsigned char*>(pBoosterShell->GetTemp1());
+   unsigned char* aaSplits[k_cDimensionsMax];
+   unsigned char** paSplits = aaSplits;
+
+   pcBins = acBins;
+   do {
+      *paSplits = pSplits;
+      const size_t cSplits = *pcBins - 1;
+      pSplits += cSplits;
+      ++paSplits;
+      ++pcBins;
+   } while(acBinsEnd != pcBins);
 
    EBM_ASSERT(1 <= cRuntimeScores);
-   if(pBoosterCore->IsHessian()) {
+   if(bHessian) {
       if(size_t{1} != cRuntimeScores) {
          // muticlass
-         return PartitionTwoDimensionalBoostingTarget<true, k_cCompilerScoresStart>::Func(pBoosterShell,
+         error = PartitionTwoDimensionalBoostingTarget<true, k_cCompilerScoresStart>::Func(pBoosterShell,
                flags,
                pTerm,
                acBins,
@@ -1142,14 +1390,16 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalBoostingInternal<true, k_oneScore>::Func(pBoosterShell,
+         error = PartitionTwoDimensionalBoostingInternal<true, k_oneScore>::Func(pBoosterShell,
                flags,
                pTerm,
                acBins,
@@ -1160,7 +1410,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
@@ -1170,7 +1422,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return PartitionTwoDimensionalBoostingInternal<false, k_dynamicScores>::Func(pBoosterShell,
+         error = PartitionTwoDimensionalBoostingInternal<false, k_dynamicScores>::Func(pBoosterShell,
                flags,
                pTerm,
                acBins,
@@ -1181,14 +1433,16 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalBoostingInternal<false, k_oneScore>::Func(pBoosterShell,
+         error = PartitionTwoDimensionalBoostingInternal<false, k_oneScore>::Func(pBoosterShell,
                flags,
                pTerm,
                acBins,
@@ -1199,7 +1453,9 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                deltaStepMax,
                aAuxiliaryBinsBase,
                aWeights,
-               pTotalGain
+               pTotalGain,
+               cPossibleSplits,
+               aaSplits
 #ifndef NDEBUG
                ,
                aDebugCopyBinsBase
@@ -1207,6 +1463,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
          );
       }
    }
+   return error;
 }
 
 } // namespace DEFINED_ZONE_NAME
