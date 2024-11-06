@@ -248,6 +248,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          BinBase* const aAuxiliaryBinsBase,
          double* const aWeights,
          double* const aTensorWeights,
+         double* const aTensorGrad,
          double* const aTensorHess,
          double* const pTotalGain,
          const size_t cPossibleSplits,
@@ -740,6 +741,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   FloatScore* pUpdateScores = aUpdateScores;
 
                   FloatScore* pTensorWeights = aTensorWeights;
+                  FloatScore* pTensorGrad = aTensorGrad;
                   FloatScore* pTensorHess = aTensorHess;
 
                   UIntSplit* aSplits1 = pInnerTermUpdate->GetSplitPointer(iDimension1);
@@ -771,7 +773,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         }
 
                         FloatCalc tensorHess;
-                        if(nullptr != pTensorWeights || nullptr != pTensorHess) {
+                        if(nullptr != pTensorWeights || nullptr != pTensorHess || nullptr != pTensorGrad) {
                            ASSERT_BIN_OK(cBytesPerBin, pTempScratch, pBoosterShell->GetDebugMainBinsEnd());
                            TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                                  cRealDimensions,
@@ -800,12 +802,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            if(bUpdateWithHessian) {
                               nodeHess = static_cast<FloatCalc>(pGradientPair->GetHess());
                            }
-                           if(nullptr != pTensorHess) {
-                              if(bUpdateWithHessian) {
-                                 tensorHess = static_cast<FloatCalc>(pTensorGradientPair->GetHess());
+                           if(nullptr != pTensorHess || nullptr != pTensorGrad) {
+                              if(nullptr != pTensorHess) {
+                                 if(bUpdateWithHessian) {
+                                    tensorHess = static_cast<FloatCalc>(pTensorGradientPair->GetHess());
+                                 }
+                                 *pTensorHess = tensorHess;
+                                 ++pTensorHess;
                               }
-                              *pTensorHess = tensorHess;
-                              ++pTensorHess;
+                              if(nullptr != pTensorGrad) {
+                                 *pTensorGrad = static_cast<FloatCalc>(pTensorGradientPair->m_sumGradients);
+                                 ++pTensorGrad;
+                              }
                               ++pTensorGradientPair;
                            }
 
@@ -1194,12 +1202,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       if(nullptr != aTensorWeights) {
          *aTensorWeights = weightAll;
       }
+      FloatScore* pTensorGrad = aTensorGrad;
       FloatScore* pTensorHess = aTensorHess;
 
       FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
          FloatCalc update;
          FloatCalc weight;
+         if(nullptr != pTensorGrad) {
+            *pTensorGrad = static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients);
+            ++pTensorGrad;
+         }
          if(bUpdateWithHessian) {
             weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
             if(nullptr != pTensorHess) {
@@ -1253,6 +1266,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const aTensorWeights,
+         double* const aTensorGrad,
          double* const aTensorHess,
          double* const pTotalGain,
          const size_t cPossibleSplits,
@@ -1276,6 +1290,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
@@ -1298,6 +1313,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
@@ -1327,6 +1343,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          BinBase* aAuxiliaryBinsBase,
          double* const aWeights,
          double* const aTensorWeights,
+         double* const aTensorGrad,
          double* const aTensorHess,
          double* const pTotalGain,
          const size_t cPossibleSplits,
@@ -1348,6 +1365,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             aAuxiliaryBinsBase,
             aWeights,
             aTensorWeights,
+            aTensorGrad,
             aTensorHess,
             pTotalGain,
             cPossibleSplits,
@@ -1372,6 +1390,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       BinBase* aAuxiliaryBinsBase,
       double* const aWeights,
       double* const aTensorWeights,
+      double* const aTensorGrad,
       double* const aTensorHess,
       double* const pTotalGain
 #ifndef NDEBUG
@@ -1468,6 +1487,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
@@ -1490,6 +1510,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
@@ -1515,6 +1536,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
@@ -1537,6 +1559,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                aAuxiliaryBinsBase,
                aWeights,
                aTensorWeights,
+               aTensorGrad,
                aTensorHess,
                pTotalGain,
                cPossibleSplits,
