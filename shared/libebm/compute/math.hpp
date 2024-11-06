@@ -184,8 +184,8 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::exp(orig), ret, typename TFloat::T{1e-6}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::exp(orig), retDebug, typename TFloat::T{1e-6}));
          },
          bNegateInput ? -val : val,
          ret);
@@ -262,8 +262,8 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::log(orig), ret, typename TFloat::T{1e-6}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::log(orig), retDebug, typename TFloat::T{1e-6}));
          },
          val,
          bNegateOutput ? -ret : ret);
@@ -334,8 +334,8 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::exp(orig), ret, typename TFloat::T{1e-12}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::exp(orig), retDebug, typename TFloat::T{1e-12}));
          },
          bNegateInput ? -val : val,
          ret);
@@ -414,8 +414,8 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::log(orig), ret, typename TFloat::T{1e-12}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::log(orig), retDebug, typename TFloat::T{1e-12}));
          },
          val,
          bNegateOutput ? -ret : ret);
