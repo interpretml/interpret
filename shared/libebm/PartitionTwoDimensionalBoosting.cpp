@@ -634,6 +634,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       const FloatMain weightAll = pTotal->GetWeight();
       EBM_ASSERT(0 < weightAll);
 
+      const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
       const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
       GradientPair<FloatMain, bHessian>* pTensorGradientPair = nullptr;
@@ -649,8 +650,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(!std::isnan(bestGain));
             EBM_ASSERT(0 <= bestGain);
             EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
-
-            const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
 
             // now subtract the parent partial gain
             for(size_t iScore = 0; iScore < cScores; ++iScore) {
@@ -804,7 +803,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            }
                            if(nullptr != pTensorHess || nullptr != pTensorGrad) {
                               if(nullptr != pTensorHess) {
-                                 if(bUpdateWithHessian) {
+                                 if(bUseLogitBoost) {
                                     tensorHess = static_cast<FloatCalc>(pTensorGradientPair->GetHess());
                                  }
                                  *pTensorHess = tensorHess;
@@ -1213,12 +1212,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             *pTensorGrad = static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients);
             ++pTensorGrad;
          }
+         if(nullptr != pTensorHess) {
+            if(bUseLogitBoost) {
+               weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
+            } else {
+               weight = static_cast<FloatCalc>(weightAll);
+            }
+            *pTensorHess = weight;
+            ++pTensorHess;
+         }
          if(bUpdateWithHessian) {
             weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            if(nullptr != pTensorHess) {
-               *pTensorHess = weight;
-               ++pTensorHess;
-            }
             update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                   weight,
                   regAlpha,
@@ -1229,10 +1233,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             }
          } else {
             weight = static_cast<FloatCalc>(weightAll);
-            if(nullptr != pTensorHess) {
-               *pTensorHess = weight;
-               ++pTensorHess;
-            }
             update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                   weight,
                   regAlpha,
