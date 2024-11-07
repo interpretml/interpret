@@ -23,8 +23,8 @@ def assign_contributor_permissions(
 
     # Contributor Role
     contributor_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-    # Storage Blob Data Reader
-    data_reader_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/2a2b9908-6ea1-4ae2-8e65-a410df84e7d1"
+    # Storage Blob Data Contributor
+    data_contributor_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 
     while max_undead < len(vms):
         _, vm_name, started = heappop(vms)
@@ -50,7 +50,7 @@ def assign_contributor_permissions(
                 principal_type="ServicePrincipal",
             )
             role_assignment_params2 = RoleAssignmentCreateParameters(
-                role_definition_id=data_reader_definition_id,
+                role_definition_id=data_contributor_definition_id,
                 principal_id=vm.identity.principal_id,
                 principal_type="ServicePrincipal",
             )
