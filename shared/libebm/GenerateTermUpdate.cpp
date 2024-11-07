@@ -16,6 +16,7 @@
 #include "zones.h"
 
 #include "bridge.h"
+#include "common.hpp"
 #include "GradientPair.hpp"
 #include "Bin.hpp"
 
@@ -416,10 +417,33 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
 
    double* aWeights = nullptr;
+   double* pGradient = nullptr;
+   double* pHessian = nullptr;
    if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
       // allocate the biggest tensor that is possible to split into
+
       // TODO: cache this memory allocation so that we don't do it each time
-      aWeights = static_cast<double*>(malloc(sizeof(double) * cScores * cTensorBins));
+
+      if(IsAddError(size_t{1}, cScores)) {
+         return Error_OutOfMemory;
+      }
+      size_t cItems = 1 + cScores;
+      const bool bHessian = pBoosterCore->IsHessian();
+      const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+      if(bUseLogitBoost) {
+         if(IsAddError(cScores, cItems)) {
+            return Error_OutOfMemory;
+         }
+         cItems += cScores;
+      }
+      if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
+         return Error_OutOfMemory;
+      }
+      aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
+      pGradient = aWeights + cTensorBins;
+      if(bUseLogitBoost) {
+         pHessian = pGradient + cTensorBins * cScores;
+      }
    }
 
    if(2 == pTerm->GetCountRealDimensions()) {
@@ -433,10 +457,10 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             regLambda,
             deltaStepMax,
             aAuxiliaryBins,
+            nullptr,
             aWeights,
-            nullptr,
-            nullptr,
-            nullptr,
+            pGradient,
+            pHessian,
             pTotalGain
 #ifndef NDEBUG
             ,
@@ -507,7 +531,6 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       double* pScores = pTensor->GetTensorScoresPointer();
       const double* const pScoreMulticlassEnd = &pScores[cScores];
-      double* pWeights = aWeights;
       do {
          // ignore the return from PurifyInternal since we should check for NaN in the weights
          // earlier and the checks in PurifyInternal are only for the stand-alone purification API
@@ -518,13 +541,36 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
                nullptr,
                nullptr,
                acPurifyBins,
-               pWeights,
+               aWeights,
                pScores,
                nullptr,
                nullptr);
-         pWeights += cTensorBinsPurify;
          ++pScores;
       } while(pScoreMulticlassEnd != pScores);
+
+      // When calculating purified gain, we do not subtract
+      // the parent since the pure partial gain is always zero.
+      double gain = 0.0;
+      double* pScore = pTensor->GetTensorScoresPointer();
+      EBM_ASSERT(!IsMultiplyError(cTensorBinsPurify, cScores)); // we have allocated it
+      double* pScoreEnd = pScore + cTensorBinsPurify * cScores;
+      double* pWeight = aWeights;
+      do {
+         double hess = *pWeight;
+         for(size_t iScore = 0; iScore < cScores; ++iScore) {
+            double grad = *pGradient;
+            if(nullptr != pHessian) {
+               hess = *pHessian;
+               ++pHessian;
+            }
+            double update = *pScore;
+            gain += CalcPartialGainFromUpdate(grad, hess, -update, regAlpha, regLambda);
+            ++pGradient;
+            ++pScore;
+         }
+         ++pWeight;
+      } while(pScoreEnd != pScore);
+      *pTotalGain = gain;
 
       free(aWeights);
    }

@@ -326,6 +326,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    UIntMain cSamplesRight = binParent.GetCountSamples();
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+   const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
    EBM_ASSERT(FloatCalc{0} <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
@@ -356,6 +357,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       binLeft.SetWeight(sumHessiansLeftOrig);
       FloatCalc sumHessiansLeft = static_cast<FloatCalc>(sumHessiansLeftOrig);
 
+      FloatCalc sumHessiansRightUpdate = sumHessiansRight;
+      FloatCalc sumHessiansLeftUpdate = sumHessiansLeft;
+
       const auto* const aBinGradientPairs = pBinCur->GetGradientPairs();
       FloatCalc gain = 0;
       size_t iScore = 0;
@@ -370,29 +374,32 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             const FloatMain newSumHessiansLeftOrig =
                   aLeftGradientPairs[iScore].GetHess() + aBinGradientPairs[iScore].GetHess();
             aLeftGradientPairs[iScore].SetHess(newSumHessiansLeftOrig);
+            const FloatCalc newSumHessiansRight =
+                  static_cast<FloatCalc>(aParentGradientPairs[iScore].GetHess() - newSumHessiansLeftOrig);
+            const FloatCalc newSumHessiansLeft = static_cast<FloatCalc>(newSumHessiansLeftOrig);
             if(bUseLogitBoost) {
-               const FloatCalc newSumHessiansRight =
-                     static_cast<FloatCalc>(aParentGradientPairs[iScore].GetHess() - newSumHessiansLeftOrig);
                if(UNLIKELY(newSumHessiansRight < hessianMin)) {
                   // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
                   goto done;
                }
-               const FloatCalc newSumHessiansLeft = static_cast<FloatCalc>(newSumHessiansLeftOrig);
                if(UNLIKELY(newSumHessiansLeft < hessianMin)) {
                   bLegal = false;
                }
                sumHessiansLeft = newSumHessiansLeft;
                sumHessiansRight = newSumHessiansRight;
             }
+            if(bUpdateWithHessian) {
+               sumHessiansLeftUpdate = newSumHessiansLeft;
+               sumHessiansRightUpdate = newSumHessiansRight;
+            }
          }
-
          const FloatCalc sumGradientsLeft = static_cast<FloatCalc>(sumGradientsLeftOrig);
 
          if(MONOTONE_NONE != direction) {
             const FloatCalc negUpdateRight =
-                  CalcNegUpdate<false>(sumGradientsRight, sumHessiansRight, regAlpha, regLambda, deltaStepMax);
+                  CalcNegUpdate<false>(sumGradientsRight, sumHessiansRightUpdate, regAlpha, regLambda, deltaStepMax);
             const FloatCalc negUpdateLeft =
-                  CalcNegUpdate<false>(sumGradientsLeft, sumHessiansLeft, regAlpha, regLambda, deltaStepMax);
+                  CalcNegUpdate<false>(sumGradientsLeft, sumHessiansLeftUpdate, regAlpha, regLambda, deltaStepMax);
             if(MonotoneDirection{0} < direction) {
                if(negUpdateLeft < negUpdateRight) {
                   bLegal = false;
