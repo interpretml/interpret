@@ -23,8 +23,6 @@ def assign_contributor_permissions(
 
     # Contributor Role
     contributor_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-    # Storage Blob Data Contributor
-    data_contributor_definition_id = f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 
     while max_undead < len(vms):
         _, vm_name, started = heappop(vms)
@@ -44,17 +42,12 @@ def assign_contributor_permissions(
 
             vm = compute_client.virtual_machines.get(resource_group_name, vm_name)
 
-            role_assignment_params1 = RoleAssignmentCreateParameters(
+            ra_user_contributor = RoleAssignmentCreateParameters(
                 role_definition_id=contributor_definition_id,
                 principal_id=vm.identity.principal_id,
                 principal_type="ServicePrincipal",
             )
-            role_assignment_params2 = RoleAssignmentCreateParameters(
-                role_definition_id=data_contributor_definition_id,
-                principal_id=vm.identity.principal_id,
-                principal_type="ServicePrincipal",
-            )
-            role_assignment_params3 = RoleAssignmentCreateParameters(
+            ra_principal_contributor = RoleAssignmentCreateParameters(
                 role_definition_id=contributor_definition_id,
                 principal_id=client_id,
                 principal_type="User",
@@ -65,18 +58,15 @@ def assign_contributor_permissions(
                 auth_client = AuthorizationManagementClient(credential, subscription_id)
 
             auth_client.role_assignments.create(
-                scope, str(uuid.uuid4()), role_assignment_params1
+                scope, str(uuid.uuid4()), ra_user_contributor
             )
             if resource_uris is not None:
                 for resource_uri in resource_uris:
                     auth_client.role_assignments.create(
-                        resource_uri, str(uuid.uuid4()), role_assignment_params1
-                    )
-                    auth_client.role_assignments.create(
-                        resource_uri, str(uuid.uuid4()), role_assignment_params2
+                        resource_uri, str(uuid.uuid4()), ra_user_contributor
                     )
             auth_client.role_assignments.create(
-                scope, str(uuid.uuid4()), role_assignment_params3
+                scope, str(uuid.uuid4()), ra_principal_contributor
             )
         except HttpResponseError:
             compute_client = None
