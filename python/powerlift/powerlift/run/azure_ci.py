@@ -474,7 +474,6 @@ def run_azure_process(
         else:
             raise RuntimeError("Failed to create container group.")
 
-
         container_group_names.add(container_group_name)
         heappush(container_groups, (datetime.now(), container_group_name, started))
         aci_client, auth_client = assign_contributor_permissions(
