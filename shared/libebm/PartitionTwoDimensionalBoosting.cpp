@@ -284,6 +284,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       auto* const pHighHighTreeNode = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 6);
       const auto* const pTreeNodeEnd = IndexTreeNodeMulti(pRootTreeNode, cBytesTreeNodeMulti * 7);
 
+      const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+
       auto* const aAuxiliaryBins =
             aAuxiliaryBinsBase
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
@@ -340,7 +342,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       // TODO: put this somewhere safer than at the top of the array
       // and also, we can reduce our auxillary space
-      auto* pTempScratch = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
+      auto* const pTempScratch = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
+
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)> binTemp;
+
+      // if we know how many scores there are, use the memory on the stack where the compiler can optimize access
+      static constexpr bool bUseStackMemory = k_dynamicScores != cCompilerScores;
+      auto* const aGradientPairsTemp = bUseStackMemory ? binTemp.GetGradientPairs() : pTempScratch->GetGradientPairs();
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
@@ -594,7 +602,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       const FloatMain weightAll = pTotal->GetWeight();
       EBM_ASSERT(0 < weightAll);
 
-      const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
       const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
       GradientPair<FloatMain, bHessian>* pTensorGradientPair = nullptr;
@@ -703,8 +710,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   FloatScore* pTensorGrad = aTensorGrad;
                   FloatScore* pTensorHess = aTensorHess;
 
-                  UIntSplit* aSplits1 = pInnerTermUpdate->GetSplitPointer(iDimension1);
-                  UIntSplit* aSplits2 = pInnerTermUpdate->GetSplitPointer(iDimension2);
+                  UIntSplit* const aSplits1 = pInnerTermUpdate->GetSplitPointer(iDimension1);
+                  UIntSplit* const aSplits2 = pInnerTermUpdate->GetSplitPointer(iDimension2);
                   const size_t cSplits1 = acSplits[0];
                   const size_t cSplits2 = acSplits[1];
 
@@ -738,17 +745,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                                  cRealDimensions,
                                  aDimensions,
                                  aBins,
-                                 *pTempScratch,
-                                 pTempScratch->GetGradientPairs()
+                                 binTemp,
+                                 aGradientPairsTemp
 #ifndef NDEBUG
-                                       ,
+                                 ,
                                  aDebugCopyBins,
                                  pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
                            );
 
-                           pTensorGradientPair = pTempScratch->GetGradientPairs();
-                           tensorHess = static_cast<FloatCalc>(pTempScratch->GetWeight());
+                           pTensorGradientPair = aGradientPairsTemp;
+                           tensorHess = static_cast<FloatCalc>(binTemp.GetWeight());
                            if(nullptr != pTensorWeights) {
                               *pTensorWeights = tensorHess;
                               ++pTensorWeights;
