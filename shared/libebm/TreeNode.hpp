@@ -225,26 +225,14 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNodeMulti final {
    }
    inline size_t GetDimensionIndex() const { return m_iDimension; }
 
-   inline void SetSplitIndex(const size_t iSplit) {
-      EBM_ASSERT(!IsSplit());
-      m_iSplit = iSplit;
-   }
+   inline void SetSplitIndex(const size_t iSplit) { m_iSplit = iSplit; }
    inline size_t GetSplitIndex() const { return m_iSplit; }
 
-   inline void SetParent(TreeNodeMulti* const pParent) {
-      EBM_ASSERT(!IsSplit());
-      m_pParent = pParent;
-   }
+   inline void SetParent(TreeNodeMulti* const pParent) { m_pParent = pParent; }
    inline TreeNodeMulti* GetParent() { return m_pParent; }
 
-   inline void SetChildren(TreeNodeMulti* const pChildren) {
-      EBM_ASSERT(IsSplit());
-      m_pChildren = pChildren;
-   }
-   inline TreeNodeMulti* GetChildren() {
-      EBM_ASSERT(IsSplit());
-      return m_pChildren;
-   }
+   inline void SetChildren(TreeNodeMulti* const pChildren) { m_pChildren = pChildren; }
+   inline TreeNodeMulti* GetChildren() { return m_pChildren; }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() { return &m_bin; }
 

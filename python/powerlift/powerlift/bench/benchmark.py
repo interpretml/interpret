@@ -152,6 +152,7 @@ class Benchmark:
         # Run trials
         if executor is None:
             from powerlift.executors import LocalMachine
+
             executor = LocalMachine(self._store)
         self._executors.add(executor)
         executor.submit(experiment_id, timeout=timeout)

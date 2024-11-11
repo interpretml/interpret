@@ -321,100 +321,6 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 #endif // NDEBUG
    );
 
-   // permutation0
-   // gain_permute0
-   //   divs0
-   //   gain0
-   //     divs00
-   //     gain00
-   //       divs000
-   //       gain000
-   //       divs001
-   //       gain001
-   //     divs01
-   //     gain01
-   //       divs010
-   //       gain010
-   //       divs011
-   //       gain011
-   //   divs1
-   //   gain1
-   //     divs10
-   //     gain10
-   //       divs100
-   //       gain100
-   //       divs101
-   //       gain101
-   //     divs11
-   //     gain11
-   //       divs110
-   //       gain110
-   //       divs111
-   //       gain111
-   //---------------------------
-   // permutation1
-   // gain_permute1
-   //   divs0
-   //   gain0
-   //     divs00
-   //     gain00
-   //       divs000
-   //       gain000
-   //       divs001
-   //       gain001
-   //     divs01
-   //     gain01
-   //       divs010
-   //       gain010
-   //       divs011
-   //       gain011
-   //   divs1
-   //   gain1
-   //     divs10
-   //     gain10
-   //       divs100
-   //       gain100
-   //       divs101
-   //       gain101
-   //     divs11
-   //     gain11
-   //       divs110
-   //       gain110
-   //       divs111
-   //       gain111       *
-
-   // size_t aiDimensionPermutation[k_cDimensionsMax];
-   // for(unsigned int iDimensionInitialize = 0; iDimensionInitialize < cDimensions; ++iDimensionInitialize) {
-   //    aiDimensionPermutation[iDimensionInitialize] = iDimensionInitialize;
-   // }
-   // size_t aiDimensionPermutationBest[k_cDimensionsMax];
-
-   // DO this is a fixed length that we should make variable!
-   // size_t aDOSplits[1000000];
-   // size_t aDOSplitsBest[1000000];
-
-   // do {
-   //    size_t aiDimensions[k_cDimensionsMax];
-   //    memset(aiDimensions, 0, sizeof(aiDimensions[0]) * cDimensions));
-   //    while(true) {
-
-   //      EBM_ASSERT(0 == iDimension);
-   //      while(true) {
-   //         ++aiDimension[iDimension];
-   //         if(aiDimension[iDimension] !=
-   //               pTerms->GetFeatures()[aiDimensionPermutation[iDimension]].m_pFeature->m_cBins) {
-   //            break;
-   //         }
-   //         aiDimension[iDimension] = 0;
-   //         ++iDimension;
-   //         if(iDimension == cDimensions) {
-   //            goto move_next_permutation;
-   //         }
-   //      }
-   //   }
-   //   move_next_permutation:
-   //} while(std::next_permutation(aiDimensionPermutation, &aiDimensionPermutation[cDimensions]));
-
    double* aWeights = nullptr;
    double* pGradient = nullptr;
    double* pHessian = nullptr;
@@ -506,7 +412,6 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       size_t acPurifyBins[k_cDimensionsMax];
       size_t* pcPurifyBins = acPurifyBins;
-      const size_t* const pcPurifyBinsEnd = &acPurifyBins[pTerm->GetCountRealDimensions()];
       size_t cSurfaceBinsTotal = 0;
       iDimension = 0;
       do {
@@ -519,7 +424,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             ++pcPurifyBins;
          }
          ++iDimension;
-      } while(pcPurifyBinsEnd != pcPurifyBins);
+      } while(pTerm->GetCountDimensions() != iDimension);
 
       constexpr double tolerance = 0.0; // TODO: for now purify to the max, but test tolerances and profile them
 

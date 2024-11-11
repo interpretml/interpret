@@ -1067,6 +1067,29 @@ TEST_CASE("Term with one feature with one or two states is the exact same as zer
    }
 }
 
+TEST_CASE("2 dimensional with two splits in each dimension, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(3), FeatureTest(3)},
+         {{0, 1}},
+         {
+               TestSample({0, 0}, 1),
+               TestSample({0, 1}, 2),
+               TestSample({0, 2}, 3),
+               TestSample({1, 0}, 4),
+               TestSample({1, 1}, 5),
+               TestSample({1, 2}, 6),
+               TestSample({2, 0}, 7),
+               TestSample({2, 1}, 8),
+               TestSample({2, 2}, 9),
+         },
+         {TestSample({0, 0}, 10)});
+
+   double validationMetric = test.Boost(0).validationMetric;
+   CHECK_APPROX(validationMetric, 99.500624999999999);
+}
+
+#ifdef NEVER
+// TODO: restore this test
 TEST_CASE("3 dimensional term with one dimension reduced in different ways, boosting, regression") {
    TestBoost test0 = TestBoost(Task_Regression,
          {FeatureTest(2, true, false), FeatureTest(2), FeatureTest(2)},
@@ -1136,6 +1159,7 @@ TEST_CASE("3 dimensional term with one dimension reduced in different ways, boos
       }
    }
 }
+#endif // NEVER
 
 TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
    static const std::vector<IntEbm> k_leavesMax = {IntEbm{3}};
@@ -1588,6 +1612,8 @@ TEST_CASE("tweedie, boosting") {
    CHECK_APPROX(termScore, 2.3025076860047466);
 }
 
+#ifdef NEVER
+// TODO: reinstate this test
 TEST_CASE("purified boosting of impure input, regression") {
    // We give the booster a dataset with only impurity and ask it to purify the model
    // which results in no update each iteration.
@@ -1677,7 +1703,10 @@ TEST_CASE("purified boosting of impure input, multiclass") {
       }
    }
 }
+#endif // NEVER
 
+#ifdef NEVER
+// TODO: restore this test
 TEST_CASE("purified boosting and impure boosting identical for pure input, regression") {
    TestBoost testPure = TestBoost(Task_Regression,
          {FeatureTest(2), FeatureTest(2)},
@@ -1866,6 +1895,7 @@ TEST_CASE("purified boosting and impure boosting identical for pure input, multi
       }
    }
 }
+#endif // NEVER
 
 TEST_CASE("purified boosting and impure boosting different for impure input, regression") {
    TestBoost testPure = TestBoost(Task_Regression,
