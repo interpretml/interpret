@@ -318,36 +318,14 @@ def run_azure_process(
             python_exit_code=$?
             echo "Powerlift startup.py script exited with code: $python_exit_code"
 
-            if [ $python_exit_code -ne 1 ]; then
+            if [ $python_exit_code -eq 0 ]; then
                 break
             fi
-        done
-        
-        if [ $python_exit_code -ne 0 ]; then
-            retry_count=0
-            while true; do
-                result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id = '$EXPERIMENT_ID' AND runner_id = '$RUNNER_ID' LIMIT 1;" -t -A)
-                exit_code=$?
-                if [ $exit_code -eq 0 ]; then
-                    break
-                fi
-                echo "psql failed with exit code $exit_code."
-                if [ $retry_count -ge 300 ]; then
-                    echo "Maximum number of retries reached. Command failed."
-                    self_delete $python_exit_code
-                fi
-                retry_count=$((retry_count + 1))
-                echo "Sleeping."
-                sleep 300
-                echo "Retrying."
-            done
 
-            if [ -n "$result" ]; then
-                # Found an orphaned trial. Set the errmsg if it isn't already set.
-
+            if [ $python_exit_code -ne 1 ]; then
                 retry_count=0
                 while true; do
-                    psql "$DB_URL" -c "UPDATE trial SET runner_id = -2, end_time = CURRENT_TIMESTAMP, errmsg = 'ERROR: $python_exit_code' WHERE id = $result AND errmsg is NULL;"
+                    result=$(psql "$DB_URL" -c "SELECT id FROM trial WHERE experiment_id = '$EXPERIMENT_ID' AND runner_id = '$RUNNER_ID' LIMIT 1;" -t -A)
                     exit_code=$?
                     if [ $exit_code -eq 0 ]; then
                         break
@@ -362,8 +340,30 @@ def run_azure_process(
                     sleep 300
                     echo "Retrying."
                 done
+
+                if [ -n "$result" ]; then
+                    # Found an orphaned trial. Set the errmsg if it isn't already set.
+
+                    retry_count=0
+                    while true; do
+                        psql "$DB_URL" -c "UPDATE trial SET runner_id = -2, end_time = CURRENT_TIMESTAMP, errmsg = 'ERROR: $python_exit_code' WHERE id = $result AND errmsg is NULL;"
+                        exit_code=$?
+                        if [ $exit_code -eq 0 ]; then
+                            break
+                        fi
+                        echo "psql failed with exit code $exit_code."
+                        if [ $retry_count -ge 300 ]; then
+                            echo "Maximum number of retries reached. Command failed."
+                            self_delete $python_exit_code
+                        fi
+                        retry_count=$((retry_count + 1))
+                        echo "Sleeping."
+                        sleep 300
+                        echo "Retrying."
+                    done
+                fi
             fi
-        fi
+        done
 
         self_delete $python_exit_code
     """
