@@ -13,7 +13,6 @@ import pandas as pd
 from powerlift.bench.experiment import Experiment
 from powerlift.bench.store import Store
 from powerlift.db import schema as db
-from powerlift.executors import LocalMachine
 from powerlift.executors.base import Executor
 
 
@@ -152,6 +151,7 @@ class Benchmark:
 
         # Run trials
         if executor is None:
+            from powerlift.executors import LocalMachine
             executor = LocalMachine(self._store)
         self._executors.add(executor)
         executor.submit(experiment_id, timeout=timeout)
