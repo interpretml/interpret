@@ -246,7 +246,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          BinBase* const aAuxiliaryBinsBase,
-         double* const aWeights,
          double* const aTensorWeights,
          double* const aTensorGrad,
          double* const aTensorHess,
@@ -339,17 +338,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       FloatCalc bestGain = k_illegalGainFloat;
 
-      size_t splitFirst1Best;
-      size_t splitFirst1LowBest;
-      size_t splitFirst1HighBest;
-
-      auto* pTotals1LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
-      auto* pTotals1LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
-      auto* pTotals1HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
-      auto* pTotals1HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 3);
-
-      // TODO: put this somewhere safer than in the middle of the big array
-      auto* pTempScratch = IndexBin(aAuxiliaryBins, cBytesPerBin * 6);
+      // TODO: put this somewhere safer than at the top of the array
+      // and also, we can reduce our auxillary space
+      auto* pTempScratch = IndexBin(aAuxiliaryBins, cBytesPerBin * 0);
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
@@ -358,8 +349,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       do {
          aiStart[0] = iBin1;
          size_t splitSecond1LowBest;
-         auto* pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 4);
-         auto* pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
+         auto* pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 1);
+         auto* pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 2);
          const FloatCalc gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                cRealDimensions,
                flags,
@@ -386,8 +377,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(std::isnan(gain1) || FloatCalc{0} <= gain1);
 
             size_t splitSecond1HighBest;
-            auto* pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 8);
-            auto* pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 9);
+            auto* pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 5);
+            auto* pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 6);
             const FloatCalc gain2 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   flags,
@@ -420,15 +411,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   EBM_ASSERT(std::isnan(gain) || FloatCalc{0} <= gain);
 
                   bestGain = gain;
-                  splitFirst1Best = iBin1;
-                  splitFirst1LowBest = splitSecond1LowBest;
-                  splitFirst1HighBest = splitSecond1HighBest;
-
-                  // TODO: we can probably copy all 4 of these with a single memcpy
-                  memcpy(pTotals1LowLowBest, pTotals2LowLowBest, cBytesPerBin);
-                  memcpy(pTotals1LowHighBest, pTotals2LowHighBest, cBytesPerBin);
-                  memcpy(pTotals1HighLowBest, pTotals2HighLowBest, cBytesPerBin);
-                  memcpy(pTotals1HighHighBest, pTotals2HighHighBest, cBytesPerBin);
 
                   pRootTreeNode->SetSplitGain(0.0);
                   pRootTreeNode->SetDimensionIndex(0);
@@ -480,24 +462,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          ++iBin1;
       } while(iBin1 < cBinsDimension1 - 1);
 
-      bool bSplitFirst2 = false;
-
-      size_t splitFirst2Best;
-      size_t splitFirst2LowBest;
-      size_t splitFirst2HighBest;
-
-      auto* pTotals2LowLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 12);
-      auto* pTotals2LowHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 13);
-      auto* pTotals2HighLowBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 14);
-      auto* pTotals2HighHighBest = IndexBin(aAuxiliaryBins, cBytesPerBin * 15);
-
       LOG_0(Trace_Verbose, "PartitionTwoDimensionalBoostingInternal Starting SECOND bin sweep loop");
       size_t iBin2 = 0;
       do {
          aiStart[1] = iBin2;
          size_t splitSecond2LowBest;
-         auto* pTotals1LowLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 16);
-         auto* pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 17);
+         auto* pTotals1LowLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 9);
+         auto* pTotals1LowHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 10);
          const FloatCalc gain1 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                cRealDimensions,
                flags,
@@ -524,8 +495,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(std::isnan(gain1) || FloatCalc{0} <= gain1);
 
             size_t splitSecond2HighBest;
-            auto* pTotals1HighLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 20);
-            auto* pTotals1HighHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 21);
+            auto* pTotals1HighLowBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 13);
+            auto* pTotals1HighHighBestInner = IndexBin(aAuxiliaryBins, cBytesPerBin * 14);
             const FloatCalc gain2 = SweepMultiDimensional<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                   cRealDimensions,
                   flags,
@@ -558,17 +529,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   EBM_ASSERT(std::isnan(gain) || 0 <= gain);
 
                   bestGain = gain;
-                  splitFirst2Best = iBin2;
-                  splitFirst2LowBest = splitSecond2LowBest;
-                  splitFirst2HighBest = splitSecond2HighBest;
-
-                  // TODO: we can probably copy all 4 of these with a single memcpy
-                  memcpy(pTotals2LowLowBest, pTotals1LowLowBestInner, cBytesPerBin);
-                  memcpy(pTotals2LowHighBest, pTotals1LowHighBestInner, cBytesPerBin);
-                  memcpy(pTotals2HighLowBest, pTotals1HighLowBestInner, cBytesPerBin);
-                  memcpy(pTotals2HighHighBest, pTotals1HighHighBestInner, cBytesPerBin);
-
-                  bSplitFirst2 = true;
 
                   pRootTreeNode->SetSplitGain(0.0);
                   pRootTreeNode->SetDimensionIndex(1);
@@ -842,330 +802,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            iSplit2 < cSplits2 ? static_cast<size_t>(aSplits2[iSplit2]) : aDimensions[1].m_cBins;
                   } while(iSplit2 <= cSplits2);
 
-                  if(bSplitFirst2) {
-                     // if bSplitFirst2 is true, then there definetly was a split, so we don't have to check for zero
-                     // splits
-
-                     EBM_ASSERT(1 == acSplits[1]);
-                     EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
-                           static_cast<UIntSplit>(splitFirst2Best + 1));
-
-                     if(splitFirst2LowBest < splitFirst2HighBest) {
-                        EBM_ASSERT(cTensorCells == 6);
-                        EBM_ASSERT(2 == acSplits[0]);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
-                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[1] ==
-                              static_cast<UIntSplit>(splitFirst2HighBest + 1));
-                     } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                        EBM_ASSERT(cTensorCells == 6);
-                        EBM_ASSERT(2 == acSplits[0]);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
-                              static_cast<UIntSplit>(splitFirst2HighBest + 1));
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[1] ==
-                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
-                     } else {
-                        EBM_ASSERT(1 == acSplits[0]);
-                        EBM_ASSERT(cTensorCells == 4);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
-                              static_cast<UIntSplit>(splitFirst2LowBest + 1));
-                     }
-
-                     auto* const pGradientPairTotals2LowLowBest = pTotals2LowLowBest->GetGradientPairs();
-                     auto* const pGradientPairTotals2LowHighBest = pTotals2LowHighBest->GetGradientPairs();
-                     auto* const pGradientPairTotals2HighLowBest = pTotals2HighLowBest->GetGradientPairs();
-                     auto* const pGradientPairTotals2HighHighBest = pTotals2HighHighBest->GetGradientPairs();
-                     for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                        FloatCalc predictionLowLow;
-                        FloatCalc predictionLowHigh;
-                        FloatCalc predictionHighLow;
-                        FloatCalc predictionHighHigh;
-
-                        FloatCalc weightLowLow;
-                        FloatCalc weightLowHigh;
-                        FloatCalc weightHighLow;
-                        FloatCalc weightHighHigh;
-
-                        if(bUpdateWithHessian) {
-                           weightLowLow = static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].GetHess());
-                           predictionLowLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].GetHess());
-                           predictionLowHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighLow = static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].GetHess());
-                           predictionHighLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].GetHess());
-                           predictionHighHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                        } else {
-                           weightLowLow = static_cast<FloatCalc>(pTotals2LowLowBest->GetWeight());
-                           predictionLowLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightLowHigh = static_cast<FloatCalc>(pTotals2LowHighBest->GetWeight());
-                           predictionLowHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighLow = static_cast<FloatCalc>(pTotals2HighLowBest->GetWeight());
-                           predictionHighLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighHigh = static_cast<FloatCalc>(pTotals2HighHighBest->GetWeight());
-                           predictionHighHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals2HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                        }
-
-                        if(splitFirst2LowBest < splitFirst2HighBest) {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[4 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        } else if(splitFirst2HighBest < splitFirst2LowBest) {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[4 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        } else {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 4 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[2 + 4 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[3 + 4 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        }
-                     }
-                  } else {
-                     EBM_ASSERT(1 == acSplits[0]);
-
-                     // The Clang static analyzer believes that splitFirst1Best could contain uninitialized garbage
-                     // We can only reach here if bSplitFirst2 is false and if k_illegalGainFloat != bestGain
-                     // Since bestGain is only set in two places, and since in one of those bSplitFirst2 is set to true
-                     // our code path above must have gone through the section that set both bestGain and
-                     // splitFirst1Best.  The Clang static analyzer does not seem to recognize this, so stop it
-                     StopClangAnalysis();
-                     EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension1)[0] ==
-                           static_cast<UIntSplit>(splitFirst1Best + 1));
-
-                     if(splitFirst1LowBest < splitFirst1HighBest) {
-                        EBM_ASSERT(cTensorCells == 6);
-
-                        EBM_ASSERT(2 == acSplits[1]);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
-                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[1] ==
-                              static_cast<UIntSplit>(splitFirst1HighBest + 1));
-                     } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                        EBM_ASSERT(cTensorCells == 6);
-
-                        EBM_ASSERT(2 == acSplits[1]);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
-                              static_cast<UIntSplit>(splitFirst1HighBest + 1));
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[1] ==
-                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
-                     } else {
-                        EBM_ASSERT(1 == acSplits[1]);
-                        EBM_ASSERT(cTensorCells == 4);
-                        EBM_ASSERT(pInnerTermUpdate->GetSplitPointer(iDimension2)[0] ==
-                              static_cast<UIntSplit>(splitFirst1LowBest + 1));
-                     }
-
-                     auto* const pGradientPairTotals1LowLowBest = pTotals1LowLowBest->GetGradientPairs();
-                     auto* const pGradientPairTotals1LowHighBest = pTotals1LowHighBest->GetGradientPairs();
-                     auto* const pGradientPairTotals1HighLowBest = pTotals1HighLowBest->GetGradientPairs();
-                     auto* const pGradientPairTotals1HighHighBest = pTotals1HighHighBest->GetGradientPairs();
-                     for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                        FloatCalc predictionLowLow;
-                        FloatCalc predictionLowHigh;
-                        FloatCalc predictionHighLow;
-                        FloatCalc predictionHighHigh;
-
-                        FloatCalc weightLowLow;
-                        FloatCalc weightLowHigh;
-                        FloatCalc weightHighLow;
-                        FloatCalc weightHighHigh;
-
-                        if(bUpdateWithHessian) {
-                           weightLowLow = static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].GetHess());
-                           predictionLowLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightLowHigh = static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].GetHess());
-                           predictionLowHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighLow = static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].GetHess());
-                           predictionHighLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighHigh = static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].GetHess());
-                           predictionHighHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                        } else {
-                           weightLowLow = static_cast<FloatCalc>(pTotals1LowLowBest->GetWeight());
-                           predictionLowLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowLowBest[iScore].m_sumGradients),
-                                 weightLowLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightLowHigh = static_cast<FloatCalc>(pTotals1LowHighBest->GetWeight());
-                           predictionLowHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1LowHighBest[iScore].m_sumGradients),
-                                 weightLowHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighLow = static_cast<FloatCalc>(pTotals1HighLowBest->GetWeight());
-                           predictionHighLow = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighLowBest[iScore].m_sumGradients),
-                                 weightHighLow,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                           weightHighHigh = static_cast<FloatCalc>(pTotals1HighHighBest->GetWeight());
-                           predictionHighHigh = -CalcNegUpdate<false>(
-                                 static_cast<FloatCalc>(pGradientPairTotals1HighHighBest[iScore].m_sumGradients),
-                                 weightHighHigh,
-                                 regAlpha,
-                                 regLambda,
-                                 deltaStepMax);
-                        }
-                        if(splitFirst1LowBest < splitFirst1HighBest) {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[4 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        } else if(splitFirst1HighBest < splitFirst1LowBest) {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[4 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[5 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 6 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[2 + 6 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[3 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                              aWeights[4 + 6 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[5 + 6 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        } else {
-                           EBM_ASSERT(aUpdateScores[0 * cScores + iScore] == static_cast<FloatScore>(predictionLowLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[1 * cScores + iScore] == static_cast<FloatScore>(predictionHighLow));
-                           EBM_ASSERT(
-                                 aUpdateScores[2 * cScores + iScore] == static_cast<FloatScore>(predictionLowHigh));
-                           EBM_ASSERT(
-                                 aUpdateScores[3 * cScores + iScore] == static_cast<FloatScore>(predictionHighHigh));
-                           if(nullptr != aWeights) {
-                              aWeights[0 + 4 * iScore] = static_cast<double>(weightLowLow);
-                              aWeights[1 + 4 * iScore] = static_cast<double>(weightHighLow);
-                              aWeights[2 + 4 * iScore] = static_cast<double>(weightLowHigh);
-                              aWeights[3 + 4 * iScore] = static_cast<double>(weightHighHigh);
-                           }
-                        }
-                     }
-                  }
                   return Error_None;
                }
             } else {
@@ -1228,9 +864,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   regAlpha,
                   regLambda,
                   deltaStepMax);
-            if(nullptr != aWeights) {
-               aWeights[iScore] = static_cast<double>(weight);
-            }
          } else {
             weight = static_cast<FloatCalc>(weightAll);
             update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
@@ -1238,9 +871,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   regAlpha,
                   regLambda,
                   deltaStepMax);
-            if(nullptr != aWeights) {
-               aWeights[iScore] = static_cast<double>(weight);
-            }
          }
 
          aUpdateScores[iScore] = static_cast<FloatScore>(update);
@@ -1264,7 +894,6 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
-         double* const aWeights,
          double* const aTensorWeights,
          double* const aTensorGrad,
          double* const aTensorHess,
@@ -1288,7 +917,6 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,
@@ -1311,7 +939,6 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,
@@ -1341,7 +968,6 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          BinBase* aAuxiliaryBinsBase,
-         double* const aWeights,
          double* const aTensorWeights,
          double* const aTensorGrad,
          double* const aTensorHess,
@@ -1363,7 +989,6 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
             regLambda,
             deltaStepMax,
             aAuxiliaryBinsBase,
-            aWeights,
             aTensorWeights,
             aTensorGrad,
             aTensorHess,
@@ -1388,7 +1013,6 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
-      double* const aWeights,
       double* const aTensorWeights,
       double* const aTensorGrad,
       double* const aTensorHess,
@@ -1485,7 +1109,6 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,
@@ -1508,7 +1131,6 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,
@@ -1534,7 +1156,6 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,
@@ -1557,7 +1178,6 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(BoosterShell* const pBoosterShel
                regLambda,
                deltaStepMax,
                aAuxiliaryBinsBase,
-               aWeights,
                aTensorWeights,
                aTensorGrad,
                aTensorHess,

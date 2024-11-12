@@ -296,7 +296,18 @@ TEST_CASE("Purify simple 3x4, infinite weights") {
    const IntEbm dimensionLengths[]{3, 4};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
    double scores[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-   const double weights[]{1, INFINITY, INFINITY, 4, INFINITY, 6, 7, INFINITY, 9, 10, INFINITY, 12};
+   const double weights[]{1,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         4,
+         std::numeric_limits<double>::infinity(),
+         6,
+         7,
+         std::numeric_limits<double>::infinity(),
+         9,
+         10,
+         std::numeric_limits<double>::infinity(),
+         12};
    double impurities[7];
    double residualIntercept;
 
@@ -320,7 +331,18 @@ TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
    const IntEbm dimensionLengths[]{3, 4};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
    double scores[]{1, DBL_MAX, DBL_MAX, -DBL_MAX, 5, 6, -DBL_MAX, 8, 9, 10, 11, 12};
-   const double weights[]{1, INFINITY, INFINITY, INFINITY, 5, 6, INFINITY, 8, 9, 10, 11, 12};
+   const double weights[]{1,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         5,
+         6,
+         std::numeric_limits<double>::infinity(),
+         8,
+         9,
+         10,
+         11,
+         12};
    double impurities[7];
    double residualIntercept;
 
@@ -342,7 +364,7 @@ TEST_CASE("Purify simple 3x4, infinite weights, overflow") {
 TEST_CASE("Purify simple 3x4 with NaN") {
    const IntEbm dimensionLengths[]{3, 4};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{1, 2, 3, 4, NAN, 6, 7, 8, 9, 10, 11, 12};
+   double scores[]{1, 2, 3, 4, std::numeric_limits<double>::quiet_NaN(), 6, 7, 8, 9, 10, 11, 12};
    const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
    double impurities[7];
    double residualIntercept;
@@ -366,7 +388,7 @@ TEST_CASE("Purify simple 3x4 with NaN") {
 TEST_CASE("Purify simple 3x4 with -inf") {
    const IntEbm dimensionLengths[]{3, 4};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{1, 2, 3, 4, -INFINITY, 6, 7, 8, 9, 10, 11, 12};
+   double scores[]{1, 2, 3, 4, -std::numeric_limits<double>::infinity(), 6, 7, 8, 9, 10, 11, 12};
    const double weights[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
    double impurities[7];
    double residualIntercept;
@@ -613,7 +635,18 @@ TEST_CASE("Purify simple multiclass NaN") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{NAN, 2, 3, 1, 2, NAN, 1, NAN, NAN, NAN, NAN, NAN};
+   double scores[]{std::numeric_limits<double>::quiet_NaN(),
+         2,
+         3,
+         1,
+         2,
+         std::numeric_limits<double>::quiet_NaN(),
+         1,
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -641,7 +674,18 @@ TEST_CASE("Purify simple multiclass +inf") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{INFINITY, 2, 3, 1, 2, INFINITY, 1, INFINITY, INFINITY, INFINITY, INFINITY, INFINITY};
+   double scores[]{std::numeric_limits<double>::infinity(),
+         2,
+         3,
+         1,
+         2,
+         std::numeric_limits<double>::infinity(),
+         1,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -753,8 +797,18 @@ TEST_CASE("Purify simple multiclass +inf and NaN, overflow-inf,-overflow+inf, in
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{
-         INFINITY, 2, NAN, DBL_MAX, DBL_MAX, -INFINITY, -DBL_MAX, -DBL_MAX, INFINITY, INFINITY, -INFINITY, INFINITY};
+   double scores[]{std::numeric_limits<double>::infinity(),
+         2,
+         std::numeric_limits<double>::quiet_NaN(),
+         DBL_MAX,
+         DBL_MAX,
+         -std::numeric_limits<double>::infinity(),
+         -DBL_MAX,
+         -DBL_MAX,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -849,7 +903,18 @@ TEST_CASE("Purify simple multiclass NaN, normalize classes") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{NAN, 2, 3, 1, 2, NAN, 1, NAN, NAN, NAN, NAN, NAN};
+   double scores[]{std::numeric_limits<double>::quiet_NaN(),
+         2,
+         3,
+         1,
+         2,
+         std::numeric_limits<double>::quiet_NaN(),
+         1,
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN(),
+         std::numeric_limits<double>::quiet_NaN()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -877,7 +942,18 @@ TEST_CASE("Purify simple multiclass +inf, normalize classes") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{INFINITY, 2, 3, 1, 2, INFINITY, 1, INFINITY, INFINITY, INFINITY, INFINITY, INFINITY};
+   double scores[]{std::numeric_limits<double>::infinity(),
+         2,
+         3,
+         1,
+         2,
+         std::numeric_limits<double>::infinity(),
+         1,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -905,7 +981,18 @@ TEST_CASE("Purify simple multiclass -inf, normalize classes") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{-INFINITY, 2, 3, 1, 2, -INFINITY, 1, -INFINITY, -INFINITY, -INFINITY, -INFINITY, -INFINITY};
+   double scores[]{-std::numeric_limits<double>::infinity(),
+         2,
+         3,
+         1,
+         2,
+         -std::numeric_limits<double>::infinity(),
+         1,
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
@@ -989,8 +1076,18 @@ TEST_CASE("Purify simple multiclass +inf and NaN, overflow-inf,-overflow+inf, in
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{
-         INFINITY, 2, NAN, DBL_MAX, DBL_MAX, -INFINITY, -DBL_MAX, -DBL_MAX, INFINITY, INFINITY, -INFINITY, INFINITY};
+   double scores[]{std::numeric_limits<double>::infinity(),
+         2,
+         std::numeric_limits<double>::quiet_NaN(),
+         DBL_MAX,
+         DBL_MAX,
+         -std::numeric_limits<double>::infinity(),
+         -DBL_MAX,
+         -DBL_MAX,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
