@@ -363,7 +363,6 @@ INLINE_ALWAYS static void TensorTotalsSum(const size_t cRuntimeScores,
 #endif // NDEBUG
       );
    } else {
-      EBM_ASSERT(2 != cRuntimeDimensions && 3 != cRuntimeDimensions);
       TensorTotalsSumMulti<bHessian, cCompilerScores>(cRuntimeScores,
             cRuntimeDimensions,
             aDimensions,

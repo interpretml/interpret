@@ -256,9 +256,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          const BinBase* const aDebugCopyBinsBase
 #endif // NDEBUG
    ) {
-      static constexpr size_t cCompilerDimensions = 2;
-      static constexpr size_t cRealDimensions = cCompilerDimensions;
-      const size_t cDimensions = pTerm->GetCountDimensions();
+      static constexpr size_t cCompilerDimensions = k_dynamicDimensions;
+      const size_t cRealDimensions = pTerm->GetCountRealDimensions();
 
       ErrorEbm error;
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
@@ -295,25 +294,25 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
-      EBM_ASSERT(2 == pTerm->GetCountRealDimensions());
-      EBM_ASSERT(2 <= pTerm->GetCountDimensions());
       size_t iDimensionLoop = 0;
-      const TermFeature* pTermFeature = pTerm->GetTermFeatures();
-      const TermFeature* const pTermFeaturesEnd = &pTermFeature[cDimensions];
       size_t iDimInit = 0;
+      const TermFeature* const aTermFeatures = pTerm->GetTermFeatures();
       size_t aiOriginalIndex[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+      size_t aiDim[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+      EBM_ASSERT(1 <= cRealDimensions);
       do {
-         const FeatureBoosting* const pFeature = pTermFeature->m_pFeature;
+         EBM_ASSERT(iDimensionLoop < pTerm->GetCountDimensions());
+         const FeatureBoosting* const pFeature = aTermFeatures[iDimensionLoop].m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
          if(size_t{1} < cBins) {
             aiOriginalIndex[iDimInit] = iDimensionLoop;
             aDimensions[iDimInit].m_cBins = cBins;
+            aiDim[iDimInit] = iDimInit;
             ++iDimInit;
          }
          ++iDimensionLoop;
-         ++pTermFeature;
-      } while(pTermFeaturesEnd != pTermFeature);
+      } while(cRealDimensions != iDimInit);
 
       FloatCalc bestGain = k_illegalGainFloat;
 
@@ -327,65 +326,72 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
-      size_t aiDim[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
-      size_t iDim;
-      for(iDim = 0; iDim < cRealDimensions; ++iDim) {
-         aiDim[iDim] = iDim;
-      }
+      const TensorSumDimension* const pDimensionEnd = &aDimensions[cRealDimensions];
 
       while(true) {
+         // TODO: the initialization of pDeepTreeNode can be moved above into the initialization because
+         // the loop loop below restores most of the values to their initial values.
          TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pParentTreeNode = nullptr;
          auto* pTreeNode = pDeepTreeNode;
          auto* pFreeTreeNode = pDeepTreeNode;
-         for(iDim = 0; iDim < cRealDimensions; ++iDim) {
-            pFreeTreeNode = IndexTreeNodeMulti(pFreeTreeNode, cBytesTreeNodeMulti);
-            auto* const pLow = pFreeTreeNode;
+         EBM_ASSERT(1 <= cRealDimensions);
+         size_t iDim = 0;
+         do {
+            auto* const pLow = IndexTreeNodeMulti(pFreeTreeNode, cBytesTreeNodeMulti);
 
-            pTreeNode->SetSplitGain(0.0);
+            pTreeNode->SplitNode();
             pTreeNode->SetDimensionIndex(aiDim[iDim]);
             pTreeNode->SetSplitIndex(0);
             pTreeNode->SetParent(pParentTreeNode);
-            pTreeNode->SplitNode();
             pTreeNode->SetChildren(pLow);
 
-            // Low child node
-            pLow->SetSplitGain(0.0);
-            pLow->SetParent(pTreeNode);
-            pLow->SetChildren(nullptr);
+            pFreeTreeNode = IndexTreeNodeMulti(pLow, cBytesTreeNodeMulti);
 
-            pFreeTreeNode = IndexTreeNodeMulti(pFreeTreeNode, cBytesTreeNodeMulti);
+            // High child Node
             auto* const pHigh = pFreeTreeNode;
-
             pHigh->SetSplitGain(0.0);
             pHigh->SetParent(pTreeNode);
             pHigh->SetChildren(nullptr);
 
             pParentTreeNode = pTreeNode;
             pTreeNode = pLow;
-         }
+
+            ++iDim;
+         } while(cRealDimensions != iDim);
+
+         // Low child node
+         pTreeNode->SetSplitGain(0.0);
+         pTreeNode->SetParent(pParentTreeNode);
+         pTreeNode->SetChildren(nullptr);
 
          while(true) {
             while(true) {
-               for(iDim = 0; iDim < cRealDimensions; ++iDim) {
-                  aDimensions[iDim].m_iLow = 0;
-                  aDimensions[iDim].m_iHigh = aDimensions[iDim].m_cBins;
-               }
+               EBM_ASSERT(1 <= cRealDimensions);
+               TensorSumDimension* pDimension = aDimensions;
+               do {
+                  pDimension->m_iLow = 0;
+                  pDimension->m_iHigh = pDimension->m_cBins;
+                  ++pDimension;
+               } while(pDimensionEnd != pDimension);
 
-               FloatCalc gain = 0;
+               // TODO: We can reuse some of these calls to TensorTotalsSum when the tensor dimensions do not change
+               FloatCalc gain = 0.0;
                pTreeNode = pDeepTreeNode;
                TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pNextTreeNode;
                do {
                   pNextTreeNode = nullptr;
 
+                  EBM_ASSERT(pTreeNode->IsSplit());
                   const size_t iTreeDim = pTreeNode->GetDimensionIndex();
+                  const size_t iSplit = pTreeNode->GetSplitIndex() + 1;
                   auto* const pChildren = pTreeNode->GetChildren();
+
                   auto* const pLow = GetLeftNode(pChildren);
-                  auto* const pHigh = GetRightNode(pChildren, cBytesTreeNodeMulti);
                   if(pLow->IsSplit()) {
                      pNextTreeNode = pLow;
                   } else {
                      aDimensions[iTreeDim].m_iLow = 0;
-                     aDimensions[iTreeDim].m_iHigh = pTreeNode->GetSplitIndex() + 1;
+                     aDimensions[iTreeDim].m_iHigh = iSplit;
 
                      auto* const aGradientPairsLocal = pLow->GetBin()->GetGradientPairs();
 
@@ -408,12 +414,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
                      EBM_ASSERT(1 <= cScores);
                      size_t iScore = 0;
+                     FloatCalc hessian = static_cast<FloatCalc>(pLow->GetBin()->GetWeight());
                      do {
-                        FloatCalc hessian;
                         if(bUseLogitBoost) {
                            hessian = static_cast<FloatCalc>(aGradientPairsLocal[iScore].GetHess());
-                        } else {
-                           hessian = static_cast<FloatCalc>(pLow->GetBin()->GetWeight());
                         }
                         if(hessian < hessianMin) {
                            goto next;
@@ -431,18 +435,16 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         ++iScore;
                      } while(cScores != iScore);
                      EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumation of positive numbers should be positive
-
-                     // for all descendents we restrict to the opposite side
-                     aDimensions[iTreeDim].m_iLow = pTreeNode->GetSplitIndex() + 1;
-                     aDimensions[iTreeDim].m_iHigh = aDimensions[iTreeDim].m_cBins;
                   }
+
+                  aDimensions[iTreeDim].m_iLow = iSplit;
+                  aDimensions[iTreeDim].m_iHigh = aDimensions[iTreeDim].m_cBins;
+
+                  auto* const pHigh = GetRightNode(pChildren, cBytesTreeNodeMulti);
                   if(pHigh->IsSplit()) {
                      EBM_ASSERT(nullptr == pNextTreeNode);
                      pNextTreeNode = pHigh;
                   } else {
-                     aDimensions[iTreeDim].m_iLow = pTreeNode->GetSplitIndex() + 1;
-                     aDimensions[iTreeDim].m_iHigh = aDimensions[iTreeDim].m_cBins;
-
                      auto* const aGradientPairsLocal = pHigh->GetBin()->GetGradientPairs();
 
                      TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
@@ -463,13 +465,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                      }
 
                      EBM_ASSERT(1 <= cScores);
+                     FloatCalc hessian = static_cast<FloatCalc>(pHigh->GetBin()->GetWeight());
                      size_t iScore = 0;
                      do {
-                        FloatCalc hessian;
                         if(bUseLogitBoost) {
                            hessian = static_cast<FloatCalc>(aGradientPairsLocal[iScore].GetHess());
-                        } else {
-                           hessian = static_cast<FloatCalc>(pHigh->GetBin()->GetWeight());
                         }
                         if(hessian < hessianMin) {
                            goto next;
@@ -490,7 +490,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
                      // for all descendents we restrict to the opposite side
                      aDimensions[iTreeDim].m_iLow = 0;
-                     aDimensions[iTreeDim].m_iHigh = pTreeNode->GetSplitIndex() + 1;
+                     aDimensions[iTreeDim].m_iHigh = iSplit;
                   }
 
                   pTreeNode = pNextTreeNode;
@@ -506,17 +506,22 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
             next:;
 
+               // TODO: reverse the direction we increment these because incrementing the root invalidates
+               // everything below, but incrementing the lowest leaf leaves the upper tree summations valid
                pTreeNode = pDeepTreeNode;
                while(true) {
-                  const size_t iSplit = pTreeNode->GetSplitIndex() + 1;
+                  EBM_ASSERT(pTreeNode->IsSplit());
                   const size_t iTreeDim = pTreeNode->GetDimensionIndex();
-                  const size_t cBins = aDimensions[iTreeDim].m_cBins - 1;
-                  if(iSplit != cBins) {
-                     pTreeNode->SetSplitIndex(iSplit);
+                  const size_t iSplit = pTreeNode->GetSplitIndex() + 1;
+                  const size_t cBinsMinusOne = aDimensions[iTreeDim].m_cBins - 1;
+                  EBM_ASSERT(1 <= cBinsMinusOne);
+                  EBM_ASSERT(iSplit <= cBinsMinusOne);
+                  pTreeNode->SetSplitIndex(iSplit);
+                  if(iSplit != cBinsMinusOne) {
                      break;
                   }
                   pTreeNode->SetSplitIndex(0);
-                  pTreeNode = pTreeNode->GetChildren();
+                  pTreeNode = GetLeftNode(pTreeNode->GetChildren());
                   if(!pTreeNode->IsSplit()) {
                      pTreeNode = GetRightNode(pTreeNode, cBytesTreeNodeMulti);
                      if(!pTreeNode->IsSplit()) {
@@ -527,8 +532,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             }
          next_tree:;
 
+            // TODO: reverse the direction we increment these because incrementing the root invalidates
+            // everything below, but incrementing the lowest leaf leaves the upper tree summations valid
             pTreeNode = pDeepTreeNode;
             while(true) {
+               EBM_ASSERT(pTreeNode->IsSplit());
                auto* const pChildren = pTreeNode->GetChildren();
                auto* const pLow = GetLeftNode(pChildren);
                auto* const pHigh = GetRightNode(pChildren, cBytesTreeNodeMulti);
@@ -560,7 +568,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          }
       done_tree:;
 
-         EBM_ASSERT(2 <= cRealDimensions);
+         EBM_ASSERT(1 <= cRealDimensions);
+         if(1 == cRealDimensions) {
+            goto done;
+         }
          size_t i = cRealDimensions - 2;
          while(aiDim[i] >= aiDim[i + 1]) {
             if(i == 0) {
@@ -594,21 +605,21 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          if(nullptr != pCurTreeNode->GetParent()) {
             const size_t cBytesOffset =
                   reinterpret_cast<char*>(pCurTreeNode->GetParent()) - reinterpret_cast<char*>(pDeepTreeNode);
-            TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pNode =
+            TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode =
                   IndexTreeNodeMulti(pRootTreeNode, cBytesOffset);
             pCurTreeNode->SetParent(pNode);
          }
          if(nullptr != pCurTreeNode->GetChildren()) {
             const size_t cBytesOffset =
                   reinterpret_cast<char*>(pCurTreeNode->GetChildren()) - reinterpret_cast<char*>(pDeepTreeNode);
-            TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pNode =
+            TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode =
                   IndexTreeNodeMulti(pRootTreeNode, cBytesOffset);
             pCurTreeNode->SetChildren(pNode);
          }
          pCurTreeNode = IndexTreeNodeMulti(pCurTreeNode, cBytesTreeNodeMulti);
       } while(pDeepTreeNode != pCurTreeNode);
 
-      TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pTreeNodeEnd = pDeepTreeNode;
+      TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pTreeNodeEnd = pDeepTreeNode;
 
       EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatCalc{0} <= bestGain);
 
@@ -688,12 +699,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   } while(pTreeNodeEnd != pTreeNode);
 
                   size_t cTensorCells = 1;
-                  EBM_ASSERT(2 == pTerm->GetCountRealDimensions()); // hard coded below
-                  for(size_t iDimension = 0; iDimension < 2; ++iDimension) {
+                  EBM_ASSERT(1 <= cRealDimensions);
+                  size_t iDimension = 0;
+                  do {
                      const size_t iOriginalDimension = aiOriginalIndex[iDimension];
 
                      const size_t cSplits = acSplits[iDimension];
-                     const size_t cSlices = cSplits + 1;
+                     const size_t cSlices = cSplits + size_t{1};
                      error = pInnerTermUpdate->SetCountSlices(iOriginalDimension, cSlices);
                      if(Error_None != error) {
                         // already logged
@@ -704,7 +716,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
                      UIntSplit* pSplits = pInnerTermUpdate->GetSplitPointer(iOriginalDimension);
                      EBM_ASSERT(1 <= cSplits);
-                     UIntSplit* pSplitsLast = pSplits + (cSplits - 1);
+                     UIntSplit* pSplitsLast = pSplits + (cSplits - size_t{1});
                      size_t iSplit = 0;
                      unsigned char* const aSplits = aaSplits[iDimension];
                      while(true) {
@@ -717,7 +729,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         }
                         ++iSplit;
                      }
-                  }
+                     ++iDimension;
+                  } while(cRealDimensions != iDimension);
 
                   error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cTensorCells);
                   if(Error_None != error) {
@@ -732,103 +745,113 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   FloatScore* pTensorGrad = aTensorGrad;
                   FloatScore* pTensorHess = aTensorHess;
 
-                  EBM_ASSERT(2 == pTerm->GetCountRealDimensions()); // hard coded below
-                  UIntSplit* const aSplits1 = pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[0]);
-                  UIntSplit* const aSplits2 = pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[1]);
-                  const size_t cSplits1 = acSplits[0];
-                  const size_t cSplits2 = acSplits[1];
-
-                  size_t iSplit2 = 0;
-
-                  aDimensions[1].m_iLow = 0;
-                  aDimensions[1].m_iHigh = static_cast<size_t>(aSplits2[0]);
+                  size_t iDim = 0;
                   do {
-                     aDimensions[0].m_iLow = 0;
-                     aDimensions[0].m_iHigh = static_cast<size_t>(aSplits1[0]);
+                     const size_t cSplitFirst =
+                           static_cast<size_t>(pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[iDim])[0]);
+                     aDimensions[iDim].m_iLow = 0;
+                     aDimensions[iDim].m_iHigh = cSplitFirst;
+                     ++iDim;
+                  } while(cRealDimensions != iDim);
 
-                     size_t iSplit1 = 0;
+                  size_t aiSplits[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+                  memset(aiSplits, 0, sizeof(aiSplits));
+                  while(true) {
+                     pTreeNode = pRootTreeNode;
+                     EBM_ASSERT(pTreeNode->IsSplit());
                      do {
-                        pTreeNode = pRootTreeNode;
-                        while(pTreeNode->IsSplit()) {
-                           const size_t iDimension = pTreeNode->GetDimensionIndex();
-                           const size_t iSplitTree = pTreeNode->GetSplitIndex();
-                           const size_t iSplitTensor = aDimensions[iDimension].m_iLow;
-                           pTreeNode = pTreeNode->GetChildren();
-                           if(iSplitTree < iSplitTensor) {
-                              pTreeNode = GetRightNode(pTreeNode, cBytesTreeNodeMulti);
-                           } else {
-                              pTreeNode = GetLeftNode(pTreeNode);
-                           }
+                        const size_t iDimensionInternal = pTreeNode->GetDimensionIndex();
+                        const size_t iSplitTree = pTreeNode->GetSplitIndex();
+                        const size_t iSplitTensor = aDimensions[iDimensionInternal].m_iLow;
+                        pTreeNode = pTreeNode->GetChildren();
+                        if(iSplitTree < iSplitTensor) {
+                           pTreeNode = GetRightNode(pTreeNode, cBytesTreeNodeMulti);
+                        } else {
+                           pTreeNode = GetLeftNode(pTreeNode);
                         }
+                     } while(pTreeNode->IsSplit());
 
-                        FloatCalc tensorHess;
-                        if(nullptr != pTensorWeights || nullptr != pTensorHess || nullptr != pTensorGrad) {
-                           ASSERT_BIN_OK(cBytesPerBin, pTempScratch, pBoosterShell->GetDebugMainBinsEnd());
-                           TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
-                                 cRealDimensions,
-                                 aDimensions,
-                                 aBins,
-                                 binTemp,
-                                 aGradientPairsTemp
+                     FloatCalc tensorHess;
+                     if(nullptr != pTensorWeights || nullptr != pTensorHess || nullptr != pTensorGrad) {
+                        ASSERT_BIN_OK(cBytesPerBin, pTempScratch, pBoosterShell->GetDebugMainBinsEnd());
+                        TensorTotalsSum<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
+                              cRealDimensions,
+                              aDimensions,
+                              aBins,
+                              binTemp,
+                              aGradientPairsTemp
 #ifndef NDEBUG
-                                 ,
-                                 aDebugCopyBins,
-                                 pBoosterShell->GetDebugMainBinsEnd()
+                              ,
+                              aDebugCopyBins,
+                              pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
-                           );
+                        );
 
-                           pTensorGradientPair = aGradientPairsTemp;
-                           tensorHess = static_cast<FloatCalc>(binTemp.GetWeight());
-                           if(nullptr != pTensorWeights) {
-                              *pTensorWeights = tensorHess;
-                              ++pTensorWeights;
+                        pTensorGradientPair = aGradientPairsTemp;
+                        tensorHess = static_cast<FloatCalc>(binTemp.GetWeight());
+                        if(nullptr != pTensorWeights) {
+                           *pTensorWeights = tensorHess;
+                           ++pTensorWeights;
+                        }
+                     }
+
+                     FloatCalc nodeHess = static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight());
+                     auto* pGradientPair = pTreeNode->GetBin()->GetGradientPairs();
+                     for(size_t iScore = 0; iScore < cScores; ++iScore) {
+                        if(bUpdateWithHessian) {
+                           nodeHess = static_cast<FloatCalc>(pGradientPair->GetHess());
+                        }
+                        if(nullptr != pTensorHess || nullptr != pTensorGrad) {
+                           if(nullptr != pTensorHess) {
+                              if(bUseLogitBoost) {
+                                 tensorHess = static_cast<FloatCalc>(pTensorGradientPair->GetHess());
+                              }
+                              *pTensorHess = tensorHess;
+                              ++pTensorHess;
                            }
+                           if(nullptr != pTensorGrad) {
+                              *pTensorGrad = static_cast<FloatCalc>(pTensorGradientPair->m_sumGradients);
+                              ++pTensorGrad;
+                           }
+                           ++pTensorGradientPair;
                         }
 
-                        FloatCalc nodeHess = static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight());
-                        auto* pGradientPair = pTreeNode->GetBin()->GetGradientPairs();
-                        for(size_t iScore = 0; iScore < cScores; ++iScore) {
-                           if(bUpdateWithHessian) {
-                              nodeHess = static_cast<FloatCalc>(pGradientPair->GetHess());
-                           }
-                           if(nullptr != pTensorHess || nullptr != pTensorGrad) {
-                              if(nullptr != pTensorHess) {
-                                 if(bUseLogitBoost) {
-                                    tensorHess = static_cast<FloatCalc>(pTensorGradientPair->GetHess());
-                                 }
-                                 *pTensorHess = tensorHess;
-                                 ++pTensorHess;
-                              }
-                              if(nullptr != pTensorGrad) {
-                                 *pTensorGrad = static_cast<FloatCalc>(pTensorGradientPair->m_sumGradients);
-                                 ++pTensorGrad;
-                              }
-                              ++pTensorGradientPair;
-                           }
+                        FloatCalc prediction =
+                              -CalcNegUpdate<false>(static_cast<FloatCalc>(pGradientPair->m_sumGradients),
+                                    nodeHess,
+                                    regAlpha,
+                                    regLambda,
+                                    deltaStepMax);
 
-                           FloatCalc prediction =
-                                 -CalcNegUpdate<false>(static_cast<FloatCalc>(pGradientPair->m_sumGradients),
-                                       nodeHess,
-                                       regAlpha,
-                                       regLambda,
-                                       deltaStepMax);
+                        *pUpdateScores = prediction;
+                        ++pUpdateScores;
+                        ++pGradientPair;
+                     }
 
-                           *pUpdateScores = prediction;
-                           ++pUpdateScores;
-                           ++pGradientPair;
+                     iDim = 0;
+                     while(true) {
+                        const size_t iSplit = aiSplits[iDim] + size_t{1};
+                        const size_t cSplits = acSplits[iDim];
+                        if(iSplit <= cSplits) {
+                           aDimensions[iDim].m_iLow = aDimensions[iDim].m_iHigh;
+                           aDimensions[iDim].m_iHigh = cSplits == iSplit ?
+                                 aDimensions[iDim].m_cBins :
+                                 static_cast<size_t>(pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[iDim])[iSplit]);
+                           aiSplits[iDim] = iSplit;
+                           break;
                         }
+                        aDimensions[iDim].m_iLow = 0;
+                        aDimensions[iDim].m_iHigh =
+                              static_cast<size_t>(pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[iDim])[0]);
+                        aiSplits[iDim] = 0;
 
-                        ++iSplit1;
-                        aDimensions[0].m_iLow = aDimensions[0].m_iHigh;
-                        aDimensions[0].m_iHigh =
-                              iSplit1 < cSplits1 ? static_cast<size_t>(aSplits1[iSplit1]) : aDimensions[0].m_cBins;
-                     } while(iSplit1 <= cSplits1);
-
-                     ++iSplit2;
-                     aDimensions[1].m_iLow = aDimensions[1].m_iHigh;
-                     aDimensions[1].m_iHigh =
-                           iSplit2 < cSplits2 ? static_cast<size_t>(aSplits2[iSplit2]) : aDimensions[1].m_cBins;
-                  } while(iSplit2 <= cSplits2);
+                        ++iDim;
+                        if(cRealDimensions == iDim) {
+                           goto done1;
+                        }
+                     }
+                  }
+               done1:;
 
                   return Error_None;
                }
@@ -843,21 +866,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       }
 
       // there were no good splits found
-#ifndef NDEBUG
-      const ErrorEbm errorDebug1 =
-#endif // NDEBUG
-            pInnerTermUpdate->SetCountSlices(aiOriginalIndex[0], 1);
-      // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at
-      // all
-      EBM_ASSERT(Error_None == errorDebug1);
-
-#ifndef NDEBUG
-      const ErrorEbm errorDebug2 =
-#endif // NDEBUG
-            pInnerTermUpdate->SetCountSlices(aiOriginalIndex[1], 1);
-      // we can't fail since we're setting this to zero, so no allocations.  We don't in fact need the split array at
-      // all
-      EBM_ASSERT(Error_None == errorDebug2);
+      pInnerTermUpdate->Reset();
 
       // we don't need to call pInnerTermUpdate->EnsureTensorScoreCapacity,
       // since our value capacity would be 1, which is pre-allocated
@@ -869,37 +878,29 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       FloatScore* pTensorHess = aTensorHess;
 
       FloatScore* const aUpdateScores = pInnerTermUpdate->GetTensorScoresPointer();
+      FloatCalc weight1 = static_cast<FloatCalc>(weightAll);
+      FloatCalc weight2 = static_cast<FloatCalc>(weightAll);
       for(size_t iScore = 0; iScore < cScores; ++iScore) {
-         FloatCalc update;
-         FloatCalc weight;
          if(nullptr != pTensorGrad) {
             *pTensorGrad = static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients);
             ++pTensorGrad;
          }
          if(nullptr != pTensorHess) {
             if(bUseLogitBoost) {
-               weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            } else {
-               weight = static_cast<FloatCalc>(weightAll);
+               weight1 = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
             }
-            *pTensorHess = weight;
+            *pTensorHess = weight1;
             ++pTensorHess;
          }
          if(bUpdateWithHessian) {
-            weight = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
-            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-                  weight,
-                  regAlpha,
-                  regLambda,
-                  deltaStepMax);
-         } else {
-            weight = static_cast<FloatCalc>(weightAll);
-            update = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
-                  weight,
-                  regAlpha,
-                  regLambda,
-                  deltaStepMax);
+            weight2 = static_cast<FloatCalc>(pGradientPairTotal[iScore].GetHess());
          }
+         const FloatCalc update =
+               -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                     weight2,
+                     regAlpha,
+                     regLambda,
+                     deltaStepMax);
 
          aUpdateScores[iScore] = static_cast<FloatScore>(update);
       }

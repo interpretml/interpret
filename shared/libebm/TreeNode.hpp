@@ -214,15 +214,9 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNodeMulti final {
 
       return m_splitGain;
    }
-   inline void SplitNode() {
-      EBM_ASSERT(!IsSplit());
-      m_splitGain = std::numeric_limits<FloatMain>::quiet_NaN();
-   }
+   inline void SplitNode() { m_splitGain = std::numeric_limits<FloatMain>::quiet_NaN(); }
 
-   inline void SetDimensionIndex(const size_t iDimension) {
-      EBM_ASSERT(!IsSplit());
-      m_iDimension = iDimension;
-   }
+   inline void SetDimensionIndex(const size_t iDimension) { m_iDimension = iDimension; }
    inline size_t GetDimensionIndex() const { return m_iDimension; }
 
    inline void SetSplitIndex(const size_t iSplit) { m_iSplit = iSplit; }
