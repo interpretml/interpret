@@ -339,9 +339,9 @@ inline static TreeNode<bHessian, cCompilerScores>* GetLeftNode(TreeNode<bHessian
 }
 
 template<bool bHessian, size_t cCompilerScores>
-inline static TreeNodeMulti<bHessian, cCompilerScores>* GetLeftNode(
-      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren) {
-   return pChildren;
+inline static TreeNodeMulti<bHessian, cCompilerScores>* GetLowNode(
+      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren, const size_t cBytesPerTreeNodeMulti) {
+   return IndexTreeNodeMulti(pChildren, cBytesPerTreeNodeMulti);
 }
 
 template<bool bHessian, size_t cCompilerScores>
@@ -351,9 +351,9 @@ inline static TreeNode<bHessian, cCompilerScores>* GetRightNode(
 }
 
 template<bool bHessian, size_t cCompilerScores>
-inline static TreeNodeMulti<bHessian, cCompilerScores>* GetRightNode(
-      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren, const size_t cBytesPerTreeNodeMulti) {
-   return IndexTreeNodeMulti(pChildren, cBytesPerTreeNodeMulti);
+inline static TreeNodeMulti<bHessian, cCompilerScores>* GetHighNode(
+      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren) {
+   return pChildren;
 }
 
 } // namespace DEFINED_ZONE_NAME
