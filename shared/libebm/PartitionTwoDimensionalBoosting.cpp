@@ -626,24 +626,24 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          if(1 == cRealDimensions) {
             goto done;
          }
-         size_t i = cRealDimensions - 2;
-         while(aiDim[i] >= aiDim[i + 1]) {
-            if(i == 0) {
+         size_t i = 1;
+         while(aiDim[i] <= aiDim[i - 1]) {
+            if(i == cRealDimensions - 1) {
                goto done;
             }
-            --i;
+            ++i;
          }
-         size_t j = cRealDimensions - 1;
-         while(aiDim[j] <= aiDim[i]) {
-            --j;
+         size_t j = 0;
+         while(aiDim[j] >= aiDim[i]) {
+            ++j;
          }
 
          size_t temp = aiDim[i];
          aiDim[i] = aiDim[j];
          aiDim[j] = temp;
 
-         size_t start = i + 1;
-         size_t end = cRealDimensions - 1;
+         size_t start = 0;
+         size_t end = i - 1;
          while(start < end) {
             temp = aiDim[start];
             aiDim[start] = aiDim[end];
