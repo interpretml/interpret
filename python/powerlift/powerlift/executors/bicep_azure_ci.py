@@ -73,7 +73,7 @@ class BicepAzureContainerInstance(Executor):
 
         self._resource_uris = resource_uris
         self._azure_json = {
-            'credential': credential,
+            "credential": credential,
             "tenant_id": azure_tenant_id,
             "client_id": azure_client_id,
             "client_secret": azure_client_secret,
@@ -100,24 +100,28 @@ class BicepAzureContainerInstance(Executor):
 
     def submit(self, experiment_id, timeout=None):
         from azure.mgmt.resource import ResourceManagementClient
-        from azure.mgmt.resource.resources.models import Deployment, DeploymentProperties
+        from azure.mgmt.resource.resources.models import (
+            Deployment,
+            DeploymentProperties,
+        )
         import json
         import uuid
 
         script_dir = Path(__file__).resolve().parent
         start_script_path = script_dir / "startup.sh"
         template_file_path = script_dir / "aci.json"
-        with open(template_file_path, 'r') as template_file:
+        with open(template_file_path, "r") as template_file:
             template_content = json.load(template_file)
-        with open(start_script_path, 'r') as start_script:
-            start_content = start_script.read().replace('\r\n', '\n')
+        with open(start_script_path, "r") as start_script:
+            start_content = start_script.read().replace("\r\n", "\n")
 
+        subscription_id = self._azure_json["subscription_id"]
+        resource_group = self._azure_json["resource_group"]
+        credential = self._azure_json["credential"]
 
-        subscription_id = self._azure_json['subscription_id']
-        resource_group = self._azure_json['resource_group']
-        credential = self._azure_json['credential']
-
-        uri = self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
+        uri = (
+            self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
+        )
         resource_client = ResourceManagementClient(credential, subscription_id)
         parameters = {
             "containerCount": {"value": self._n_instances},
@@ -133,18 +137,14 @@ class BicepAzureContainerInstance(Executor):
 
         deployment = Deployment(
             properties=DeploymentProperties(
-                template=template_content,
-                mode="Incremental",
-                parameters=parameters
+                template=template_content, mode="Incremental", parameters=parameters
             )
         )
         deployment_name = f"powerlift-{uuid.uuid4()}"
 
         # Deploy the template
         self._deployment_poll = resource_client.deployments.begin_create_or_update(
-            resource_group,
-            deployment_name,
-            deployment
+            resource_group, deployment_name, deployment
         )
         self._deployment_name = deployment_name
 
@@ -158,8 +158,13 @@ class BicepAzureContainerInstance(Executor):
     def cancel(self):
         if self._deployment_poll is not None:
             from azure.mgmt.resource import ResourceManagementClient
-            resource_client = ResourceManagementClient(self._azure_json['credential'], self._azure_json['subscription_id'])
-            cancel_operation = resource_client.deployments.begin_cancel(self._azure_json['resource_group'], self._deployment_name)
+
+            resource_client = ResourceManagementClient(
+                self._azure_json["credential"], self._azure_json["subscription_id"]
+            )
+            cancel_operation = resource_client.deployments.begin_cancel(
+                self._azure_json["resource_group"], self._deployment_name
+            )
             cancel_operation.wait()
 
     @property

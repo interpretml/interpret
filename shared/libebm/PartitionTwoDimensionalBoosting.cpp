@@ -297,6 +297,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 #endif // NDEBUG
 
+      TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pParentTreeNode = nullptr;
+      auto* pTreeNode = pDeepTreeNode;
+      auto* pHigh = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
+      EBM_ASSERT(1 <= cRealDimensions);
+
       size_t iDimensionLoop = 0;
       size_t iDimInit = 0;
       const TermFeature* const aTermFeatures = pTerm->GetTermFeatures();
@@ -313,9 +318,34 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             aDimensions[iDimInit].m_cBins = cBins;
             aiDim[iDimInit] = iDimInit;
             ++iDimInit;
+
+            pTreeNode->SplitNode();
+            pTreeNode->SetSplitIndex(0);
+            pTreeNode->SetParent(pParentTreeNode);
+            pTreeNode->SetChildren(pHigh);
+
+            pParentTreeNode = pTreeNode;
+            pTreeNode = IndexTreeNodeMulti(pHigh, cBytesTreeNodeMulti);
+            auto* const pNextHigh = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
+
+            // High child Node
+            pHigh->SetSplitGain(0.0);
+            pHigh->SetSplitIndex(0);
+            pHigh->SetParent(pParentTreeNode);
+            // set both high and low nodes to point to the same children. It isn't valid
+            // if the node isn't split but this avoids having to continually swap them
+            pHigh->SetChildren(pNextHigh);
+
+            pHigh = pNextHigh;
          }
          ++iDimensionLoop;
       } while(cRealDimensions != iDimInit);
+
+      // Low child node
+      pTreeNode->SetSplitGain(0.0);
+      pTreeNode->SetSplitIndex(0);
+      pTreeNode->SetParent(pParentTreeNode);
+      pTreeNode->SetChildren(pHigh); // we need to set it to something because we access this pointer below
 
       FloatCalc bestGain = k_illegalGainFloat;
 
@@ -330,38 +360,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
       const TensorSumDimension* const pDimensionEnd = &aDimensions[cRealDimensions];
-
-      // TODO: move this into the initialization above
-      TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pParentTreeNode = nullptr;
-      auto* pTreeNode = pDeepTreeNode;
-      auto* pHigh = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
-      EBM_ASSERT(1 <= cRealDimensions);
-      do {
-         pTreeNode->SplitNode();
-         pTreeNode->SetSplitIndex(0);
-         pTreeNode->SetParent(pParentTreeNode);
-         pTreeNode->SetChildren(pHigh);
-
-         pParentTreeNode = pTreeNode;
-         pTreeNode = IndexTreeNodeMulti(pHigh, cBytesTreeNodeMulti);
-         auto* const pNextHigh = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
-
-         // High child Node
-         pHigh->SetSplitGain(0.0);
-         pHigh->SetSplitIndex(0);
-         pHigh->SetParent(pParentTreeNode);
-         // set both high and low nodes to point to the same children. It isn't valid
-         // if the node isn't split but this avoids having to continually swap them
-         pHigh->SetChildren(pNextHigh);
-
-         pHigh = pNextHigh;
-      } while(pTreeNode <= pLastSplitTreeNode);
-
-      // Low child node
-      pTreeNode->SetSplitGain(0.0);
-      pTreeNode->SetSplitIndex(0);
-      pTreeNode->SetParent(pParentTreeNode);
-      pTreeNode->SetChildren(pHigh); // we need to set it to something because we access this pointer below
 
       while(true) {
          pTreeNode = pLastSplitTreeNode;
@@ -743,7 +741,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   size_t acSplits[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
                   memset(acSplits, 0, sizeof(acSplits[0]) * cRealDimensions);
                   memset(aaSplits[0], 0, cPossibleSplits * sizeof(*aaSplits[0]));
-                  // TODO: we can improve this by moving 2 and not checking IsSplit
                   pTreeNode = pRootTreeNode;
                   do {
                      if(pTreeNode->IsSplit()) {
