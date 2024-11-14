@@ -328,40 +328,76 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       const TensorSumDimension* const pDimensionEnd = &aDimensions[cRealDimensions];
 
-      while(true) {
-         // TODO: the initialization of pDeepTreeNode can be moved above into the initialization because
-         // the loop loop below restores most of the values to their initial values.
-         TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pParentTreeNode = nullptr;
-         auto* pTreeNode = pDeepTreeNode;
-         auto* pLow = IndexTreeNodeMulti(pDeepTreeNode, cBytesTreeNodeMulti);
-         EBM_ASSERT(1 <= cRealDimensions);
-         size_t iDim = 0;
-         do {
-            pTreeNode->SplitNode();
-            pTreeNode->SetDimensionIndex(aiDim[iDim]);
-            pTreeNode->SetSplitIndex(0);
-            pTreeNode->SetParent(pParentTreeNode);
-            pTreeNode->SetChildren(pLow);
-
-            // High child Node
-            auto* const pHigh = IndexTreeNodeMulti(pLow, cBytesTreeNodeMulti);
-            pHigh->SetSplitGain(0.0);
-            pHigh->SetParent(pTreeNode);
-
-            pParentTreeNode = pTreeNode;
-            pTreeNode = pLow;
-            pLow = IndexTreeNodeMulti(pHigh, cBytesTreeNodeMulti);
-
-            // set both high and low nodes to point to the same children. It isn't valid
-            // if the node isn't split but this avoids having to continually swap them
-            pHigh->SetChildren(pLow);
-
-            ++iDim;
-         } while(cRealDimensions != iDim);
-
-         // Low child node
-         pTreeNode->SetSplitGain(0.0);
+      // TODO: move this into the initialization above
+      TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pParentTreeNode = nullptr;
+      auto* pTreeNode = pDeepTreeNode;
+      auto* pLow = IndexTreeNodeMulti(pDeepTreeNode, cBytesTreeNodeMulti);
+      EBM_ASSERT(1 <= cRealDimensions);
+      size_t iDim = 0;
+      do {
+         pTreeNode->SplitNode();
+         pTreeNode->SetSplitIndex(0);
          pTreeNode->SetParent(pParentTreeNode);
+         pTreeNode->SetChildren(pLow);
+
+         // High child Node
+         auto* const pHigh = IndexTreeNodeMulti(pLow, cBytesTreeNodeMulti);
+         pHigh->SetSplitGain(0.0);
+         pHigh->SetParent(pTreeNode);
+
+         pParentTreeNode = pTreeNode;
+         pTreeNode = pLow;
+         pLow = IndexTreeNodeMulti(pHigh, cBytesTreeNodeMulti);
+
+         // set both high and low nodes to point to the same children. It isn't valid
+         // if the node isn't split but this avoids having to continually swap them
+         pHigh->SetChildren(pLow);
+
+         ++iDim;
+      } while(cRealDimensions != iDim);
+
+      // Low child node
+      pTreeNode->SetSplitGain(0.0);
+      pTreeNode->SetParent(pParentTreeNode);
+
+      while(true) {
+#ifndef NDEBUG
+         TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* pDEBUGParentTreeNode = nullptr;
+#endif // NDEBUG
+
+         // TODO: reverse the processing direction here because it's easier to go upwards from the child to the parent
+         // and doing an initial in-order memory read would be good for cache
+         // also, write the SetDimensionIndex to both siblings so that we don't have to constantly swap them
+         pTreeNode = pDeepTreeNode;
+         iDim = 0;
+         do {
+            EBM_ASSERT(pTreeNode->IsSplit());
+
+            auto* const pChildren = pTreeNode->GetChildren();
+            auto* const pLeftDim = GetLeftNode(pChildren);
+#ifndef NDEBUG
+            auto* const pRightDim = GetRightNode(pChildren, cBytesTreeNodeMulti);
+            EBM_ASSERT(0 == pTreeNode->GetSplitIndex());
+            EBM_ASSERT(pDEBUGParentTreeNode == pTreeNode->GetParent());
+            EBM_ASSERT(pLeftDim->GetParent() == pTreeNode);
+            EBM_ASSERT(pRightDim->GetParent() == pTreeNode);
+            // one of the children should not be split
+            EBM_ASSERT(!pRightDim->IsSplit());
+            if(iDim == cRealDimensions - 1) {
+               EBM_ASSERT(!pLeftDim->IsSplit());
+            } else {
+               EBM_ASSERT(pLeftDim->IsSplit());
+               EBM_ASSERT(pLeftDim->GetChildren() == pRightDim->GetChildren());
+            }
+
+            pDEBUGParentTreeNode = pTreeNode;
+#endif // NDEBUG
+
+            pTreeNode->SetDimensionIndex(aiDim[iDim]);
+            ++iDim;
+
+            pTreeNode = pLeftDim;
+         } while(pTreeNode->IsSplit());
 
          while(true) {
             while(true) {
@@ -699,7 +735,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   size_t acSplits[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
                   memset(acSplits, 0, sizeof(acSplits[0]) * cRealDimensions);
                   memset(aaSplits[0], 0, cPossibleSplits * sizeof(*aaSplits[0]));
-                  auto* pTreeNode = pRootTreeNode;
+                  pTreeNode = pRootTreeNode;
                   do {
                      if(pTreeNode->IsSplit()) {
                         const size_t iDimension = pTreeNode->GetDimensionIndex();
@@ -760,7 +796,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   FloatScore* pTensorGrad = aTensorGrad;
                   FloatScore* pTensorHess = aTensorHess;
 
-                  size_t iDim = 0;
+                  iDim = 0;
                   do {
                      const size_t cSplitFirst =
                            static_cast<size_t>(pInnerTermUpdate->GetSplitPointer(aiOriginalIndex[iDim])[0]);
