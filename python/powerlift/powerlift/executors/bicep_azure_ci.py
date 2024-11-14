@@ -1,29 +1,20 @@
-"""Azure Container Instances runtime with asyncio. Likely to replace older ACI executor when stable.
+"""Azure Container Instances runtime created via bicep.
 
 # See more details here:
 https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?view=azure-python
 """
 
 import random
+from multiprocessing import Pool
 from typing import List, Optional
-import threading
-import asyncio
-from asyncio import AbstractEventLoop
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor
-
-def _start_loop(loop: AbstractEventLoop):
-    # This will run forever until it is requested to stop.
-    loop.run_forever()
-    loop.close()
-
-def _stop_loop(loop: AbstractEventLoop):
-    loop.stop()
+from pathlib import Path
 
 
-class AsyncAzureContainerInstance(Executor):
-    """Runs trials on Azure Container Instances."""
+class BicepAzureContainerInstance(Executor):
+    """Runs trials on Azure Container Instances via bicep."""
 
     def __init__(
         self,
@@ -46,7 +37,6 @@ class AsyncAzureContainerInstance(Executor):
         image: str = "mcr.microsoft.com/devcontainers/python:latest",
         docker_db_uri: Optional[str] = None,
         resource_uris: Optional[List[str]] = None,
-        max_undead: int = 20,
         delete_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.
@@ -68,23 +58,22 @@ class AsyncAzureContainerInstance(Executor):
             image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             resource_uris (List[str], optional): Azure resources to grant contributor access permissions to.
-            max_undead (int): maximum number of containers that are allowed to be left alive if there is an error during initialization. Higher numbers increase the speed of initialization, but might incur higher cost if any zombies escape.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
         """
 
-        self._credential = credential
         self._image = image
         self._shell_install = shell_install
         self._pip_install = pip_install
         self._n_instances = n_instances
         self._num_cores = num_cores
         self._mem_size_gb = mem_size_gb
-        self._max_undead = max_undead
         self._delete_on_complete = delete_on_complete
 
         self._docker_db_uri = docker_db_uri
+
         self._resource_uris = resource_uris
         self._azure_json = {
+            'credential': credential,
             "tenant_id": azure_tenant_id,
             "client_id": azure_client_id,
             "client_secret": azure_client_secret,
@@ -93,60 +82,85 @@ class AsyncAzureContainerInstance(Executor):
         }
         self._batch_id = random.getrandbits(64)
 
-        self._async_loop = asyncio.new_event_loop()
-        self._async_thread = threading.Thread(target=_start_loop, args=(self._async_loop,))
-        self._async_thread.daemon = True
-        self._async_thread.start()
-
+        self._pool = Pool()
         self._runner_id_to_result = {}
         self._store = store
         self._wheel_filepaths = wheel_filepaths
 
+        self._deployment_poll = None
+        self._deployment_name = None
+
     def __del__(self):
-        if self._async_thread is not None:
-            self._async_loop.call_soon_threadsafe(_stop_loop, self._async_loop)
+        if self._pool is not None:
+            self._pool.close()
 
     def delete_credentials(self):
         """Deletes credentials in object for accessing Azure Resources."""
         del self._azure_json
 
     def submit(self, experiment_id, timeout=None):
-        from powerlift.run import azure_ci as remote_process
+        from azure.mgmt.resource import ResourceManagementClient
+        from azure.mgmt.resource.resources.models import Deployment, DeploymentProperties
+        import json
+        import uuid
 
-        uri = (
-            self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
-        )
+        script_dir = Path(__file__).resolve().parent
+        start_script_path = script_dir / "startup.sh"
+        template_file_path = script_dir / "aci.json"
+        with open(template_file_path, 'r') as template_file:
+            template_content = json.load(template_file)
+        with open(start_script_path, 'r') as start_script:
+            start_content = start_script.read().replace('\r\n', '\n')
 
-        params = (
-            experiment_id,
-            self._n_instances,
-            uri,
-            self._resource_uris,
-            timeout,
-            self._image,
-            self._azure_json,
-            self._credential,
-            self._num_cores,
-            self._mem_size_gb,
-            self._max_undead,
-            self._delete_on_complete,
-            self._batch_id,
+
+        subscription_id = self._azure_json['subscription_id']
+        resource_group = self._azure_json['resource_group']
+        credential = self._azure_json['credential']
+
+        uri = self._docker_db_uri if self._docker_db_uri is not None else self._store.uri
+        resource_client = ResourceManagementClient(credential, subscription_id)
+        parameters = {
+            "containerCount": {"value": self._n_instances},
+            "batchSize": {"value": 50},
+            "containerImage": {"value": self._image},
+            "startupScript": {"value": start_content},
+            "experimentId": {"value": str(experiment_id)},
+            "dbUrl": {"type": "secureString", "value": uri},
+            "timeout": {"value": timeout},
+            "resourceGroupName": {"value": resource_group},
+            "subscriptionId": {"value": subscription_id},
+        }
+
+        deployment = Deployment(
+            properties=DeploymentProperties(
+                template=template_content,
+                mode="Incremental",
+                parameters=parameters
+            )
         )
-        self._batch_id = random.getrandbits(64)
-        self._runner_id_to_result[0] = asyncio.run_coroutine_threadsafe(remote_process.run_azure_process(*params))
+        deployment_name = f"powerlift-{uuid.uuid4()}"
+
+        # Deploy the template
+        self._deployment_poll = resource_client.deployments.begin_create_or_update(
+            resource_group,
+            deployment_name,
+            deployment
+        )
+        self._deployment_name = deployment_name
 
     def join(self):
+        if self._deployment_poll is not None:
+            self._deployment_poll.wait()
+
         results = []
-        if self._pool is not None:
-            for result in self._runner_id_to_result.values():
-                res = result.get()
-                results.append(res)
         return results
 
     def cancel(self):
-        fut = self._async_loop.call_soon_threadsafe(_stop_loop, self._async_loop)
-        fut.result()
-        self._async_thread = None
+        if self._deployment_poll is not None:
+            from azure.mgmt.resource import ResourceManagementClient
+            resource_client = ResourceManagementClient(self._azure_json['credential'], self._azure_json['subscription_id'])
+            cancel_operation = resource_client.deployments.begin_cancel(self._azure_json['resource_group'], self._deployment_name)
+            cancel_operation.wait()
 
     @property
     def store(self):

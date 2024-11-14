@@ -369,7 +369,6 @@ def run_azure_process(
     """
 
     import time
-    import uuid
     from heapq import heappush
     from datetime import datetime
     from azure.core.exceptions import HttpResponseError
@@ -454,7 +453,7 @@ def run_azure_process(
         for _ in range(max_attempts):
             try:
                 # begin_create_or_update returns LROPoller,
-                # but this is only indicates when the containter is started
+                # but this is only indicates when the container is started
                 started = aci_client.container_groups.begin_create_or_update(
                     resource_group_name, container_group_name, container_group
                 )
