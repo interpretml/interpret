@@ -214,37 +214,19 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNodeMulti final {
 
       return m_splitGain;
    }
-   inline void SplitNode() {
-      EBM_ASSERT(!IsSplit());
-      m_splitGain = std::numeric_limits<FloatMain>::quiet_NaN();
-   }
+   inline void SplitNode() { m_splitGain = std::numeric_limits<FloatMain>::quiet_NaN(); }
 
-   inline void SetDimensionIndex(const size_t iDimension) {
-      EBM_ASSERT(!IsSplit());
-      m_iDimension = iDimension;
-   }
+   inline void SetDimensionIndex(const size_t iDimension) { m_iDimension = iDimension; }
    inline size_t GetDimensionIndex() const { return m_iDimension; }
 
-   inline void SetSplitIndex(const size_t iSplit) {
-      EBM_ASSERT(!IsSplit());
-      m_iSplit = iSplit;
-   }
+   inline void SetSplitIndex(const size_t iSplit) { m_iSplit = iSplit; }
    inline size_t GetSplitIndex() const { return m_iSplit; }
 
-   inline void SetParent(TreeNodeMulti* const pParent) {
-      EBM_ASSERT(!IsSplit());
-      m_pParent = pParent;
-   }
+   inline void SetParent(TreeNodeMulti* const pParent) { m_pParent = pParent; }
    inline TreeNodeMulti* GetParent() { return m_pParent; }
 
-   inline void SetChildren(TreeNodeMulti* const pChildren) {
-      EBM_ASSERT(IsSplit());
-      m_pChildren = pChildren;
-   }
-   inline TreeNodeMulti* GetChildren() {
-      EBM_ASSERT(IsSplit());
-      return m_pChildren;
-   }
+   inline void SetChildren(TreeNodeMulti* const pChildren) { m_pChildren = pChildren; }
+   inline TreeNodeMulti* GetChildren() { return m_pChildren; }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() { return &m_bin; }
 
@@ -357,9 +339,9 @@ inline static TreeNode<bHessian, cCompilerScores>* GetLeftNode(TreeNode<bHessian
 }
 
 template<bool bHessian, size_t cCompilerScores>
-inline static TreeNodeMulti<bHessian, cCompilerScores>* GetLeftNode(
-      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren) {
-   return pChildren;
+inline static TreeNodeMulti<bHessian, cCompilerScores>* GetLowNode(
+      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren, const size_t cBytesPerTreeNodeMulti) {
+   return IndexTreeNodeMulti(pChildren, cBytesPerTreeNodeMulti);
 }
 
 template<bool bHessian, size_t cCompilerScores>
@@ -369,9 +351,9 @@ inline static TreeNode<bHessian, cCompilerScores>* GetRightNode(
 }
 
 template<bool bHessian, size_t cCompilerScores>
-inline static TreeNodeMulti<bHessian, cCompilerScores>* GetRightNode(
-      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren, const size_t cBytesPerTreeNodeMulti) {
-   return IndexTreeNodeMulti(pChildren, cBytesPerTreeNodeMulti);
+inline static TreeNodeMulti<bHessian, cCompilerScores>* GetHighNode(
+      TreeNodeMulti<bHessian, cCompilerScores>* const pChildren) {
+   return pChildren;
 }
 
 } // namespace DEFINED_ZONE_NAME
