@@ -1612,8 +1612,6 @@ TEST_CASE("tweedie, boosting") {
    CHECK_APPROX(termScore, 2.3025076860047466);
 }
 
-#ifdef NEVER
-// TODO: reinstate this test
 TEST_CASE("purified boosting of impure input, regression") {
    // We give the booster a dataset with only impurity and ask it to purify the model
    // which results in no update each iteration.
@@ -1703,7 +1701,6 @@ TEST_CASE("purified boosting of impure input, multiclass") {
       }
    }
 }
-#endif // NEVER
 
 #ifdef NEVER
 // TODO: restore this test

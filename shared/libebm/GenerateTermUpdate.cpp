@@ -473,6 +473,16 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
          }
          ++pWeight;
       } while(pScoreEnd != pScore);
+
+      if(/* NaN */ !(std::numeric_limits<double>::min() <= gain)) {
+         // Purification can push the updates to a point where they are detrimental to the purified gain
+         // in which case gain can end up slightly negative. If this happens disallow the cuts so that we
+         // never have negative gain.
+
+         pTensor->Reset();
+         gain = std::isnan(gain) ? gain : double{0};
+      }
+
       *pTotalGain = gain;
 
       free(aWeights);
