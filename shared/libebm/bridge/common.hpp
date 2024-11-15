@@ -123,6 +123,13 @@ template<typename T> inline static size_t CountBytes(const T* const pHigh, const
    return reinterpret_cast<const char*>(pHigh) - reinterpret_cast<const char*>(pLow);
 }
 
+template<typename T>
+inline static size_t CountItems(const T* const pHigh, const T* const pLow, const size_t cbPerItem) noexcept {
+   const size_t cBytes = CountBytes(pHigh, pLow);
+   EBM_ASSERT(0 == cBytes % cbPerItem);
+   return cBytes / cbPerItem;
+}
+
 template<typename T> inline constexpr static T EbmIsNaN(T v) noexcept { return v != v; }
 
 // TODO : replace all std::min and std::max and similar comparions that get the min/max with this function

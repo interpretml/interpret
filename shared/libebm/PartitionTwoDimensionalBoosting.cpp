@@ -306,7 +306,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       size_t iDimInit = 0;
       const TermFeature* const aTermFeatures = pTerm->GetTermFeatures();
       size_t aiOriginalIndex[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
-      size_t aiDim[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+#ifndef NDEBUG
+      size_t aiDEBUGDim[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
+#endif // NDEBUG
       EBM_ASSERT(1 <= cRealDimensions);
       do {
          EBM_ASSERT(iDimensionLoop < pTerm->GetCountDimensions());
@@ -316,21 +318,26 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          if(size_t{1} < cBins) {
             aiOriginalIndex[iDimInit] = iDimensionLoop;
             aDimensions[iDimInit].m_cBins = cBins;
-            aiDim[iDimInit] = iDimInit;
-            ++iDimInit;
+
+#ifndef NDEBUG
+            aiDEBUGDim[iDimInit] = cRealDimensions - 1 - iDimInit;
+#endif // NDEBUG
 
             pTreeNode->SplitNode();
             pTreeNode->SetSplitIndex(0);
+            pTreeNode->SetDimensionIndex(cRealDimensions - size_t{1} - iDimInit);
             pTreeNode->SetParent(pParentTreeNode);
             pTreeNode->SetChildren(pHigh);
 
             pParentTreeNode = pTreeNode;
             pTreeNode = IndexTreeNodeMulti(pHigh, cBytesTreeNodeMulti);
             auto* const pNextHigh = IndexTreeNodeMulti(pTreeNode, cBytesTreeNodeMulti);
+            ++iDimInit;
 
             // High child Node
             pHigh->SetSplitGain(0.0);
             pHigh->SetSplitIndex(0);
+            pHigh->SetDimensionIndex(cRealDimensions - size_t{1} - iDimInit);
             pHigh->SetParent(pParentTreeNode);
             // set both high and low nodes to point to the same children. It isn't valid
             // if the node isn't split but this avoids having to continually swap them
@@ -343,7 +350,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       // Low child node
       pTreeNode->SetSplitGain(0.0);
-      pTreeNode->SetSplitIndex(0);
       pTreeNode->SetParent(pParentTreeNode);
       pTreeNode->SetChildren(pHigh); // we need to set it to something because we access this pointer below
 
@@ -363,8 +369,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
 
       while(true) {
          pTreeNode = pLastSplitTreeNode;
-         size_t iDim = 0;
-         size_t iDimReordered;
          while(true) {
             EBM_ASSERT(pTreeNode->IsSplit());
             EBM_ASSERT(GetHighNode(pTreeNode->GetChildren())->GetParent() == pTreeNode);
@@ -372,26 +376,32 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
             EBM_ASSERT(GetHighNode(pTreeNode->GetChildren())->GetChildren() ==
                   GetLowNode(pTreeNode->GetChildren(), cBytesTreeNodeMulti)->GetChildren());
             EBM_ASSERT(!GetHighNode(pTreeNode->GetChildren())->IsSplit());
-            EBM_ASSERT(size_t{0} != iDim || !GetLowNode(pTreeNode->GetChildren(), cBytesTreeNodeMulti)->IsSplit());
-            EBM_ASSERT(size_t{0} == iDim || GetLowNode(pTreeNode->GetChildren(), cBytesTreeNodeMulti)->IsSplit());
+            EBM_ASSERT(pTreeNode != pLastSplitTreeNode ||
+                  !GetLowNode(pTreeNode->GetChildren(), cBytesTreeNodeMulti)->IsSplit());
+            EBM_ASSERT(pTreeNode == pLastSplitTreeNode ||
+                  GetLowNode(pTreeNode->GetChildren(), cBytesTreeNodeMulti)->IsSplit());
             EBM_ASSERT(0 == pTreeNode->GetSplitIndex());
+            EBM_ASSERT(pTreeNode->GetDimensionIndex() ==
+                  aiDEBUGDim[CountItems(pTreeNode, pDeepTreeNode, cBytesTreeNodeMulti << 1)]);
 
-            iDimReordered = aiDim[iDim];
-
-            auto* const pParent = pTreeNode->GetParent();
-            if(nullptr == pParent) {
+            if(pDeepTreeNode == pTreeNode) {
+               EBM_ASSERT(nullptr == pTreeNode->GetParent());
                break;
             }
-            EBM_ASSERT(GetLowNode(pParent->GetChildren(), cBytesTreeNodeMulti) == pTreeNode);
 
-            pTreeNode->SetDimensionIndex(iDimReordered);
-            auto* const pHighSibling = NegativeIndexByte(pTreeNode, cBytesTreeNodeMulti);
-            pHighSibling->SetDimensionIndex(iDimReordered);
+            EBM_ASSERT(GetLowNode(pTreeNode->GetParent()->GetChildren(), cBytesTreeNodeMulti) == pTreeNode);
+            EBM_ASSERT(NegativeIndexByte(pTreeNode, cBytesTreeNodeMulti << 1) == pTreeNode->GetParent());
+            EBM_ASSERT(NegativeIndexByte(pTreeNode, cBytesTreeNodeMulti) ==
+                  GetHighNode(pTreeNode->GetParent()->GetChildren()));
 
-            ++iDim;
-            pTreeNode = pParent;
+            const size_t iDimCopy = pTreeNode->GetDimensionIndex();
+
+            // this points to the high node now
+            pTreeNode = NegativeIndexByte(pTreeNode, cBytesTreeNodeMulti);
+            pTreeNode->SetDimensionIndex(iDimCopy);
+            // this points to the parent now
+            pTreeNode = NegativeIndexByte(pTreeNode, cBytesTreeNodeMulti);
          }
-         pTreeNode->SetDimensionIndex(iDimReordered);
 
          while(true) {
             while(true) {
@@ -621,34 +631,44 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
          }
       done_tree:;
 
+#ifndef NDEBUG
+         const bool bDEBUGContinue = std::prev_permutation(aiDEBUGDim, &aiDEBUGDim[cRealDimensions]);
+#endif // NDEBUG
+
          EBM_ASSERT(1 <= cRealDimensions);
-         if(1 == cRealDimensions) {
+         if(pDeepTreeNode == pLastSplitTreeNode) {
+            EBM_ASSERT(!bDEBUGContinue);
             goto done;
          }
-         size_t i = 1;
-         while(aiDim[i] <= aiDim[i - 1]) {
-            if(i == cRealDimensions - 1) {
+         auto* pNode2 = pLastSplitTreeNode;
+         auto* pNode1 = NegativeIndexByte(pLastSplitTreeNode, cBytesTreeNodeMulti << 1);
+
+         while(pNode1->GetDimensionIndex() <= pNode2->GetDimensionIndex()) {
+            if(pNode1 == pDeepTreeNode) {
+               EBM_ASSERT(!bDEBUGContinue);
                goto done;
             }
-            ++i;
+            pNode2 = pNode1;
+            pNode1 = NegativeIndexByte(pNode1, cBytesTreeNodeMulti << 1);
          }
-         size_t j = 0;
-         while(aiDim[j] >= aiDim[i]) {
-            ++j;
+         EBM_ASSERT(bDEBUGContinue);
+
+         auto* pNode3 = pLastSplitTreeNode;
+         while(pNode3->GetDimensionIndex() >= pNode1->GetDimensionIndex()) {
+            pNode3 = NegativeIndexByte(pNode3, cBytesTreeNodeMulti << 1);
          }
 
-         size_t temp = aiDim[i];
-         aiDim[i] = aiDim[j];
-         aiDim[j] = temp;
+         size_t iDimTemp = pNode1->GetDimensionIndex();
+         pNode1->SetDimensionIndex(pNode3->GetDimensionIndex());
+         pNode3->SetDimensionIndex(iDimTemp);
 
-         size_t start = 0;
-         size_t end = i - 1;
-         while(start < end) {
-            temp = aiDim[start];
-            aiDim[start] = aiDim[end];
-            aiDim[end] = temp;
-            ++start;
-            --end;
+         auto* pNode4 = pLastSplitTreeNode;
+         while(pNode2 < pNode4) {
+            iDimTemp = pNode4->GetDimensionIndex();
+            pNode4->SetDimensionIndex(pNode2->GetDimensionIndex());
+            pNode2->SetDimensionIndex(iDimTemp);
+            pNode4 = NegativeIndexByte(pNode4, cBytesTreeNodeMulti << 1);
+            pNode2 = IndexByte(pNode2, cBytesTreeNodeMulti << 1);
          }
       }
    done:;
