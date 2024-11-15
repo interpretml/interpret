@@ -255,8 +255,8 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
    const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
-   EBM_ASSERT(2 <= pTerm->GetCountDimensions());
-   EBM_ASSERT(2 <= pTerm->GetCountRealDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountDimensions());
+   EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
 
    ErrorEbm error;
 
@@ -351,52 +351,37 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       }
    }
 
-   if(2 == pTerm->GetCountRealDimensions()) {
-      error = PartitionTwoDimensionalBoosting(pBoosterShell,
-            flags,
-            pTerm,
-            acBins,
-            cSamplesLeafMin,
-            hessianMin,
-            regAlpha,
-            regLambda,
-            deltaStepMax,
-            aAuxiliaryBins,
-            aWeights,
-            pGradient,
-            pHessian,
-            pTotalGain
+   error = PartitionTwoDimensionalBoosting(pBoosterShell,
+         flags,
+         pTerm,
+         acBins,
+         cSamplesLeafMin,
+         hessianMin,
+         regAlpha,
+         regLambda,
+         deltaStepMax,
+         aAuxiliaryBins,
+         aWeights,
+         pGradient,
+         pHessian,
+         pTotalGain
 #ifndef NDEBUG
-            ,
-            aDebugCopyBins
+         ,
+         aDebugCopyBins
 #endif // NDEBUG
-      );
-      if(Error_None != error) {
-         free(aWeights);
-#ifndef NDEBUG
-         free(aDebugCopyBins);
-#endif // NDEBUG
-
-         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
-
-         return error;
-      }
-
-      EBM_ASSERT(!std::isnan(*pTotalGain));
-      EBM_ASSERT(0 <= *pTotalGain);
-   } else {
+   );
+   if(Error_None != error) {
       free(aWeights);
-
-      LOG_0(Trace_Warning, "WARNING BoostMultiDimensional 2 != pTerm->GetCountSignificantFeatures()");
-
-      // TODO: eventually handle this in our caller and this function can specialize in handling just 2 dimensional
-      //       then we can replace this branch with an assert
 #ifndef NDEBUG
-      EBM_ASSERT(false);
       free(aDebugCopyBins);
 #endif // NDEBUG
-      return Error_UnexpectedInternal;
+
+      LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
+
+      return error;
    }
+   EBM_ASSERT(!std::isnan(*pTotalGain));
+   EBM_ASSERT(0 <= *pTotalGain);
 
    if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
       Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
@@ -855,7 +840,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
 #ifndef NDEBUG
       size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
-      if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
+      if(0 != (TermBoostFlags_RandomSplits & flags)) {
          // if we're doing random boosting we allocated the auxillary memory, but we don't need it
          cAuxillaryBins = 0;
       }
@@ -1015,7 +1000,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             EBM_ASSERT(0 < weightTotal); // if all are zeros we assume there are no weights and use the count
 
             double gain;
-            if(0 != (TermBoostFlags_RandomSplits & flags) || 2 < cRealDimensions) {
+            if(0 != (TermBoostFlags_RandomSplits & flags)) {
                // THIS RANDOM SPLIT OPTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
                error = BoostRandom(pRng,
