@@ -324,7 +324,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    double* aWeights = nullptr;
    double* pGradient = nullptr;
    double* pHessian = nullptr;
-   if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
+   if(0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags)) {
       // allocate the biggest tensor that is possible to split into
 
       // TODO: cache this memory allocation so that we don't do it each time
@@ -383,7 +383,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    EBM_ASSERT(!std::isnan(*pTotalGain));
    EBM_ASSERT(0 <= *pTotalGain);
 
-   if(0 != (TermBoostFlags_PurifyUpdate & flags)) {
+   if(0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
       Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
 
       size_t cDimensions = pTerm->GetCountDimensions();
@@ -461,8 +461,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       if(/* NaN */ !(std::numeric_limits<double>::min() <= gain)) {
          // Purification can push the updates to a point where they are detrimental to the purified gain
-         // in which case gain can end up slightly negative. If this happens disallow the cuts so that we
-         // never have negative gain.
+         // in which case gain can end up slightly negative. If this happens, disallow the cuts so that we
+         // never have negative gain. For purified updates, if we make no cuts, then the update is zero
+         // so we don't have to call CalcNegUpdate.
 
          pTensor->Reset();
          gain = std::isnan(gain) ? gain : double{0};
