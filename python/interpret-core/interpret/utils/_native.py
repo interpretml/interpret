@@ -32,10 +32,10 @@ class Native:
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
-    TermBoostFlags_DisableNewtonGain = 0x00000001
-    TermBoostFlags_DisableNewtonUpdate = 0x00000002
-    TermBoostFlags_PurifyGain = 0x00000004
-    TermBoostFlags_PurifyUpdate = 0x00000008
+    TermBoostFlags_PurifyGain = 0x00000001
+    TermBoostFlags_DisableNewtonGain = 0x00000002
+    TermBoostFlags_PurifyUpdate = 0x00000004
+    TermBoostFlags_DisableNewtonUpdate = 0x00000008
     TermBoostFlags_GradientSums = 0x00000010
     TermBoostFlags_RandomSplits = 0x00000020
 
@@ -46,8 +46,8 @@ class Native:
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
-    CalcInteractionFlags_DisableNewton = 0x00000001
-    CalcInteractionFlags_Purify = 0x00000002
+    CalcInteractionFlags_Purify = 0x00000001
+    CalcInteractionFlags_DisableNewton = 0x00000002
 
     # AccelerationFlags
     AccelerationFlags_NONE = 0x00000000
