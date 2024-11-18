@@ -397,9 +397,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
          if(MONOTONE_NONE != direction) {
             const FloatCalc negUpdateRight =
-                  CalcNegUpdate<false>(sumGradientsRight, sumHessiansRightUpdate, regAlpha, regLambda, deltaStepMax);
+                  CalcNegUpdate<true>(sumGradientsRight, sumHessiansRightUpdate, regAlpha, regLambda, deltaStepMax);
             const FloatCalc negUpdateLeft =
-                  CalcNegUpdate<false>(sumGradientsLeft, sumHessiansLeftUpdate, regAlpha, regLambda, deltaStepMax);
+                  CalcNegUpdate<true>(sumGradientsLeft, sumHessiansLeftUpdate, regAlpha, regLambda, deltaStepMax);
             if(MonotoneDirection{0} < direction) {
                if(negUpdateLeft < negUpdateRight) {
                   bLegal = false;
@@ -413,13 +413,14 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          }
 
          const FloatCalc gainRight =
-               CalcPartialGain(sumGradientsRight, sumHessiansRight, regAlpha, regLambda, deltaStepMax);
-         EBM_ASSERT(std::isnan(gainRight) || 0 <= gainRight);
+               CalcPartialGain<false>(sumGradientsRight, sumHessiansRight, regAlpha, regLambda, deltaStepMax);
+         EBM_ASSERT(!bLegal || std::isnan(gainRight) || 0 <= gainRight);
          gain += gainRight;
 
+         // if bLegal was set to false, sumHessiansLeft can be negative
          const FloatCalc gainLeft =
-               CalcPartialGain(sumGradientsLeft, sumHessiansLeft, regAlpha, regLambda, deltaStepMax);
-         EBM_ASSERT(std::isnan(gainLeft) || 0 <= gainLeft);
+               CalcPartialGain<true>(sumGradientsLeft, sumHessiansLeft, regAlpha, regLambda, deltaStepMax);
+         EBM_ASSERT(!bLegal || std::isnan(gainLeft) || 0 <= gainLeft);
          gain += gainLeft;
 
          ++iScore;
@@ -524,7 +525,7 @@ done:;
       // we would not get here unless there was a split, so both sides must meet the minHessian reqirement
       EBM_ASSERT(hessianMin <= sumHessiansOverwrite);
       const FloatCalc gain1 =
-            CalcPartialGain(sumGradientsParent, sumHessiansOverwrite, regAlpha, regLambda, deltaStepMax);
+            CalcPartialGain<false>(sumGradientsParent, sumHessiansOverwrite, regAlpha, regLambda, deltaStepMax);
       EBM_ASSERT(std::isnan(gain1) || 0 <= gain1);
       bestGain -= gain1;
 

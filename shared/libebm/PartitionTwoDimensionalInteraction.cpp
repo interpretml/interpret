@@ -351,10 +351,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                         const FloatCalc negPure11 = common / (FloatCalc{1} + w11 / w00 + w11 / w01 + w11 / w10);
 
                         // g = partial gain
-                        const FloatCalc g00 = CalcPartialGainFromUpdate(grad00, hess00, negPure00, regAlpha, regLambda);
-                        const FloatCalc g01 = CalcPartialGainFromUpdate(grad01, hess01, negPure01, regAlpha, regLambda);
-                        const FloatCalc g10 = CalcPartialGainFromUpdate(grad10, hess10, negPure10, regAlpha, regLambda);
-                        const FloatCalc g11 = CalcPartialGainFromUpdate(grad11, hess11, negPure11, regAlpha, regLambda);
+                        const FloatCalc g00 =
+                              CalcPartialGainFromUpdate<false>(grad00, hess00, negPure00, regAlpha, regLambda);
+                        const FloatCalc g01 =
+                              CalcPartialGainFromUpdate<false>(grad01, hess01, negPure01, regAlpha, regLambda);
+                        const FloatCalc g10 =
+                              CalcPartialGainFromUpdate<false>(grad10, hess10, negPure10, regAlpha, regLambda);
+                        const FloatCalc g11 =
+                              CalcPartialGainFromUpdate<false>(grad11, hess11, negPure11, regAlpha, regLambda);
 
                         gain += g00;
                         gain += g01;
@@ -363,13 +367,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      }
                   } else {
                      // non-purified gain
-                     gain += CalcPartialGain(grad00, hess00, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad01, hess01, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad10, hess10, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad11, hess11, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad00, hess00, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad01, hess01, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad10, hess10, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad11, hess11, regAlpha, regLambda, deltaStepMax);
                   }
                }
-               EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
+               // gain should be positive if we're dealing with unpurified updates
+               EBM_ASSERT(0 != (CalcInteractionFlags_Purify & flags) || std::isnan(gain) || 0 <= gain);
 
                // If we get a NaN result, we'd like to propagate it by making bestGain NaN.
                // The rules for NaN values say that non equality comparisons are all false so,
@@ -413,7 +418,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 
                EBM_ASSERT(hessianMin <= hess);
 
-               bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               bestGain -= CalcPartialGain<false>(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
                      hess,
                      regAlpha,
                      regLambda,

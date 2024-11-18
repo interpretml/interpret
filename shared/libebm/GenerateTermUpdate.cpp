@@ -550,7 +550,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
                ++pHessian;
             }
             double update = *pScore;
-            gain += CalcPartialGainFromUpdate(grad, hess, -update, regAlpha, regLambda);
+            gain += CalcPartialGainFromUpdate<true>(grad, hess, -update, regAlpha, regLambda);
             ++pGradient;
             ++pScore;
          }

@@ -491,7 +491,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         }
 
                         const FloatCalc gain1 =
-                              CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLocal[iScore].m_sumGradients),
+                              CalcPartialGain<false>(static_cast<FloatCalc>(aGradientPairsLocal[iScore].m_sumGradients),
                                     hessian,
                                     regAlpha,
                                     regLambda,
@@ -543,7 +543,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         }
 
                         const FloatCalc gain1 =
-                              CalcPartialGain(static_cast<FloatCalc>(aGradientPairsLocal[iScore].m_sumGradients),
+                              CalcPartialGain<false>(static_cast<FloatCalc>(aGradientPairsLocal[iScore].m_sumGradients),
                                     hessian,
                                     regAlpha,
                                     regLambda,
@@ -670,7 +670,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                            ++pHessian;
                         }
                         double update = *pScore;
-                        gain += CalcPartialGainFromUpdate(grad, hess, -update, regAlpha, regLambda);
+                        gain += CalcPartialGainFromUpdate<true>(grad, hess, -update, regAlpha, regLambda);
                         ++pGradient;
                         ++pScore;
                      }
@@ -855,7 +855,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                   EBM_ASSERT(hessianMin <= hess);
 
                   const FloatCalc gain1 =
-                        CalcPartialGain(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
+                        CalcPartialGain<false>(static_cast<FloatCalc>(pGradientPairTotal[iScore].m_sumGradients),
                               hess,
                               regAlpha,
                               regLambda,
