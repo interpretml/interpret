@@ -385,7 +385,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       // TODO: we should calculate the default partial gain before splitting anything. Once we have that
       // number we can calculate the minimum gain we need to reach k_gainMin after the cuts are made
       // which will allow us to avoid some work when the eventual gain will be less than our minimum
-      FloatCalc bestGain = k_gainMin; // do not allow bad cuts that lead to negative gain
+      FloatCalc bestGain = -std::numeric_limits<double>::infinity(); // do not allow bad cuts that lead to negative gain
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
@@ -590,6 +590,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                         pBinsEndDebug
 #endif // NDEBUG
                   );
+
                   if(Error_None != error) {
                      return error;
                   }
@@ -812,29 +813,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
       }
    done:;
 
-      auto* pCurTreeNode = pRootTreeNode;
-      EBM_ASSERT(nullptr == pCurTreeNode->GetParent());
-      while(true) {
-         EBM_ASSERT(nullptr != pCurTreeNode->GetChildren());
-         const size_t cBytesOffset1 =
-               reinterpret_cast<char*>(pCurTreeNode->GetChildren()) - reinterpret_cast<char*>(pDeepTreeNode);
-         TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode1 =
-               IndexTreeNodeMulti(pRootTreeNode, cBytesOffset1);
-         pCurTreeNode->SetChildren(pNode1);
-
-         pCurTreeNode = IndexTreeNodeMulti(pCurTreeNode, cBytesTreeNodeMulti);
-         if(pDeepTreeNode == pCurTreeNode) {
-            break;
-         }
-
-         EBM_ASSERT(nullptr != pCurTreeNode->GetParent());
-         const size_t cBytesOffset2 =
-               reinterpret_cast<char*>(pCurTreeNode->GetParent()) - reinterpret_cast<char*>(pDeepTreeNode);
-         TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode2 =
-               IndexTreeNodeMulti(pRootTreeNode, cBytesOffset2);
-         pCurTreeNode->SetParent(pNode2);
-      }
-
       EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatCalc{0} <= bestGain);
 
       // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase,
@@ -899,6 +877,29 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
                *pTotalGain = 0;
                if(LIKELY(k_gainMin <= bestGain)) {
                   *pTotalGain = static_cast<double>(bestGain);
+
+                  auto* pCurTreeNode = pRootTreeNode;
+                  EBM_ASSERT(nullptr == pCurTreeNode->GetParent());
+                  while(true) {
+                     EBM_ASSERT(nullptr != pCurTreeNode->GetChildren());
+                     const size_t cBytesOffset1 = reinterpret_cast<char*>(pCurTreeNode->GetChildren()) -
+                           reinterpret_cast<char*>(pDeepTreeNode);
+                     TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode1 =
+                           IndexTreeNodeMulti(pRootTreeNode, cBytesOffset1);
+                     pCurTreeNode->SetChildren(pNode1);
+
+                     pCurTreeNode = IndexTreeNodeMulti(pCurTreeNode, cBytesTreeNodeMulti);
+                     if(pDeepTreeNode == pCurTreeNode) {
+                        break;
+                     }
+
+                     EBM_ASSERT(nullptr != pCurTreeNode->GetParent());
+                     const size_t cBytesOffset2 =
+                           reinterpret_cast<char*>(pCurTreeNode->GetParent()) - reinterpret_cast<char*>(pDeepTreeNode);
+                     TreeNodeMulti<bHessian, GetArrayScores(cCompilerScores)>* const pNode2 =
+                           IndexTreeNodeMulti(pRootTreeNode, cBytesOffset2);
+                     pCurTreeNode->SetParent(pNode2);
+                  }
 
                   error = MakeTensor<bHessian, cCompilerScores, cCompilerDimensions>(cScores,
                         cRealDimensions,
