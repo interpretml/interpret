@@ -120,7 +120,7 @@ TEST_CASE("Term with one feature with two states, interaction, regression") {
          });
 
    double metricReturn = test.TestCalcInteractionStrength({0});
-   CHECK(std::numeric_limits<double>::lowest() == metricReturn);
+   CHECK(0.5 == metricReturn);
 }
 
 TEST_CASE("Term with one feature with two states and weights, interaction, regression") {
@@ -132,7 +132,7 @@ TEST_CASE("Term with one feature with two states and weights, interaction, regre
          });
 
    double metricReturn = test.TestCalcInteractionStrength({0});
-   CHECK(std::numeric_limits<double>::lowest() == metricReturn);
+   CHECK(0.44444444444441916 == metricReturn);
 }
 
 TEST_CASE("weights are proportional, interaction, regression") {

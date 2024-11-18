@@ -355,6 +355,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
          return Error_OutOfMemory;
       }
       aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
+      if(nullptr == aWeights) {
+         return Error_OutOfMemory;
+      }
       pGradient = aWeights + cTensorBins;
       if(bUseLogitBoost) {
          pHessian = pGradient + cTensorBins * cScores;
