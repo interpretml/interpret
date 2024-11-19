@@ -155,7 +155,7 @@ TEST_CASE("SampleWithoutReplacementStratified, stress test") {
       }
 
       std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
-      InitRNG(k_seed, &rng[0]);
+      InitRNG(seed, &rng[0]);
 
       error = SampleWithoutReplacementStratified(
             &rng[0], cClassSize, cTrainingSamples, cValidationSamples, targets, sampleCounts);

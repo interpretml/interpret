@@ -713,7 +713,18 @@ TEST_CASE("Purify simple multiclass -inf") {
    constexpr IntEbm cClasses = 3;
    const IntEbm dimensionLengths[]{2, 2};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
-   double scores[]{-INFINITY, 2, 3, 1, 2, -INFINITY, 1, -INFINITY, -INFINITY, -INFINITY, -INFINITY, -INFINITY};
+   double scores[]{-std::numeric_limits<double>::infinity(),
+         2,
+         3,
+         1,
+         2,
+         -std::numeric_limits<double>::infinity(),
+         1,
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity()};
    const double weights[]{1, 2, 3, 4};
    double impurities[4 * cClasses];
    double residualIntercept[cClasses];
