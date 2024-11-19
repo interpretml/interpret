@@ -16,7 +16,7 @@ def _measure_impurity(scores, weights):
 
 
 def purify(scores, weights, tolerance=0.0, is_randomized=True):
-    """Purifies a score tensor into it's pure component and a series of impure components. For pairs, the
+    """Purifies a multi-dimensional tensor into it's pure component and a series of impure components. For pairs, the
         result will be a pair where the weighted sum along any row or column is zero, and the two main effects
         which are the impurities from the pair. The main effects will be further purified into zero-centered graphs
         and an intercept. This function also handles multiclass, which is detected when the scores tensor has one

@@ -41,6 +41,7 @@ chapters:
     - file: python/api/link_func
     - file: python/api/inv_link
     - file: python/api/measure_interactions
+    - file: python/api/purify
   - file: python/api/interpret-develop
     sections:
     - file: python/api/debug_mode

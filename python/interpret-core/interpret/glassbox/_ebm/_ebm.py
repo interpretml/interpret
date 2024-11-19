@@ -979,9 +979,8 @@ class EBMModel(BaseEstimator):
         results = provider.parallel(boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
-        del (
-            parallel_args
-        )  # parallel_args holds references to dataset, so must be deleted
+        # parallel_args holds references to dataset, so must be deleted
+        del parallel_args
         del dataset
 
         best_iteration = [[]]
@@ -1063,9 +1062,8 @@ class EBMModel(BaseEstimator):
                 feature_names_in,
                 feature_types_in,
             )
-            del (
-                y
-            )  # we no longer need this, so allow the garbage collector to reclaim it
+            # we no longer need this, so allow the garbage collector to reclaim it
+            del y
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
@@ -2477,9 +2475,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
             - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
-              the interactions parameter accepts higher order interactions. It also accepts single feature terms which will cause
+              the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
               the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
-              as interactions, the exclude parameter should usually be set to 'mains'.
+              as interactions, the exclude parameter should be set to 'mains' and currently max_bins needs to be equal to
+              max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
@@ -2826,9 +2825,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
             - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
-              the interactions parameter accepts higher order interactions. It also accepts single feature terms which will cause
+              the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
               the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
-              as interactions, the exclude parameter should usually be set to 'mains'.
+              as interactions, the exclude parameter should be set to 'mains' and currently max_bins needs to be equal to
+              max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
