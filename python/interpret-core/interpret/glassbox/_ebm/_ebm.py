@@ -2253,14 +2253,16 @@ class EBMModel(BaseEstimator):
 
         return self
 
-    def pred_from_base_models_with_uncertainty(self, instances):
+    def predict_with_uncertainty(self, X, init_score=None):
         """Gets raw scores and uncertainties from the bagged base models.
         Generates predictions by averaging outputs across all bagged models, and estimates
         uncertainty using the standard deviation of predictions across bags.
 
         Args:
-            instances: ndarray of shape (n_samples, n_features)
+            X: ndarray of shape (n_samples, n_features)
                 The input samples to predict on.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
 
         Returns:
             ndarray of shape (n_samples, 2)
@@ -2269,9 +2271,15 @@ class EBMModel(BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = preclean_X(
-            instances, self.feature_names_in_, self.feature_types_in_
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
         )
+
         preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
         # Get predictions from each bagged model
         for bag_index in range(len(self.bagged_intercept_)):
@@ -2285,6 +2293,7 @@ class EBMModel(BaseEstimator):
                 intercept=self.bagged_intercept_[bag_index],
                 term_scores=[scores[bag_index] for scores in self.bagged_scores_],
                 term_features=self.term_features_,
+                init_score=init_score,
             )
             preds_per_bag[:, bag_index] = scores
 

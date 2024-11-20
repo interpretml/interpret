@@ -1180,12 +1180,12 @@ def test_ebm_uncertainty():
     )
     clf.fit(X, y)
 
-    result = clf.pred_from_base_models_with_uncertainty(X)
+    result = clf.predict_with_uncertainty(X)
     assert result.shape == (len(X), 2), "Should return (n_samples, 2) shape"
 
     clf2 = ExplainableBoostingClassifier(outer_bags=5, random_state=42)
     clf2.fit(X, y)
-    result_same_seed = clf2.pred_from_base_models_with_uncertainty(X)
+    result_same_seed = clf2.predict_with_uncertainty(X)
     assert np.array_equal(
         result,
         result_same_seed,
