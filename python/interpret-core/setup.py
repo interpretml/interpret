@@ -207,7 +207,6 @@ https://github.com/interpretml/interpret
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
@@ -238,7 +237,7 @@ https://github.com/interpretml/interpret
         ],
     },
     install_requires=[
-        "numpy>=1.11.1",
+        "numpy>=1.25",
         "scipy>=0.18.1",
         "pandas>=0.19.2",
         "scikit-learn>=0.18.1",
