@@ -238,7 +238,6 @@ https://github.com/interpretml/interpret
     },
     install_requires=[
         "numpy>=1.25",
-        "scipy>=0.18.1",
         "pandas>=0.19.2",
         "scikit-learn>=0.18.1",
         "joblib>=0.11",
@@ -269,6 +268,7 @@ https://github.com/interpretml/interpret
         ],
         # Testing
         "testing": [
+            "scipy>=0.18.1",
             "scikit-learn>=1.0.0",
             "pytest>=4.3.0",
             "pytest-runner>=4.4",

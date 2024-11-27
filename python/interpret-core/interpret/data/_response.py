@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from scipy.stats import pearsonr
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -100,7 +99,10 @@ class Marginal(ExplainerMixin):
             feature_type = feature_types[feat_idx]
             if feature_type == "continuous":
                 counts, values = np.histogram(X[:, feat_idx], bins="doane")
-                corr = pearsonr(X[:, feat_idx].astype(np.float64, copy=False), y)[0]
+                corr = np.corrcoef(X[:, feat_idx].astype(np.float64, copy=False), y)[
+                    0, 1
+                ]
+
             elif feature_type in ("nominal", "ordinal"):
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
