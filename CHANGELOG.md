@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.7] - 2024-10-27
+### Changed
+- minimum python version increased to 3.9
+- minimum numpy version increased to 1.25
+### Fixed
+- removed scipy dependency to resolve Issue #588
+
 ## [v0.6.6] - 2024-10-20
 ### Changed
 - added predict_with_uncertainty function by @degenfabian in PR #584
