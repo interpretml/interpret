@@ -9,9 +9,6 @@ This file implements the SPOTgreedy algorithm from [1].
 """
 
 import numpy as np
-from scipy.sparse import csr_matrix
-
-# import time
 
 
 def SPOT_GreedySubsetSelection(C, targetMarginal, m):
@@ -19,6 +16,13 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
     # C: Cost matrix of OT: number of source x number of target points {[numY * numX]}
     # targetMarginal: 1 x number of target (row-vector) size histogram of target distribution. Non negative entries summing to 1 {[1*numX]}
     # m: number of prototypes to be selected.
+
+    try:
+        from scipy.sparse import csr_matrix
+    except ImportError:
+        raise ImportError(
+            "Please install the scipy package using `pip install scipy` in order to use SPOT_GreedySubsetSelection!"
+        )
 
     targetMarginal = targetMarginal / np.sum(targetMarginal)
     numY = C.shape[0]

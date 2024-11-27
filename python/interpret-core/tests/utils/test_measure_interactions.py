@@ -37,7 +37,7 @@ def test_init_regression_model(regression_data):
 def test_init_binary_model():
     data = synthetic_classification()
     X = data["full"]["X"]
-    y = np.array(data["full"]["y"]).reshape(-1)
+    y = np.array(data["full"]["y"]).ravel()
 
     init_scores = np.random.rand(X.shape[0])
 

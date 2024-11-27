@@ -157,8 +157,8 @@ def process_bag_terms(intercept, term_scores, bin_weights):
             scores[:] = new_scores
             intercept += add_intercept
         elif scores.ndim == weights.ndim:
-            temp_scores = scores.flatten().copy()
-            temp_weights = weights.flatten().copy()
+            temp_scores = scores.flatten()  # ndarray.flatten() makes a copy
+            temp_weights = weights.flatten()  # ndarray.flatten() makes a copy
 
             ignored = ~np.isfinite(temp_scores)
             temp_scores[ignored] = 0.0
@@ -170,8 +170,8 @@ def process_bag_terms(intercept, term_scores, bin_weights):
                 scores -= mean
         else:
             for i in range(scores.shape[-1]):
-                temp_scores = scores[..., i].flatten().copy()
-                temp_weights = weights.flatten().copy()
+                temp_scores = scores[..., i].flatten()  # ndarray.flatten() makes a copy
+                temp_weights = weights.flatten()  # ndarray.flatten() makes a copy
 
                 ignored = ~np.isfinite(temp_scores)
                 temp_scores[ignored] = 0.0

@@ -2321,7 +2321,7 @@ class EBMModel(BaseEstimator):
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
         for scores, w in zip(self.term_scores_, self.bin_weights_):
-            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.ravel())
             intercept_binary += mean
             terms.append(scores - mean)
 
@@ -2332,7 +2332,7 @@ class EBMModel(BaseEstimator):
         for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_binary, self.link_, self.link_param_)
             term = link_func(prob, multi_link, multi_param) - intercept_multi
-            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.ravel())
             shift += mean
             terms[i] = term - mean
 
@@ -2371,7 +2371,7 @@ class EBMModel(BaseEstimator):
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
         for scores, w in zip(self.term_scores_, self.bin_weights_):
-            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.ravel())
             intercept_multi += mean
             terms.append(scores - mean)
 
@@ -2382,7 +2382,7 @@ class EBMModel(BaseEstimator):
         for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_multi, self.link_, self.link_param_)
             term = link_func(prob, binary_link, binary_param) - intercept_binary
-            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.ravel())
             shift += mean
             terms[i] = term - mean
 
