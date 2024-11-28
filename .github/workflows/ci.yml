@@ -629,6 +629,37 @@ jobs:
           name: codecov_bdist_${{ matrix.name }}
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  testR:
+    needs: [R]
+    strategy:
+      matrix:
+        include:
+          - name: linux
+            image: ubuntu-latest
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'latest'
+      - name: Download R artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: R
+          path: bld/R
+      - name: R test
+        if: startsWith(matrix.image, 'ubuntu')
+        continue-on-error: true
+        run: |
+          sudo apt --yes update
+          sudo apt --yes install texlive-latex-base texlive-fonts-extra
+          install_file=$(echo bld/R/interpret_*.tar.gz)
+          install_file=$(basename "$install_file" .tar.gz)
+          cd bld/R
+          R CMD check --as-cran "$install_file.tar.gz"
+      - name: Display results
+        run: cat bld/R/interpret.Rcheck/00check.log
+
   format_clang:
     runs-on: ubuntu-latest
     permissions:

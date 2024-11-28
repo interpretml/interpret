@@ -22,6 +22,7 @@
 #include "BoosterShell.hpp"
 #include "InteractionCore.hpp"
 
+#define R_NO_REMAP
 #include <Rinternals.h>
 #include <R_ext/Visibility.h>
 
@@ -45,8 +46,8 @@ INLINE_ALWAYS static double ConvertDouble(const SEXP sexp) {
    if(REALSXP != TYPEOF(sexp)) {
       Rf_error("ConvertDouble REALSXP != TYPEOF(sexp)");
    }
-   if(R_xlen_t { 1 } != xlength(sexp)) {
-      Rf_error("ConvertDouble R_xlen_t { 1 } != xlength(sexp)");
+   if(R_xlen_t { 1 } != Rf_xlength(sexp)) {
+      Rf_error("ConvertDouble R_xlen_t { 1 } != Rf_xlength(sexp)");
    }
    return REAL(sexp)[0];
 }
@@ -104,8 +105,8 @@ INLINE_ALWAYS static IntEbm ConvertInt(const SEXP sexp) {
    if(INTSXP != TYPEOF(sexp)) {
       Rf_error("ConvertInt INTSXP != TYPEOF(sexp)");
    }
-   if(R_xlen_t { 1 } != xlength(sexp)) {
-      Rf_error("ConvertInt R_xlen_t { 1 } != xlength(sexp)");
+   if(R_xlen_t { 1 } != Rf_xlength(sexp)) {
+      Rf_error("ConvertInt R_xlen_t { 1 } != Rf_xlength(sexp)");
    }
    return INTEGER(sexp)[0];
 }
@@ -114,8 +115,8 @@ INLINE_ALWAYS static BoolEbm ConvertBool(const SEXP sexp) {
    if(LGLSXP != TYPEOF(sexp)) {
       Rf_error("ConvertBool LGLSXP != TYPEOF(sexp)");
    }
-   if(R_xlen_t { 1 } != xlength(sexp)) {
-      Rf_error("ConvertBool R_xlen_t { 1 } != xlength(sexp)");
+   if(R_xlen_t { 1 } != Rf_xlength(sexp)) {
+      Rf_error("ConvertBool R_xlen_t { 1 } != Rf_xlength(sexp)");
    }
    const Rboolean val = static_cast<Rboolean>(LOGICAL(sexp)[0]);
    if(Rboolean::FALSE == val) {
@@ -133,7 +134,7 @@ static IntEbm CountInts(const SEXP a) {
    if(INTSXP != TYPEOF(a)) {
       Rf_error("CountInts INTSXP != TYPEOF(a)");
    }
-   const R_xlen_t c = xlength(a);
+   const R_xlen_t c = Rf_xlength(a);
    if(IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)) {
       Rf_error("CountInts IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)");
    }
@@ -145,7 +146,7 @@ static IntEbm CountDoubles(const SEXP a) {
    if(REALSXP != TYPEOF(a)) {
       Rf_error("CountDoubles REALSXP != TYPEOF(a)");
    }
-   const R_xlen_t c = xlength(a);
+   const R_xlen_t c = Rf_xlength(a);
    if(IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)) {
       Rf_error("CountDoubles IsConvertError<size_t>(c) || IsConvertError<IntEbm>(c)");
    }
@@ -295,7 +296,7 @@ SEXP CutQuantile_R(SEXP featureVals, SEXP minSamplesBin, SEXP isRounded, SEXP co
       Rf_error("CutQuantile returned error code: %" ErrorEbmPrintf, err);
    }
 
-   const SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cCuts)));
+   const SEXP ret = PROTECT(Rf_allocVector(REALSXP, static_cast<R_xlen_t>(cCuts)));
 
    // we've allocated this memory, so it should be reachable, so these numbers should multiply
    EBM_ASSERT(!IsMultiplyError(sizeof(*aCutsLowerBoundInclusive), static_cast<size_t>(cCuts)));
@@ -377,7 +378,7 @@ SEXP MeasureDataSetHeader_R(SEXP countFeatures, SEXP countWeights, SEXP countTar
       Rf_error("MeasureDataSetHeader_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
    }
 
-   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   const SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = static_cast<double>(countBytes);
    UNPROTECT(1);
    return ret;
@@ -413,7 +414,7 @@ SEXP MeasureFeature_R(SEXP countBins, SEXP isMissing, SEXP isUnknown, SEXP isNom
       Rf_error("MeasureFeature_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
    }
 
-   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   const SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = static_cast<double>(countBytes);
    UNPROTECT(1);
    return ret;
@@ -440,7 +441,7 @@ SEXP MeasureClassificationTarget_R(SEXP countClasses, SEXP targets) {
       Rf_error("MeasureClassificationTarget_R SAFE_FLOAT64_AS_INT64_MAX < countBytes");
    }
 
-   const SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   const SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = static_cast<double>(countBytes);
    UNPROTECT(1);
    return ret;
@@ -841,7 +842,7 @@ SEXP GenerateTermUpdate_R(
       Rf_error("GenerateTermUpdate returned error code: %" ErrorEbmPrintf, err);
    }
 
-   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = avgGain;
    UNPROTECT(1);
    return ret;
@@ -862,7 +863,7 @@ SEXP ApplyTermUpdate_R(SEXP boosterHandleWrapped) {
       Rf_error("ApplyTermUpdate returned error code: %" ErrorEbmPrintf, err);
    }
 
-   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = avgValidationMetric;
    UNPROTECT(1);
    return ret;
@@ -907,7 +908,7 @@ SEXP GetBestTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
          Rf_error("GetBestTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
       }
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
+   SEXP ret = PROTECT(Rf_allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    const ErrorEbm err = GetBestTermScores(boosterHandle, iTerm, REAL(ret));
@@ -959,7 +960,7 @@ SEXP GetCurrentTermScores_R(SEXP boosterHandleWrapped, SEXP indexTerm) {
          Rf_error("GetCurrentTermScores_R IsConvertError<R_xlen_t>(cTensorScores)");
       }
    }
-   SEXP ret = PROTECT(allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
+   SEXP ret = PROTECT(Rf_allocVector(REALSXP, static_cast<R_xlen_t>(cTensorScores)));
    EBM_ASSERT(!IsMultiplyError(sizeof(double), cTensorScores)); // we've allocated this memory, so it should be reachable, so these numbers should multiply
 
    const ErrorEbm err = GetCurrentTermScores(boosterHandle, iTerm, REAL(ret));
@@ -1102,7 +1103,7 @@ SEXP CalcInteractionStrength_R(SEXP interactionHandleWrapped, SEXP featureIndexe
       Rf_error("CalcInteractionStrength returned error code: %" ErrorEbmPrintf, err);
    }
 
-   SEXP ret = PROTECT(allocVector(REALSXP, R_xlen_t { 1 }));
+   SEXP ret = PROTECT(Rf_allocVector(REALSXP, R_xlen_t { 1 }));
    REAL(ret)[0] = avgInteractionStrength;
    UNPROTECT(1);
    return ret;
