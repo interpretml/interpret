@@ -57,7 +57,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 #endif // NDEBUG
 );
 
-extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInteractionCore,
+extern double PartitionMultiDimensionalStraight(InteractionCore* const pInteractionCore,
       const size_t cRealDimensions,
       const size_t* const acBins,
       const CalcInteractionFlags flags,
@@ -493,7 +493,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
    if(2 == cDimensions) {
       LOG_0(Trace_Verbose, "CalcInteractionStrength Starting bin sweep loop");
 
-      bestGain = PartitionTwoDimensionalInteraction(pInteractionCore,
+      bestGain = PartitionMultiDimensionalStraight(pInteractionCore,
             cDimensions,
             binSums.m_acBins,
             flags,

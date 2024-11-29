@@ -25,9 +25,12 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInteractionInternal final {
+// TODO: Modify this file so that it can return a boosting update corresponding to the straight cuts
+//       that were selected. After that we can use it for both boosting and interaction detection.
+
+template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalStraightInternal final {
  public:
-   PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRuntimeRealDimensions,
@@ -448,9 +451,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
    }
 };
 
-template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInteractionTarget final {
+template<bool bHessian, size_t cPossibleScores> class PartitionMultiDimensionalStraightTarget final {
  public:
-   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRealDimensions,
@@ -470,7 +473,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
 #endif // NDEBUG
    ) {
       if(cPossibleScores == pInteractionCore->GetCountScores()) {
-         return PartitionTwoDimensionalInteractionInternal<bHessian, cPossibleScores>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<bHessian, cPossibleScores>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -488,7 +491,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionTarget<bHessian, cPossibleScores + 1>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightTarget<bHessian, cPossibleScores + 1>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -509,9 +512,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
    }
 };
 
-template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian, k_cCompilerScoresMax + 1> final {
+template<bool bHessian> class PartitionMultiDimensionalStraightTarget<bHessian, k_cCompilerScoresMax + 1> final {
  public:
-   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRealDimensions,
@@ -530,7 +533,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
          const BinBase* const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      return PartitionTwoDimensionalInteractionInternal<bHessian, k_dynamicScores>::Func(pInteractionCore,
+      return PartitionMultiDimensionalStraightInternal<bHessian, k_dynamicScores>::Func(pInteractionCore,
             cRealDimensions,
             acBins,
             flags,
@@ -550,7 +553,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
    }
 };
 
-extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInteractionCore,
+extern double PartitionMultiDimensionalStraight(InteractionCore* const pInteractionCore,
       const size_t cRealDimensions,
       const size_t* const acBins,
       const CalcInteractionFlags flags,
@@ -573,7 +576,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
    if(pInteractionCore->IsHessian()) {
       if(size_t{1} != cRuntimeScores) {
          // muticlass
-         return PartitionTwoDimensionalInteractionTarget<true, k_cCompilerScoresStart>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightTarget<true, k_cCompilerScoresStart>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -591,7 +594,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionInternal<true, k_oneScore>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<true, k_oneScore>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -612,7 +615,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return PartitionTwoDimensionalInteractionInternal<false, k_dynamicScores>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<false, k_dynamicScores>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -630,7 +633,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionInternal<false, k_oneScore>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<false, k_oneScore>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
