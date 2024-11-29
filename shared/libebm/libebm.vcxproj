@@ -83,7 +83,7 @@
     <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="Term.cpp" />
     <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
     <ClCompile Include="GenerateTermUpdate.cpp" />
     <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />

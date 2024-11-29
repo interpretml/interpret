@@ -34,7 +34,7 @@ OBJECTS = \
    $(NATIVEDIR)/PartitionOneDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
    $(NATIVEDIR)/PartitionMultiDimensionalTree.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalStraight.o \
    $(NATIVEDIR)/Purify.o \
    $(NATIVEDIR)/RandomDeterministic.o \
    $(NATIVEDIR)/random.o \

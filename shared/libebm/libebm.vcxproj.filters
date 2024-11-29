@@ -12,7 +12,6 @@
     <ClCompile Include="PartitionRandomBoosting.cpp" />
     <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="Term.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
     <ClCompile Include="GenerateTermUpdate.cpp" />
     <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
@@ -49,6 +48,7 @@
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="Purify.cpp" />
     <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
