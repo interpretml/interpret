@@ -33,7 +33,7 @@ OBJECTS = \
    $(NATIVEDIR)/interpretable_numerics.o \
    $(NATIVEDIR)/PartitionOneDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalTree.o \
    $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
    $(NATIVEDIR)/Purify.o \
    $(NATIVEDIR)/RandomDeterministic.o \
