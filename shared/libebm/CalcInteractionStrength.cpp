@@ -75,7 +75,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
 #endif // NDEBUG
 );
 
-extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
+extern ErrorEbm PartitionMultiDimensionalTree(const bool bHessian,
       const size_t cRuntimeScores,
       const size_t cDimensions,
       const size_t cRealDimensions,
@@ -628,7 +628,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          return Error_OutOfMemory;
       }
 
-      error = PartitionTwoDimensionalBoosting(bHessian,
+      error = PartitionMultiDimensionalTree(bHessian,
             cScores,
             cDimensions,
             cDimensions,

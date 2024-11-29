@@ -92,7 +92,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const FloatMain weightTotal,
       double* const pTotalGain);
 
-extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
+extern ErrorEbm PartitionMultiDimensionalTree(const bool bHessian,
       const size_t cRuntimeScores,
       const size_t cDimensions,
       const size_t cRealDimensions,
@@ -444,7 +444,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       }
    }
 
-   error = PartitionTwoDimensionalBoosting(bHessian,
+   error = PartitionMultiDimensionalTree(bHessian,
          cRuntimeScores,
          pTerm->GetCountDimensions(),
          cRealDimensions,

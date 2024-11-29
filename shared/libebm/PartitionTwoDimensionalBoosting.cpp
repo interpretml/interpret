@@ -260,9 +260,9 @@ done1:;
    return Error_None;
 }
 
-template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoostingInternal final {
+template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalTreeInternal final {
  public:
-   PartitionTwoDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalTreeInternal() = delete; // this is a static class.  Do not construct
 
    WARNING_PUSH
    WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
@@ -984,9 +984,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalBoo
    WARNING_POP
 };
 
-template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoostingTarget final {
+template<bool bHessian, size_t cPossibleScores> class PartitionMultiDimensionalTreeTarget final {
  public:
-   PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalTreeTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(const size_t cRuntimeScores,
          const size_t cDimensions,
@@ -1015,7 +1015,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
 #endif // NDEBUG
    ) {
       if(cPossibleScores == cRuntimeScores) {
-         return PartitionTwoDimensionalBoostingInternal<bHessian, cPossibleScores>::Func(cRuntimeScores,
+         return PartitionMultiDimensionalTreeInternal<bHessian, cPossibleScores>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
@@ -1042,7 +1042,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalBoostingTarget<bHessian, cPossibleScores + 1>::Func(cRuntimeScores,
+         return PartitionMultiDimensionalTreeTarget<bHessian, cPossibleScores + 1>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
@@ -1072,9 +1072,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalBoo
    }
 };
 
-template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_cCompilerScoresMax + 1> final {
+template<bool bHessian> class PartitionMultiDimensionalTreeTarget<bHessian, k_cCompilerScoresMax + 1> final {
  public:
-   PartitionTwoDimensionalBoostingTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalTreeTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static ErrorEbm Func(const size_t cRuntimeScores,
          const size_t cDimensions,
@@ -1102,7 +1102,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
          const BinBase* const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      return PartitionTwoDimensionalBoostingInternal<bHessian, k_dynamicScores>::Func(cRuntimeScores,
+      return PartitionMultiDimensionalTreeInternal<bHessian, k_dynamicScores>::Func(cRuntimeScores,
             cDimensions,
             cRealDimensions,
             flags,
@@ -1131,7 +1131,7 @@ template<bool bHessian> class PartitionTwoDimensionalBoostingTarget<bHessian, k_
    }
 };
 
-extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
+extern ErrorEbm PartitionMultiDimensionalTree(const bool bHessian,
       const size_t cRuntimeScores,
       const size_t cDimensions,
       const size_t cRealDimensions,
@@ -1180,7 +1180,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
    if(bHessian) {
       if(size_t{1} != cRuntimeScores) {
          // muticlass
-         error = PartitionTwoDimensionalBoostingTarget<true, k_cCompilerScoresStart>::Func(cRuntimeScores,
+         error = PartitionMultiDimensionalTreeTarget<true, k_cCompilerScoresStart>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
@@ -1207,7 +1207,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
 #endif // NDEBUG
          );
       } else {
-         error = PartitionTwoDimensionalBoostingInternal<true, k_oneScore>::Func(cRuntimeScores,
+         error = PartitionMultiDimensionalTreeInternal<true, k_oneScore>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
@@ -1237,7 +1237,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         error = PartitionTwoDimensionalBoostingInternal<false, k_dynamicScores>::Func(cRuntimeScores,
+         error = PartitionMultiDimensionalTreeInternal<false, k_dynamicScores>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
@@ -1264,7 +1264,7 @@ extern ErrorEbm PartitionTwoDimensionalBoosting(const bool bHessian,
 #endif // NDEBUG
          );
       } else {
-         error = PartitionTwoDimensionalBoostingInternal<false, k_oneScore>::Func(cRuntimeScores,
+         error = PartitionMultiDimensionalTreeInternal<false, k_oneScore>::Func(cRuntimeScores,
                cDimensions,
                cRealDimensions,
                flags,
