@@ -28,7 +28,7 @@
 #include "Term.hpp"
 #include "InnerBag.hpp"
 #include "Tensor.hpp"
-#include "TreeNode.hpp"
+#include "TreeNodeMulti.hpp"
 #include "BoosterCore.hpp"
 #include "BoosterShell.hpp"
 

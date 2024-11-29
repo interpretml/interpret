@@ -21,7 +21,7 @@
 #include "Feature.hpp"
 #include "DataSetInteraction.hpp"
 #include "Tensor.hpp"
-#include "TreeNode.hpp"
+#include "TreeNodeMulti.hpp"
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
 

@@ -21,7 +21,7 @@
 #include "ebm_stats.hpp"
 #include "Tensor.hpp"
 #include "TensorTotalsSum.hpp"
-#include "TreeNode.hpp"
+#include "TreeNodeMulti.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

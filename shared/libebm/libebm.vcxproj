@@ -24,6 +24,7 @@
     <ClInclude Include="bridge\GradientPair.hpp" />
     <ClInclude Include="bridge\bridge.h" />
     <ClInclude Include="TermInnerBag.hpp" />
+    <ClInclude Include="TreeNodeMulti.hpp" />
     <ClInclude Include="unzoned\logging.h" />
     <ClInclude Include="bridge\zones.h" />
     <ClInclude Include="bridge\common.hpp" />
