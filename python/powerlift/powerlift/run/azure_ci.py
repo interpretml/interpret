@@ -449,8 +449,8 @@ def run_azure_process(
         if aci_client is None:
             aci_client = ContainerInstanceManagementClient(credential, subscription_id)
 
-        max_attempts = 3
-        for _ in range(max_attempts):
+        max_attempts = 4
+        while True:
             try:
                 # begin_create_or_update returns LROPoller,
                 # but this is only indicates when the container is started
@@ -459,9 +459,9 @@ def run_azure_process(
                 )
                 break
             except HttpResponseError:
-                time.sleep(1)
-        else:
-            raise RuntimeError("Failed to create container group.")
+                max_attempts -= 1
+                if max_attempts <= 0:
+                    raise
 
         container_group_names.add(container_group_name)
         heappush(container_groups, (datetime.now(), container_group_name, started))
