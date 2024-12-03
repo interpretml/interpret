@@ -65,6 +65,12 @@ class Native:
     Task_Unknown = -1
     # for Task_Classification use the # of classes or 0 if unknown
 
+    # Objectives
+    Objective_Unknown = 0
+    Objective_LogLossBinary = 1
+    Objective_LogLossMulticlass = 2
+    Objective_Rmse = 3
+
     # TraceLevel
     _Trace_Off = 0
     _Trace_Error = 1
@@ -820,6 +826,7 @@ class Native:
         return task.decode("ascii")
 
     def determine_link(self, flags, objective, n_classes):
+        objective_code = ct.c_int32(0)
         link = ct.c_int32(0)
         link_param = ct.c_double(np.nan)
 
@@ -827,6 +834,7 @@ class Native:
             flags,
             objective.encode("ascii"),
             n_classes,
+            ct.byref(objective_code),
             ct.byref(link),
             ct.byref(link_param),
         )
@@ -839,7 +847,7 @@ class Native:
             _log.error(msg)
             raise Exception(msg)
 
-        return (link.decode("ascii"), link_param.value)
+        return (objective_code.value, link.decode("ascii"), link_param.value)
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -1421,6 +1429,8 @@ class Native:
             ct.c_char_p,
             # int64_t countClasses
             ct.c_int64,
+            # int32_t * objectiveOut
+            ct.c_void_p,
             # int32_t * linkOut
             ct.c_void_p,
             # double * linkParamOut

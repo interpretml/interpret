@@ -815,6 +815,7 @@ struct Objective : public Registrable {
       static_assert(bMaximizeMetricGood, "TObjective::k_bMaximizeMetric should be a BoolEbm");
       pObjectiveWrapperOut->m_bMaximizeMetric = bMaximizeMetric;
 
+      pObjectiveWrapperOut->m_objective = TObjective::k_objective;
       pObjectiveWrapperOut->m_linkFunction = TObjective::k_linkFunction;
 
       const auto linkParam = (static_cast<TObjective*>(this))->LinkParam();
@@ -1062,14 +1063,21 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
    ~RegressionMultitaskObjective() = default;
 };
 
-#define OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                               \
-      __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian, bHasApprox, cItemsPerBitPackMax, cItemsPerBitPackMin)  \
+#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE,                                                                    \
+      __MAXIMIZE_METRIC,                                                                                               \
+      __OBJECTIVE,                                                                                                     \
+      __LINK_FUNCTION,                                                                                                 \
+      bHessian,                                                                                                        \
+      bHasApprox,                                                                                                      \
+      cItemsPerBitPackMax,                                                                                             \
+      cItemsPerBitPackMin)                                                                                             \
  public:                                                                                                               \
    using TFloatInternal = TFloat;                                                                                      \
    static constexpr bool k_bRmse = false;                                                                              \
    static constexpr bool k_bHessian = (bHessian);                                                                      \
    static constexpr bool k_bHasApprox = (bHasApprox);                                                                  \
    static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC);                                                   \
+   static constexpr ObjectiveEbm k_objective = (__OBJECTIVE);                                                          \
    static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION);                                                        \
    static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);                                                     \
    static constexpr int k_cItemsPerBitPackMax = (cItemsPerBitPackMax);                                                 \
@@ -1112,9 +1120,10 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
             cCompilerPack>(pData);                                                                                     \
    }
 
-#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian)                                \
+#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __OBJECTIVE, __LINK_FUNCTION, bHessian)                   \
    OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE,                                                                         \
          __MAXIMIZE_METRIC,                                                                                            \
+         __OBJECTIVE,                                                                                                  \
          __LINK_FUNCTION,                                                                                              \
          bHessian,                                                                                                     \
          false,                                                                                                        \

@@ -634,7 +634,9 @@ class EBMModel(BaseEstimator):
             if is_differential_privacy
             else Native.LinkFlags_Default
         )
-        link, link_param = native.determine_link(flags, objective, n_classes)
+        objective_code, link, link_param = native.determine_link(
+            flags, objective, n_classes
+        )
 
         init_score, X, n_samples = clean_init_score_and_X(
             link,

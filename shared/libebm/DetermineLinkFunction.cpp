@@ -60,18 +60,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(const char* objective
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-      LinkFlags flags, const char* objective, IntEbm countClasses, LinkEbm* linkOut, double* linkParamOut) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags flags,
+      const char* objective,
+      IntEbm countClasses,
+      ObjectiveEbm* objectiveOut,
+      LinkEbm* linkOut,
+      double* linkParamOut) {
    LOG_N(Trace_Info,
          "Entered DetermineLinkFunction: "
          "flags=0x%" ULinkFlagsPrintf ", "
          "objective=%p, "
          "countClasses=%" IntEbmPrintf ", "
+         "objectiveOut=%p, "
          "linkOut=%p, "
          "linkParamOut=%p",
          static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          static_cast<const void*>(objective),
          countClasses,
+         static_cast<void*>(objectiveOut),
          static_cast<void*>(linkOut),
          static_cast<void*>(linkParamOut));
 
@@ -82,6 +88,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    const ptrdiff_t cClasses = static_cast<ptrdiff_t>(countClasses);
 
    if(ptrdiff_t{0} == cClasses || ptrdiff_t{1} == cClasses) {
+      if(nullptr != objectiveOut) {
+         *objectiveOut = Objective_Unknown;
+      }
       if(nullptr != linkOut) {
          *linkOut = Link_monoclassification;
       }
@@ -111,6 +120,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 
+      if(nullptr != objectiveOut) {
+         *objectiveOut = Objective_Unknown;
+      }
       if(nullptr != linkOut) {
          *linkOut = Link_ERROR;
       }
@@ -123,6 +135,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    // this leaves the contents that are not pointers
    FreeObjectiveWrapperInternals(&objectiveWrapper);
 
+   if(nullptr != objectiveOut) {
+      *objectiveOut = objectiveWrapper.m_objective;
+   }
    if(nullptr != linkOut) {
       *linkOut = objectiveWrapper.m_linkFunction;
    }

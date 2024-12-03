@@ -120,6 +120,8 @@ typedef int32_t AccelerationFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UAccelerationFlags;
 #define UAccelerationFlagsPrintf PRIx32
+typedef int32_t ObjectiveEbm;
+#define ObjectiveEbmPrintf PRId32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
 typedef int64_t TaskEbm;
@@ -143,6 +145,7 @@ typedef struct _InteractionHandle {
 #define CALC_INTERACTION_FLAGS_CAST(val)   (STATIC_CAST(CalcInteractionFlags, (val)))
 #define ACCELERATION_CAST(val)             (STATIC_CAST(AccelerationFlags, (val)))
 #define TRACE_CAST(val)                    (STATIC_CAST(TraceEbm, (val)))
+#define OBJECTIVE_CAST(val)                (STATIC_CAST(ObjectiveEbm, (val)))
 #define LINK_CAST(val)                     (STATIC_CAST(LinkEbm, (val)))
 #define TASK_CAST(val)                     (STATIC_CAST(TaskEbm, (val)))
 
@@ -250,6 +253,11 @@ typedef struct _InteractionHandle {
 #define Trace_Info (TRACE_CAST(3))
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
 #define Trace_Verbose (TRACE_CAST(4))
+
+#define Objective_Unknown           (OBJECTIVE_CAST(0))
+#define Objective_LogLossBinary     (OBJECTIVE_CAST(1))
+#define Objective_LogLossMulticlass (OBJECTIVE_CAST(2))
+#define Objective_Rmse              (OBJECTIVE_CAST(3))
 
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
@@ -415,8 +423,12 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineTask(const char* object
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task);
 EBM_API_INCLUDE TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char* task);
 
-EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-      LinkFlags flags, const char* objective, IntEbm countClasses, LinkEbm* linkOut, double* linkParamOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags flags,
+      const char* objective,
+      IntEbm countClasses,
+      ObjectiveEbm* objectiveOut,
+      LinkEbm* linkOut,
+      double* linkParamOut);
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link);
 EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* link);
 

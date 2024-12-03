@@ -9,6 +9,7 @@
 template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjective {
    OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossMulticlassObjective,
          MINIMIZE_METRIC,
+         Objective_LogLossMulticlass,
          Link_mlogit,
          true,
          true,

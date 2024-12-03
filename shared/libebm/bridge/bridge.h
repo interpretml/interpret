@@ -132,6 +132,7 @@ struct ObjectiveWrapper {
 
    BoolEbm m_bMaximizeMetric;
 
+   ObjectiveEbm m_objective;
    LinkEbm m_linkFunction;
    double m_linkParam;
 
@@ -160,6 +161,7 @@ struct ObjectiveWrapper {
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const pObjectiveWrapper) {
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
+   pObjectiveWrapper->m_objective = Objective_Unknown;
    pObjectiveWrapper->m_linkFunction = Link_ERROR;
    pObjectiveWrapper->m_linkParam = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentDifferentialPrivacy = 0.0;
