@@ -142,7 +142,8 @@ struct BitPackObjective final {
 
             const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-            constexpr bool bGradientsAndHessians = TObjective::k_bRmse || !bValidation;
+            constexpr bool bRmse = Objective_Rmse == TObjective::k_objective;
+            constexpr bool bGradientsAndHessians = bRmse || !bValidation;
             if(bGradientsAndHessians) {
                EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
                pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
@@ -152,11 +153,11 @@ struct BitPackObjective final {
                EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
             }
 
-            if(!TObjective::k_bRmse) {
+            if(!bRmse) {
                EBM_ASSERT(nullptr != pData->m_aTargets);
                EBM_ASSERT(nullptr != pData->m_aSampleScores);
 
-               constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
+               constexpr bool bClassification = Task_GeneralClassification == IdentifyTask(TObjective::k_linkFunction);
                if(bClassification) {
                   // targets are integers
                   pData->m_aTargets =
@@ -303,7 +304,9 @@ struct Objective : public Registrable {
             std::is_base_of<RegressionMultitaskObjective, TObjective>::value;
    }
 
-   template<typename TObjective, bool bCollapsed, typename std::enable_if<!TObjective::k_bRmse, int>::type = 0>
+   template<typename TObjective,
+         bool bCollapsed,
+         typename std::enable_if<Objective_Rmse != TObjective::k_objective, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge* const pData) const {
       if(EBM_FALSE != pData->m_bValidation) {
          static constexpr bool bValidation = true;
@@ -335,7 +338,9 @@ struct Objective : public Registrable {
          return HessianApplyUpdate<TObjective, bCollapsed, bValidation, bWeight>(pData);
       }
    }
-   template<typename TObjective, bool bCollapsed, typename std::enable_if<TObjective::k_bRmse, int>::type = 0>
+   template<typename TObjective,
+         bool bCollapsed,
+         typename std::enable_if<Objective_Rmse == TObjective::k_objective, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge* const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
 
@@ -739,7 +744,7 @@ struct Objective : public Registrable {
 
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_Regression,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_Regression,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // regression
@@ -757,7 +762,7 @@ struct Objective : public Registrable {
    }
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_GeneralClassification,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_GeneralClassification,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // classification
@@ -767,7 +772,7 @@ struct Objective : public Registrable {
    }
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_Ranking,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_Ranking,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // classification
@@ -871,7 +876,6 @@ struct Objective : public Registrable {
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
 
       pObjectiveWrapperOut->m_bObjectiveHasHessian = TObjective::k_bHessian ? EBM_TRUE : EBM_FALSE;
-      pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
 
@@ -1073,13 +1077,11 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
       cItemsPerBitPackMin)                                                                                             \
  public:                                                                                                               \
    using TFloatInternal = TFloat;                                                                                      \
-   static constexpr bool k_bRmse = false;                                                                              \
    static constexpr bool k_bHessian = (bHessian);                                                                      \
    static constexpr bool k_bHasApprox = (bHasApprox);                                                                  \
    static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC);                                                   \
    static constexpr ObjectiveEbm k_objective = (__OBJECTIVE);                                                          \
    static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION);                                                        \
-   static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);                                                     \
    static constexpr int k_cItemsPerBitPackMax = (cItemsPerBitPackMax);                                                 \
    static constexpr int k_cItemsPerBitPackMin = (cItemsPerBitPackMin);                                                 \
    static ErrorEbm StaticApplyUpdate(const Objective* const pThis, ApplyUpdateBridge* const pData) {                   \

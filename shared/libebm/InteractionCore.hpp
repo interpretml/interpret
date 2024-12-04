@@ -103,7 +103,7 @@ class InteractionCore final {
 
    inline bool IsRmse() {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
-      return EBM_FALSE != m_objectiveCpu.m_bRmse;
+      return Objective_Rmse == m_objectiveCpu.m_objective;
    }
 
    inline bool IsHessian() {

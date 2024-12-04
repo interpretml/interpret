@@ -8,13 +8,11 @@
 
 template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
    using TFloatInternal = TFloat;
-   static constexpr bool k_bRmse = true;
    static constexpr bool k_bHessian = false;
    static constexpr bool k_bHasApprox = false;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
    static constexpr ObjectiveEbm k_objective = Objective_Rmse;
    static constexpr LinkEbm k_linkFunction = Link_identity;
-   static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);
    static constexpr int k_cItemsPerBitPackMax = 64;
    static constexpr int k_cItemsPerBitPackMin = 1;
    static ErrorEbm StaticApplyUpdate(const Objective* const pThis, ApplyUpdateBridge* const pData) {

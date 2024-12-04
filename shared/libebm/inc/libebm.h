@@ -120,12 +120,12 @@ typedef int32_t AccelerationFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UAccelerationFlags;
 #define UAccelerationFlagsPrintf PRIx32
+typedef int64_t TaskEbm;
+#define TaskEbmPrintf PRId64
 typedef int32_t ObjectiveEbm;
 #define ObjectiveEbmPrintf PRId32
 typedef int32_t LinkEbm;
 #define LinkEbmPrintf PRId32
-typedef int64_t TaskEbm;
-#define TaskEbmPrintf PRId64
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -145,9 +145,9 @@ typedef struct _InteractionHandle {
 #define CALC_INTERACTION_FLAGS_CAST(val)   (STATIC_CAST(CalcInteractionFlags, (val)))
 #define ACCELERATION_CAST(val)             (STATIC_CAST(AccelerationFlags, (val)))
 #define TRACE_CAST(val)                    (STATIC_CAST(TraceEbm, (val)))
+#define TASK_CAST(val)                     (STATIC_CAST(TaskEbm, (val)))
 #define OBJECTIVE_CAST(val)                (STATIC_CAST(ObjectiveEbm, (val)))
 #define LINK_CAST(val)                     (STATIC_CAST(LinkEbm, (val)))
-#define TASK_CAST(val)                     (STATIC_CAST(TaskEbm, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -254,6 +254,14 @@ typedef struct _InteractionHandle {
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
 #define Trace_Verbose (TRACE_CAST(4))
 
+#define Task_Ranking               (TASK_CAST(-3))
+#define Task_Regression            (TASK_CAST(-2))
+#define Task_Unknown               (TASK_CAST(-1))
+#define Task_GeneralClassification (TASK_CAST(0)) // classification with unspecified # classes
+#define Task_MonoClassification    (TASK_CAST(1)) // degenerate case of predicting 1 class
+#define Task_BinaryClassification  (TASK_CAST(2)) // 2 classes
+#define Task_MulticlassPlus        (TASK_CAST(3)) // 3+ classes (the value is the # of classes)
+
 #define Objective_Unknown           (OBJECTIVE_CAST(0))
 #define Objective_LogLossBinary     (OBJECTIVE_CAST(1))
 #define Objective_LogLossMulticlass (OBJECTIVE_CAST(2))
@@ -289,14 +297,6 @@ typedef struct _InteractionHandle {
 #define Link_inverse        (LINK_CAST(102)) // Gamma regression (although we use log)
 #define Link_inverse_square (LINK_CAST(103)) // Inverse Gaussian regression
 #define Link_sqrt           (LINK_CAST(104)) // Square root regression
-
-#define Task_Ranking               (TASK_CAST(-3))
-#define Task_Regression            (TASK_CAST(-2))
-#define Task_Unknown               (TASK_CAST(-1))
-#define Task_GeneralClassification (TASK_CAST(0)) // classification with unspecified # classes
-#define Task_MonoClassification    (TASK_CAST(1)) // degenerate case of predicting 1 class
-#define Task_BinaryClassification  (TASK_CAST(2)) // 2 classes
-#define Task_MulticlassPlus        (TASK_CAST(3)) // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void(EBM_CALLING_CONVENTION* LogCallbackFunction)(TraceEbm traceLevel, const char* message);
