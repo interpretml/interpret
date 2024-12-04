@@ -1453,6 +1453,8 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
+            # double * initShift
+            ct.c_void_p,
             # int64_t countTerms
             ct.c_int64,
             # int64_t * dimensionCounts
@@ -1575,6 +1577,8 @@ class Native:
             ct.c_void_p,
             # double * initScores
             ct.c_void_p,
+            # double * initShift
+            ct.c_void_p,
             # CreateInteractionFlags flags
             ct.c_int32,
             # AccelerationFlags acceleration
@@ -1629,6 +1633,7 @@ class Booster(AbstractContextManager):
         dataset,
         bag,
         init_scores,
+        init_shift,
         term_features,
         n_inner_bags,
         rng,
@@ -1645,6 +1650,7 @@ class Booster(AbstractContextManager):
                 that this class will boost on top of.  For regression
                 there is 1 score per sample.  For binary classification
                 there is one score.  For multiclass there are n_classes scores
+            init_shift: prediction shift
             term_features: List of term feature indexes
             n_inner_bags: number of inner bags.
             rng: native random number generator
@@ -1654,6 +1660,7 @@ class Booster(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
+        self.init_shift = init_shift
         self.term_features = term_features
         self.n_inner_bags = n_inner_bags
         self.rng = rng
@@ -1738,6 +1745,16 @@ class Booster(AbstractContextManager):
                     msg = f"init_scores should have {n_class_scores} scores"
                     raise ValueError(msg)
 
+        init_shift = self.init_shift
+        if init_shift is not None:
+            if len(init_shift) != n_class_scores:  # pragma: no cover
+                msg = f"init_shift should have {n_class_scores} scores"
+                raise ValueError(msg)
+
+            if not init_shift.flags.c_contiguous:
+                # init_shift could be a slice that has a stride.  We need contiguous for caling into C
+                init_shift = init_shift.copy()
+
         flags = self.create_booster_flags
         if native.approximates:
             flags |= Native.CreateBoosterFlags_UseApprox
@@ -1758,6 +1775,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(
                 init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
+            Native._make_pointer(init_shift, np.float64, 1, True),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
@@ -2039,6 +2057,7 @@ class InteractionDetector(AbstractContextManager):
         dataset,
         bag,
         init_scores,
+        init_shift,
         create_interaction_flags,
         objective,
         experimental_params,
@@ -2052,6 +2071,7 @@ class InteractionDetector(AbstractContextManager):
                 that this class will boost on top of.  For regression
                 there is 1 score per sample.  For binary classification
                 there is one score.  For multiclass there are n_classes scores
+            init_shift: prediction shift
             experimental_params: unused data that can be passed into the native layer for debugging
 
         """
@@ -2059,6 +2079,7 @@ class InteractionDetector(AbstractContextManager):
         self.dataset = dataset
         self.bag = bag
         self.init_scores = init_scores
+        self.init_shift = init_shift
         self.create_interaction_flags = create_interaction_flags
         self.objective = objective
         self.experimental_params = experimental_params
@@ -2119,6 +2140,16 @@ class InteractionDetector(AbstractContextManager):
                     msg = f"init_scores should have {n_class_scores} scores"
                     raise ValueError(msg)
 
+        init_shift = self.init_shift
+        if init_shift is not None:
+            if len(init_shift) != n_class_scores:  # pragma: no cover
+                msg = f"init_shift should have {n_class_scores} scores"
+                raise ValueError(msg)
+
+            if not init_shift.flags.c_contiguous:
+                # init_shift could be a slice that has a stride.  We need contiguous for caling into C
+                init_shift = init_shift.copy()
+
         flags = self.create_interaction_flags
         if native.approximates:
             flags |= Native.CreateInteractionFlags_UseApprox
@@ -2139,6 +2170,7 @@ class InteractionDetector(AbstractContextManager):
             Native._make_pointer(
                 init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
+            Native._make_pointer(init_shift, np.float64, 1, True),
             flags,
             acceleration,
             self.objective.encode("ascii"),

@@ -32,6 +32,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
       const BagEbm direction,
       const BagEbm* const aBag,
       const double* const aInitScores,
+      const double initShift,
       DataSetBoosting* const pDataSet);
 
 void BoosterShell::Free(BoosterShell* const pBoosterShell) {
@@ -179,6 +180,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
       const void* dataSet,
       const BagEbm* bag,
       const double* initScores,
+      const double* initShift,
       IntEbm countTerms,
       const IntEbm* dimensionCounts,
       const IntEbm* featureIndexes,
@@ -194,6 +196,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          "dataSet=%p, "
          "bag=%p, "
          "initScores=%p, "
+         "initShift=%p, "
          "countTerms=%" IntEbmPrintf ", "
          "dimensionCounts=%p, "
          "featureIndexes=%p, "
@@ -207,6 +210,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          dataSet,
          static_cast<const void*>(bag),
          static_cast<const void*>(initScores),
+         static_cast<const void*>(initShift),
          countTerms,
          static_cast<const void*>(dimensionCounts),
          static_cast<const void*>(featureIndexes),
@@ -270,6 +274,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          static_cast<const unsigned char*>(dataSet),
          bag,
          initScores,
+         initShift,
          flags,
          acceleration,
          objective,
@@ -302,12 +307,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
             return error;
          }
       } else {
-         InitializeRmseGradientsAndHessiansBoosting(
-               static_cast<const unsigned char*>(dataSet), BagEbm{1}, bag, initScores, pBoosterCore->GetTrainingSet());
+         InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
+               BagEbm{1},
+               bag,
+               initScores,
+               nullptr == initShift ? 0.0 : *initShift,
+               pBoosterCore->GetTrainingSet());
          InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
                BagEbm{-1},
                bag,
                initScores,
+               nullptr == initShift ? 0.0 : *initShift,
                pBoosterCore->GetValidationSet());
       }
    }

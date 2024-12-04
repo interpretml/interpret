@@ -269,7 +269,7 @@ typedef struct _InteractionHandle {
 
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
-#define Link_ERROR (LINK_CAST(0))
+#define Link_Unknown (LINK_CAST(0))
 // custom (uses link param potentially)
 #define Link_custom_regression  (LINK_CAST(1))
 #define Link_custom_ranking     (LINK_CAST(2))
@@ -437,6 +437,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
       const BagEbm* bag,
       // TODO: add a baseScore parameter here so that we can initialize the mains boosting without initScores
       const double* initScores, // only samples with non-zeros in the bag are included
+      const double* initShift,
       IntEbm countTerms,
       const IntEbm* dimensionCounts,
       const IntEbm* featureIndexes,
@@ -480,6 +481,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const 
       const BagEbm* bag,
       // TODO: add a baseScore parameter here for symmetry with CreateBooster
       const double* initScores, // only samples with non-zeros in the bag are included
+      const double* initShift,
       CreateInteractionFlags flags,
       AccelerationFlags acceleration,
       const char* objective,

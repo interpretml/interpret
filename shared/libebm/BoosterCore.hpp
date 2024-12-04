@@ -142,6 +142,7 @@ class BoosterCore final {
          const unsigned char* const pDataSetShared,
          const BagEbm* const aBag,
          const double* const aInitScores,
+         const double* const aInitShift,
          const CreateBoosterFlags flags,
          const AccelerationFlags acceleration,
          const char* const sObjective,

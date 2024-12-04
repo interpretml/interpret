@@ -124,7 +124,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          *objectiveOut = Objective_Unknown;
       }
       if(nullptr != linkOut) {
-         *linkOut = Link_ERROR;
+         *linkOut = Link_Unknown;
       }
       if(nullptr != linkParamOut) {
          *linkParamOut = std::numeric_limits<double>::quiet_NaN();
@@ -257,7 +257,7 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* link)
       if(IsStringEqualsForgiving(link, g_sSqrt))
          return Link_sqrt;
    }
-   return Link_ERROR;
+   return Link_Unknown;
 }
 
 static const char g_sClassification[] = "classification";

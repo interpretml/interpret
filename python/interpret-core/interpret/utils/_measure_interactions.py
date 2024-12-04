@@ -269,6 +269,7 @@ def measure_interactions(
         dataset=dataset,
         bag=None,
         init_scores=init_score,
+        init_shift=None,
         iter_term_features=iter_term_features,
         exclude=set(),
         exclude_features=set(),

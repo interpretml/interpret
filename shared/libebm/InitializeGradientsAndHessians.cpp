@@ -31,6 +31,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
       const BagEbm direction,
       const BagEbm* const aBag,
       const double* const aInitScores,
+      const double initShift,
       DataSetBoosting* const pDataSet) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -60,7 +61,6 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
       EBM_ASSERT(nullptr != pSubset);
       const DataSubsetBoosting* const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
-      double initScore = 0;
       BagEbm replication = 0;
       double gradient;
       do {
@@ -91,9 +91,10 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
                const FloatShared data = *pTargetData;
                ++pTargetData;
 
+               double initScore = initShift;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = pInitScore[-1];
+                  initScore += pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which
@@ -139,6 +140,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
       const size_t cWeights,
       const BagEbm* const aBag,
       const double* const aInitScores,
+      const double initShift,
       DataSetInteraction* const pDataSet) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -169,7 +171,6 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
       const BagEbm* pSampleReplication = aBag;
       const double* pInitScore = aInitScores;
 
-      double initScore = 0;
       BagEbm replication = 0;
       double gradient;
       do {
@@ -201,9 +202,10 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
                pTargetData += cSharedAdvances;
                const FloatShared data = pTargetData[-1];
 
+               double initScore = initShift;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = pInitScore[-1];
+                  initScore += pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which

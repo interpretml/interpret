@@ -26,6 +26,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
       const size_t cWeights,
       const BagEbm* const aBag,
       const double* const aInitScores,
+      const double initShift,
       DataSetInteraction* const pDataSet);
 
 void InteractionShell::Free(InteractionShell* const pInteractionShell) {
@@ -90,6 +91,7 @@ BinBase* InteractionShell::GetInteractionMainBins(const size_t cBytesPerMainBin,
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const void* dataSet,
       const BagEbm* bag,
       const double* initScores, // only samples with non-zeros in the bag are included
+      const double* initShift,
       CreateInteractionFlags flags,
       AccelerationFlags acceleration,
       const char* objective,
@@ -100,6 +102,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
          "dataSet=%p, "
          "bag=%p, "
          "initScores=%p, "
+         "initShift=%p, "
          "flags=0x%" UCreateInteractionFlagsPrintf ", "
          "acceleration=0x%" UAccelerationFlagsPrintf ", "
          "objective=%p, "
@@ -108,6 +111,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
          static_cast<const void*>(dataSet),
          static_cast<const void*>(bag),
          static_cast<const void*>(initScores),
+         static_cast<const void*>(initShift),
          static_cast<UCreateInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          static_cast<UAccelerationFlags>(acceleration), // signed to unsigned conversion is defined behavior in C++
          static_cast<const void*>(objective), // do not print the string for security reasons
@@ -187,7 +191,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
    if(size_t{0} != pInteractionCore->GetCountScores()) {
       if(!pInteractionCore->IsRmse()) {
          error = pInteractionCore->InitializeInteractionGradientsAndHessians(
-               static_cast<const unsigned char*>(dataSet), cWeights, bag, initScores);
+               static_cast<const unsigned char*>(dataSet), cWeights, bag, initScores, initShift);
          if(Error_None != error) {
             // DO NOT FREE pInteractionCore since it's owned by pInteractionShell, which we free here
             InteractionShell::Free(pInteractionShell);
@@ -198,6 +202,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
                cWeights,
                bag,
                initScores,
+               nullptr == initShift ? 0.0 : *initShift,
                pInteractionCore->GetDataSetInteraction());
       }
    }

@@ -161,7 +161,7 @@ inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const p
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
    pObjectiveWrapper->m_objective = Objective_Unknown;
-   pObjectiveWrapper->m_linkFunction = Link_ERROR;
+   pObjectiveWrapper->m_linkFunction = Link_Unknown;
    pObjectiveWrapper->m_linkParam = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentDifferentialPrivacy = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentGradientBoosting = 0.0;

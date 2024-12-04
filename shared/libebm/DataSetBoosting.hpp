@@ -127,6 +127,7 @@ struct DataSetBoosting final {
          const size_t cSharedSamples,
          const BagEbm* const aBag,
          const double* const aInitScores,
+         const double* const aInitShift,
          const size_t cIncludedSamples,
          const size_t cInnerBags,
          const size_t cWeights,
@@ -154,8 +155,11 @@ struct DataSetBoosting final {
  private:
    ErrorEbm InitGradHess(const bool bAllocateHessians, const size_t cScores);
 
-   ErrorEbm InitSampleScores(
-         const size_t cScores, const BagEbm direction, const BagEbm* const aBag, const double* const aInitScores);
+   ErrorEbm InitSampleScores(const size_t cScores,
+         const BagEbm direction,
+         const BagEbm* const aBag,
+         const double* const aInitScores,
+         const double* const aInitShift);
 
    ErrorEbm InitTargetData(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 

@@ -355,7 +355,8 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
       const size_t cWeights,
       const BagEbm* const aBag,
-      const double* const aInitScores) {
+      const double* const aInitScores,
+      const double* const aInitShift) {
    ErrorEbm error = Error_None;
    if(size_t{0} != m_dataFrame.GetCountSamples()) {
       ptrdiff_t cClasses;
@@ -480,7 +481,6 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             void* pSampleScoreTo = aSampleScoreTo;
             const void* const pTargetToEnd =
                   IndexByte(aTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes * pSubset->GetCountSamples());
-            double initScore = 0.0;
             do {
                size_t iPartition = 0;
                do {
@@ -525,8 +525,12 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
 
                   size_t iScore = 0;
                   do {
+                     double initScore = 0.0;
+                     if(nullptr != aInitShift) {
+                        initScore = aInitShift[iScore];
+                     }
                      if(nullptr != pInitScoreFromOld) {
-                        initScore = pInitScoreFromOld[iScore];
+                        initScore += pInitScoreFromOld[iScore];
                      }
 
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
@@ -584,7 +588,8 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
          const BagEbm* pSampleReplication = aBag;
          const double* pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
-         double initScore = 0.0;
+         double initScore;
+         const double initShift = nullptr == aInitShift ? 0.0 : *aInitShift;
          FloatShared target;
 
          DataSubsetInteraction* pSubset = GetDataSetInteraction()->GetSubsets();
@@ -611,9 +616,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
                      --pTargetFrom;
                   }
 
+                  initScore = initShift;
                   if(nullptr != pInitScoreFrom) {
                      pInitScoreFrom += cAdvance;
-                     initScore = pInitScoreFrom[-1];
+                     initScore += pInitScoreFrom[-1];
                   }
 
                   target = *pTargetFrom;

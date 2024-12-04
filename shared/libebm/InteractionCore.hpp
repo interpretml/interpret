@@ -93,7 +93,8 @@ class InteractionCore final {
    ErrorEbm InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
          const size_t cWeights,
          const BagEbm* const aBag,
-         const double* const aInitScores);
+         const double* const aInitScores,
+         const double* const aInitShift);
 
    inline BoolEbm CheckTargets(const size_t c, const void* const aTargets) const noexcept {
       EBM_ASSERT(nullptr != aTargets);
