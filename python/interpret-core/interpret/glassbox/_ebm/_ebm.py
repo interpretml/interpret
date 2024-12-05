@@ -778,6 +778,7 @@ class EBMModel(BaseEstimator):
         used_seeds = set()
         rngs = []
         internal_bags = []
+        visible_samples = None if bags is None else np.zero(n_samples, np.bool_)
         for idx in range(self.outer_bags):
             while True:
                 bagged_rng = native.branch_rng(rng)
@@ -815,6 +816,8 @@ class EBMModel(BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
                 bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
+                # only use samples that were training visible somewhere
+                visible_samples |= 0 < bag
 
             rngs.append(bagged_rng)
             internal_bags.append(bag)
@@ -919,6 +922,7 @@ class EBMModel(BaseEstimator):
 
         if n_classes == Native.Task_MonoClassification:
             bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
+            intercept_correction = None
         elif init_score is None and (
             objective_code == Native.Objective_LogLossBinary
             or objective_code == Native.Objective_LogLossMulticlass
@@ -939,12 +943,26 @@ class EBMModel(BaseEstimator):
                             sample_weight_local[include_samples] * bag[include_samples]
                         )
 
-                class_weights = np.bincount(
-                    y_local, weights=sample_weight_local
-                ).astype(np.float64, copy=False)
-                probs = class_weights / class_weights.sum()
+                probs = np.bincount(y_local, weights=sample_weight_local)
+                total = probs.sum()
+                probs = probs.astype(np.float64, copy=False)
+                probs /= total
                 bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
+            sample_weight_local = sample_weight
+            y_local = y
+            if visible_samples is not None:
+                y_local = y_local[visible_samples]
+                if sample_weight_local is not None:
+                    sample_weight_local = sample_weight_local[visible_samples]
+
+            probs = np.bincount(y_local, weights=sample_weight_local)
+            total = probs.sum()
+            probs = probs.astype(np.float64, copy=False)
+            probs /= total
+
+            intercept_correction = link_func(probs, link, link_param)
+            intercept_correction -= bagged_intercept.mean(axis=0)
         elif init_score is None and objective_code == Native.Objective_Rmse:
             bagged_intercept = np.empty((self.outer_bags, 1), np.float64)
 
@@ -965,9 +983,20 @@ class EBMModel(BaseEstimator):
                 bagged_intercept[idx, :] = np.average(
                     y_local, weights=sample_weight_local
                 )
+
+            sample_weight_local = sample_weight
+            y_local = y
+            if visible_samples is not None:
+                y_local = y_local[visible_samples]
+                if sample_weight_local is not None:
+                    sample_weight_local = sample_weight_local[visible_samples]
+
+            intercept_correction = np.average(y_local, weights=sample_weight_local)
+            intercept_correction -= bagged_intercept.mean(axis=0)
         else:
             # TODO: get the intercept for these non-default options by boosting on the intercept
             bagged_intercept = np.zero((self.outer_bags, 1), np.float64)
+            intercept_correction = None
 
         dataset = bin_native_by_dimension(
             n_classes,
@@ -1347,14 +1376,16 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
+        if intercept_correction is not None:
+            # making outer bags introduces noise to the intercept that we can remove now
+            bagged_intercept += intercept_correction
+
         if bagged_intercept.shape[1] == 1:
             bagged_intercept = bagged_intercept.ravel()
 
         intercept, term_scores, standard_deviations = process_terms(
             bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
-
-        # TODO: for RMSE, rebalance bagged_intercept to average to the mean y
 
         if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
