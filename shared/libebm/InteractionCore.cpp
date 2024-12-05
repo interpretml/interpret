@@ -257,9 +257,9 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
    if(ptrdiff_t{0} != cClasses && ptrdiff_t{1} != cClasses) {
       size_t cScores;
       if(CreateInteractionFlags_BinaryAsMulticlass & flags) {
-         cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+         cScores = cClasses < ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
       } else {
-         cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+         cScores = cClasses <= ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
       }
       pInteractionCore->m_cScores = cScores;
 

@@ -196,21 +196,21 @@ def measure_interactions(
         raise ValueError(msg)
 
     if init_score is not None:
-        if n_classes == 2 or n_classes < 0:
-            if init_score.ndim != 1:
-                msg = "diagreement between the number of classes in y and in the init_score shape"
-                raise ValueError(msg)
-        elif n_classes >= 3:
-            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
-                msg = "diagreement between the number of classes in y and in the init_score shape"
-                raise ValueError(msg)
-        else:  # 1 class
+        if n_classes == Native.Task_MonoClassification:
             # what the init_score should be for mono-classifiction is somewhat abiguous,
             # so allow either 0 or 1 (which means the dimension is eliminated)
             if init_score.ndim == 2 and init_score.shape[1] >= 2:
                 msg = "diagreement between the number of classes in y and in the init_score shape"
                 raise ValueError(msg)
             init_score = None
+        elif n_classes >= Native.Task_MulticlassPlus:
+            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
+        else:
+            if init_score.ndim != 1:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
 
     if sample_weight is not None:
         sample_weight = clean_dimensions(sample_weight, "sample_weight")

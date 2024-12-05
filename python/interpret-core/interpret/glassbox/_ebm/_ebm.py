@@ -660,7 +660,7 @@ class EBMModel(BaseEstimator):
 
             validate_eps_delta(self.epsilon, self.delta)
 
-            if n_classes < 0:
+            if n_classes < Native.Task_GeneralClassification:
                 is_privacy_warning = False
                 is_clipping = False
 
@@ -690,7 +690,7 @@ class EBMModel(BaseEstimator):
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
-            elif n_classes > 2:  # pragma: no cover
+            elif n_classes >= Native.Task_MulticlassPlus:  # pragma: no cover
                 msg = "Multiclass not supported for Differentially Private EBMs."
                 raise ValueError(msg)
 
@@ -794,7 +794,8 @@ class EBMModel(BaseEstimator):
                     y,
                     self.validation_size,
                     bagged_rng,
-                    n_classes >= 0 and not is_differential_privacy,
+                    n_classes >= Native.Task_GeneralClassification
+                    and not is_differential_privacy,
                 )
             else:
                 bag = bags[idx]
@@ -835,7 +836,11 @@ class EBMModel(BaseEstimator):
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if n_classes >= 0 else max_target - min_target
+            domain_size = (
+                1
+                if n_classes >= Native.Task_GeneralClassification
+                else max_target - min_target
+            )
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta - bin_delta
@@ -1018,7 +1023,7 @@ class EBMModel(BaseEstimator):
                         raise ValueError(msg)
                     interactions = int(interactions)
 
-                if n_classes > 2:
+                if n_classes >= Native.Task_MulticlassPlus:
                     warn(
                         "Detected multiclass problem. Forcing interactions to 0. "
                         "Multiclass interactions only have local explanations. "
@@ -1289,7 +1294,7 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
-        if n_classes == 1:
+        if n_classes == Native.Task_MonoClassification:
             bagged_intercept = np.full(self.outer_bags, -np.inf, np.float64)
         elif n_scores == 1:
             bagged_intercept = np.zeros(self.outer_bags, np.float64)
@@ -1300,10 +1305,10 @@ class EBMModel(BaseEstimator):
             bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
 
-        if n_classes < 0:
+        if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
             intercept = float(intercept[0])
-        elif n_classes <= 1:
+        elif n_classes == Native.Task_MonoClassification:
             # for monoclassification, cells are either NaN or -inf
             intercept[~np.isnan(intercept)] = -np.inf
             bagged_intercept[~np.isnan(bagged_intercept)] = -np.inf
@@ -1335,7 +1340,7 @@ class EBMModel(BaseEstimator):
             self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
-        if n_classes >= 0:
+        if n_classes >= Native.Task_GeneralClassification:
             self.classes_ = classes  # required by scikit-learn
         else:
             # we do not use these currently, but they indicate the domain for DP and

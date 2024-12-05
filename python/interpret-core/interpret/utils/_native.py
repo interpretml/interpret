@@ -63,13 +63,17 @@ class Native:
     Task_Ranking = -3
     Task_Regression = -2
     Task_Unknown = -1
-    # for Task_Classification use the # of classes or 0 if unknown
+    Task_GeneralClassification = 0
+    Task_MonoClassification = 1
+    Task_BinaryClassification = 2
+    Task_MulticlassPlus = 3
 
     # Objectives
     Objective_Unknown = 0
-    Objective_LogLossBinary = 1
-    Objective_LogLossMulticlass = 2
-    Objective_Rmse = 3
+    Objective_MonoClassification = 1
+    Objective_LogLossBinary = 2
+    Objective_LogLossMulticlass = 3
+    Objective_Rmse = 4
 
     # TraceLevel
     _Trace_Off = 0
@@ -174,7 +178,7 @@ class Native:
 
     @staticmethod
     def get_count_scores_c(n_classes):
-        return n_classes if n_classes > 2 else 1
+        return n_classes if n_classes >= Native.Task_MulticlassPlus else 1
 
     def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -808,7 +812,7 @@ class Native:
         return bag
 
     def determine_task(self, objective):
-        task = ct.c_int64(0)
+        task = ct.c_int64(Native.Task_Unknown)
 
         return_code = self._unsafe.DetermineTask(
             objective.encode("ascii"),
