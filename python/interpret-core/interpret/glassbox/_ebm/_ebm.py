@@ -792,6 +792,7 @@ class EBMModel(BaseEstimator):
             if bags is None:
                 bag = make_bag(
                     y,
+                    n_classes,
                     self.validation_size,
                     bagged_rng,
                     n_classes >= Native.Task_GeneralClassification

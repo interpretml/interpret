@@ -5,7 +5,7 @@ import logging
 import warnings
 from collections import defaultdict
 from itertools import islice
-from math import ceil, exp, isfinite, isinf, log
+from math import floor, exp, isfinite, isinf, log
 
 import numpy as np
 
@@ -348,7 +348,7 @@ def convert_to_cuts(intervals):  # pragma: no cover
     return cuts
 
 
-def make_bag(y, test_size, rng, is_stratified):
+def make_bag(y, n_classes, test_size, rng, is_stratified):
     # all test/train splits should be done with this function to ensure that
     # if we re-generate the train/test splits that they are generated exactly
     # the same as before
@@ -356,33 +356,32 @@ def make_bag(y, test_size, rng, is_stratified):
     if test_size < 0:  # pragma: no cover
         msg = "test_size must be a positive numeric value."
         raise Exception(msg)
-    if test_size == 0:
-        return None
     n_samples = len(y)
-    n_test_samples = 0
 
-    if test_size >= 1:
+    if 1 <= test_size:
         if test_size % 1:
             msg = "If test_size >= 1, test_size should be a whole number."
             raise Exception(msg)
-        n_test_samples = test_size
+        test_size = int(test_size)
     else:
-        n_test_samples = ceil(n_samples * test_size)
+        # prefer training samples
+        test_size = floor(n_samples * test_size)
 
-    n_train_samples = n_samples - n_test_samples
+    if test_size == 0:
+        return None
+
+    if n_samples <= test_size:
+        msg = "The entire dataset cannot exclusively be validation. There must be some training data."
+        raise Exception(msg)
+
+    n_train_samples = n_samples - test_size
     native = Native.get_native_singleton()
 
-    # Adapt test size if too small relative to number of classes
     if is_stratified:
-        n_classes = len(set(y))
-        if n_test_samples < n_classes:  # pragma: no cover
-            warnings.warn(
-                "Too few samples per class, adapting test size to guarantee 1 sample per class."
-            )
-            n_test_samples = n_classes
-            n_train_samples = n_samples - n_test_samples
-
-        return native.sample_without_replacement_stratified(
-            rng, n_classes, n_train_samples, n_test_samples, y
+        bag = native.sample_without_replacement_stratified(
+            rng, n_classes, n_train_samples, test_size, y
         )
-    return native.sample_without_replacement(rng, n_train_samples, n_test_samples)
+    else:
+        bag = native.sample_without_replacement(rng, n_train_samples, test_size)
+
+    return bag
