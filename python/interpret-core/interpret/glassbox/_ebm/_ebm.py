@@ -1159,8 +1159,6 @@ class EBMModel(BaseEstimator):
                 feature_names_in,
                 feature_types_in,
             )
-            # we no longer need this, so allow the garbage collector to reclaim it
-            del y
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
@@ -1393,6 +1391,79 @@ class EBMModel(BaseEstimator):
         intercept, term_scores, standard_deviations = process_terms(
             bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
+
+        if objective_code == Native.Objective_Rmse:
+            scores = ebm_predict_scores(
+                X,
+                n_samples,
+                feature_names_in,
+                feature_types_in,
+                bins,
+                intercept,
+                term_scores,
+                term_features,
+                init_score,
+            )
+
+            sample_weight_local = sample_weight
+            y_local = y
+            if visible_samples is not None:
+                scores = scores[visible_samples]
+                y_local = y_local[visible_samples]
+                if sample_weight_local is not None:
+                    sample_weight_local = sample_weight_local[visible_samples]
+
+            correction = np.average(y_local - scores, weights=sample_weight_local)
+            intercept += correction
+            bagged_intercept += correction
+        elif (
+            objective_code == Native.Objective_LogLossBinary
+            or objective_code == Native.Objective_LogLossMulticlass
+        ):
+            scores = ebm_predict_scores(
+                X,
+                n_samples,
+                feature_names_in,
+                feature_types_in,
+                bins,
+                intercept,
+                term_scores,
+                term_features,
+                init_score,
+            )
+
+            sample_weight_local = sample_weight
+            y_local = y
+            if visible_samples is not None:
+                scores = scores[visible_samples]
+                y_local = y_local[visible_samples]
+                if sample_weight_local is not None:
+                    sample_weight_local = sample_weight_local[visible_samples]
+
+            probs = np.bincount(y_local, weights=sample_weight_local)
+            total = probs.sum()
+            probs = probs.astype(np.float64, copy=False)
+            probs /= total
+            actual_scores = link_func(probs, link, link_param)
+
+            n_correction_iterations = 25
+            for _ in range(n_correction_iterations):
+                pred_prob = inv_link(scores, link, link_param)
+                pred_prob = np.average(pred_prob, axis=0, weights=sample_weight_local)
+                pred_scores = link_func(pred_prob, link, link_param)
+                correction = actual_scores - pred_scores
+                intercept += correction
+                bagged_intercept += correction
+                scores += correction
+
+            if bagged_intercept.ndim == 2:
+                # multiclass
+                # pick the class that we're going to zero
+                zero_index = np.argmax(intercept)
+                intercept -= intercept[zero_index]
+                bagged_intercept -= np.expand_dims(
+                    bagged_intercept[..., zero_index], -1
+                )
 
         if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
