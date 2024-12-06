@@ -778,7 +778,7 @@ class EBMModel(BaseEstimator):
         used_seeds = set()
         rngs = []
         internal_bags = []
-        visible_samples = None if bags is None else np.zero(n_samples, np.bool_)
+        visible_samples = None if bags is None else np.zeros(n_samples, np.bool_)
         for idx in range(self.outer_bags):
             while True:
                 bagged_rng = native.branch_rng(rng)
@@ -920,9 +920,10 @@ class EBMModel(BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
+        intercept_correction = None
         if n_classes == Native.Task_MonoClassification:
             bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
-            intercept_correction = None
+            intercept_correction = np.zeros((self.outer_bags, 1), np.float64)
         elif init_score is None and (
             objective_code == Native.Objective_LogLossBinary
             or objective_code == Native.Objective_LogLossMulticlass
@@ -963,13 +964,16 @@ class EBMModel(BaseEstimator):
 
             intercept_correction = link_func(probs, link, link_param)
             intercept_correction -= bagged_intercept.mean(axis=0)
-        elif init_score is None and objective_code == Native.Objective_Rmse:
+        elif objective_code == Native.Objective_Rmse:
             bagged_intercept = np.empty((self.outer_bags, 1), np.float64)
+
+            # RMSE is very special and we can do closed form even with init_scores
+            y_shifted = y if init_score is None else y - init_score
 
             for idx in range(self.outer_bags):
                 bag = internal_bags[idx]
                 sample_weight_local = sample_weight
-                y_local = y
+                y_local = y_shifted
                 if bag is not None:
                     include_samples = 0 < bag
                     y_local = y_local[include_samples]
@@ -985,7 +989,7 @@ class EBMModel(BaseEstimator):
                 )
 
             sample_weight_local = sample_weight
-            y_local = y
+            y_local = y_shifted
             if visible_samples is not None:
                 y_local = y_local[visible_samples]
                 if sample_weight_local is not None:
@@ -995,8 +999,7 @@ class EBMModel(BaseEstimator):
             intercept_correction -= bagged_intercept.mean(axis=0)
         else:
             # TODO: get the intercept for these non-default options by boosting on the intercept
-            bagged_intercept = np.zero((self.outer_bags, 1), np.float64)
-            intercept_correction = None
+            bagged_intercept = np.zeros((self.outer_bags, 1), np.float64)
 
         dataset = bin_native_by_dimension(
             n_classes,
