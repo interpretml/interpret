@@ -921,53 +921,20 @@ class EBMModel(BaseEstimator):
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
         bagged_intercept = None
-        if n_classes == Native.Task_MonoClassification:
-            bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
-            intercept_correction = None
-        elif objective_code == Native.Objective_Rmse:
-            bagged_intercept = np.empty((self.outer_bags, 1), np.float64)
+        if not is_differential_privacy:
+            if n_classes == Native.Task_MonoClassification:
+                bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
+                intercept_correction = None
+            elif objective_code == Native.Objective_Rmse:
+                bagged_intercept = np.empty((self.outer_bags, 1), np.float64)
 
-            # RMSE is very special and we can do closed form even with init_scores
-            y_shifted = y if init_score is None else y - init_score
-
-            for idx in range(self.outer_bags):
-                bag = internal_bags[idx]
-                sample_weight_local = sample_weight
-                y_local = y_shifted
-                if bag is not None:
-                    include_samples = 0 < bag
-                    y_local = y_local[include_samples]
-                    if sample_weight_local is None:
-                        sample_weight_local = bag[include_samples]
-                    else:
-                        sample_weight_local = (
-                            sample_weight_local[include_samples] * bag[include_samples]
-                        )
-
-                bagged_intercept[idx, :] = np.average(
-                    y_local, weights=sample_weight_local
-                )
-
-            sample_weight_local = sample_weight
-            y_local = y_shifted
-            if visible_samples is not None:
-                y_local = y_local[visible_samples]
-                if sample_weight_local is not None:
-                    sample_weight_local = sample_weight_local[visible_samples]
-
-            intercept_correction = np.average(y_local, weights=sample_weight_local)
-            intercept_correction -= bagged_intercept.mean(axis=0)
-        elif init_score is None:
-            if (
-                objective_code == Native.Objective_LogLossBinary
-                or objective_code == Native.Objective_LogLossMulticlass
-            ):
-                bagged_intercept = np.empty((self.outer_bags, n_scores), np.float64)
+                # RMSE is very special and we can do closed form even with init_scores
+                y_shifted = y if init_score is None else y - init_score
 
                 for idx in range(self.outer_bags):
                     bag = internal_bags[idx]
                     sample_weight_local = sample_weight
-                    y_local = y
+                    y_local = y_shifted
                     if bag is not None:
                         include_samples = 0 < bag
                         y_local = y_local[include_samples]
@@ -979,26 +946,61 @@ class EBMModel(BaseEstimator):
                                 * bag[include_samples]
                             )
 
-                    probs = np.bincount(y_local, weights=sample_weight_local)
-                    total = probs.sum()
-                    probs = probs.astype(np.float64, copy=False)
-                    probs /= total
-                    bagged_intercept[idx, :] = link_func(probs, link, link_param)
+                    bagged_intercept[idx, :] = np.average(
+                        y_local, weights=sample_weight_local
+                    )
 
                 sample_weight_local = sample_weight
-                y_local = y
+                y_local = y_shifted
                 if visible_samples is not None:
                     y_local = y_local[visible_samples]
                     if sample_weight_local is not None:
                         sample_weight_local = sample_weight_local[visible_samples]
 
-                probs = np.bincount(y_local, weights=sample_weight_local)
-                total = probs.sum()
-                probs = probs.astype(np.float64, copy=False)
-                probs /= total
-
-                intercept_correction = link_func(probs, link, link_param)
+                intercept_correction = np.average(y_local, weights=sample_weight_local)
                 intercept_correction -= bagged_intercept.mean(axis=0)
+            elif init_score is None:
+                if (
+                    objective_code == Native.Objective_LogLossBinary
+                    or objective_code == Native.Objective_LogLossMulticlass
+                ):
+                    bagged_intercept = np.empty((self.outer_bags, n_scores), np.float64)
+
+                    for idx in range(self.outer_bags):
+                        bag = internal_bags[idx]
+                        sample_weight_local = sample_weight
+                        y_local = y
+                        if bag is not None:
+                            include_samples = 0 < bag
+                            y_local = y_local[include_samples]
+                            if sample_weight_local is None:
+                                sample_weight_local = bag[include_samples]
+                            else:
+                                sample_weight_local = (
+                                    sample_weight_local[include_samples]
+                                    * bag[include_samples]
+                                )
+
+                        probs = np.bincount(y_local, weights=sample_weight_local)
+                        total = probs.sum()
+                        probs = probs.astype(np.float64, copy=False)
+                        probs /= total
+                        bagged_intercept[idx, :] = link_func(probs, link, link_param)
+
+                    sample_weight_local = sample_weight
+                    y_local = y
+                    if visible_samples is not None:
+                        y_local = y_local[visible_samples]
+                        if sample_weight_local is not None:
+                            sample_weight_local = sample_weight_local[visible_samples]
+
+                    probs = np.bincount(y_local, weights=sample_weight_local)
+                    total = probs.sum()
+                    probs = probs.astype(np.float64, copy=False)
+                    probs /= total
+
+                    intercept_correction = link_func(probs, link, link_param)
+                    intercept_correction -= bagged_intercept.mean(axis=0)
 
         if bagged_intercept is None:
             # TODO: get the intercept for these non-default options by boosting on the intercept
@@ -1392,78 +1394,81 @@ class EBMModel(BaseEstimator):
             bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
 
-        if objective_code == Native.Objective_Rmse:
-            scores = ebm_predict_scores(
-                X,
-                n_samples,
-                feature_names_in,
-                feature_types_in,
-                bins,
-                intercept,
-                term_scores,
-                term_features,
-                init_score,
-            )
+        if not is_differential_privacy:
+            if objective_code == Native.Objective_Rmse:
+                scores = ebm_predict_scores(
+                    X,
+                    n_samples,
+                    feature_names_in,
+                    feature_types_in,
+                    bins,
+                    intercept,
+                    term_scores,
+                    term_features,
+                    init_score,
+                )
 
-            sample_weight_local = sample_weight
-            y_local = y
-            if visible_samples is not None:
-                scores = scores[visible_samples]
-                y_local = y_local[visible_samples]
-                if sample_weight_local is not None:
-                    sample_weight_local = sample_weight_local[visible_samples]
+                sample_weight_local = sample_weight
+                y_local = y
+                if visible_samples is not None:
+                    scores = scores[visible_samples]
+                    y_local = y_local[visible_samples]
+                    if sample_weight_local is not None:
+                        sample_weight_local = sample_weight_local[visible_samples]
 
-            correction = np.average(y_local - scores, weights=sample_weight_local)
-            intercept += correction
-            bagged_intercept += correction
-        elif (
-            objective_code == Native.Objective_LogLossBinary
-            or objective_code == Native.Objective_LogLossMulticlass
-        ):
-            scores = ebm_predict_scores(
-                X,
-                n_samples,
-                feature_names_in,
-                feature_types_in,
-                bins,
-                intercept,
-                term_scores,
-                term_features,
-                init_score,
-            )
-
-            sample_weight_local = sample_weight
-            y_local = y
-            if visible_samples is not None:
-                scores = scores[visible_samples]
-                y_local = y_local[visible_samples]
-                if sample_weight_local is not None:
-                    sample_weight_local = sample_weight_local[visible_samples]
-
-            probs = np.bincount(y_local, weights=sample_weight_local)
-            total = probs.sum()
-            probs = probs.astype(np.float64, copy=False)
-            probs /= total
-            actual_scores = link_func(probs, link, link_param)
-
-            n_correction_iterations = 25
-            for _ in range(n_correction_iterations):
-                pred_prob = inv_link(scores, link, link_param)
-                pred_prob = np.average(pred_prob, axis=0, weights=sample_weight_local)
-                pred_scores = link_func(pred_prob, link, link_param)
-                correction = actual_scores - pred_scores
+                correction = np.average(y_local - scores, weights=sample_weight_local)
                 intercept += correction
                 bagged_intercept += correction
-                scores += correction
-
-            if bagged_intercept.ndim == 2:
-                # multiclass
-                # pick the class that we're going to zero
-                zero_index = np.argmax(intercept)
-                intercept -= intercept[zero_index]
-                bagged_intercept -= np.expand_dims(
-                    bagged_intercept[..., zero_index], -1
+            elif (
+                objective_code == Native.Objective_LogLossBinary
+                or objective_code == Native.Objective_LogLossMulticlass
+            ):
+                scores = ebm_predict_scores(
+                    X,
+                    n_samples,
+                    feature_names_in,
+                    feature_types_in,
+                    bins,
+                    intercept,
+                    term_scores,
+                    term_features,
+                    init_score,
                 )
+
+                sample_weight_local = sample_weight
+                y_local = y
+                if visible_samples is not None:
+                    scores = scores[visible_samples]
+                    y_local = y_local[visible_samples]
+                    if sample_weight_local is not None:
+                        sample_weight_local = sample_weight_local[visible_samples]
+
+                probs = np.bincount(y_local, weights=sample_weight_local)
+                total = probs.sum()
+                probs = probs.astype(np.float64, copy=False)
+                probs /= total
+                actual_scores = link_func(probs, link, link_param)
+
+                n_correction_iterations = 25
+                for _ in range(n_correction_iterations):
+                    pred_prob = inv_link(scores, link, link_param)
+                    pred_prob = np.average(
+                        pred_prob, axis=0, weights=sample_weight_local
+                    )
+                    pred_scores = link_func(pred_prob, link, link_param)
+                    correction = actual_scores - pred_scores
+                    intercept += correction
+                    bagged_intercept += correction
+                    scores += correction
+
+                if bagged_intercept.ndim == 2:
+                    # multiclass
+                    # pick the class that we're going to zero
+                    zero_index = np.argmax(intercept)
+                    intercept -= intercept[zero_index]
+                    bagged_intercept -= np.expand_dims(
+                        bagged_intercept[..., zero_index], -1
+                    )
 
         if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
