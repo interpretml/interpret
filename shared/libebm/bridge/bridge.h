@@ -160,7 +160,7 @@ struct ObjectiveWrapper {
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const pObjectiveWrapper) {
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
-   pObjectiveWrapper->m_objective = Objective_Unknown;
+   pObjectiveWrapper->m_objective = Objective_Other;
    pObjectiveWrapper->m_linkFunction = Link_Unknown;
    pObjectiveWrapper->m_linkParam = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentDifferentialPrivacy = 0.0;

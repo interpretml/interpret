@@ -69,7 +69,7 @@ class Native:
     Task_MulticlassPlus = 3
 
     # Objectives
-    Objective_Unknown = 0
+    Objective_Other = 0
     Objective_MonoClassification = 1
     Objective_LogLossBinary = 2
     Objective_LogLossMulticlass = 3
@@ -830,7 +830,7 @@ class Native:
         return task.decode("ascii")
 
     def determine_link(self, flags, objective, n_classes):
-        objective_code = ct.c_int32(0)
+        objective_code = ct.c_int32(Native.Objective_Other)
         link = ct.c_int32(0)
         link_param = ct.c_double(np.nan)
 

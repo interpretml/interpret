@@ -104,7 +104,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 
       if(nullptr != objectiveOut) {
-         *objectiveOut = Objective_Unknown;
+         *objectiveOut = Objective_Other;
       }
       if(nullptr != linkOut) {
          *linkOut = Link_Unknown;
@@ -126,7 +126,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          LOG_0(Trace_Error, "ERROR DetermineLinkFunction cClasses mismatch to objective");
 
          if(nullptr != objectiveOut) {
-            *objectiveOut = Objective_Unknown;
+            *objectiveOut = Objective_Other;
          }
          if(nullptr != linkOut) {
             *linkOut = Link_Unknown;
@@ -140,7 +140,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          LOG_0(Trace_Error, "ERROR DetermineLinkFunction cClasses cannot be zero");
 
          if(nullptr != objectiveOut) {
-            *objectiveOut = Objective_Unknown;
+            *objectiveOut = Objective_Other;
          }
          if(nullptr != linkOut) {
             *linkOut = Link_Unknown;

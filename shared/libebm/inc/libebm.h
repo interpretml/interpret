@@ -262,7 +262,7 @@ typedef struct _InteractionHandle {
 #define Task_BinaryClassification  (TASK_CAST(2)) // 2 classes
 #define Task_MulticlassPlus        (TASK_CAST(3)) // 3+ classes (the value is the # of classes)
 
-#define Objective_Unknown            (OBJECTIVE_CAST(0))
+#define Objective_Other              (OBJECTIVE_CAST(0))
 #define Objective_MonoClassification (OBJECTIVE_CAST(1))
 #define Objective_LogLossBinary      (OBJECTIVE_CAST(2))
 #define Objective_LogLossMulticlass  (OBJECTIVE_CAST(3))
