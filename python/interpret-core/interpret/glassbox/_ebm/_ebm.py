@@ -11,6 +11,7 @@ from itertools import combinations, count
 from math import ceil, isnan
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 from warnings import warn
+from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.base import (
@@ -274,6 +275,57 @@ def _clean_exclude(exclude, feature_map):
         # allow duplicates in the exclude list
         ret.add(tuple(cleaned))
     return ret
+
+
+@dataclass
+class EbmInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = True
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class EbmTargetTags:
+    required: bool = True
+    one_d_labels: bool = True
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class EbmClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class EbmRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class EbmTags:
+    estimator_type: Optional[str] = None
+    target_tags: EbmTargetTags = field(default_factory=EbmTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[EbmClassifierTags] = None
+    regressor_tags: Optional[EbmRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: EbmInputTags = field(default_factory=EbmInputTags)
 
 
 class EBMModel(BaseEstimator):
@@ -2627,6 +2679,9 @@ class EBMModel(BaseEstimator):
             ],
         }
 
+    def __sklearn_tags__(self):
+        return EbmTags()
+
 
 class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     r"""An Explainable Boosting Classifier.
@@ -2977,6 +3032,12 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = EbmClassifierTags()
+        return tags
+
 
 class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     r"""An Explainable Boosting Regressor.
@@ -3293,6 +3354,12 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = EbmRegressorTags()
+        return tags
+
 
 class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
     r"""Differentially Private Explainable Boosting Classifier.
@@ -3554,6 +3621,12 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = EbmClassifierTags()
+        return tags
+
 
 class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
     r"""Differentially Private Explainable Boosting Regressor.
@@ -3791,3 +3864,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = EbmRegressorTags()
+        return tags

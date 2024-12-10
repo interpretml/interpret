@@ -4,6 +4,8 @@
 import logging
 from abc import abstractmethod
 from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
@@ -219,6 +221,57 @@ class TreeExplanation(ExplanationMixin):
         return new_nodes
 
 
+@dataclass
+class TreeInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class TreeTargetTags:
+    required: bool = True
+    one_d_labels: bool = True
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class TreeClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class TreeRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class TreeTags:
+    estimator_type: Optional[str] = None
+    target_tags: TreeTargetTags = field(default_factory=TreeTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[TreeClassifierTags] = None
+    regressor_tags: Optional[TreeRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: TreeInputTags = field(default_factory=TreeInputTags)
+
+
 class BaseShallowDecisionTree:
     """Shallow Decision Tree (low depth).
 
@@ -280,7 +333,7 @@ class BaseShallowDecisionTree:
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         X, self.feature_names_in_, self.feature_types_in_ = unify_data(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
         model = self._model()
@@ -540,6 +593,9 @@ class BaseShallowDecisionTree:
         recur(0)
         return nodes, edges
 
+    def __sklearn_tags__(self):
+        return TreeTags()
+
 
 class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
     """Regression tree with shallow depth."""
@@ -582,6 +638,12 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
             sample_weight=sample_weight,
             check_input=check_input,
         )
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = TreeRegressorTags()
+        return tags
 
 
 class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
@@ -644,3 +706,9 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         )
 
         return self._model().predict_proba(X)
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = TreeClassifierTags()
+        return tags

@@ -5,6 +5,8 @@ import logging
 import math
 from itertools import count, groupby, repeat
 from warnings import warn
+from typing import Optional
+from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.base import (
@@ -65,6 +67,50 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
         raise ValueError(msg)
 
     return cuts
+
+
+@dataclass
+class PreprocessorInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = True
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class PreprocessorTargetTags:
+    required: bool = False
+    one_d_labels: bool = True
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class PreprocessorTransformerTags:
+    preserves_dtype: list[str] = field(default_factory=lambda: ["float64"])
+
+
+@dataclass
+class PreprocessorTags:
+    estimator_type: Optional[str] = "transformer"
+    target_tags: PreprocessorTargetTags = field(default_factory=PreprocessorTargetTags)
+    transformer_tags: PreprocessorTransformerTags = field(default_factory=PreprocessorTransformerTags)
+    classifier_tags: None = None
+    regressor_tags: None = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: PreprocessorInputTags = field(default_factory=PreprocessorInputTags)
 
 
 class EBMPreprocessor(BaseEstimator, TransformerMixin):
@@ -531,6 +577,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         # materialize any iterators first
         X, _ = preclean_X(X, self.feature_names, self.feature_types, n_samples)
         return self.fit(X, y, sample_weight).transform(X)
+
+    def __sklearn_tags__(self):
+        return PreprocessorTags()
 
 
 def construct_bins(

@@ -2,6 +2,8 @@
 # Distributed under the MIT software license
 
 from abc import abstractmethod
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
@@ -20,6 +22,57 @@ from ..utils._explanation import (
     gen_perf_dicts,
 )
 from ..utils._unify_data import unify_data
+
+
+@dataclass
+class LinearInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = False
+    pairwise: bool = False
+
+
+@dataclass
+class LinearTargetTags:
+    required: bool = True
+    one_d_labels: bool = True
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class LinearClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class LinearRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class LinearTags:
+    estimator_type: Optional[str] = None
+    target_tags: LinearTargetTags = field(default_factory=LinearTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[LinearClassifierTags] = None
+    regressor_tags: Optional[LinearRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: LinearInputTags = field(default_factory=LinearInputTags)
 
 
 class BaseLinear:
@@ -334,6 +387,9 @@ class BaseLinear:
             selector=self.global_selector_,
         )
 
+    def __sklearn_tags__(self):
+        return LinearTags()
+
 
 class LinearExplanation(FeatureValueExplanation):
     """Visualizes specifically for Linear methods."""
@@ -468,6 +524,12 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
         self.sk_model_ = self.linear_class(**self.kwargs)
         return super().fit(X, y)
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = LinearRegressorTags()
+        return tags
+
 
 class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
     """Logistic regression.
@@ -522,6 +584,12 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
         )
 
         return self._model().predict_proba(X)
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = LinearClassifierTags()
+        return tags
 
 
 def _hist_per_column(arr, feature_types=None):
