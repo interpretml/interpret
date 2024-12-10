@@ -272,7 +272,7 @@ class TreeTags:
     input_tags: TreeInputTags = field(default_factory=TreeInputTags)
 
 
-class BaseShallowDecisionTree:
+class BaseShallowDecisionTree(ExplainerMixin):
     """Shallow Decision Tree (low depth).
 
     Currently wrapper around DecisionTreeClassifier or DecisionTreeRegressor in scikit-learn.
@@ -597,7 +597,7 @@ class BaseShallowDecisionTree:
         return TreeTags()
 
 
-class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
+class RegressionTree(RegressorMixin, BaseShallowDecisionTree):
     """Regression tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
@@ -646,7 +646,7 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
         return tags
 
 
-class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
+class ClassificationTree(ClassifierMixin, BaseShallowDecisionTree):
     """Classification tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):

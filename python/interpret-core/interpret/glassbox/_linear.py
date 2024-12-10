@@ -75,7 +75,7 @@ class LinearTags:
     input_tags: LinearInputTags = field(default_factory=LinearInputTags)
 
 
-class BaseLinear:
+class BaseLinear(ExplainerMixin):
     """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -489,7 +489,7 @@ class LinearExplanation(FeatureValueExplanation):
         return super().visualize(key)
 
 
-class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
+class LinearRegression(RegressorMixin, BaseLinear):
     """Linear regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
@@ -531,7 +531,7 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
         return tags
 
 
-class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
+class LogisticRegression(ClassifierMixin, BaseLinear):
     """Logistic regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn

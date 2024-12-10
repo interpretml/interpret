@@ -113,7 +113,7 @@ class PreprocessorTags:
     input_tags: PreprocessorInputTags = field(default_factory=PreprocessorInputTags)
 
 
-class EBMPreprocessor(BaseEstimator, TransformerMixin):
+class EBMPreprocessor(TransformerMixin, BaseEstimator):
     """Transformer that preprocesses data to be ready before EBM."""
 
     def __init__(

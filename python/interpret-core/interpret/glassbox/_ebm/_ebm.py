@@ -328,7 +328,7 @@ class EbmTags:
     input_tags: EbmInputTags = field(default_factory=EbmInputTags)
 
 
-class EBMModel(BaseEstimator):
+class EBMModel(ExplainerMixin, BaseEstimator):
     """Base class for all EBMs."""
 
     def __init__(
@@ -2683,7 +2683,7 @@ class EBMModel(BaseEstimator):
         return EbmTags()
 
 
-class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     r"""An Explainable Boosting Classifier.
 
     Parameters
@@ -3039,7 +3039,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         return tags
 
 
-class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
     r"""An Explainable Boosting Regressor.
 
     Parameters
@@ -3361,7 +3361,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         return tags
 
 
-class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Classifier.
 
     Note that many arguments are defaulted differently than regular EBMs.
@@ -3628,7 +3628,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         return tags
 
 
-class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Regressor.
 
     Note that many arguments are defaulted differently than regular EBMs.
