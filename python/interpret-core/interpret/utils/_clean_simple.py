@@ -79,8 +79,8 @@ def clean_dimensions(data, param_name):
             else:
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
                 data = data.astype(np.object_, copy=False).values
-        elif safe_isinstance(data, "scipy.sparse.sparray") or safe_isinstance(
-            data, "scipy.sparse.spmatrix"
+        elif safe_isinstance(data, "scipy.sparse.spmatrix") or safe_isinstance(
+            data, "scipy.sparse.sparray"
         ):
             data = data.toarray()
         elif isinstance(data, (list, tuple)):

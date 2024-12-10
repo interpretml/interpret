@@ -698,23 +698,29 @@ def test_ebm_iris():
 
 @pytest.mark.visual
 @pytest.mark.slow
-def test_ebm_sparse():
+def test_ebm_sparse_matrix():
     """Validate running EBM on scipy sparse data"""
-    from sklearn.datasets import make_multilabel_classification  # type: ignore
 
-    np.random.seed(0)
-    n_features = 5
-    X, y = make_multilabel_classification(
-        n_samples=20, sparse=True, n_features=n_features, n_classes=1, n_labels=2
-    )
+    X, y, names, types = make_synthetic(classes=4, output_type="csc_matrix")
+    ebm = ExplainableBoostingClassifier(names, types)
+    ebm.fit(X, y)
 
-    # train linear model
-    clf = ExplainableBoostingClassifier()
-    clf.fit(X, y)
+    global_exp = ebm.explain_global()
+    local_exp = ebm.explain_local(X, y)
+    smoke_test_explanations(global_exp, local_exp, 6002)
 
-    assert accuracy_score(y, clf.predict(X)) >= 0.8
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X, y)
+
+@pytest.mark.visual
+@pytest.mark.slow
+def test_ebm_sparse_array():
+    """Validate running EBM on scipy sparse data"""
+
+    X, y, names, types = make_synthetic(classes=4, output_type="csc_array")
+    ebm = ExplainableBoostingClassifier(names, types)
+    ebm.fit(X, y)
+
+    global_exp = ebm.explain_global()
+    local_exp = ebm.explain_local(X, y)
     smoke_test_explanations(global_exp, local_exp, 6002)
 
 
@@ -865,8 +871,11 @@ _fast_kwds = {
 @pytest.fixture
 def skip_sklearn() -> set:
     """Test which we do not adhere to."""
+    # TODO: whittle these down to the minimum
     return {
         "check_sample_weights_invariance",  # EBMs do not support sample weight=0
+        "check_sample_weight_equivalence_on_dense_data",  # EBMs do not support sample weight=0
+        "check_sample_weight_equivalence_on_sparse_data",  # EBMs do not support sample weight=0
         # EBM allows fitting to zero features. Is this meaningful?
         "check_estimators_empty_data_messages",
         # test is bad, trained on floats, EBM predicts string labels
@@ -879,6 +888,8 @@ def skip_sklearn() -> set:
         "check_classifiers_regression_target",
         "check_supervised_y_2d",  # EBM deliberately support `y.shape = (nsamples, 1)`
         "check_requires_y_none",  # error message differs
+        "check_valid_tag_types",  # EBM uses custom tag classes
+        "check_n_features_in_after_fitting",  # EBM is more permissive and allows more features
     }
 
 

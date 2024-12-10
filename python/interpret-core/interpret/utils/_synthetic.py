@@ -290,7 +290,7 @@ def _make_synthetic_features(
             features[i] = col
 
         X = pd.concat(features, axis=1)
-    elif output_type == "scipy":
+    elif output_type == "csc_matrix":
         try:
             from scipy.sparse import csc_matrix
         except ImportError:
@@ -301,6 +301,17 @@ def _make_synthetic_features(
         if mask is not None:
             X[mask] = np.nan
         X = csc_matrix(X.T)
+    elif output_type == "csc_array":
+        try:
+            from scipy.sparse import csc_array
+        except ImportError:
+            raise ImportError(
+                'Please install the scipy package using `pip install scipy` in order to call make_synthetic with output_type set to "scipy"!'
+            )
+        X = np.array(features, np.float64)
+        if mask is not None:
+            X[mask] = np.nan
+        X = csc_array(X.T)
     else:
         msg = f"unknown output_type={output_type}"
         raise ValueError(msg)
@@ -385,8 +396,10 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
     for i in range(X.shape[1]):
         if _pandas_installed and isinstance(X, pd.DataFrame):
             col = X.iloc[:, i]
-        elif safe_isinstance(X, "scipy.sparse.spmatrix"):
-            col = X.getcol(i).toarray().ravel()
+        elif safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
+            X, "scipy.sparse.sparray"
+        ):
+            col = X[:, [i]].toarray().ravel()
         else:
             col = X[:, i]
 
