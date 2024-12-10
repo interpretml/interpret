@@ -86,7 +86,7 @@ class PreprocessorInputTags:
 @dataclass
 class PreprocessorTargetTags:
     required: bool = False
-    one_d_labels: bool = True
+    one_d_labels: bool = False
     two_d_labels: bool = False
     positive_only: bool = False
     multi_output: bool = False
@@ -102,7 +102,9 @@ class PreprocessorTransformerTags:
 class PreprocessorTags:
     estimator_type: Optional[str] = "transformer"
     target_tags: PreprocessorTargetTags = field(default_factory=PreprocessorTargetTags)
-    transformer_tags: PreprocessorTransformerTags = field(default_factory=PreprocessorTransformerTags)
+    transformer_tags: PreprocessorTransformerTags = field(
+        default_factory=PreprocessorTransformerTags
+    )
     classifier_tags: None = None
     regressor_tags: None = None
     array_api_support: bool = True

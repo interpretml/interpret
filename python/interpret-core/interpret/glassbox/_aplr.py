@@ -42,7 +42,7 @@ class APLRInputTags:
 @dataclass
 class APLRTargetTags:
     required: bool = True
-    one_d_labels: bool = True
+    one_d_labels: bool = False
     two_d_labels: bool = False
     positive_only: bool = False
     multi_output: bool = False
