@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.8] - 2024-12-09
+### Fixed
+- resolved new scikit-learn requirement for having \_\_sklearn\_tags\_\_
+- changed position of ClassifierMixin and RegressorMixin inheritance to satisfy scikit-learn check
+- reliable handling of sparse arrays (previously only sparse matrices worked)
+
 ## [v0.6.7] - 2024-11-27
 ### Changed
 - minimum python version increased to 3.9
