@@ -29,8 +29,8 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
  private:
    const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* m_pBinPosition;
 
-   // IMPORTANT: m_leftSum must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_leftSum;
+   // IMPORTANT: m_BinSum must be in the last position for the struct hack and this must be standard layout
+   Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_binSum;
 
  public:
    SplitPosition() = default; // preserve our POD status
@@ -46,7 +46,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
       m_pBinPosition = pBinPosition;
    }
 
-   inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetLeftSum() { return &m_leftSum; }
+   inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinSum() { return &m_binSum; }
 };
 static_assert(
       std::is_standard_layout<SplitPosition<true>>::value && std::is_standard_layout<SplitPosition<false>>::value,
@@ -62,10 +62,10 @@ inline static bool IsOverflowSplitPositionSize(const bool bHessian, const size_t
    size_t cBytesSplitPositionComponent;
    if(bHessian) {
       typedef SplitPosition<true> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    } else {
       typedef SplitPosition<false> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    }
 
    if(UNLIKELY(IsAddError(cBytesSplitPositionComponent, cBytesPerBin))) {
@@ -81,10 +81,10 @@ inline static size_t GetSplitPositionSize(bool bHessian, const size_t cScores) {
    size_t cBytesSplitPositionComponent;
    if(bHessian) {
       typedef SplitPosition<true> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    } else {
       typedef SplitPosition<false> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    }
 
    return cBytesSplitPositionComponent + cBytesPerBin;

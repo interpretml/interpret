@@ -42,7 +42,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
-         const MonotoneDirection significantDirection,
+         const MonotoneDirection monotoneDirection,
          double* const pTotalGain) {
       // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -68,7 +68,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
 
       EBM_ASSERT(1 <= pTerm->GetCountRealDimensions());
       EBM_ASSERT(1 <= pTerm->GetCountDimensions());
-      EBM_ASSERT(MONOTONE_NONE == significantDirection || 1 == pTerm->GetCountRealDimensions());
+      EBM_ASSERT(MONOTONE_NONE == monotoneDirection || 1 == pTerm->GetCountRealDimensions());
 
       Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
@@ -565,17 +565,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionRandomBoostingInt
                         regLambda,
                         deltaStepMax);
                }
-               if(MONOTONE_NONE != significantDirection) {
+               if(MONOTONE_NONE != monotoneDirection) {
                   EBM_ASSERT(1 == pTerm->GetCountRealDimensions());
                   if(!bFirst) {
                      const FloatCalc updatePrev = static_cast<FloatCalc>(*(pUpdateScore - cScores));
-                     if(MonotoneDirection{0} < significantDirection) {
+                     if(MonotoneDirection{0} < monotoneDirection) {
                         if(updateScore < updatePrev) {
                            bSucceed = false;
                            break;
                         }
                      } else {
-                        EBM_ASSERT(significantDirection < MonotoneDirection{0});
+                        EBM_ASSERT(monotoneDirection < MonotoneDirection{0});
                         if(updatePrev < updateScore) {
                            bSucceed = false;
                            break;
@@ -656,7 +656,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTar
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
-         const MonotoneDirection significantDirection,
+         const MonotoneDirection monotoneDirection,
          double* const pTotalGain) {
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       if(cPossibleScores == pBoosterCore->GetCountScores()) {
@@ -668,7 +668,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTar
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       } else {
          return PartitionRandomBoostingTarget<bHessian, cPossibleScores + 1>::Func(pRng,
@@ -679,7 +679,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionRandomBoostingTar
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       }
    }
@@ -697,7 +697,7 @@ template<bool bHessian> class PartitionRandomBoostingTarget<bHessian, k_cCompile
          const FloatCalc regLambda,
          const FloatCalc deltaStepMax,
          const IntEbm* const aLeavesMax,
-         const MonotoneDirection significantDirection,
+         const MonotoneDirection monotoneDirection,
          double* const pTotalGain) {
       return PartitionRandomBoostingInternal<bHessian, k_dynamicScores>::Func(pRng,
             pBoosterShell,
@@ -707,7 +707,7 @@ template<bool bHessian> class PartitionRandomBoostingTarget<bHessian, k_cCompile
             regLambda,
             deltaStepMax,
             aLeavesMax,
-            significantDirection,
+            monotoneDirection,
             pTotalGain);
    }
 };
@@ -720,7 +720,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
-      const MonotoneDirection significantDirection,
+      const MonotoneDirection monotoneDirection,
       double* const pTotalGain) {
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
@@ -737,7 +737,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<true, k_oneScore>::Func(pRng,
@@ -748,7 +748,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       }
    } else {
@@ -762,7 +762,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       } else {
          return PartitionRandomBoostingInternal<false, k_oneScore>::Func(pRng,
@@ -773,7 +773,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
                regLambda,
                deltaStepMax,
                aLeavesMax,
-               significantDirection,
+               monotoneDirection,
                pTotalGain);
       }
    }

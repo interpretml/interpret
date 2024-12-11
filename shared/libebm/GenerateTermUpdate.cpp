@@ -87,7 +87,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t cSplitsMax,
-      const MonotoneDirection direction,
+      const MonotoneDirection monotoneDirection,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
       double* const pTotalGain);
@@ -128,7 +128,7 @@ extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
-      const MonotoneDirection significantDirection,
+      const MonotoneDirection monotoneDirection,
       double* const pTotalGain);
 
 static void BoostZeroDimensional(BoosterShell* const pBoosterShell,
@@ -206,7 +206,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const IntEbm countLeavesMax,
-      const MonotoneDirection direction,
+      const MonotoneDirection monotoneDirection,
       double* const pTotalGain) {
    ErrorEbm error;
 
@@ -235,7 +235,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          regLambda,
          deltaStepMax,
          cSplitsMax,
-         direction,
+         monotoneDirection,
          pBoosterCore->GetTrainingSet()->GetCountSamples(),
          weightTotal,
          pTotalGain);
@@ -591,7 +591,7 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const IntEbm* const aLeavesMax,
-      const MonotoneDirection significantDirection,
+      const MonotoneDirection monotoneDirection,
       double* const pTotalGain) {
    // THIS RANDOM SPLIT FUNCTION IS PRIMARILY USED FOR DIFFERENTIAL PRIVACY EBMs
 
@@ -611,7 +611,7 @@ static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
          regLambda,
          deltaStepMax,
          aLeavesMax,
-         significantDirection,
+         monotoneDirection,
          pTotalGain);
    if(Error_None != error) {
       LOG_0(Trace_Verbose, "Exited BoostRandom with Error code");
@@ -812,7 +812,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t{0};
-   MonotoneDirection significantDirection = MONOTONE_NONE;
+   MonotoneDirection monotoneDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
    if(nullptr == leavesMax) {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
@@ -838,7 +838,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                iDimensionImportant = iDimensionInit;
                cSignificantBinCount = cBins;
-               significantDirection |= featureDirection;
+               monotoneDirection |= featureDirection;
                EBM_ASSERT(nullptr != pLeavesMax);
                const IntEbm countLeavesMax = *pLeavesMax;
                if(countLeavesMax <= IntEbm{1}) {
@@ -923,7 +923,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       // are going to remain having 0 splits.
       pBoosterShell->GetInnerTermUpdate()->Reset();
 
-      if(IntEbm{0} == lastDimensionLeavesMax || (1 != cRealDimensions && MONOTONE_NONE != significantDirection)) {
+      if(IntEbm{0} == lastDimensionLeavesMax || (1 != cRealDimensions && MONOTONE_NONE != monotoneDirection)) {
          // this is kind of hacky where if any one of a number of things occurs (like we have only 1 leaf)
          // we sum everything into a single bin. The alternative would be to always sum into the tensor bins
          // but then collapse them afterwards into a single bin, but that's more work.
@@ -1113,7 +1113,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      regLambdaCalc,
                      deltaStepMax,
                      leavesMax,
-                     significantDirection,
+                     monotoneDirection,
                      &gain);
                if(Error_None != error) {
                   return error;
@@ -1139,7 +1139,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      regLambdaCalc,
                      deltaStepMax,
                      lastDimensionLeavesMax,
-                     significantDirection,
+                     monotoneDirection,
                      &gain);
                if(Error_None != error) {
                   return error;
