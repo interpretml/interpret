@@ -39,7 +39,7 @@ OBJECTS = \
    $(NATIVEDIR)/RandomDeterministic.o \
    $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
-   $(NATIVEDIR)/InnerBag.o \
+   $(NATIVEDIR)/SubsetInnerBag.o \
    $(NATIVEDIR)/Tensor.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/TermInnerBag.o \

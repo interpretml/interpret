@@ -347,7 +347,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/RandomDeterministic.cpp" -o "$tmp_path/RandomDeterministic.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/random.cpp" -o "$tmp_path/random.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/sampling.cpp" -o "$tmp_path/sampling.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/SubsetInnerBag.cpp" -o "$tmp_path/SubsetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TermInnerBag.cpp" -o "$tmp_path/TermInnerBag.o"
@@ -385,7 +385,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/RandomDeterministic.o" \
    "$tmp_path/random.o" \
    "$tmp_path/sampling.o" \
-   "$tmp_path/InnerBag.o" \
+   "$tmp_path/SubsetInnerBag.o" \
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
    "$tmp_path/TermInnerBag.o" \

@@ -24,7 +24,7 @@
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="InteractionCore.cpp" />
     <ClCompile Include="RandomDeterministic.cpp" />
-    <ClCompile Include="InnerBag.cpp" />
+    <ClCompile Include="SubsetInnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
     <ClCompile Include="special\linux_wrap_functions.cpp">
       <Filter>special</Filter>
