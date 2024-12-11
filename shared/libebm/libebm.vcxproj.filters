@@ -61,7 +61,6 @@
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
-    <ClInclude Include="InnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
@@ -101,6 +100,7 @@
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="TermInnerBag.hpp" />
     <ClInclude Include="TreeNodeMulti.hpp" />
+    <ClInclude Include="SubsetInnerBag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />

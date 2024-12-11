@@ -15,7 +15,7 @@
 #include "zones.h"
 
 #include "ebm_internal.hpp"
-#include "InnerBag.hpp"
+#include "SubsetInnerBag.hpp"
 
 namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME

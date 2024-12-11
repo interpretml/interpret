@@ -13,7 +13,7 @@
 
 #include "bridge.h" // UIntMain
 
-#include "InnerBag.hpp" // SubsetInnerBag
+#include "SubsetInnerBag.hpp" // SubsetInnerBag
 #include "TermInnerBag.hpp" // TermInnerBag
 
 namespace DEFINED_ZONE_NAME {

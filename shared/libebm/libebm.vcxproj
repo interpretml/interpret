@@ -45,7 +45,7 @@
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
-    <ClInclude Include="InnerBag.hpp" />
+    <ClInclude Include="SubsetInnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="Transpose.hpp" />
