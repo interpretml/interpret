@@ -635,10 +635,10 @@ extern void TensorTotalsBuild(const bool bHessian,
 
 // template<ptrdiff_t cCompilerClasses, size_t cCompilerDimensions>
 // bool BoostMultiDimensionalPaulAlgorithm(voidvoid * const pThreadState, const FeatureInternal * const pTargetFeature,
-// InnerBag const * const pInnerBag, const Term * const pTerm, SegmentedRegion<UIntSplit, FloatMain> * const
+// SubsetInnerBag const * const pSubsetInnerBag, const Term * const pTerm, SegmentedRegion<UIntSplit, FloatMain> * const
 // pInnerTermUpdate) {
 //    Bin<IsClassification(cCompilerClasses)> * const aBins = BinDataSet<cCompilerClasses>(pThreadState, pTerm,
-//    pInnerBag, pTargetFeature); if(UNLIKELY(nullptr == aBins)) {
+//    pSubsetInnerBag, pTargetFeature); if(UNLIKELY(nullptr == aBins)) {
 //       return true;
 //    }
 //

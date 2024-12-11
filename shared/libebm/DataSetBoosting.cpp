@@ -26,7 +26,7 @@ namespace DEFINED_ZONE_NAME {
 void DataSubsetBoosting::DestructDataSubsetBoosting(const size_t cTerms, const size_t cInnerBags) {
    LOG_0(Trace_Info, "Entered DataSubsetBoosting::DestructDataSubsetBoosting");
 
-   InnerBag::FreeInnerBags(cInnerBags, m_aInnerBags);
+   SubsetInnerBag::FreeSubsetInnerBags(cInnerBags, m_aSubsetInnerBags);
 
    void** paTermData = m_aaTermData;
    if(nullptr != paTermData) {
@@ -802,8 +802,8 @@ ErrorEbm DataSetBoosting::InitBags(
       DataSubsetBoosting* pSubset = m_aSubsets;
       double totalWeight = 0.0;
       do {
-         EBM_ASSERT(nullptr != pSubset->m_aInnerBags);
-         InnerBag* pInnerBag = &pSubset->m_aInnerBags[iBag];
+         EBM_ASSERT(nullptr != pSubset->m_aSubsetInnerBags);
+         SubsetInnerBag* pSubsetInnerBag = &pSubset->m_aSubsetInnerBags[iBag];
          size_t cSubsetSamples = pSubset->GetCountSamples();
          EBM_ASSERT(1 <= cSubsetSamples);
 
@@ -825,7 +825,7 @@ ErrorEbm DataSetBoosting::InitBags(
                free(aOccurrencesFrom);
                return Error_OutOfMemory;
             }
-            pInnerBag->m_aWeights = pWeightTo;
+            pSubsetInnerBag->m_aWeights = pWeightTo;
 
             const void* const pWeightToEnd = IndexByte(pWeightTo, cBytes);
             do {
@@ -1144,12 +1144,12 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
             ++paTermData;
          } while(paTermDataEnd != paTermData);
 
-         InnerBag* const aInnerBags = InnerBag::AllocateInnerBags(cInnerBags);
-         if(nullptr == aInnerBags) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == aInnerBags");
+         SubsetInnerBag* const aSubsetInnerBags = SubsetInnerBag::AllocateSubsetInnerBags(cInnerBags);
+         if(nullptr == aSubsetInnerBags) {
+            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == aSubsetInnerBags");
             return Error_OutOfMemory;
          }
-         pSubset->m_aInnerBags = aInnerBags;
+         pSubset->m_aSubsetInnerBags = aSubsetInnerBags;
 
          ++pSubset;
       } while(pSubsetsEnd != pSubset);

@@ -23,10 +23,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class RandomDeterministic;
 class FeatureBoosting;
 class Term;
-struct InnerBag;
 class Tensor;
 
 class BoosterCore final {

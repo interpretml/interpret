@@ -203,7 +203,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
                data.m_cSamples = pSubset->GetCountSamples();
                data.m_aPacked = pSubset->GetTermData(iTerm);
                data.m_aTargets = pSubset->GetTargetData();
-               data.m_aWeights = pSubset->GetInnerBag(0)->GetWeights();
+               data.m_aWeights = pSubset->GetSubsetInnerBag(0)->GetWeights();
                data.m_aSampleScores = pSubset->GetSampleScores();
                data.m_aGradientsAndHessians = pSubset->GetGradHess();
                data.m_metricOut = 0.0;

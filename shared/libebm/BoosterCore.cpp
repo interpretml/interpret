@@ -22,7 +22,6 @@
 #include "Tensor.hpp" // Tensor
 #include "Feature.hpp" // Feature
 #include "Term.hpp" // Term
-#include "InnerBag.hpp" // InnerBag
 #include "TreeNode.hpp" // IsOverflowTreeNodeSize
 #include "SplitPosition.hpp" // IsOverflowSplitPositionSize
 #include "BoosterCore.hpp"

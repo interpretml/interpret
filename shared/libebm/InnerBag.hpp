@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 // Author: Paul Koch <code@koch.ninja>
 
-#ifndef INNER_BAG_HPP
-#define INNER_BAG_HPP
+#ifndef SUBSET_INNER_BAG_HPP
+#define SUBSET_INNER_BAG_HPP
 
 #include <stddef.h> // size_t, ptrdiff_t
 
@@ -16,16 +16,16 @@ namespace DEFINED_ZONE_NAME {
 
 struct DataSetBoosting;
 
-struct InnerBag final {
+struct SubsetInnerBag final {
    friend DataSetBoosting;
 
-   InnerBag() = default; // preserve our POD status
-   ~InnerBag() = default; // preserve our POD status
+   SubsetInnerBag() = default; // preserve our POD status
+   ~SubsetInnerBag() = default; // preserve our POD status
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   static InnerBag* AllocateInnerBags(const size_t cInnerBags);
-   static void FreeInnerBags(const size_t cInnerBags, InnerBag* const aInnerBags);
+   static SubsetInnerBag* AllocateSubsetInnerBags(const size_t cInnerBags);
+   static void FreeSubsetInnerBags(const size_t cInnerBags, SubsetInnerBag* const aSubsetInnerBags);
 
    inline const void* GetWeights() const { return m_aWeights; }
 
@@ -38,11 +38,11 @@ struct InnerBag final {
 
    void* m_aWeights;
 };
-static_assert(std::is_standard_layout<InnerBag>::value,
+static_assert(std::is_standard_layout<SubsetInnerBag>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
-static_assert(
-      std::is_trivial<InnerBag>::value, "We use memcpy in several places, so disallow non-trivial types in general");
+static_assert(std::is_trivial<SubsetInnerBag>::value,
+      "We use memcpy in several places, so disallow non-trivial types in general");
 
 } // namespace DEFINED_ZONE_NAME
 
-#endif // INNER_BAG_HPP
+#endif // SUBSET_INNER_BAG_HPP

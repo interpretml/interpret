@@ -13,7 +13,7 @@
 
 #include "bridge.h" // UIntMain
 
-#include "InnerBag.hpp" // InnerBag
+#include "InnerBag.hpp" // SubsetInnerBag
 #include "TermInnerBag.hpp" // TermInnerBag
 
 namespace DEFINED_ZONE_NAME {
@@ -39,7 +39,7 @@ struct DataSubsetBoosting final {
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaTermData = nullptr;
-      m_aInnerBags = nullptr;
+      m_aSubsetInnerBags = nullptr;
    }
 
    void DestructDataSubsetBoosting(const size_t cTerms, const size_t cInnerBags);
@@ -78,9 +78,9 @@ struct DataSubsetBoosting final {
       return m_aaTermData[iTerm];
    }
 
-   inline const InnerBag* GetInnerBag(const size_t iBag) const {
-      EBM_ASSERT(nullptr != m_aInnerBags);
-      return &m_aInnerBags[iBag];
+   inline const SubsetInnerBag* GetSubsetInnerBag(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aSubsetInnerBags);
+      return &m_aSubsetInnerBags[iBag];
    }
 
  private:
@@ -90,7 +90,7 @@ struct DataSubsetBoosting final {
    void* m_aSampleScores;
    void* m_aTargetData;
    void** m_aaTermData;
-   InnerBag* m_aInnerBags;
+   SubsetInnerBag* m_aSubsetInnerBags;
 };
 static_assert(std::is_standard_layout<DataSubsetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");

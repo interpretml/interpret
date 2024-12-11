@@ -22,51 +22,52 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-InnerBag* InnerBag::AllocateInnerBags(const size_t cInnerBags) {
-   LOG_0(Trace_Info, "Entered InnerBag::AllocateInnerBags");
+SubsetInnerBag* SubsetInnerBag::AllocateSubsetInnerBags(const size_t cInnerBags) {
+   LOG_0(Trace_Info, "Entered SubsetInnerBag::AllocateSubsetInnerBags");
 
    const size_t cInnerBagsAfterZero = size_t{0} == cInnerBags ? size_t{1} : cInnerBags;
 
-   if(IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)) {
+   if(IsMultiplyError(sizeof(SubsetInnerBag), cInnerBagsAfterZero)) {
       LOG_0(Trace_Warning,
-            "WARNING InnerBag::AllocateInnerBags IsMultiplyError(sizeof(InnerBag), cInnerBagsAfterZero)");
+            "WARNING SubsetInnerBag::AllocateSubsetInnerBags IsMultiplyError(sizeof(SubsetInnerBag), "
+            "cInnerBagsAfterZero)");
       return nullptr;
    }
-   InnerBag* aInnerBag = static_cast<InnerBag*>(malloc(sizeof(InnerBag) * cInnerBagsAfterZero));
-   if(UNLIKELY(nullptr == aInnerBag)) {
-      LOG_0(Trace_Warning, "WARNING InnerBag::AllocateInnerBags nullptr == aInnerBag");
+   SubsetInnerBag* aSubsetInnerBag = static_cast<SubsetInnerBag*>(malloc(sizeof(SubsetInnerBag) * cInnerBagsAfterZero));
+   if(UNLIKELY(nullptr == aSubsetInnerBag)) {
+      LOG_0(Trace_Warning, "WARNING SubsetInnerBag::AllocateSubsetInnerBags nullptr == aSubsetInnerBag");
       return nullptr;
    }
 
-   InnerBag* pInnerBag = aInnerBag;
-   const InnerBag* const pInnerBagsEnd = &aInnerBag[cInnerBagsAfterZero];
+   SubsetInnerBag* pSubsetInnerBag = aSubsetInnerBag;
+   const SubsetInnerBag* const pSubsetInnerBagsEnd = &aSubsetInnerBag[cInnerBagsAfterZero];
    do {
-      pInnerBag->m_aWeights = nullptr;
-      ++pInnerBag;
-   } while(pInnerBagsEnd != pInnerBag);
+      pSubsetInnerBag->m_aWeights = nullptr;
+      ++pSubsetInnerBag;
+   } while(pSubsetInnerBagsEnd != pSubsetInnerBag);
 
-   LOG_0(Trace_Info, "Exited InnerBag::AllocateInnerBags");
-   return aInnerBag;
+   LOG_0(Trace_Info, "Exited SubsetInnerBag::AllocateSubsetInnerBags");
+   return aSubsetInnerBag;
 }
 
 // Visual Studio compiler seems to not like the index addition by 1 to make cInnerBagsAfterZero
 WARNING_PUSH
 WARNING_DISABLE_USING_UNINITIALIZED_MEMORY
-void InnerBag::FreeInnerBags(const size_t cInnerBags, InnerBag* const aInnerBags) {
-   LOG_0(Trace_Info, "Entered InnerBag::FreeInnerBags");
+void SubsetInnerBag::FreeSubsetInnerBags(const size_t cInnerBags, SubsetInnerBag* const aSubsetInnerBags) {
+   LOG_0(Trace_Info, "Entered SubsetInnerBag::FreeSubsetInnerBags");
 
-   if(LIKELY(nullptr != aInnerBags)) {
+   if(LIKELY(nullptr != aSubsetInnerBags)) {
       const size_t cInnerBagsAfterZero = size_t{0} == cInnerBags ? size_t{1} : cInnerBags;
-      InnerBag* pInnerBag = aInnerBags;
-      const InnerBag* const pInnerBagsEnd = aInnerBags + cInnerBagsAfterZero;
+      SubsetInnerBag* pSubsetInnerBag = aSubsetInnerBags;
+      const SubsetInnerBag* const pSubsetInnerBagsEnd = aSubsetInnerBags + cInnerBagsAfterZero;
       do {
-         AlignedFree(pInnerBag->m_aWeights);
-         ++pInnerBag;
-      } while(pInnerBagsEnd != pInnerBag);
-      free(aInnerBags);
+         AlignedFree(pSubsetInnerBag->m_aWeights);
+         ++pSubsetInnerBag;
+      } while(pSubsetInnerBagsEnd != pSubsetInnerBag);
+      free(aSubsetInnerBags);
    }
 
-   LOG_0(Trace_Info, "Exited InnerBag::FreeInnerBags");
+   LOG_0(Trace_Info, "Exited SubsetInnerBag::FreeSubsetInnerBags");
 }
 WARNING_POP
 
