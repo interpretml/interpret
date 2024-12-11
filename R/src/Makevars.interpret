@@ -21,6 +21,7 @@ OBJECTS = \
    $(NATIVEDIR)/CutWinsorized.o \
    $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
+   $(NATIVEDIR)/DataSetInnerBag.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/DetermineLinkFunction.o \
    $(NATIVEDIR)/debug_ebm.o \

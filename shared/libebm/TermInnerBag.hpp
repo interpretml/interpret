@@ -17,48 +17,26 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct DataSetBoosting;
+struct DataSetInnerBag;
 class Term;
 
 struct TermInnerBag final {
    friend DataSetBoosting;
+   friend DataSetInnerBag;
 
    TermInnerBag() = default; // preserve our POD status
    ~TermInnerBag() = default; // preserve our POD status
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   static TermInnerBag** AllocateTermInnerBags(const size_t cTerms);
-   static ErrorEbm InitTermInnerBags(const size_t cTerms,
-         const Term* const* const apTerms,
-         TermInnerBag** const aaTermInnerBags,
-         const size_t cInnerBags);
-   static void FreeTermInnerBags(const size_t cTerms, TermInnerBag** const aaTermInnerBags, const size_t cInnerBags);
+   static void FreeTermInnerBag(TermInnerBag* const pTermInnerBag);
 
-   static inline const UIntMain* GetCounts(const bool bCollapsed,
-         const size_t iTerm,
-         const size_t iBag,
-         const TermInnerBag* const* const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount : aaTermInnerBags[iTerm][iBag].m_aCounts;
-   }
-   static inline UIntMain* GetCounts(
-         const bool bCollapsed, const size_t iTerm, const size_t iBag, TermInnerBag** const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedCount : aaTermInnerBags[iTerm][iBag].m_aCounts;
-   }
-   static inline const FloatPrecomp* GetWeights(const bool bCollapsed,
-         const size_t iTerm,
-         const size_t iBag,
-         const TermInnerBag* const* const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight : aaTermInnerBags[iTerm][iBag].m_aWeights;
-   }
-   static inline FloatPrecomp* GetWeights(
-         const bool bCollapsed, const size_t iTerm, const size_t iBag, TermInnerBag** const aaTermInnerBags) {
-      return bCollapsed ? &aaTermInnerBags[iTerm][iBag].collapsedWeight : aaTermInnerBags[iTerm][iBag].m_aWeights;
-   }
+   inline const UIntMain* GetCounts() const { return m_aCounts; }
+   inline UIntMain* GetCounts() { return m_aCounts; }
+   inline const FloatPrecomp* GetWeights() const { return m_aWeights; }
+   inline FloatPrecomp* GetWeights() { return m_aWeights; }
 
  private:
-   UIntMain collapsedCount;
-   FloatPrecomp collapsedWeight;
-
    UIntMain* m_aCounts;
    FloatPrecomp* m_aWeights;
 };

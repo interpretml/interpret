@@ -23,6 +23,7 @@
     <ClInclude Include="bridge\bridge.hpp" />
     <ClInclude Include="bridge\GradientPair.hpp" />
     <ClInclude Include="bridge\bridge.h" />
+    <ClInclude Include="DataSetInnerBag.hpp" />
     <ClInclude Include="TermInnerBag.hpp" />
     <ClInclude Include="TreeNodeMulti.hpp" />
     <ClInclude Include="unzoned\logging.h" />
@@ -54,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="DataSetInnerBag.cpp" />
     <ClCompile Include="Purify.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="unzoned\logging.cpp">

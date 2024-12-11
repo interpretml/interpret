@@ -49,6 +49,7 @@
     <ClCompile Include="Purify.cpp" />
     <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
     <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
+    <ClCompile Include="DataSetInnerBag.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
@@ -101,6 +102,7 @@
     <ClInclude Include="TermInnerBag.hpp" />
     <ClInclude Include="TreeNodeMulti.hpp" />
     <ClInclude Include="SubsetInnerBag.hpp" />
+    <ClInclude Include="DataSetInnerBag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />

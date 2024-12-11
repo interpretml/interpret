@@ -42,6 +42,7 @@
 #include "dataset_shared.hpp"
 #include "DataSetBoosting.hpp" // depends on dataset_shared.hpp, Feature.hpp, Term.hpp
 #include "DataSetInteraction.hpp" // depends on dataset_shared.hpp
+#include "DataSetInnerBag.hpp" // depends on RandomDeterministic.hpp
 #include "SubsetInnerBag.hpp" // depends on RandomDeterministic.hpp
 #include "Tensor.hpp" // depends on Term.hpp and Feature.hpp
 #include "TreeNode.hpp" // depends on Bin.hpp

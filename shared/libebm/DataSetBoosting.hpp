@@ -13,6 +13,7 @@
 
 #include "bridge.h" // UIntMain
 
+#include "DataSetInnerBag.hpp" // DataSetInnerBag
 #include "SubsetInnerBag.hpp" // SubsetInnerBag
 #include "TermInnerBag.hpp" // TermInnerBag
 
@@ -107,9 +108,8 @@ struct DataSetBoosting final {
       m_cSamples = 0;
       m_cSubsets = 0;
       m_aSubsets = nullptr;
-      m_aBagWeightTotals = nullptr;
+      m_aDataSetInnerBags = nullptr;
       m_aOriginalWeights = nullptr;
-      m_aaTermInnerBags = nullptr;
    }
 
    ErrorEbm InitDataSetBoosting(const bool bAllocateGradients,
@@ -144,12 +144,12 @@ struct DataSetBoosting final {
       return m_aSubsets;
    }
    inline double GetBagWeightTotal(const size_t iBag) const {
-      EBM_ASSERT(nullptr != m_aBagWeightTotals);
-      return m_aBagWeightTotals[iBag];
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return static_cast<double>(*m_aDataSetInnerBags[iBag].GetTotalWeight());
    }
-   inline const TermInnerBag* const* GetTermInnerBags() {
-      EBM_ASSERT(nullptr != m_aaTermInnerBags);
-      return m_aaTermInnerBags;
+   inline const DataSetInnerBag* GetDataSetInnerBag() {
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return m_aDataSetInnerBags;
    }
 
  private:
@@ -173,14 +173,17 @@ struct DataSetBoosting final {
 
    ErrorEbm CopyWeights(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 
-   ErrorEbm InitBags(void* const rng, const size_t cInnerBags, const size_t cTerms, const Term* const* const apTerms);
+   ErrorEbm InitBags(const bool bAllocateCachedTensors,
+         void* const rng,
+         const size_t cInnerBags,
+         const size_t cTerms,
+         const Term* const* const apTerms);
 
    size_t m_cSamples;
    size_t m_cSubsets;
    DataSubsetBoosting* m_aSubsets;
-   double* m_aBagWeightTotals;
+   DataSetInnerBag* m_aDataSetInnerBags;
    FloatShared* m_aOriginalWeights;
-   TermInnerBag** m_aaTermInnerBags;
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");

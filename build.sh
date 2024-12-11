@@ -329,6 +329,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/CutWinsorized.cpp" -o "$tmp_path/CutWinsorized.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/dataset_shared.cpp" -o "$tmp_path/dataset_shared.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetBoosting.cpp" -o "$tmp_path/DataSetBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInnerBag.cpp" -o "$tmp_path/DataSetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInteraction.cpp" -o "$tmp_path/DataSetInteraction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DetermineLinkFunction.cpp" -o "$tmp_path/DetermineLinkFunction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/debug_ebm.cpp" -o "$tmp_path/debug_ebm.o"
@@ -367,6 +368,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/CutWinsorized.o" \
    "$tmp_path/dataset_shared.o" \
    "$tmp_path/DataSetBoosting.o" \
+   "$tmp_path/DataSetInnerBag.o" \
    "$tmp_path/DataSetInteraction.o" \
    "$tmp_path/DetermineLinkFunction.o" \
    "$tmp_path/debug_ebm.o" \

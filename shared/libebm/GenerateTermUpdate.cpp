@@ -1058,10 +1058,19 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   // the aCounts and aWeights tensors contain the final counts and weights, so when calling
                   // ConvertAddBin we only want to call it once with these tensors since otherwise they
                   // would be added multiple times
-                  aCounts = TermInnerBag::GetCounts(
-                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
-                  aWeights = TermInnerBag::GetWeights(
-                        size_t{1} == cTensorBins, iTerm, iBag, pBoosterCore->GetTrainingSet()->GetTermInnerBags());
+                  aCounts = size_t{1} == cTensorBins ?
+                        pBoosterCore->GetTrainingSet()->GetDataSetInnerBag()[iBag].GetTotalCount() :
+                        pBoosterCore->GetTrainingSet()
+                              ->GetDataSetInnerBag()[iBag]
+                              .GetTermInnerBags()[iTerm]
+                              .GetCounts();
+
+                  aWeights = size_t{1} == cTensorBins ?
+                        pBoosterCore->GetTrainingSet()->GetDataSetInnerBag()[iBag].GetTotalWeight() :
+                        pBoosterCore->GetTrainingSet()
+                              ->GetDataSetInnerBag()[iBag]
+                              .GetTermInnerBags()[iTerm]
+                              .GetWeights();
                }
 
                ConvertAddBin(cScores,
