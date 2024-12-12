@@ -868,8 +868,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
                 bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
-                # only use samples that were training visible somewhere
-                visible_samples |= 0 < bag
+                # the caller might be using samples completely excluded as test samples
+                visible_samples |= bag != 0
 
             rngs.append(bagged_rng)
             internal_bags.append(bag)
