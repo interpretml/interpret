@@ -723,9 +723,6 @@ ErrorEbm DataSetBoosting::InitBags(const bool bAllocateCachedTensors,
       const Term* const* const apTerms) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitBags");
 
-   EBM_ASSERT(1 <= cTerms);
-   EBM_ASSERT(nullptr != apTerms);
-
    const size_t cIncludedSamples = m_cSamples;
    EBM_ASSERT(1 <= cIncludedSamples);
 
@@ -786,7 +783,8 @@ ErrorEbm DataSetBoosting::InitBags(const bool bAllocateCachedTensors,
    do {
       TermInnerBag* pTermInnerBag;
       EBM_ASSERT(nullptr == pDataSetInnerBag->m_aTermInnerBags);
-      if(bAllocateCachedTensors) {
+      if(size_t{0} != cTerms && bAllocateCachedTensors) {
+         EBM_ASSERT(nullptr != apTerms);
          pTermInnerBag = static_cast<TermInnerBag*>(malloc(cTermInnerBagBytes));
          if(nullptr == pTermInnerBag) {
             LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitBags nullptr == aTermInnerBag");
@@ -945,6 +943,9 @@ ErrorEbm DataSetBoosting::InitBags(const bool bAllocateCachedTensors,
 
       pTermInnerBag = pDataSetInnerBag->m_aTermInnerBags;
       if(nullptr != pTermInnerBag) {
+         EBM_ASSERT(1 <= cTerms);
+         EBM_ASSERT(nullptr != apTerms);
+
          size_t iTerm = 0;
          do {
             const Term* const pTerm = apTerms[iTerm];
@@ -1106,7 +1107,6 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
    EBM_ASSERT(nullptr != pObjectiveSIMD);
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(BagEbm{-1} == direction || BagEbm{1} == direction);
-   EBM_ASSERT(1 <= cTerms);
 
    EBM_ASSERT(0 == m_cSamples);
    EBM_ASSERT(0 == m_cSubsets);
@@ -1185,24 +1185,25 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
 
          pSubset->m_cSamples = cSubsetSamples;
 
-         EBM_ASSERT(1 <= cTerms);
-         if(IsMultiplyError(sizeof(void*), cTerms)) {
-            LOG_0(Trace_Warning,
-                  "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(void *), cTerms)");
-            return Error_OutOfMemory;
-         }
-         void** paTermData = static_cast<void**>(malloc(sizeof(void*) * cTerms));
-         if(nullptr == paTermData) {
-            LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
-            return Error_OutOfMemory;
-         }
-         pSubset->m_aaTermData = paTermData;
+         if(size_t{0} != cTerms) {
+            if(IsMultiplyError(sizeof(void*), cTerms)) {
+               LOG_0(Trace_Warning,
+                     "WARNING DataSetBoosting::InitDataSetBoosting IsMultiplyError(sizeof(void *), cTerms)");
+               return Error_OutOfMemory;
+            }
+            void** paTermData = static_cast<void**>(malloc(sizeof(void*) * cTerms));
+            if(nullptr == paTermData) {
+               LOG_0(Trace_Warning, "WARNING DataSetBoosting::InitDataSetBoosting nullptr == paTermData");
+               return Error_OutOfMemory;
+            }
+            pSubset->m_aaTermData = paTermData;
 
-         const void* const* const paTermDataEnd = paTermData + cTerms;
-         do {
-            *paTermData = nullptr;
-            ++paTermData;
-         } while(paTermDataEnd != paTermData);
+            const void* const* const paTermDataEnd = paTermData + cTerms;
+            do {
+               *paTermData = nullptr;
+               ++paTermData;
+            } while(paTermDataEnd != paTermData);
+         }
 
          SubsetInnerBag* const aSubsetInnerBags = SubsetInnerBag::AllocateSubsetInnerBags(cInnerBags);
          if(nullptr == aSubsetInnerBags) {
@@ -1238,9 +1239,11 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
          }
       }
 
-      error = InitTermData(pDataSetShared, direction, cSharedSamples, aBag, cTerms, apTerms, aiTermFeatures);
-      if(Error_None != error) {
-         return error;
+      if(0 != cTerms) {
+         error = InitTermData(pDataSetShared, direction, cSharedSamples, aBag, cTerms, apTerms, aiTermFeatures);
+         if(Error_None != error) {
+            return error;
+         }
       }
 
       if(size_t{0} != cWeights) {
