@@ -32,8 +32,7 @@ extern void Transpose(const Term* const pTerm, const size_t cScores, TIncrement*
    EBM_ASSERT(0 < cScores);
    const size_t cBytesPerCell = sizeof(*pStride) * cScores;
 
-   const size_t cDimensions = pTerm->GetCountDimensions();
-   if(size_t{0} == cDimensions) {
+   if(nullptr == pTerm || size_t{0} == pTerm->GetCountDimensions()) {
       TIncrement* const pIncrementEnd = pIncrement + cScores;
       do {
          if(bCopyToIncrement) {
@@ -47,6 +46,7 @@ extern void Transpose(const Term* const pTerm, const size_t cScores, TIncrement*
 
       return;
    }
+   const size_t cDimensions = pTerm->GetCountDimensions();
 
    const TermFeature* const aTermFeatures = pTerm->GetTermFeatures();
    const TermFeature* pTermFeature = aTermFeatures;

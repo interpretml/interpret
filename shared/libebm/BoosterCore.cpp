@@ -398,8 +398,8 @@ ErrorEbm BoosterCore::Create(void* const rng,
             return Error_IllegalParamVal;
          }
          const size_t cBins = static_cast<size_t>(countBins);
-         if(0 == cBins) {
-            if(0 != cSamples) {
+         if(size_t{0} == cBins) {
+            if(size_t{0} != cSamples) {
                LOG_0(Trace_Error, "ERROR BoosterCore::Create countBins cannot be zero unless there are zero samples");
                return Error_IllegalParamVal;
             }
@@ -408,7 +408,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
             // can only occur if there were zero training and zero validation cases since the
             // features would require a value, even if it was 0.
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 0 values");
-         } else if(1 == cBins) {
+         } else if(size_t{1} == cBins) {
             // Dimensions with 1 bin don't contribute anything to the model since they always have the same value, but
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
@@ -420,8 +420,8 @@ ErrorEbm BoosterCore::Create(void* const rng,
    }
    LOG_0(Trace_Info, "BoosterCore::Create done feature processing");
 
-   size_t cTensorBinsMax = 0;
-   size_t cMainBinsMax = 0;
+   size_t cTensorBinsMax = 1;
+   size_t cMainBinsMax = 1;
    size_t cSingleDimensionBinsMax = 0;
 
    LOG_0(Trace_Info, "BoosterCore::Create starting term processing");
@@ -464,9 +464,6 @@ ErrorEbm BoosterCore::Create(void* const rng,
          size_t cTensorBins = 1;
          if(UNLIKELY(0 == cDimensions)) {
             LOG_0(Trace_Info, "INFO BoosterCore::Create empty term");
-
-            cTensorBinsMax = EbmMax(cTensorBinsMax, size_t{1});
-            cMainBinsMax = EbmMax(cMainBinsMax, size_t{1});
          } else {
             if(nullptr == piTermFeature) {
                LOG_0(Trace_Error,

@@ -569,29 +569,71 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
    if(Error_None != error) {
       throw TestException(error, "GenerateTermUpdate");
    }
-   if(0 != (TermBoostFlags_GradientSums & flags)) {
-      // if sums are on, then we MUST change the term update
+   size_t cUpdateScores = GetCountScores(m_cClasses);
 
-      size_t cUpdateScores = GetCountScores(m_cClasses);
-
+   size_t cDimensions = 0;
+   IntEbm countSplits;
+   if(0 <= indexTerm) {
+      cDimensions = m_termFeatures[static_cast<size_t>(indexTerm)].size();
       for(const IntEbm iFeature : m_termFeatures[static_cast<size_t>(indexTerm)]) {
          const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
          cUpdateScores *= cBins;
       }
 
-      std::vector<double> scoreTensor(cUpdateScores);
-      if(0 != cUpdateScores) {
-         memset(&scoreTensor[0], 0, sizeof(double) * cUpdateScores);
+      for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+         size_t iFeature = static_cast<size_t>(m_termFeatures[static_cast<size_t>(indexTerm)][iDimension]);
+         const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
+         countSplits = cBins - 1;
+         std::vector<IntEbm> splits(static_cast<size_t>(countSplits));
+         memset(&splits[0], 0, sizeof(IntEbm) * static_cast<size_t>(countSplits));
+         error = GetTermUpdateSplits(m_boosterHandle, iDimension, &countSplits, &splits[0]);
+         if(Error_None != error) {
+            throw TestException(error, "SetTermUpdate");
+         }
       }
-
-      error = SetTermUpdate(m_boosterHandle, indexTerm, &scoreTensor[0]);
+   } else {
+      countSplits = 0;
+      error = GetTermUpdateSplits(m_boosterHandle, -1, &countSplits, nullptr);
       if(Error_None != error) {
          throw TestException(error, "SetTermUpdate");
       }
    }
+
+   std::vector<double> scoreTensor(cUpdateScores);
+
+   memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
+   error = GetTermUpdate(m_boosterHandle, &scoreTensor[0]);
+   if(Error_None != error) {
+      throw TestException(error, "SetTermUpdate");
+   }
+
+   if(0 != (TermBoostFlags_GradientSums & flags)) {
+      // if sums are on, then we MUST change the term update
+      memset(&scoreTensor[0], 0, sizeof(double) * cUpdateScores);
+   }
+
+   error = SetTermUpdate(m_boosterHandle, indexTerm, &scoreTensor[0]);
+   if(Error_None != error) {
+      throw TestException(error, "SetTermUpdate");
+   }
+
    error = ApplyTermUpdate(m_boosterHandle, &validationMetricAvg);
    if(Error_None != error) {
       throw TestException(error, "ApplyTermUpdate");
+   }
+
+   if(0 <= indexTerm) {
+      memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
+      error = GetBestTermScores(m_boosterHandle, indexTerm, &scoreTensor[0]);
+      if(Error_None != error) {
+         throw TestException(error, "ApplyTermUpdate");
+      }
+
+      memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
+      error = GetCurrentTermScores(m_boosterHandle, indexTerm, &scoreTensor[0]);
+      if(Error_None != error) {
+         throw TestException(error, "ApplyTermUpdate");
+      }
    }
 
    return BoostRet{gainAvg, validationMetricAvg};

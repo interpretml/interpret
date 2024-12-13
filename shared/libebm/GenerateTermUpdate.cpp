@@ -686,29 +686,37 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // set this to illegal so if we exit with an error we have an invalid index
    pBoosterShell->SetTermIndex(BoosterShell::k_illegalTermIndex);
 
-   if(indexTerm < 0) {
-      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm must be positive");
-      return Error_IllegalParamVal;
-   }
-
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    EBM_ASSERT(nullptr != pBoosterCore);
 
-   if(static_cast<IntEbm>(pBoosterCore->GetCountTerms()) <= indexTerm) {
-      LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of terms that we have");
-      return Error_IllegalParamVal;
+   size_t iTerm;
+   Term* pTerm;
+   if(indexTerm < IntEbm{0}) {
+      if(indexTerm != IntEbm{-1}) {
+         LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm must be positive or -1");
+         return Error_IllegalParamVal;
+      }
+      iTerm = BoosterShell::k_interceptTermIndex;
+      pTerm = nullptr;
+
+      LOG_0(Trace_Info, "Entered GenerateTermUpdate");
+   } else {
+      if(static_cast<IntEbm>(pBoosterCore->GetCountTerms()) <= indexTerm) {
+         LOG_0(Trace_Error, "ERROR GenerateTermUpdate indexTerm above the number of terms that we have");
+         return Error_IllegalParamVal;
+      }
+      iTerm = static_cast<size_t>(indexTerm);
+
+      // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this
+      // function
+      EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
+      pTerm = pBoosterCore->GetTerms()[iTerm];
+
+      LOG_COUNTED_0(pTerm->GetPointerCountLogEnterGenerateTermUpdateMessages(),
+            Trace_Info,
+            Trace_Verbose,
+            "Entered GenerateTermUpdate");
    }
-   size_t iTerm = static_cast<size_t>(indexTerm);
-
-   // this is true because 0 < pBoosterCore->m_cTerms since our caller needs to pass in a valid indexTerm to this
-   // function
-   EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
-   Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
-
-   LOG_COUNTED_0(pTerm->GetPointerCountLogEnterGenerateTermUpdateMessages(),
-         Trace_Info,
-         Trace_Verbose,
-         "Entered GenerateTermUpdate");
 
    if(flags &
          ~(TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
@@ -781,26 +789,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
    EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
 
-   size_t cTensorBins = pTerm->GetCountTensorBins();
-   if(size_t{0} == cTensorBins) {
-      // there are zero samples and 0 bins in one of the features in the dimensions, so the update tensor has 0 bins
-
-      // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
-      // out Tensor class does not support tensors of zero elements
-
-      if(LIKELY(nullptr != avgGainOut)) {
-         *avgGainOut = 0.0;
-      }
-      pBoosterShell->SetTermIndex(iTerm);
-
-      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == cTensorBins");
-      return Error_None;
-   }
-
    const size_t cInnerBagsAfterZero =
          size_t{0} == pBoosterCore->GetCountInnerBags() ? size_t{1} : pBoosterCore->GetCountInnerBags();
-   const size_t cRealDimensions = pTerm->GetCountRealDimensions();
-   const size_t cDimensions = pTerm->GetCountDimensions();
+   size_t cTensorBins = 1;
 
    // TODO: we can probably eliminate lastDimensionLeavesMax and cSignificantBinCount and just fetch them from
    // iDimensionImportant afterwards
@@ -810,46 +801,72 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    size_t cSignificantBinCount = size_t{0};
    MonotoneDirection monotoneDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
-   if(nullptr == leavesMax) {
-      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
-   } else {
-      if(0 != cRealDimensions) {
-         size_t iDimensionInit = 0;
-         const IntEbm* pLeavesMax = leavesMax;
-         const TermFeature* pTermFeature = pTerm->GetTermFeatures();
-         EBM_ASSERT(1 <= cDimensions);
-         const TermFeature* const pTermFeaturesEnd = &pTermFeature[cDimensions];
-         do {
-            const FeatureBoosting* const pFeature = pTermFeature->m_pFeature;
-            const size_t cBins = pFeature->GetCountBins();
-            MonotoneDirection featureDirection = MONOTONE_NONE;
-            if(nullptr != direction) {
-               featureDirection = *direction;
-               ++direction;
-            }
-            if(size_t{1} < cBins) {
-               // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be zero
-               EBM_ASSERT(2 <= cTensorBins);
-               EBM_ASSERT(size_t{2} <= cRealDimensions || IntEbm{0} == lastDimensionLeavesMax);
 
-               iDimensionImportant = iDimensionInit;
-               cSignificantBinCount = cBins;
-               monotoneDirection |= featureDirection;
-               EBM_ASSERT(nullptr != pLeavesMax);
-               const IntEbm countLeavesMax = *pLeavesMax;
-               if(countLeavesMax <= IntEbm{1}) {
-                  LOG_0(Trace_Warning, "WARNING GenerateTermUpdate countLeavesMax is 1 or less.");
-               } else {
-                  // keep iteration even once we find this so that we output logs for any bins of 1
-                  lastDimensionLeavesMax = countLeavesMax;
+   size_t cRealDimensions = 0;
+   size_t cDimensions = 0;
+
+   if(nullptr != pTerm) {
+      cTensorBins = pTerm->GetCountTensorBins();
+      if(size_t{0} == cTensorBins) {
+         // there are zero samples and 0 bins in one of the features in the dimensions, so the update tensor has 0 bins
+
+         // if GetCountTensorBins is 0, then we leave pBoosterShell->GetTermUpdate() with invalid data since
+         // out Tensor class does not support tensors of zero elements
+
+         if(LIKELY(nullptr != avgGainOut)) {
+            *avgGainOut = 0.0;
+         }
+         pBoosterShell->SetTermIndex(iTerm);
+
+         LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == cTensorBins");
+         return Error_None;
+      }
+
+      cRealDimensions = pTerm->GetCountRealDimensions();
+      cDimensions = pTerm->GetCountDimensions();
+
+      if(nullptr == leavesMax) {
+         LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
+      } else {
+         if(0 != cRealDimensions) {
+            size_t iDimensionInit = 0;
+            const IntEbm* pLeavesMax = leavesMax;
+            const TermFeature* pTermFeature = pTerm->GetTermFeatures();
+            EBM_ASSERT(1 <= cDimensions);
+            const TermFeature* const pTermFeaturesEnd = &pTermFeature[cDimensions];
+            do {
+               const FeatureBoosting* const pFeature = pTermFeature->m_pFeature;
+               const size_t cBins = pFeature->GetCountBins();
+               MonotoneDirection featureDirection = MONOTONE_NONE;
+               if(nullptr != direction) {
+                  featureDirection = *direction;
+                  ++direction;
                }
-            }
-            ++iDimensionInit;
-            ++pLeavesMax;
-            ++pTermFeature;
-         } while(pTermFeaturesEnd != pTermFeature);
+               if(size_t{1} < cBins) {
+                  // if there is only 1 dimension then this is our first time here and lastDimensionLeavesMax must be
+                  // zero
+                  EBM_ASSERT(2 <= cTensorBins);
+                  EBM_ASSERT(size_t{2} <= cRealDimensions || IntEbm{0} == lastDimensionLeavesMax);
 
-         EBM_ASSERT(size_t{2} <= cSignificantBinCount);
+                  iDimensionImportant = iDimensionInit;
+                  cSignificantBinCount = cBins;
+                  monotoneDirection |= featureDirection;
+                  EBM_ASSERT(nullptr != pLeavesMax);
+                  const IntEbm countLeavesMax = *pLeavesMax;
+                  if(countLeavesMax <= IntEbm{1}) {
+                     LOG_0(Trace_Warning, "WARNING GenerateTermUpdate countLeavesMax is 1 or less.");
+                  } else {
+                     // keep iteration even once we find this so that we output logs for any bins of 1
+                     lastDimensionLeavesMax = countLeavesMax;
+                  }
+               }
+               ++iDimensionInit;
+               ++pLeavesMax;
+               ++pTermFeature;
+            } while(pTermFeaturesEnd != pTermFeature);
+
+            EBM_ASSERT(size_t{2} <= cSignificantBinCount);
+         }
       }
    }
 
@@ -937,10 +954,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       EBM_ASSERT(nullptr != aMainBins);
 
 #ifndef NDEBUG
-      size_t cAuxillaryBins = pTerm->GetCountAuxillaryBins();
-      if(0 != (TermBoostFlags_RandomSplits & flags)) {
+      size_t cAuxillaryBins = 0;
+      if(nullptr != pTerm && 0 == (TermBoostFlags_RandomSplits & flags)) {
          // if we're doing random boosting we allocated the auxillary memory, but we don't need it
-         cAuxillaryBins = 0;
+         cAuxillaryBins = pTerm->GetCountAuxillaryBins();
       }
       EBM_ASSERT(!IsAddError(cTensorBins, cAuxillaryBins));
       EBM_ASSERT(!IsMultiplyError(cBytesPerMainBin, cTensorBins + cAuxillaryBins));
@@ -1033,7 +1050,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
             params.m_cBytesFastBins = cBytesPerFastBin * cTensorBins;
             params.m_aGradientsAndHessians = pSubset->GetGradHess();
             params.m_aWeights = pSubset->GetSubsetInnerBag(iBag)->GetWeights();
-            params.m_aPacked = pSubset->GetTermData(iTerm);
+            params.m_aPacked = BoosterShell::k_interceptTermIndex == iTerm ? nullptr : pSubset->GetTermData(iTerm);
             params.m_aFastBins = aFastBins;
 #ifndef NDEBUG
             params.m_pDebugFastBinsEnd = IndexBin(aFastBins, cBytesPerFastBin * cParallelTensorBins);
@@ -1240,12 +1257,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       *avgGainOut = gainAvg;
    }
 
-   LOG_COUNTED_N(pTerm->GetPointerCountLogExitGenerateTermUpdateMessages(),
-         Trace_Info,
-         Trace_Verbose,
-         "Exited GenerateTermUpdate: "
-         "gainAvg=%le",
-         gainAvg);
+   if(nullptr == pTerm) {
+      LOG_N(Trace_Info, "Exited GenerateTermUpdate: gainAvg=%le", gainAvg);
+   } else {
+      LOG_COUNTED_N(pTerm->GetPointerCountLogExitGenerateTermUpdateMessages(),
+            Trace_Info,
+            Trace_Verbose,
+            "Exited GenerateTermUpdate: "
+            "gainAvg=%le",
+            gainAvg);
+   }
 
    return Error_None;
 }

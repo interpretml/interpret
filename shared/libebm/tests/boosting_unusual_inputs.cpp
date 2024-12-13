@@ -9,6 +9,57 @@
 
 static constexpr TestPriority k_filePriority = TestPriority::BoostingUnusualInputs;
 
+TEST_CASE("intercept boosting, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {},
+         {},
+         {
+               TestSample({}, 5),
+               TestSample({}, 7),
+         },
+         {TestSample({}, 6)});
+
+   double validationMetric;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      validationMetric = test.Boost(-1).validationMetric;
+   }
+   CHECK_APPROX(validationMetric, 6.7095237708845920e-08);
+}
+
+TEST_CASE("intercept boosting, boosting, binary") {
+   TestBoost test = TestBoost(Task_BinaryClassification,
+         {},
+         {},
+         {
+               TestSample({}, 1),
+               TestSample({}, 1),
+         },
+         {TestSample({}, 1)});
+
+   double validationMetric;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      validationMetric = test.Boost(-1).validationMetric;
+   }
+   CHECK_APPROX(validationMetric, 2.2621439908125978e-05);
+}
+
+TEST_CASE("intercept boosting, boosting, multiclass") {
+   TestBoost test = TestBoost(3,
+         {},
+         {},
+         {
+               TestSample({}, 1),
+               TestSample({}, 1),
+         },
+         {TestSample({}, 1)});
+
+   double validationMetric;
+   for(int iEpoch = 0; iEpoch < 1000; ++iEpoch) {
+      validationMetric = test.Boost(-1).validationMetric;
+   }
+   CHECK_APPROX(validationMetric, 1.3530110746819210e-06);
+}
+
 TEST_CASE("zero learning rate, boosting, regression") {
    TestBoost test = TestBoost(Task_Regression, {}, {{}}, {TestSample({}, 10)}, {TestSample({}, 12)});
 

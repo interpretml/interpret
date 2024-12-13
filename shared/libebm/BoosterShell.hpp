@@ -65,6 +65,7 @@ class BoosterShell final {
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
    static constexpr size_t k_illegalTermIndex = std::numeric_limits<size_t>::max();
+   static constexpr size_t k_interceptTermIndex = std::numeric_limits<size_t>::max() - size_t{1};
 
    INLINE_ALWAYS void InitializeUnfailing(BoosterCore* const pBoosterCore) {
       m_handleVerification = k_handleVerificationOk;
