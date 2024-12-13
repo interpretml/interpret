@@ -96,10 +96,10 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 WARNING_DISABLE_UNINITIALIZED_LOCAL_POINTER
 ErrorEbm DataSetBoosting::InitSampleScores(const size_t cScores,
+      const double* const aIntercept,
       const BagEbm direction,
       const BagEbm* const aBag,
-      const double* const aInitScores,
-      const double* const aInitShift) {
+      const double* const aInitScores) {
    LOG_0(Trace_Info, "Entered DataSetBoosting::InitSampleScores");
 
    EBM_ASSERT(1 <= cScores);
@@ -167,8 +167,8 @@ ErrorEbm DataSetBoosting::InitSampleScores(const size_t cScores,
             size_t iScore = 0;
             do {
                double score = 0.0;
-               if(nullptr != aInitShift) {
-                  score = aInitShift[iScore];
+               if(nullptr != aIntercept) {
+                  score = aIntercept[iScore];
                }
                if(nullptr != pInitScore) {
                   score += pInitScore[iScore];
@@ -1100,11 +1100,11 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
       const ObjectiveWrapper* const pObjectiveCpu,
       const ObjectiveWrapper* const pObjectiveSIMD,
       const unsigned char* const pDataSetShared,
+      const double* const aIntercept,
       const BagEbm direction,
       const size_t cSharedSamples,
       const BagEbm* const aBag,
       const double* const aInitScores,
-      const double* const aInitShift,
       const size_t cIncludedSamples,
       const size_t cInnerBags,
       const size_t cWeights,
@@ -1241,7 +1241,7 @@ ErrorEbm DataSetBoosting::InitDataSetBoosting(const bool bAllocateGradients,
       }
 
       if(bAllocateSampleScores) {
-         error = InitSampleScores(cScores, direction, aBag, aInitScores, aInitShift);
+         error = InitSampleScores(cScores, aIntercept, direction, aBag, aInitScores);
          if(Error_None != error) {
             return error;
          }

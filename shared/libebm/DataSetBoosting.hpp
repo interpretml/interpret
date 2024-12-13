@@ -123,11 +123,11 @@ struct DataSetBoosting final {
          const ObjectiveWrapper* const pObjectiveCpu,
          const ObjectiveWrapper* const pObjectiveSIMD,
          const unsigned char* const pDataSetShared,
+         const double* const aIntercept,
          const BagEbm direction,
          const size_t cSharedSamples,
          const BagEbm* const aBag,
          const double* const aInitScores,
-         const double* const aInitShift,
          const size_t cIncludedSamples,
          const size_t cInnerBags,
          const size_t cWeights,
@@ -160,10 +160,10 @@ struct DataSetBoosting final {
    ErrorEbm InitGradHess(const bool bAllocateHessians, const size_t cScores);
 
    ErrorEbm InitSampleScores(const size_t cScores,
+         const double* const aIntercept,
          const BagEbm direction,
          const BagEbm* const aBag,
-         const double* const aInitScores,
-         const double* const aInitShift);
+         const double* const aInitScores);
 
    ErrorEbm InitTargetData(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 

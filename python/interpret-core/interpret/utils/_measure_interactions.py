@@ -267,9 +267,9 @@ def measure_interactions(
     # could do using this interaface currently, but is not possible in regular EBMs.
     ranked_interactions = rank_interactions(
         dataset=dataset,
+        intercept=None,
         bag=None,
         init_scores=init_score,
-        init_shift=None,
         iter_term_features=iter_term_features,
         exclude=set(),
         exclude_features=set(),

@@ -744,9 +744,9 @@ SEXP CreateBooster_R(
    err = CreateBooster(
       pRng,
       pDataSet,
+      nullptr,
       aBag,
       aInitScores,
-      nullptr,
       cTerms,
       acTermDimensions,
       aiTermFeatures,
@@ -1040,9 +1040,9 @@ SEXP CreateInteractionDetector_R(SEXP dataSetWrapped, SEXP bag, SEXP initScores)
    InteractionHandle interactionHandle;
    err = CreateInteractionDetector(
       pDataSet,
+      nullptr,
       aBag,
       aInitScores,
-      nullptr,
       CreateInteractionFlags_Default,
       AccelerationFlags_ALL,
       "log_loss",

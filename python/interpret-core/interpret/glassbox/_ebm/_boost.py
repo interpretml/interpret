@@ -14,9 +14,9 @@ _log = logging.getLogger(__name__)
 
 def boost(
     dataset,
+    intercept,
     bag,
     init_scores,
-    init_shift,
     term_features,
     n_inner_bags,
     term_boost_flags,
@@ -48,9 +48,9 @@ def boost(
         step_idx = 0
         with Booster(
             dataset,
+            intercept,
             bag,
             init_scores,
-            init_shift,
             term_features,
             n_inner_bags,
             rng,

@@ -17,9 +17,9 @@ from .. import develop
 
 def rank_interactions(
     dataset,
+    intercept,
     bag,
     init_scores,
-    init_shift,
     iter_term_features,
     exclude,
     exclude_features,
@@ -41,9 +41,9 @@ def rank_interactions(
         interaction_strengths = []
         with InteractionDetector(
             dataset,
+            intercept,
             bag,
             init_scores,
-            init_shift,
             create_interaction_flags,
             objective,
             experimental_params,

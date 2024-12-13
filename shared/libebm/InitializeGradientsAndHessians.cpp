@@ -28,10 +28,10 @@ namespace DEFINED_ZONE_NAME {
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* const pDataSetShared,
+      const double intercept,
       const BagEbm direction,
       const BagEbm* const aBag,
       const double* const aInitScores,
-      const double initShift,
       DataSetBoosting* const pDataSet) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -90,7 +90,7 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
                const FloatShared data = *pTargetData;
                ++pTargetData;
 
-               double initScore = initShift;
+               double initScore = intercept;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
                   initScore += pInitScore[-1];
@@ -137,9 +137,9 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* const pDataSetShared,
       const size_t cWeights,
+      const double intercept,
       const BagEbm* const aBag,
       const double* const aInitScores,
-      const double initShift,
       DataSetInteraction* const pDataSet) {
    // RMSE regression is super super special in that we do not need to keep the scores and we can just use gradients
 
@@ -201,7 +201,7 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
                pTargetData += cSharedAdvances;
                const FloatShared data = pTargetData[-1];
 
-               double initScore = initShift;
+               double initScore = intercept;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
                   initScore += pInitScore[-1];

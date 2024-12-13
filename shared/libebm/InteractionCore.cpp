@@ -354,9 +354,9 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
       const size_t cWeights,
+      const double* const aIntercept,
       const BagEbm* const aBag,
-      const double* const aInitScores,
-      const double* const aInitShift) {
+      const double* const aInitScores) {
    ErrorEbm error = Error_None;
    if(size_t{0} != m_dataFrame.GetCountSamples()) {
       ptrdiff_t cClasses;
@@ -526,8 +526,8 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
                   size_t iScore = 0;
                   do {
                      double initScore = 0.0;
-                     if(nullptr != aInitShift) {
-                        initScore = aInitShift[iScore];
+                     if(nullptr != aIntercept) {
+                        initScore = aIntercept[iScore];
                      }
                      if(nullptr != pInitScoreFromOld) {
                         initScore += pInitScoreFromOld[iScore];
@@ -589,7 +589,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
          const double* pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
          double initScore;
-         const double initShift = nullptr == aInitShift ? 0.0 : *aInitShift;
+         const double intercept = nullptr == aIntercept ? 0.0 : *aIntercept;
          FloatShared target;
 
          DataSubsetInteraction* pSubset = GetDataSetInteraction()->GetSubsets();
@@ -616,7 +616,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
                      --pTargetFrom;
                   }
 
-                  initScore = initShift;
+                  initScore = intercept;
                   if(nullptr != pInitScoreFrom) {
                      pInitScoreFrom += cAdvance;
                      initScore += pInitScoreFrom[-1];

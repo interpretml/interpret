@@ -435,10 +435,10 @@ EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* li
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
       const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       // TODO: add a baseScore parameter here so that we can initialize the mains boosting without initScores
       const double* initScores, // only samples with non-zeros in the bag are included
-      const double* initShift,
       IntEbm countTerms,
       const IntEbm* dimensionCounts,
       const IntEbm* featureIndexes,
@@ -479,10 +479,10 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       BoosterHandle boosterHandle, IntEbm indexTerm, double* termScoresTensorOut);
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       // TODO: add a baseScore parameter here for symmetry with CreateBooster
       const double* initScores, // only samples with non-zeros in the bag are included
-      const double* initShift,
       CreateInteractionFlags flags,
       AccelerationFlags acceleration,
       const char* objective,

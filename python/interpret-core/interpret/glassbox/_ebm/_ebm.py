@@ -1075,9 +1075,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             parallel_args.append(
                 (
                     dataset,
+                    bagged_intercept[idx],
                     bag,
                     init_score_local,
-                    bagged_intercept[idx],
                     term_features,
                     inner_bags,
                     term_boost_flags,
@@ -1206,9 +1206,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     parallel_args.append(
                         (
                             dataset,
+                            bagged_intercept[idx],
                             internal_bags[idx],
                             scores_bags[idx],
-                            bagged_intercept[idx],
                             combinations(range(n_features_in), 2),
                             exclude,
                             exclude_features,
@@ -1333,9 +1333,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 parallel_args.append(
                     (
                         dataset,
+                        bagged_intercept[idx],
                         internal_bags[idx],
                         scores_bags[idx],
-                        bagged_intercept[idx],
                         boost_groups,
                         inner_bags,
                         term_boost_flags,
