@@ -830,7 +830,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         used_seeds = set()
         rngs = []
         internal_bags = []
-        visible_samples = None if bags is None else np.zeros(n_samples, np.bool_)
         for idx in range(self.outer_bags):
             while True:
                 bagged_rng = native.branch_rng(rng)
@@ -868,8 +867,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
                 bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
-                # the caller might be using samples completely excluded as test samples
-                visible_samples |= bag != 0
 
             rngs.append(bagged_rng)
             internal_bags.append(bag)
@@ -1002,14 +999,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         y_local, weights=sample_weight_local
                     )
 
-                sample_weight_local = sample_weight
-                y_local = y_shifted
-                if visible_samples is not None:
-                    y_local = y_local[visible_samples]
-                    if sample_weight_local is not None:
-                        sample_weight_local = sample_weight_local[visible_samples]
-
-                intercept_correction = np.average(y_local, weights=sample_weight_local)
+                intercept_correction = np.average(y_shifted, weights=sample_weight)
                 intercept_correction -= bagged_intercept.mean(axis=0)
             elif init_score is None:
                 if (
@@ -1039,14 +1029,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         probs /= total
                         bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
-                    sample_weight_local = sample_weight
-                    y_local = y
-                    if visible_samples is not None:
-                        y_local = y_local[visible_samples]
-                        if sample_weight_local is not None:
-                            sample_weight_local = sample_weight_local[visible_samples]
-
-                    probs = np.bincount(y_local, weights=sample_weight_local)
+                    probs = np.bincount(y, weights=sample_weight)
                     total = probs.sum()
                     probs = probs.astype(np.float64, copy=False)
                     probs /= total
@@ -1460,15 +1443,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     init_score,
                 )
 
-                sample_weight_local = sample_weight
-                y_local = y
-                if visible_samples is not None:
-                    scores = scores[visible_samples]
-                    y_local = y_local[visible_samples]
-                    if sample_weight_local is not None:
-                        sample_weight_local = sample_weight_local[visible_samples]
-
-                correction = np.average(y_local - scores, weights=sample_weight_local)
+                correction = np.average(y - scores, weights=sample_weight)
                 intercept += correction
                 bagged_intercept += correction
             elif (
@@ -1487,15 +1462,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     init_score,
                 )
 
-                sample_weight_local = sample_weight
-                y_local = y
-                if visible_samples is not None:
-                    scores = scores[visible_samples]
-                    y_local = y_local[visible_samples]
-                    if sample_weight_local is not None:
-                        sample_weight_local = sample_weight_local[visible_samples]
-
-                probs = np.bincount(y_local, weights=sample_weight_local)
+                probs = np.bincount(y, weights=sample_weight)
                 total = probs.sum()
                 probs = probs.astype(np.float64, copy=False)
                 probs /= total
@@ -1504,9 +1471,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 n_correction_iterations = 25
                 for _ in range(n_correction_iterations):
                     pred_prob = inv_link(scores, link, link_param)
-                    pred_prob = np.average(
-                        pred_prob, axis=0, weights=sample_weight_local
-                    )
+                    pred_prob = np.average(pred_prob, axis=0, weights=sample_weight)
                     pred_scores = link_func(pred_prob, link, link_param)
                     correction = actual_scores - pred_scores
                     intercept += correction
