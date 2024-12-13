@@ -108,7 +108,9 @@ ErrorEbm BoosterShell::FillAllocations() {
       if(size_t{1} != cScores) {
          size_t cBytesMulticlassMidwayMax = 0;
          if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
+            EBM_ASSERT(1 <= GetBoosterCore()->GetTrainingSet()->GetCountSubsets());
             DataSubsetBoosting* pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
             const DataSubsetBoosting* const pSubsetsEnd =
                   pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
             do {
@@ -126,7 +128,9 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
 
          if(0 != GetBoosterCore()->GetValidationSet()->GetCountSamples()) {
+            EBM_ASSERT(1 <= GetBoosterCore()->GetValidationSet()->GetCountSubsets());
             DataSubsetBoosting* pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
             const DataSubsetBoosting* const pSubsetsEnd =
                   pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
             do {

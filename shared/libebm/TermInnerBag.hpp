@@ -17,12 +17,9 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 struct DataSetBoosting;
-struct DataSetInnerBag;
-class Term;
 
 struct TermInnerBag final {
    friend DataSetBoosting;
-   friend DataSetInnerBag;
 
    TermInnerBag() = default; // preserve our POD status
    ~TermInnerBag() = default; // preserve our POD status

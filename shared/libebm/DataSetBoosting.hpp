@@ -147,6 +147,10 @@ struct DataSetBoosting final {
       EBM_ASSERT(nullptr != m_aDataSetInnerBags);
       return static_cast<double>(*m_aDataSetInnerBags[iBag].GetTotalWeight());
    }
+   inline size_t GetBagCountTotal(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return static_cast<size_t>(*m_aDataSetInnerBags[iBag].GetTotalCount());
+   }
    inline const DataSetInnerBag* GetDataSetInnerBag() {
       EBM_ASSERT(nullptr != m_aDataSetInnerBags);
       return m_aDataSetInnerBags;

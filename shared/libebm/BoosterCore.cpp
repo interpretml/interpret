@@ -910,7 +910,6 @@ ErrorEbm BoosterCore::InitializeBoosterGradientsAndHessians(
 
       DataSubsetBoosting* pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);
-      EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
       const DataSubsetBoosting* const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
       do {
          EBM_ASSERT(1 <= pSubset->GetCountSamples());

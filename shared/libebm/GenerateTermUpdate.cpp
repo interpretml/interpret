@@ -197,6 +197,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const TermBoostFlags flags,
       const size_t cBins,
+      const size_t samplesTotal,
       const FloatMain weightTotal,
       const size_t iDimension,
       const size_t cSamplesLeafMin,
@@ -219,10 +220,6 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       cSplitsMax = std::numeric_limits<size_t>::max();
    }
 
-   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
-
-   EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSamples());
-
    error = PartitionOneDimensionalBoosting(pRng,
          pBoosterShell,
          flags,
@@ -235,7 +232,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          deltaStepMax,
          cSplitsMax,
          monotoneDirection,
-         pBoosterCore->GetTrainingSet()->GetCountSamples(),
+         samplesTotal,
          weightTotal,
          pTotalGain);
 
@@ -957,6 +954,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
          EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSubsets());
          DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+         EBM_ASSERT(nullptr != pSubset);
          const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             int cPack;
@@ -1139,6 +1137,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      pBoosterShell,
                      flags,
                      cSignificantBinCount,
+                     pBoosterCore->GetTrainingSet()->GetBagCountTotal(iBag),
                      static_cast<FloatMain>(weightTotal),
                      iDimensionImportant,
                      cSamplesLeafMin,

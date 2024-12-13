@@ -55,7 +55,6 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
       EBM_ASSERT(nullptr != aBag ||
             !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
 
-      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
       EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
       DataSubsetBoosting* pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);

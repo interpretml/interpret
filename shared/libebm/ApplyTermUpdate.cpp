@@ -135,6 +135,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          EBM_ASSERT(1 <= pBoosterCore->GetTrainingSet()->GetCountSubsets());
 
          DataSubsetBoosting* pSubset = pBoosterCore->GetTrainingSet()->GetSubsets();
+         EBM_ASSERT(nullptr != pSubset);
          const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetTrainingSet()->GetCountSubsets();
          do {
             if(pSubset->GetObjectiveWrapper()->m_cFloatBytes != cFloatSize) {
@@ -170,6 +171,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          EBM_ASSERT(1 <= pBoosterCore->GetValidationSet()->GetCountSubsets());
 
          DataSubsetBoosting* pSubset = pBoosterCore->GetValidationSet()->GetSubsets();
+         EBM_ASSERT(nullptr != pSubset);
          const DataSubsetBoosting* const pSubsetsEnd = pSubset + pBoosterCore->GetValidationSet()->GetCountSubsets();
          do {
             if(pSubset->GetObjectiveWrapper()->m_cFloatBytes != cFloatSize) {
