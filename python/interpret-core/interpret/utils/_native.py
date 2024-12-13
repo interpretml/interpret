@@ -1673,7 +1673,7 @@ class Booster(AbstractContextManager):
         self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
-        self._term_idx = -1
+        self._term_idx = -2
 
     def __enter__(self):
         _log.info("Booster allocation start")
@@ -1708,6 +1708,7 @@ class Booster(AbstractContextManager):
         n_class_scores = sum(
             Native.get_count_scores_c(n_classes) for n_classes in class_counts
         )
+        self._n_class_scores = n_class_scores
 
         bin_counts = native.extract_bin_counts(self.dataset, n_features)
         self._term_shapes = []
@@ -1850,18 +1851,29 @@ class Booster(AbstractContextManager):
 
         # _log.debug("Boosting step start")
 
-        self._term_idx = -1
+        self._term_idx = -2
 
         native = Native.get_native_singleton()
 
         avg_gain = ct.c_double(0.0)
-        n_features = len(self.term_features[term_idx])
-        max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
 
-        if monotone_constraints is not None:
-            if len(monotone_constraints) != n_features:
-                msg = f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
+        if term_idx <= -2:
+            msg = f"term_idx cannot be -2 or less. -1 would mean intercept boosting."
+            raise ValueError(msg)
+        elif term_idx == -1:
+            if monotone_constraints is not None:
+                msg = f"monotone_constraints should be None for intercept boosting."
                 raise ValueError(msg)
+            max_leaves_arr = None
+        else:
+            n_features = len(self.term_features[term_idx])
+            if monotone_constraints is not None:
+                if len(monotone_constraints) != n_features:
+                    msg = f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
+                    raise ValueError(msg)
+            max_leaves_arr = np.full(
+                n_features, max_leaves, dtype=ct.c_int64, order="C"
+            )
 
         return_code = native._unsafe.GenerateTermUpdate(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
@@ -1874,7 +1886,7 @@ class Booster(AbstractContextManager):
             reg_alpha,
             reg_lambda,
             max_delta_step,
-            Native._make_pointer(max_leaves_arr, np.int64),
+            Native._make_pointer(max_leaves_arr, np.int64, is_null_allowed=True),
             Native._make_pointer(monotone_constraints, np.int32, is_null_allowed=True),
             ct.byref(avg_gain),
         )
@@ -1896,7 +1908,11 @@ class Booster(AbstractContextManager):
         """
         # _log.debug("Boosting step start")
 
-        self._term_idx = -1
+        if self._term_idx <= -2:
+            msg = f"The update needs to be set prior to calling apply_term_update."
+            raise ValueError(msg)
+
+        self._term_idx = -2
 
         native = Native.get_native_singleton()
 
@@ -1929,15 +1945,16 @@ class Booster(AbstractContextManager):
         return model
 
     def get_term_update_splits(self):
-        if self._term_idx < 0:  # pragma: no cover
-            msg = "invalid internal self._term_idx"
-            raise RuntimeError(msg)
-
         splits = []
-        feature_idxs = self.term_features[self._term_idx]
-        for dimension_idx in range(len(feature_idxs)):
-            splits_dimension = self._get_term_update_splits_dimension(dimension_idx)
-            splits.append(splits_dimension)
+        if self._term_idx != -1:
+            if self._term_idx <= -2:  # pragma: no cover
+                msg = "invalid internal self._term_idx"
+                raise RuntimeError(msg)
+
+            feature_idxs = self.term_features[self._term_idx]
+            for dimension_idx in range(len(feature_idxs)):
+                splits_dimension = self._get_term_update_splits_dimension(dimension_idx)
+                splits.append(splits_dimension)
 
         return splits
 
@@ -2014,13 +2031,15 @@ class Booster(AbstractContextManager):
         return splits[: count_splits.value]
 
     def get_term_update(self):
-        if self._term_idx < 0:  # pragma: no cover
+        if self._term_idx <= -2:  # pragma: no cover
             msg = "invalid internal self._term_idx"
             raise RuntimeError(msg)
 
         native = Native.get_native_singleton()
 
-        shape = self._term_shapes[self._term_idx]
+        shape = self._n_class_scores
+        if self._term_idx != -1:
+            shape = self._term_shapes[self._term_idx]
         update_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetTermUpdate(
@@ -2033,9 +2052,11 @@ class Booster(AbstractContextManager):
         return update_scores
 
     def set_term_update(self, term_idx, update_scores):
-        self._term_idx = -1
+        self._term_idx = -2
 
-        shape = self._term_shapes[term_idx]
+        shape = self._n_class_scores
+        if term_idx != -1:
+            shape = self._term_shapes[term_idx]
 
         if shape != update_scores.shape:  # pragma: no cover
             msg = "incorrect tensor shape in call to set_term_update"

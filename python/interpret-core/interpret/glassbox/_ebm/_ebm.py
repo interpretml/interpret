@@ -938,6 +938,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             max_delta_step = 0.0
             interactions = 0
             monotone_constraints = None
+            intercept_rounds = 0
+            intercept_learning_rate = 0.0
         else:
             noise_scale_boosting = None
             bin_data_weights = None
@@ -957,6 +959,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             max_delta_step = self.max_delta_step
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
+            intercept_rounds = 0
+            intercept_learning_rate = 0.25
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -1075,6 +1079,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             parallel_args.append(
                 (
                     dataset,
+                    intercept_rounds,
+                    intercept_learning_rate,
                     bagged_intercept[idx],
                     bag,
                     init_score_local,
@@ -1120,9 +1126,16 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         best_iteration = [[]]
         models = []
         rngs = []
-        for exception, model, bag_best_iteration, bagged_rng in results:
+        for idx in range(self.outer_bags):
+            exception = results[idx][0]
+            intercept_update = results[idx][1]
+            model = results[idx][2]
+            bag_best_iteration = results[idx][3]
+            bagged_rng = results[idx][4]
+
             if exception is not None:
                 raise exception
+            bagged_intercept[idx, :] = intercept_update
             best_iteration[-1].append(bag_best_iteration)
             models.append(model)
             # retrieve our rng state since this was used outside of our process
@@ -1333,6 +1346,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 parallel_args.append(
                     (
                         dataset,
+                        intercept_rounds,
+                        intercept_learning_rate,
                         bagged_intercept[idx],
                         internal_bags[idx],
                         scores_bags[idx],
@@ -1376,12 +1391,20 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             del scores_bags
 
             best_iteration.append([])
+
             for idx in range(self.outer_bags):
-                if results[idx][0] is not None:
-                    raise results[idx][0]
-                best_iteration[-1].append(results[idx][2])
-                models[idx].extend(results[idx][1])
-                rngs[idx] = results[idx][3]
+                exception = results[idx][0]
+                intercept_update = results[idx][1]
+                model = results[idx][2]
+                bag_best_iteration = results[idx][3]
+                bagged_rng = results[idx][4]
+
+                if exception is not None:
+                    raise exception
+                bagged_intercept[idx, :] = intercept_update
+                best_iteration[-1].append(bag_best_iteration)
+                models[idx].extend(model)
+                rngs[idx] = bagged_rng
 
             term_features.extend(boost_groups)
 

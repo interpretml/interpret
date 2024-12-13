@@ -14,6 +14,8 @@ _log = logging.getLogger(__name__)
 
 def boost(
     dataset,
+    intercept_rounds,
+    intercept_learning_rate,
     intercept,
     bag,
     init_scores,
@@ -46,6 +48,10 @@ def boost(
     try:
         develop._develop_options = develop_options  # restore these in this process
         step_idx = 0
+
+        _log.info("Start boosting")
+        native = Native.get_native_singleton()
+
         with Booster(
             dataset,
             intercept,
@@ -58,6 +64,23 @@ def boost(
             objective,
             experimental_params,
         ) as booster:
+            for _ in range(intercept_rounds):
+                booster.generate_term_update(
+                    rng,
+                    term_idx=-1,
+                    term_boost_flags=term_boost_flags,
+                    learning_rate=intercept_learning_rate,
+                    min_samples_leaf=0,
+                    min_hessian=0.0,
+                    reg_alpha=0.0,
+                    reg_lambda=0.0,
+                    max_delta_step=0.0,
+                    max_leaves=1,
+                    monotone_constraints=None,
+                )
+                intercept += booster.get_term_update()
+                booster.apply_term_update()
+
             min_metric = np.inf
             min_prev_metric = np.inf
             circular = np.full(
@@ -77,8 +100,6 @@ def boost(
 
             state_idx = 0
 
-            _log.info("Start boosting")
-            native = Native.get_native_singleton()
             nominals = native.extract_nominals(dataset)
             random_cyclic_ordering = np.arange(len(term_features), dtype=np.int64)
 
@@ -243,6 +264,6 @@ def boost(
             else:
                 model_update = booster.get_current_model()
 
-        return None, model_update, step_idx, rng
+        return None, intercept, model_update, step_idx, rng
     except Exception as e:
-        return e, None, None, None
+        return e, None, None, None, None

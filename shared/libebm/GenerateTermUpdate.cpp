@@ -825,9 +825,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       cRealDimensions = pTerm->GetCountRealDimensions();
       cDimensions = pTerm->GetCountDimensions();
 
-      if(nullptr == leavesMax) {
-         LOG_0(Trace_Warning, "WARNING GenerateTermUpdate leavesMax was null, so there won't be any splits");
-      } else {
+      if(nullptr != leavesMax) {
+         // If leavesMax is nullptr then there will not be any splits.
          if(0 != cRealDimensions) {
             size_t iDimensionInit = 0;
             const IntEbm* pLeavesMax = leavesMax;
@@ -854,7 +853,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   EBM_ASSERT(nullptr != pLeavesMax);
                   const IntEbm countLeavesMax = *pLeavesMax;
                   if(countLeavesMax <= IntEbm{1}) {
-                     LOG_0(Trace_Warning, "WARNING GenerateTermUpdate countLeavesMax is 1 or less.");
+                     if(countLeavesMax < IntEbm{1}) {
+                        LOG_0(Trace_Warning,
+                              "WARNING GenerateTermUpdate countLeavesMax cannot be less than 1. Adjusting to 1.");
+                     }
                   } else {
                      // keep iteration even once we find this so that we output logs for any bins of 1
                      lastDimensionLeavesMax = countLeavesMax;
