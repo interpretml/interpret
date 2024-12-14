@@ -1643,6 +1643,7 @@ class Booster(AbstractContextManager):
         rng,
         create_booster_flags,
         objective,
+        acceleration,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
@@ -1670,6 +1671,7 @@ class Booster(AbstractContextManager):
         self.rng = rng
         self.create_booster_flags = create_booster_flags
         self.objective = objective
+        self.acceleration = acceleration
         self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
@@ -1764,13 +1766,6 @@ class Booster(AbstractContextManager):
         if native.approximates:
             flags |= Native.CreateBoosterFlags_UseApprox
 
-        # TODO: re-enable AVX512 after we have sufficient evidence it works and speeds processing
-        acceleration = (
-            Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F
-            if develop.get_option("simd")
-            else Native.AccelerationFlags_NONE
-        )
-
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
@@ -1786,7 +1781,7 @@ class Booster(AbstractContextManager):
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             flags,
-            acceleration,
+            self.acceleration,
             self.objective.encode("ascii"),
             Native._make_pointer(
                 self.experimental_params, np.float64, is_null_allowed=True
@@ -2085,6 +2080,7 @@ class InteractionDetector(AbstractContextManager):
         init_scores,
         create_interaction_flags,
         objective,
+        acceleration,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
@@ -2107,6 +2103,7 @@ class InteractionDetector(AbstractContextManager):
         self.init_scores = init_scores
         self.create_interaction_flags = create_interaction_flags
         self.objective = objective
+        self.acceleration = acceleration
         self.experimental_params = experimental_params
 
     def __enter__(self):
@@ -2179,13 +2176,6 @@ class InteractionDetector(AbstractContextManager):
         if native.approximates:
             flags |= Native.CreateInteractionFlags_UseApprox
 
-        # TODO: re-enable AVX512 after we have sufficient evidence it works and speeds processing
-        acceleration = (
-            Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F
-            if develop.get_option("simd")
-            else Native.AccelerationFlags_NONE
-        )
-
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
 
@@ -2197,7 +2187,7 @@ class InteractionDetector(AbstractContextManager):
                 init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             flags,
-            acceleration,
+            self.acceleration,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),

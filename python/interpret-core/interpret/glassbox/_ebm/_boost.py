@@ -42,6 +42,7 @@ def boost(
     rng,
     create_booster_flags,
     objective,
+    acceleration,
     experimental_params,
     develop_options,
 ):
@@ -62,6 +63,7 @@ def boost(
             rng,
             create_booster_flags,
             objective,
+            acceleration,
             experimental_params,
         ) as booster:
             for _ in range(intercept_rounds):

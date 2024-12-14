@@ -458,6 +458,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         # to the tails anyways.
         min_samples_bin = 1
 
+        # TODO: re-enable AVX512 after we have sufficient evidence it works and speeds processing
+        acceleration = (
+            Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F
+            if develop.get_option("simd")
+            else Native.AccelerationFlags_NONE
+        )
+
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
             msg = "outer_bags must be an integer"
             _log.error(msg)
@@ -1090,6 +1097,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         else Native.CreateBoosterFlags_Default
                     ),
                     objective,
+                    acceleration,
                     None,
                     develop._develop_options,
                 )
@@ -1220,6 +1228,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 else Native.CreateInteractionFlags_Default
                             ),
                             objective,
+                            acceleration,
                             None,
                             0,
                             develop._develop_options,
@@ -1360,6 +1369,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             else Native.CreateBoosterFlags_Default
                         ),
                         objective,
+                        acceleration,
                         None,
                         develop._develop_options,
                     )
@@ -1483,6 +1493,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         else Native.CreateBoosterFlags_Default
                     ),
                     objective,
+                    Native.AccelerationFlags_NONE,
                     None,
                     develop._develop_options,
                 )

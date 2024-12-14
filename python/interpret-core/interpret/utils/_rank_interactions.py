@@ -32,6 +32,7 @@ def rank_interactions(
     max_delta_step,
     create_interaction_flags,
     objective,
+    acceleration,
     experimental_params,
     n_output_interactions,
     develop_options,
@@ -46,6 +47,7 @@ def rank_interactions(
             init_scores,
             create_interaction_flags,
             objective,
+            acceleration,
             experimental_params,
         ) as interaction_detector:
             for feature_idxs in iter_term_features:
