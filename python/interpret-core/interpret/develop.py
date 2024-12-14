@@ -8,6 +8,9 @@ _current_module.is_debug_mode = False
 
 # Global options
 _develop_options = {
+    "n_intercept_rounds_initial": 25,
+    "n_intercept_rounds_final": 100,
+    "intercept_learning_rate": 0.25,
     "purify_boosting": False,
     "purify_result": False,
     "randomize_initial_feature_order": True,
@@ -22,6 +25,10 @@ def get_option(name):
 
 
 def set_option(name, value):
+    if name not in _develop_options:
+        msg = f"Unrecognized development option {name}."
+        raise Exception(msg)
+
     _develop_options[name] = value
 
 

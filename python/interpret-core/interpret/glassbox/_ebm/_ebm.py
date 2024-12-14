@@ -938,8 +938,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             max_delta_step = 0.0
             interactions = 0
             monotone_constraints = None
-            intercept_rounds = 0
-            intercept_learning_rate = 0.0
+            n_intercept_rounds = 0
         else:
             noise_scale_boosting = None
             bin_data_weights = None
@@ -959,8 +958,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             max_delta_step = self.max_delta_step
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
-            intercept_rounds = 0
-            intercept_learning_rate = 0.25
+            n_intercept_rounds = develop.get_option("n_intercept_rounds_initial")
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -973,16 +971,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
 
-        bagged_intercept = None
+        bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
         if not is_differential_privacy:
             if objective_code == Native.Objective_MonoClassification:
-                bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
-                intercept_correction = None
+                n_intercept_rounds = 0
             elif objective_code == Native.Objective_Rmse:
-                bagged_intercept = np.empty((self.outer_bags, 1), np.float64)
-
                 # RMSE is very special and we can do closed form even with init_scores
                 y_shifted = y if init_score is None else y - init_score
+                n_intercept_rounds = 0
 
                 for idx in range(self.outer_bags):
                     bag = internal_bags[idx]
@@ -1002,16 +998,12 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     bagged_intercept[idx, :] = np.average(
                         y_local, weights=sample_weight_local
                     )
-
-                intercept_correction = np.average(y_shifted, weights=sample_weight)
-                intercept_correction -= bagged_intercept.mean(axis=0)
             elif init_score is None:
                 if (
                     objective_code == Native.Objective_LogLossBinary
                     or objective_code == Native.Objective_LogLossMulticlass
                 ):
-                    bagged_intercept = np.empty((self.outer_bags, n_scores), np.float64)
-
+                    n_intercept_rounds = 0
                     for idx in range(self.outer_bags):
                         bag = internal_bags[idx]
                         sample_weight_local = sample_weight
@@ -1032,19 +1024,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         probs = probs.astype(np.float64, copy=False)
                         probs /= total
                         bagged_intercept[idx, :] = link_func(probs, link, link_param)
-
-                    probs = np.bincount(y, weights=sample_weight)
-                    total = probs.sum()
-                    probs = probs.astype(np.float64, copy=False)
-                    probs /= total
-
-                    intercept_correction = link_func(probs, link, link_param)
-                    intercept_correction -= bagged_intercept.mean(axis=0)
-
-        if bagged_intercept is None:
-            # TODO: get the intercept for these non-default options by boosting on the intercept
-            bagged_intercept = np.zeros((self.outer_bags, 1), np.float64)
-            intercept_correction = None
 
         dataset = bin_native_by_dimension(
             n_classes,
@@ -1079,8 +1058,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             parallel_args.append(
                 (
                     dataset,
-                    intercept_rounds,
-                    intercept_learning_rate,
+                    n_intercept_rounds,
+                    develop.get_option("intercept_learning_rate"),
                     bagged_intercept[idx],
                     bag,
                     init_score_local,
@@ -1121,7 +1100,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         # let python reclaim the dataset memory via reference counting
         # parallel_args holds references to dataset, so must be deleted
         del parallel_args
-        del dataset
 
         best_iteration = [[]]
         models = []
@@ -1179,6 +1157,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             elif len(interactions) == 0:
                 break
 
+            # at this point we know we will be making a new one, so delete it now
+            del dataset
+
+            # we pass the bagged intercept into the rank_interactions and boost functions below, so do not include twice
             initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
             for model, bag in zip(models, internal_bags):
@@ -1346,8 +1328,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 parallel_args.append(
                     (
                         dataset,
-                        intercept_rounds,
-                        intercept_learning_rate,
+                        0,  # intercept should already be close for pairs
+                        0.0,  # intercept should already be close for pairs
                         bagged_intercept[idx],
                         internal_bags[idx],
                         scores_bags[idx],
@@ -1387,7 +1369,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             # allow python to reclaim these big memory items via reference counting
             del parallel_args  # this holds references to dataset, scores_bags, and bags
-            del dataset
             del scores_bags
 
             best_iteration.append([])
@@ -1441,10 +1422,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 term_features,
             )
 
-        if intercept_correction is not None:
-            # making outer bags introduces noise to the intercept that we can remove now
-            bagged_intercept += intercept_correction
-
         if bagged_intercept.shape[1] == 1:
             bagged_intercept = bagged_intercept.ravel()
 
@@ -1453,55 +1430,67 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         )
 
         if not is_differential_privacy:
+            scores = ebm_predict_scores(
+                X,
+                n_samples,
+                feature_names_in,
+                feature_types_in,
+                bins,
+                intercept,
+                term_scores,
+                term_features,
+                init_score,
+            )
+
             if objective_code == Native.Objective_MonoClassification:
                 pass
             elif objective_code == Native.Objective_Rmse:
-                scores = ebm_predict_scores(
-                    X,
-                    n_samples,
-                    feature_names_in,
-                    feature_types_in,
-                    bins,
-                    intercept,
-                    term_scores,
-                    term_features,
-                    init_score,
-                )
-
                 correction = np.average(y - scores, weights=sample_weight)
                 intercept += correction
                 bagged_intercept += correction
-            elif (
-                objective_code == Native.Objective_LogLossBinary
-                or objective_code == Native.Objective_LogLossMulticlass
-            ):
-                scores = ebm_predict_scores(
-                    X,
-                    n_samples,
-                    feature_names_in,
-                    feature_types_in,
-                    bins,
-                    intercept,
-                    term_scores,
-                    term_features,
-                    init_score,
+            else:
+                exception, intercept_change, _, _, rng = boost(
+                    dataset,
+                    develop.get_option("n_intercept_rounds_final"),
+                    develop.get_option("intercept_learning_rate"),
+                    np.zeros(n_scores, np.float64),
+                    None,
+                    scores,
+                    [],
+                    0,
+                    term_boost_flags,
+                    self.learning_rate,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1,
+                    None,
+                    greedy_ratio,
+                    cyclic_progress,
+                    0,
+                    nominal_smoothing,
+                    0,
+                    0,
+                    early_stopping_tolerance,
+                    noise_scale_boosting,
+                    bin_data_weights,
+                    rng,
+                    (
+                        Native.CreateBoosterFlags_DifferentialPrivacy
+                        if is_differential_privacy
+                        else Native.CreateBoosterFlags_Default
+                    ),
+                    objective,
+                    None,
+                    develop._develop_options,
                 )
+                if exception is not None:
+                    raise exception
 
-                probs = np.bincount(y, weights=sample_weight)
-                total = probs.sum()
-                probs = probs.astype(np.float64, copy=False)
-                probs /= total
-                actual_scores = link_func(probs, link, link_param)
-
-                n_correction_iterations = 25
-                for _ in range(n_correction_iterations):
-                    pred_prob = inv_link(scores, link, link_param)
-                    pred_prob = np.average(pred_prob, axis=0, weights=sample_weight)
-                    pred_scores = link_func(pred_prob, link, link_param)
-                    correction = actual_scores - pred_scores
-                    intercept += correction
-                    bagged_intercept += correction
-                    scores += correction
+                bagged_intercept += intercept_change
+                intercept += intercept_change
 
                 if bagged_intercept.ndim == 2:
                     # multiclass
@@ -1511,6 +1500,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     bagged_intercept -= np.expand_dims(
                         bagged_intercept[..., zero_index], -1
                     )
+        del dataset
 
         if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
