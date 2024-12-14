@@ -975,7 +975,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         bagged_intercept = None
         if not is_differential_privacy:
-            if n_classes == Native.Task_MonoClassification:
+            if objective_code == Native.Objective_MonoClassification:
                 bagged_intercept = np.full((self.outer_bags, 1), -np.inf, np.float64)
                 intercept_correction = None
             elif objective_code == Native.Objective_Rmse:
@@ -1453,7 +1453,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         )
 
         if not is_differential_privacy:
-            if objective_code == Native.Objective_Rmse:
+            if objective_code == Native.Objective_MonoClassification:
+                pass
+            elif objective_code == Native.Objective_Rmse:
                 scores = ebm_predict_scores(
                     X,
                     n_samples,

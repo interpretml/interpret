@@ -786,9 +786,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate size_t { 0 } == cScores");
       return Error_None;
    }
-   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
-   EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
-
    const size_t cInnerBagsAfterZero =
          size_t{0} == pBoosterCore->GetCountInnerBags() ? size_t{1} : pBoosterCore->GetCountInnerBags();
    size_t cTensorBins = 1;
@@ -874,6 +871,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
    EBM_ASSERT(1 <= cTensorBins);
    EBM_ASSERT(2 <= cTensorBins || IntEbm{0} == lastDimensionLeavesMax);
+
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+   EBM_ASSERT(nullptr != pBoosterShell->GetInnerTermUpdate());
 
    pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
    pBoosterShell->GetTermUpdate()->Reset();

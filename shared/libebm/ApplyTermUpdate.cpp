@@ -74,13 +74,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
    if(BoosterShell::k_interceptTermIndex == iTerm) {
       LOG_0(Trace_Info, "Entered ApplyTermUpdate");
 
-      pTerm = nullptr;
-      cTensorBins = 1;
-
-      EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
-      aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
-      EBM_ASSERT(nullptr != aUpdateScores);
-
       if(size_t{0} == pBoosterCore->GetCountScores()) {
          // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.
          // The term scores are a tensor with zero length array logits, which means for our representation that we
@@ -90,6 +83,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ApplyTermUpdate(
          LOG_0(Trace_Info, "Exited ApplyTermUpdate. cClasses <= 1");
          return Error_None;
       }
+
+      EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+      aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
+      EBM_ASSERT(nullptr != aUpdateScores);
+
+      pTerm = nullptr;
+      cTensorBins = 1;
    } else {
       EBM_ASSERT(iTerm < pBoosterCore->GetCountTerms());
       EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
@@ -463,7 +463,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       LOG_0(Trace_Warning, "WARNING GetTermUpdateSplits size_t { 0 } == pBoosterCore->GetCountScores()");
       return Error_None;
    }
-   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
 
    if(size_t{0} == pTerm->GetCountTensorBins()) {
       // if we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
@@ -475,6 +474,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
       return Error_None;
    }
 
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
    const size_t cSplits = pBoosterShell->GetTermUpdate()->GetCountSlices(iDimension) - 1;
    EBM_ASSERT(cSplits < cBins);
    if(0 != cSplits) {
@@ -542,8 +542,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(BoosterHandle booster
       return Error_None;
    }
 
-   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
-
    const Term* pTerm = nullptr;
    size_t cTensorScores = 1;
    if(BoosterShell::k_interceptTermIndex != iTerm) {
@@ -564,12 +562,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdate(BoosterHandle booster
          return Error_None;
       }
 
+      EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
       error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
       if(Error_None != error) {
          return error;
       }
    }
 
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
    FloatScore* const aUpdateScores = pBoosterShell->GetTermUpdate()->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aUpdateScores);
    Transpose<true>(pTerm, pBoosterCore->GetCountScores(), updateScoresTensorOut, aUpdateScores);
@@ -641,10 +641,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
       return Error_None;
    }
 
-   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
-   pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
-   pBoosterShell->GetTermUpdate()->Reset();
-
    if(nullptr != pTerm) {
       size_t cTensorScores = pTerm->GetCountTensorBins();
       if(size_t{0} == cTensorScores) {
@@ -657,7 +653,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SetTermUpdate(
          pBoosterShell->SetTermIndex(iTerm);
          return Error_None;
       }
+   }
 
+   EBM_ASSERT(nullptr != pBoosterShell->GetTermUpdate());
+   pBoosterShell->GetTermUpdate()->SetCountDimensions(cDimensions);
+   pBoosterShell->GetTermUpdate()->Reset();
+
+   if(nullptr != pTerm) {
       error = pBoosterShell->GetTermUpdate()->Expand(pTerm);
       if(Error_None != error) {
          // already logged
