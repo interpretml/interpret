@@ -76,13 +76,6 @@ def measure_interactions(
     # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
     max_cardinality = 1048576
 
-    # TODO: re-enable AVX512 after we have sufficient evidence it works and speeds processing
-    acceleration = (
-        Native.AccelerationFlags_ALL & ~Native.AccelerationFlags_AVX512F
-        if develop.get_option("simd")
-        else Native.AccelerationFlags_NONE
-    )
-
     y = clean_dimensions(y, "y")
     if y.ndim != 1:
         msg = "y must be 1 dimensional"
@@ -293,7 +286,7 @@ def measure_interactions(
             else Native.CreateInteractionFlags_Default
         ),
         objective=objective,
-        acceleration=acceleration,
+        acceleration=develop.get_option("acceleration"),
         experimental_params=None,
         n_output_interactions=n_output_interactions,
         develop_options=develop._develop_options,

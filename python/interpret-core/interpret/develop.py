@@ -3,6 +3,8 @@
 
 import sys
 
+from .utils._native import Native
+
 _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
 
@@ -16,7 +18,7 @@ _develop_options = {
     "randomize_initial_feature_order": True,
     "randomize_greedy_feature_order": True,  # Randomize feature order if greedy.
     "randomize_feature_order": False,  # Randomize feature order. No cost to results.
-    "simd": True,
+    "acceleration": Native.AccelerationFlags_ALL,
 }
 
 
