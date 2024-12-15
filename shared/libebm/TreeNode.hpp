@@ -31,26 +31,26 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* BEFORE_GetBinFirst() const {
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
    inline void BEFORE_SetBinFirst(
-         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const pBinFirst) {
+         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const pBinFirst) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
-   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* BEFORE_GetBinLast() const {
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* BEFORE_GetBinLast() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
-      return reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>*>(
-            pBinLastOrChildren);
+      return reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const*>(
+            pPointerBinLastOrChildren);
    }
    inline void BEFORE_SetBinLast(
-         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const pBinLast) {
+         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const pBinLast) {
       EBM_ASSERT(0 == m_debugProgressionStage);
       // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
-      pBinLastOrChildren = const_cast<void*>(static_cast<const void*>(pBinLast));
+      pPointerBinLastOrChildren = const_cast<void*>(static_cast<const void*>(pBinLast));
    }
 
    inline bool BEFORE_IsSplittable() const {
@@ -60,16 +60,16 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
 
    inline const void* DANGEROUS_GetBinLastOrChildren() const {
       EBM_ASSERT(1 == m_debugProgressionStage);
-      return pBinLastOrChildren;
+      return pPointerBinLastOrChildren;
    }
 
    inline TreeNode* AFTER_GetChildren() {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      return reinterpret_cast<TreeNode*>(pBinLastOrChildren);
+      return reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren);
    }
    inline void AFTER_SetChildren(TreeNode* const pChildren) {
       EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      pBinLastOrChildren = pChildren;
+      pPointerBinLastOrChildren = pChildren;
    }
 
    inline FloatMain AFTER_GetSplitGain() const {
@@ -151,7 +151,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
 
  private:
    struct BeforeGainCalc final {
-      const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* m_pBinFirst;
+      const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* m_pBinFirst;
    };
 
    struct AfterGainCalc final {
@@ -172,7 +172,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    int m_debugProgressionStage;
 #endif // NDEBUG
 
-   void* pBinLastOrChildren;
+   void* pPointerBinLastOrChildren;
    TreeNodeUnion m_UNION;
 
    // IMPORTANT: m_bin must be in the last position for the struct hack and this must be standard layout

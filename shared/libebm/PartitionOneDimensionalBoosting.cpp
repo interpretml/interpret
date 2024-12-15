@@ -35,7 +35,7 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShell,
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinsLast,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinsEnd,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
       Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinOut) {
@@ -64,7 +64,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
 
-   EBM_ASSERT(2 <= CountBins(pBinsLast, aBins, cBytesPerBin) + 1); // we pre-filter out features with only one bin
+   EBM_ASSERT(2 <= CountBins(pBinsEnd, aBins, cBytesPerBin)); // we pre-filter out features with only one bin
 
    const auto* pBin = aBins;
    do {
@@ -83,7 +83,7 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
       } while(cScores != iScore);
 
       pBin = IndexBin(pBin, cBytesPerBin);
-   } while(pBin <= pBinsLast);
+   } while(pBinsEnd != pBin);
 
    EBM_ASSERT(cSamplesTotal == static_cast<size_t>(cSamplesTotalDebug));
    EBM_ASSERT(weightTotalDebug * 0.999 <= weightTotal && weightTotal <= weightTotalDebug * 1.0001);
@@ -103,15 +103,16 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
 
 // do not inline this.  Not inlining it makes fewer versions that can be called from the more templated functions
 template<bool bHessian>
-static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
+static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
       const TermBoostFlags flags,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t iDimension,
-      const Bin<FloatMain, UIntMain, true, true, bHessian>* const pBinsLast,
+      const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const apBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const ppBinsEnd,
       const size_t cSlices) {
-   LOG_0(Trace_Verbose, "Entered Flatten");
+   LOG_0(Trace_Verbose, "Entered FlattenOrdered");
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
@@ -141,15 +142,11 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
    FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
 
-   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
-
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
 
-   const auto* const aBins =
-         pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
-
-   EBM_ASSERT(cSlices <= CountBins(pBinsLast, aBins, cBytesPerBin) + 1);
+   EBM_ASSERT(apBins < ppBinsEnd);
+   EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
 
    auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
    auto* pTreeNode = pRootTreeNode;
@@ -170,7 +167,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          const void* pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
-         if(pBinLastOrChildren < aBins || pBinsLast < pBinLastOrChildren) {
+         if(pBinLastOrChildren < apBins || ppBinsEnd <= pBinLastOrChildren) {
             EBM_ASSERT(IndexTreeNode(pTreeNode, cBytesPerTreeNode) <= pBinLastOrChildren &&
                   pBinLastOrChildren <=
                         IndexTreeNode(pRootTreeNode, pBoosterCore->GetCountBytesTreeNodes() - cBytesPerTreeNode));
@@ -180,12 +177,17 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             const auto* const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
          }
-         const auto* const pBinLast =
-               reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>*>(pBinLastOrChildren);
+         const auto* const* const ppBinLast =
+               reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(pBinLastOrChildren);
 
-         EBM_ASSERT(aBins <= pBinLast);
-         EBM_ASSERT(pBinLast <= pBinsLast);
-         iEdge = CountBins(pBinLast, aBins, cBytesPerBin) + 1;
+         EBM_ASSERT(apBins <= ppBinLast);
+         EBM_ASSERT(ppBinLast < ppBinsEnd);
+
+         // FlattenOrdered only works on fully ordered bins so check the bin above and below for ordering
+         EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
+         EBM_ASSERT(ppBinLast == ppBinsEnd - 1 || *ppBinLast < *(ppBinLast + 1));
+
+         iEdge = ppBinLast - apBins + 1;
 
          const auto* aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
          size_t iScore = 0;
@@ -216,7 +218,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
       while(true) {
          if(nullptr == pTreeNode) {
-            LOG_0(Trace_Verbose, "Exited Flatten");
+            LOG_0(Trace_Verbose, "Exited FlattenOrdered");
             return Error_None;
          }
          auto* pChildren = pTreeNode->AFTER_GetChildren();
@@ -320,10 +322,10 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    }
    binInc.Zero(cScores, aIncGradHess);
 
-   auto* pBinCur = pTreeNode->BEFORE_GetBinFirst();
-   auto* pBinLast = pTreeNode->BEFORE_GetBinLast();
+   const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
+   const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
 
-   pLeftChild->BEFORE_SetBinFirst(pBinCur);
+   pLeftChild->BEFORE_SetBinFirst(ppBinCur);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
@@ -332,12 +334,12 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 #ifndef NDEBUG
    pRightChild->SetDebugProgression(0);
 #endif // NDEBUG
-   pRightChild->BEFORE_SetBinLast(pBinLast);
+   pRightChild->BEFORE_SetBinLast(ppBinLast);
 
    if(!bInc) {
-      auto* const pTmp = pBinCur;
-      pBinCur = pBinLast;
-      pBinLast = pTmp;
+      const auto* const* const ppTmp = ppBinCur;
+      ppBinCur = ppBinLast;
+      ppBinLast = ppTmp;
    }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
@@ -355,8 +357,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    EBM_ASSERT(FloatCalc{0} <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
-   EBM_ASSERT(pBinLast != pBinCur); // then we would be non-splitable and would have exited above
+   EBM_ASSERT(ppBinLast != ppBinCur); // then we would be non-splitable and would have exited above
    do {
+      const auto* const pBinCur = *ppBinCur;
       ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugMainBinsEnd());
 
       const UIntMain cSamplesChange = pBinCur->GetCountSamples();
@@ -449,7 +452,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          pBestSplitsCur = UNPREDICTABLE(bestGain == gain) ? pBestSplitsCur : pBestSplitsStart;
          bestGain = gain;
 
-         pBestSplitsCur->SetBinPosition(pBinCur);
+         pBestSplitsCur->SetBinPosition(ppBinCur);
 
          pBestSplitsCur->GetBinSum()->Copy(cScores, binInc, aIncGradHess);
 
@@ -459,13 +462,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       }
 
    next:;
-
-      if(bInc) {
-         pBinCur = IndexBin(pBinCur, cBytesPerBin);
-      } else {
-         pBinCur = NegativeIndexBin(pBinCur, cBytesPerBin);
-      }
-   } while(pBinLast != pBinCur);
+      ppBinCur += bInc ? 1 : -1;
+   } while(ppBinLast != ppBinCur);
 
 done:;
 
@@ -542,7 +540,7 @@ done:;
       pBestSplitsStart = IndexSplitPosition(pBestSplitsStart, cBytesPerSplitPosition * iRandom);
    }
 
-   const auto* const pBestBinPosition = pBestSplitsStart->GetBinPosition();
+   const auto* const* const ppBestBinPosition = pBestSplitsStart->GetBinPosition();
 
    TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pIncChild;
    TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pDecChild;
@@ -550,20 +548,20 @@ done:;
       pIncChild = pLeftChild;
       pDecChild = pRightChild;
 
-      pLeftChild->BEFORE_SetBinLast(pBestBinPosition);
+      pLeftChild->BEFORE_SetBinLast(ppBestBinPosition);
 
-      const auto* const pBinFirst = IndexBin(pBestBinPosition, cBytesPerBin);
-      ASSERT_BIN_OK(cBytesPerBin, pBinFirst, pBoosterShell->GetDebugMainBinsEnd());
-      pRightChild->BEFORE_SetBinFirst(pBinFirst);
+      const auto* const ppBinFirst = ppBestBinPosition + 1;
+      ASSERT_BIN_OK(cBytesPerBin, *ppBinFirst, pBoosterShell->GetDebugMainBinsEnd());
+      pRightChild->BEFORE_SetBinFirst(ppBinFirst);
    } else {
       pIncChild = pRightChild;
       pDecChild = pLeftChild;
 
-      pRightChild->BEFORE_SetBinFirst(pBestBinPosition);
+      pRightChild->BEFORE_SetBinFirst(ppBestBinPosition);
 
-      const auto* const pBinLeftLast = NegativeIndexBin(pBestBinPosition, cBytesPerBin);
-      ASSERT_BIN_OK(cBytesPerBin, pBinLeftLast, pBoosterShell->GetDebugMainBinsEnd());
-      pLeftChild->BEFORE_SetBinLast(pBinLeftLast);
+      const auto* const ppBinLeftLast = ppBestBinPosition - 1;
+      ASSERT_BIN_OK(cBytesPerBin, *ppBinLeftLast, pBoosterShell->GetDebugMainBinsEnd());
+      pLeftChild->BEFORE_SetBinLast(ppBinLeftLast);
    }
 
    memcpy(pIncChild->GetBin(), pBestSplitsStart->GetBinSum(), cBytesPerBin);
@@ -638,17 +636,31 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
 
-      const auto* const aBins =
+      auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
-      const auto* const pBinsLast = IndexBin(aBins, cBytesPerBin * (cBins - size_t{1}));
+      auto* const pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
-      pRootTreeNode->BEFORE_SetBinFirst(aBins);
-      pRootTreeNode->BEFORE_SetBinLast(pBinsLast);
-      ASSERT_BIN_OK(cBytesPerBin, pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugMainBinsEnd());
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
+                  pBinsEnd);
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const* const ppBinsEnd =
+            apBins + cBins;
+
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBin = apBins;
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pBin = aBins;
+      do {
+         *ppBin = pBin;
+         pBin = IndexBin(pBin, cBytesPerBin);
+         ++ppBin;
+      } while(ppBinsEnd != ppBin);
+
+      pRootTreeNode->BEFORE_SetBinFirst(apBins);
+      pRootTreeNode->BEFORE_SetBinLast(ppBinsEnd - 1);
+      ASSERT_BIN_OK(cBytesPerBin, *pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugMainBinsEnd());
 
       SumAllBins<bHessian, cCompilerScores>(
-            pBoosterShell, pBinsLast, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
+            pBoosterShell, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
 
       EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores));
       const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
@@ -792,8 +804,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       }
       *pTotalGain = static_cast<double>(totalGain);
       const size_t cSplits = cSplitsMax - cSplitsRemaining;
-      return Flatten<bHessian>(
-            pBoosterShell, flags, regAlpha, regLambda, deltaStepMax, iDimension, pBinsLast->Downgrade(), cSplits + 1);
+      return FlattenOrdered<bHessian>(pBoosterShell,
+            flags,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
+            iDimension,
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(ppBinsEnd),
+            cSplits + 1);
    }
 };
 

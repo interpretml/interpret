@@ -27,7 +27,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
    friend size_t GetSplitPositionSize(const bool, const size_t);
 
  private:
-   const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* m_pBinPosition;
+   const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* m_ppBinPosition;
 
    // IMPORTANT: m_BinSum must be in the last position for the struct hack and this must be standard layout
    Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_binSum;
@@ -38,12 +38,12 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinPosition() const {
-      return m_pBinPosition;
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* GetBinPosition() const {
+      return m_ppBinPosition;
    }
    inline void SetBinPosition(
-         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const pBinPosition) {
-      m_pBinPosition = pBinPosition;
+         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const ppBinPosition) {
+      m_ppBinPosition = ppBinPosition;
    }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinSum() { return &m_binSum; }

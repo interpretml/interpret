@@ -823,11 +823,18 @@ ErrorEbm BoosterCore::Create(void* const rng,
          }
 
          const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
-         if(IsMultiplyError(cBytesPerMainBin, cMainBinsMax)) {
+
+         if(IsAddError(cBytesPerMainBin, sizeof(void*))) {
+            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesPerMainBin, sizeof(void*))");
+            return Error_OutOfMemory;
+         }
+         const size_t cBytesMainBinPlusPointer = cBytesPerMainBin + sizeof(void*);
+         if(IsMultiplyError(cBytesMainBinPlusPointer, cMainBinsMax)) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerMainBin, cMainBinsMax)");
             return Error_OutOfMemory;
          }
-         pBoosterCore->m_cBytesMainBins = cBytesPerMainBin * cMainBinsMax;
+         // we also allocate enough space to create an additional array of pointers
+         pBoosterCore->m_cBytesMainBins = cBytesMainBinPlusPointer * cMainBinsMax;
 
          if(0 != cSingleDimensionBinsMax) {
             if(IsOverflowTreeNodeSize(bHessian, cScores) || IsOverflowSplitPositionSize(bHessian, cScores)) {

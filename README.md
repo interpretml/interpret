@@ -680,6 +680,7 @@ We also build on top of many great packages. Please check them out!
 - [An Interpretable Machine Learning Model with Deep Learning-based Imaging Biomarkers for Diagnosis of Alzheimer’s Disease](https://arxiv.org/pdf/2308.07778.pdf)
 - [Comparing explainable machine learning approaches with traditional statistical methods for evaluating stroke risk models: retrospective cohort study](https://pureadmin.qub.ac.uk/ws/portalfiles/portal/495863198/JMIR_Cardio.pdf)
 - [Explainable Artificial Intelligence for Cotton Yield Prediction With Multisource Data](https://ieeexplore.ieee.org/document/10214067)
+- [Preoperative detection of extraprostatic tumor extension in patients with primary prostate cancer utilizing](https://insightsimaging.springeropen.com/articles/10.1186/s13244-024-01876-5)
 - [Monotone Tree-Based GAMI Models by Adapting XGBoost](https://arxiv.org/ftp/arxiv/papers/2309/2309.02426.pdf)
 - [Neural Graphical Models](https://arxiv.org/pdf/2210.00453.pdf)
 - [FAST: An Optimization Framework for Fast Additive Segmentation in Transparent ML](https://arxiv.org/pdf/2402.12630v1.pdf)
