@@ -107,7 +107,7 @@ WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // do not inline this.  Not inlining it makes fewer versions that can be called from the more templated functions
 template<bool bHessian>
 static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
-      const bool bSequential,
+      const bool bNominal,
       const TermBoostFlags flags,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
@@ -122,7 +122,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
    EBM_ASSERT(apBins < ppBinsEnd);
    EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
-   EBM_ASSERT(bSequential || cSlices == static_cast<size_t>(ppBinsEnd - apBins));
+   EBM_ASSERT(!bNominal || cSlices == static_cast<size_t>(ppBinsEnd - apBins));
 
    ErrorEbm error;
 
@@ -147,7 +147,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
 
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
-   if(!bSequential) {
+   if(bNominal) {
       UIntSplit iSplit = 1;
       while(cSlices != iSplit) {
          pSplit[iSplit - 1] = iSplit;
@@ -208,7 +208,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             goto determine_bin;
          }
 
-         // if !bSequential, check the bin above and below for order
+         // if bNominal, check the bin above and below for order
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
          EBM_ASSERT(ppBinLast == ppBinsEnd - 1 || *ppBinLast < *(ppBinLast + 1));
 
@@ -332,8 +332,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       return 1;
    }
 
-   static constexpr ptrdiff_t incDirection = +1; // in the future we could traverse in both directions
-   static constexpr bool bInc = ptrdiff_t{0} <= incDirection;
+   // in the future we could traverse in both directions
+   ptrdiff_t incDirectionBytes = static_cast<ptrdiff_t>(+sizeof(void*));
 
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
@@ -342,8 +342,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 #ifndef NDEBUG
    pLeftChild->SetDebugProgression(0);
 #endif // NDEBUG
-
-   const MonotoneDirection monotoneAdjusted = bInc ? monotoneDirection : -monotoneDirection;
 
    Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)> binParent;
    Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)> binInc;
@@ -376,10 +374,13 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 #endif // NDEBUG
    pRightChild->BEFORE_SetBinLast(ppBinLast);
 
-   if(!bInc) {
+   MonotoneDirection monotoneAdjusted = monotoneDirection;
+   if(incDirectionBytes < ptrdiff_t{0}) {
       const auto* const* const ppTmp = ppBinCur;
       ppBinCur = ppBinLast;
       ppBinLast = ppTmp;
+
+      monotoneAdjusted = -monotoneAdjusted;
    }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
@@ -493,6 +494,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          bestGain = gain;
 
          pBestSplitsCur->SetBinPosition(ppBinCur);
+         pBestSplitsCur->SetIncDirectionBytes(incDirectionBytes);
 
          pBestSplitsCur->GetBinSum()->Copy(cScores, binInc, aIncGradHess);
 
@@ -502,7 +504,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       }
 
    next:;
-      ppBinCur += bInc ? 1 : -1;
+      ppBinCur = IndexByte(ppBinCur, incDirectionBytes);
    } while(ppBinLast != ppBinCur);
 
 done:;
@@ -584,7 +586,7 @@ done:;
 
    TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pIncChild;
    TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pDecChild;
-   if(bInc) {
+   if(ptrdiff_t{0} <= pBestSplitsStart->GetIncDirectionBytes()) {
       pIncChild = pLeftChild;
       pDecChild = pRightChild;
 
@@ -698,7 +700,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
    static ErrorEbm Func(RandomDeterministic* const pRng,
          BoosterShell* const pBoosterShell,
-         const bool bNominal,
+         bool bNominal,
          const TermBoostFlags flags,
          const size_t cBins,
          const size_t iDimension,
@@ -720,6 +722,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
       auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
+
+      // we can only sort if there's a single sortable index, so 1 score value
+      bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
 #ifndef NDEBUG
       pRootTreeNode->SetDebugProgression(0);
@@ -744,9 +749,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          ++ppBin;
       } while(ppBinsEnd != ppBin);
 
-      const bool bDoNominal = 1 == cCompilerScores && bNominal;
-      if(bDoNominal) {
-         // we can only sort if there's a single sortable index, so 1 score value
+      if(bNominal) {
          std::sort(apBins,
                ppBinsEnd,
                CompareBin<bHessian, cCompilerScores>(
@@ -901,9 +904,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-      const size_t cSlices = bDoNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
+      const size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
       return Flatten<bHessian>(pBoosterShell,
-            !bDoNominal,
+            bNominal,
             flags,
             regAlpha,
             regLambda,

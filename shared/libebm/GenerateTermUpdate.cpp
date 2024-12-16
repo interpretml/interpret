@@ -1158,8 +1158,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                EBM_ASSERT(cSignificantBinCount == pTerm->GetCountTensorBins());
                EBM_ASSERT(0 == pTerm->GetCountAuxillaryBins());
 
-               bNominal = bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
-
                error = BoostSingleDimensional(pRng,
                      pBoosterShell,
                      bNominal,

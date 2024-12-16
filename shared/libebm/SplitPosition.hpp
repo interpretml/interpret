@@ -28,6 +28,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
 
  private:
    const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* m_ppBinPosition;
+   ptrdiff_t m_incDirectionBytes;
 
    // IMPORTANT: m_BinSum must be in the last position for the struct hack and this must be standard layout
    Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_binSum;
@@ -45,6 +46,9 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
          const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const ppBinPosition) {
       m_ppBinPosition = ppBinPosition;
    }
+
+   inline ptrdiff_t GetIncDirectionBytes() const { return m_incDirectionBytes; }
+   inline void SetIncDirectionBytes(const ptrdiff_t incDirectionBytes) { m_incDirectionBytes = incDirectionBytes; }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinSum() { return &m_binSum; }
 };

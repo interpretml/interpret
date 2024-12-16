@@ -107,6 +107,15 @@ template<typename T> GPU_BOTH inline static const T* IndexByte(const T* const p,
    return reinterpret_cast<const T*>(reinterpret_cast<const char*>(p) + iByte);
 }
 
+template<typename T> GPU_BOTH inline static T* IndexByte(T* const p, const ptrdiff_t iByte) noexcept {
+   EBM_ASSERT(nullptr != p);
+   return reinterpret_cast<T*>(reinterpret_cast<char*>(p) + iByte);
+}
+template<typename T> GPU_BOTH inline static const T* IndexByte(const T* const p, const ptrdiff_t iByte) noexcept {
+   EBM_ASSERT(nullptr != p);
+   return reinterpret_cast<const T*>(reinterpret_cast<const char*>(p) + iByte);
+}
+
 template<typename T> GPU_BOTH inline static T* NegativeIndexByte(T* const p, const size_t iByte) noexcept {
    EBM_ASSERT(nullptr != p);
    return reinterpret_cast<T*>(reinterpret_cast<char*>(p) - iByte);
