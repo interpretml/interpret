@@ -77,6 +77,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
       const size_t iDimension,
@@ -195,6 +196,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell,
 
 static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
       const size_t samplesTotal,
@@ -222,6 +224,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
 
    error = PartitionOneDimensionalBoosting(pRng,
          pBoosterShell,
+         bNominal,
          flags,
          cBins,
          iDimension,
@@ -719,7 +722,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    }
 
    if(flags &
-         ~(TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
+         ~(TermBoostFlags_PurifyGain | TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableCategorical |
+               TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
                TermBoostFlags_RandomSplits)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
@@ -796,6 +800,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t{0};
+   bool bNominal = false;
    MonotoneDirection monotoneDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
 
@@ -846,6 +851,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                   iDimensionImportant = iDimensionInit;
                   cSignificantBinCount = cBins;
+                  bNominal = pFeature->IsNominal();
                   monotoneDirection |= featureDirection;
                   EBM_ASSERT(nullptr != pLeavesMax);
                   const IntEbm countLeavesMax = *pLeavesMax;
@@ -1152,8 +1158,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                EBM_ASSERT(cSignificantBinCount == pTerm->GetCountTensorBins());
                EBM_ASSERT(0 == pTerm->GetCountAuxillaryBins());
 
+               bNominal = bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
+
                error = BoostSingleDimensional(pRng,
                      pBoosterShell,
+                     bNominal,
                      flags,
                      cSignificantBinCount,
                      pBoosterCore->GetTrainingSet()->GetBagCountTotal(iBag),

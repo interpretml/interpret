@@ -9,6 +9,7 @@
 #include <string.h> // memcpy
 #include <vector>
 #include <queue>
+#include <algorithm> // std::sort
 
 #include "libebm.h" // ErrorEbm
 #include "logging.h" // EBM_ASSERT
@@ -643,12 +644,61 @@ template<bool bHessian> class CompareNodeGain final {
    }
 };
 
+template<bool bHessian, size_t cCompilerScores> class CompareBin final {
+   bool m_bHessianRuntime;
+   FloatCalc m_regAlpha;
+   FloatCalc m_regLambda;
+   FloatCalc m_deltaStepMax;
+
+ public:
+   INLINE_ALWAYS CompareBin(const bool bHessianRuntime,
+         const FloatCalc regAlpha,
+         const FloatCalc regLambda,
+         const FloatCalc deltaStepMax) {
+      m_bHessianRuntime = bHessianRuntime;
+      m_regAlpha = regAlpha;
+      m_regLambda = regLambda;
+      m_deltaStepMax = deltaStepMax;
+   }
+
+   INLINE_ALWAYS bool operator()(
+         const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& lhs,
+         const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& rhs) const noexcept {
+      // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
+      // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
+
+      const bool bUpdateWithHessian = bHessian && m_bHessianRuntime;
+
+      const FloatCalc hess1 =
+            static_cast<FloatCalc>(bUpdateWithHessian ? lhs->GetGradientPairs()[0].GetHess() : lhs->GetWeight());
+      const FloatCalc val1 = CalcNegUpdate<true>(static_cast<FloatCalc>(lhs->GetGradientPairs()[0].m_sumGradients),
+            hess1,
+            m_regAlpha,
+            m_regLambda,
+            m_deltaStepMax);
+
+      const FloatCalc hess2 =
+            static_cast<FloatCalc>(bUpdateWithHessian ? rhs->GetGradientPairs()[0].GetHess() : rhs->GetWeight());
+      const FloatCalc val2 = CalcNegUpdate<true>(static_cast<FloatCalc>(rhs->GetGradientPairs()[0].m_sumGradients),
+            hess2,
+            m_regAlpha,
+            m_regLambda,
+            m_deltaStepMax);
+
+      if(val1 == val2) {
+         return lhs < rhs;
+      }
+      return val1 < val2;
+   }
+};
+
 template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoostingInternal final {
  public:
    PartitionOneDimensionalBoostingInternal() = delete; // this is a static class.  Do not construct
 
    static ErrorEbm Func(RandomDeterministic* const pRng,
          BoosterShell* const pBoosterShell,
+         const bool bNominal,
          const TermBoostFlags flags,
          const size_t cBins,
          const size_t iDimension,
@@ -683,7 +733,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const* const ppBinsEnd =
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const ppBinsEnd =
             apBins + cBins;
 
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBin = apBins;
@@ -693,6 +743,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          pBin = IndexBin(pBin, cBytesPerBin);
          ++ppBin;
       } while(ppBinsEnd != ppBin);
+
+      const bool bDoNominal = 1 == cCompilerScores && bNominal;
+      if(bDoNominal) {
+         // we can only sort if there's a single sortable index, so 1 score value
+         std::sort(apBins,
+               ppBinsEnd,
+               CompareBin<bHessian, cCompilerScores>(
+                     !(TermBoostFlags_DisableNewtonUpdate & flags), regAlpha, regLambda, deltaStepMax));
+      }
 
       pRootTreeNode->BEFORE_SetBinFirst(apBins);
       pRootTreeNode->BEFORE_SetBinLast(ppBinsEnd - 1);
@@ -842,9 +901,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-      const size_t cSplits = cSplitsMax - cSplitsRemaining;
+      const size_t cSlices = bDoNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
       return Flatten<bHessian>(pBoosterShell,
-            true,
+            !bDoNominal,
             flags,
             regAlpha,
             regLambda,
@@ -852,12 +911,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             iDimension,
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(ppBinsEnd),
-            cSplits + 1);
+            cSlices);
    }
 };
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
       const size_t iDimension,
@@ -883,6 +943,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<true, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bNominal,
                flags,
                cBins,
                iDimension,
@@ -900,6 +961,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // 3 classes
          error = PartitionOneDimensionalBoostingInternal<true, 3>::Func(pRng,
                pBoosterShell,
+               bNominal,
                flags,
                cBins,
                iDimension,
@@ -917,6 +979,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // muticlass
          error = PartitionOneDimensionalBoostingInternal<true, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bNominal,
                flags,
                cBins,
                iDimension,
@@ -935,6 +998,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<false, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bNominal,
                flags,
                cBins,
                iDimension,
@@ -952,6 +1016,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          error = PartitionOneDimensionalBoostingInternal<false, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bNominal,
                flags,
                cBins,
                iDimension,
