@@ -101,9 +101,12 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
    }
 }
 
+WARNING_PUSH
+WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 // do not inline this.  Not inlining it makes fewer versions that can be called from the more templated functions
 template<bool bHessian>
-static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
+static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
+      const bool bSequential,
       const TermBoostFlags flags,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
@@ -112,10 +115,13 @@ static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
       const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const apBins,
       const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const ppBinsEnd,
       const size_t cSlices) {
-   LOG_0(Trace_Verbose, "Entered FlattenOrdered");
+   LOG_0(Trace_Verbose, "Entered Flatten");
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
+   EBM_ASSERT(apBins < ppBinsEnd);
+   EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
+   EBM_ASSERT(bSequential || cSlices == static_cast<size_t>(ppBinsEnd - apBins));
 
    ErrorEbm error;
 
@@ -137,22 +143,34 @@ static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
       return error;
    }
 
-   const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
-
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
-   FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+
+   const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
+   if(!bSequential) {
+      UIntSplit iSplit = 1;
+      while(cSlices != iSplit) {
+         pSplit[iSplit - 1] = iSplit;
+         ++iSplit;
+      }
+      ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
+   }
+
+   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore* pUpdateScore = aUpdateScore;
+
+   const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
+   auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
 
-   EBM_ASSERT(apBins < ppBinsEnd);
-   EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
-
    auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian>();
    auto* pTreeNode = pRootTreeNode;
 
+   const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
+
    TreeNode<bHessian>* pParent = nullptr;
-   size_t iEdge;
+
    while(true) {
       if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
 #ifndef NDEBUG
@@ -162,7 +180,6 @@ static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
          pTreeNode->DECONSTRUCT_SetParent(pParent);
          pParent = pTreeNode;
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren());
-         continue;
       } else {
          const void* pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
          // if the pointer points to the space within the bins, then the TreeNode could not be split
@@ -183,61 +200,83 @@ static ErrorEbm FlattenOrdered(BoosterShell* const pBoosterShell,
          EBM_ASSERT(apBins <= ppBinLast);
          EBM_ASSERT(ppBinLast < ppBinsEnd);
 
-         // FlattenOrdered only works on fully ordered bins so check the bin above and below for ordering
+         size_t iEdge;
+         const auto* const aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
+         size_t iScore;
+         if(nullptr != ppBinCur) {
+            goto determine_bin;
+         }
+
+         // if !bSequential, check the bin above and below for order
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
          EBM_ASSERT(ppBinLast == ppBinsEnd - 1 || *ppBinLast < *(ppBinLast + 1));
 
          iEdge = ppBinLast - apBins + 1;
 
-         const auto* aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
-         size_t iScore = 0;
-         do {
-            FloatCalc updateScore;
-            if(bUpdateWithHessian) {
-               updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
-                     static_cast<FloatCalc>(aGradientPair[iScore].GetHess()),
-                     regAlpha,
-                     regLambda,
-                     deltaStepMax);
-            } else {
-               updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
-                     static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight()),
-                     regAlpha,
-                     regLambda,
-                     deltaStepMax);
+         while(true) {
+            iScore = 0;
+            do {
+               FloatCalc updateScore;
+               if(bUpdateWithHessian) {
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+                        static_cast<FloatCalc>(aGradientPair[iScore].GetHess()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
+               } else {
+                  updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+                        static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight()),
+                        regAlpha,
+                        regLambda,
+                        deltaStepMax);
+               }
+
+               *pUpdateScore = static_cast<FloatScore>(updateScore);
+               ++pUpdateScore;
+
+               ++iScore;
+            } while(cScores != iScore);
+
+            if(nullptr == ppBinCur) {
+               break;
             }
-
-            *pUpdateScore = static_cast<FloatScore>(updateScore);
-            ++pUpdateScore;
-
-            ++iScore;
-         } while(cScores != iScore);
+            ++ppBinCur;
+            if(ppBinLast < ppBinCur) {
+               break;
+            }
+         determine_bin:;
+            const auto* const pBinCur = *ppBinCur;
+            const size_t iBin = CountBins(pBinCur, aBins, cBytesPerBin);
+            pUpdateScore = aUpdateScore + iBin * cScores;
+         }
 
          pTreeNode = pParent;
-      }
 
-      while(true) {
-         if(nullptr == pTreeNode) {
-            LOG_0(Trace_Verbose, "Exited FlattenOrdered");
-            return Error_None;
-         }
-         auto* pChildren = pTreeNode->AFTER_GetChildren();
-         if(nullptr != pChildren) {
-            // we checked earlier that countBins could be converted to a UIntSplit
-            EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
-            *pSplit = static_cast<UIntSplit>(iEdge);
-            ++pSplit;
-
-            pParent = pTreeNode;
-            pTreeNode->AFTER_SetChildren(nullptr);
-            pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
-            break;
-         } else {
-            pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
+         while(true) {
+            if(nullptr == pTreeNode) {
+               LOG_0(Trace_Verbose, "Exited Flatten");
+               return Error_None;
+            }
+            auto* pChildren = pTreeNode->AFTER_GetChildren();
+            if(nullptr != pChildren) {
+               // we checked earlier that countBins could be converted to a UIntSplit
+               if(nullptr == ppBinCur) {
+                  EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
+                  *pSplit = static_cast<UIntSplit>(iEdge);
+                  ++pSplit;
+               }
+               pParent = pTreeNode;
+               pTreeNode->AFTER_SetChildren(nullptr);
+               pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
+               break;
+            } else {
+               pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
+            }
          }
       }
    }
 }
+WARNING_POP
 
 // TODO: it would be easy for us to implement a -1 lookback where we make the first split, find the second split,
 // elimnate the first split and try
@@ -804,7 +843,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       }
       *pTotalGain = static_cast<double>(totalGain);
       const size_t cSplits = cSplitsMax - cSplitsRemaining;
-      return FlattenOrdered<bHessian>(pBoosterShell,
+      return Flatten<bHessian>(pBoosterShell,
+            true,
             flags,
             regAlpha,
             regLambda,
