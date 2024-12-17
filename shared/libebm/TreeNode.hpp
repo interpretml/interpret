@@ -69,9 +69,10 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return 0.0 != m_UNION.m_afterGainCalc.m_splitGain;
    }
 
-   inline const void* DANGEROUS_GetBinLastOrChildren() const {
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* AFTER_GetBinLast() const {
       EBM_ASSERT(1 == m_debugProgressionStage);
-      return pPointerBinLastOrChildren;
+      return reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const*>(
+            pPointerBinLastOrChildren);
    }
 
    inline TreeNode* AFTER_GetChildren() {

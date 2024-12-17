@@ -114,15 +114,21 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       const FloatCalc deltaStepMax,
       const size_t iDimension,
       const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const apBins,
-      const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const ppBinsEnd,
-      const size_t cSlices) {
+      const size_t cSlices
+#ifndef NDEBUG
+      ,
+      const size_t cBins
+#endif // NDEBUG
+) {
    LOG_0(Trace_Verbose, "Entered Flatten");
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
-   EBM_ASSERT(apBins < ppBinsEnd);
-   EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
-   EBM_ASSERT(!bNominal || cSlices == static_cast<size_t>(ppBinsEnd - apBins));
+   EBM_ASSERT(nullptr != apBins);
+   EBM_ASSERT(1 <= cSlices);
+   EBM_ASSERT(2 <= cBins);
+   EBM_ASSERT(cSlices <= cBins);
+   EBM_ASSERT(!bNominal || cSlices == cBins);
 
    ErrorEbm error;
 
@@ -178,27 +184,26 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          pParent = pTreeNode;
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren());
       } else {
-         const void* pBinLastOrChildren = pTreeNode->DANGEROUS_GetBinLastOrChildren();
+         const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinLast;
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
-         if(pBinLastOrChildren < apBins || ppBinsEnd <= pBinLastOrChildren) {
-            EBM_ASSERT(pTreeNode->AFTER_IsSplittable());
-            EBM_ASSERT(IndexTreeNode(pTreeNode, cBytesPerTreeNode) <= pBinLastOrChildren &&
-                  pBinLastOrChildren <=
+         if(pTreeNode->AFTER_IsSplittable()) {
+            auto* const pChildren = pTreeNode->AFTER_GetChildren();
+
+            EBM_ASSERT(IndexTreeNode(pTreeNode, cBytesPerTreeNode) <= pChildren &&
+                  pChildren <=
                         IndexTreeNode(pRootTreeNode, pBoosterCore->GetCountBytesTreeNodes() - cBytesPerTreeNode));
 
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
-            const auto* const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
-            pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
+            const auto* const pRightChild = GetRightNode(pChildren, cBytesPerTreeNode);
+            ppBinLast = pRightChild->BEFORE_GetBinLast();
          } else {
-            EBM_ASSERT(!pTreeNode->AFTER_IsSplittable());
+            ppBinLast = pTreeNode->AFTER_GetBinLast();
          }
-         const auto* const* const ppBinLast =
-               reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(pBinLastOrChildren);
 
          EBM_ASSERT(apBins <= ppBinLast);
-         EBM_ASSERT(ppBinLast < ppBinsEnd);
+         EBM_ASSERT(ppBinLast < apBins + cBins);
 
          size_t iEdge;
          const auto* const aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
@@ -209,7 +214,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
          // if bNominal, check the bin above and below for order
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
-         EBM_ASSERT(ppBinLast == ppBinsEnd - 1 || *ppBinLast < *(ppBinLast + 1));
+         EBM_ASSERT(ppBinLast == apBins + cBins - 1 || *ppBinLast < *(ppBinLast + 1));
 
          iEdge = ppBinLast - apBins + 1;
 
@@ -886,8 +891,12 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             deltaStepMax,
             iDimension,
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
-            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(ppBinsEnd),
-            cSlices);
+            cSlices
+#ifndef NDEBUG
+            ,
+            cBins
+#endif // NDEBUG
+      );
    }
 };
 
