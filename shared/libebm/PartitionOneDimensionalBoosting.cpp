@@ -115,16 +115,24 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       const size_t iDimension,
       const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const apBins,
       const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const ppBinsEnd,
+      const TreeNode<bHessian>* pMissingValueTreeNode,
       const size_t cSlices) {
    LOG_0(Trace_Verbose, "Entered Flatten");
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
    EBM_ASSERT(apBins < ppBinsEnd);
-   EBM_ASSERT(cSlices <= static_cast<size_t>(ppBinsEnd - apBins));
+   EBM_ASSERT(cSlices - (nullptr != pMissingValueTreeNode ? size_t{1} : size_t{0}) <=
+         static_cast<size_t>(ppBinsEnd - apBins));
    EBM_ASSERT(!bNominal || cSlices == static_cast<size_t>(ppBinsEnd - apBins));
 
    ErrorEbm error;
+
+#ifndef NDEBUG
+   auto* const pRootTreeNodeDebug = pBoosterShell->GetTreeNodesTemp<bHessian>();
+   size_t cSamplesExpectedDebug = pRootTreeNodeDebug->GetBin()->GetCountSamples();
+   size_t cSamplesTotalDebug = 0;
+#endif // NDEBUG
 
    Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
@@ -148,6 +156,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
    if(bNominal) {
+      EBM_ASSERT(nullptr != pMissingValueTreeNode);
       UIntSplit iSplit = 1;
       while(cSlices != iSplit) {
          pSplit[iSplit - 1] = iSplit;
@@ -155,9 +164,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       }
       ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
    }
-
-   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pUpdateScore = aUpdateScore;
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
@@ -169,6 +175,39 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    auto* pTreeNode = pRootTreeNode;
 
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
+
+   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore* pUpdateScore = aUpdateScore;
+
+   if(nullptr != pMissingValueTreeNode) {
+      // always put a split on the missing bin
+      *pSplit = 1;
+      ++pSplit;
+
+      const auto* const aGradientPair = pMissingValueTreeNode->GetBin()->GetGradientPairs();
+      size_t iScore = 0;
+      do {
+         FloatCalc updateScore;
+         if(bUpdateWithHessian) {
+            updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+                  static_cast<FloatCalc>(aGradientPair[iScore].GetHess()),
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
+         } else {
+            updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(aGradientPair[iScore].m_sumGradients),
+                  static_cast<FloatCalc>(pTreeNode->GetBin()->GetWeight()),
+                  regAlpha,
+                  regLambda,
+                  deltaStepMax);
+         }
+
+         *pUpdateScore = static_cast<FloatScore>(updateScore);
+         ++pUpdateScore;
+
+         ++iScore;
+      } while(cScores != iScore);
+   }
 
    TreeNode<bHessian>* pParent = nullptr;
 
@@ -201,6 +240,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          EBM_ASSERT(apBins <= ppBinLast);
          EBM_ASSERT(ppBinLast < ppBinsEnd);
 
+#ifndef NDEBUG
+         cSamplesTotalDebug += pTreeNode->GetBin()->GetCountSamples();
+#endif // NDEBUG
+
          size_t iEdge;
          const auto* const aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
          size_t iScore;
@@ -212,7 +255,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
          EBM_ASSERT(ppBinLast == ppBinsEnd - 1 || *ppBinLast < *(ppBinLast + 1));
 
-         iEdge = ppBinLast - apBins + 1;
+         iEdge = ppBinLast - apBins + 1 + (nullptr != pMissingValueTreeNode ? 1 : 0);
 
          while(true) {
             iScore = 0;
@@ -255,6 +298,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
          while(true) {
             if(nullptr == pTreeNode) {
+               EBM_ASSERT(cSamplesTotalDebug == cSamplesExpectedDebug);
+
                LOG_0(Trace_Verbose, "Exited Flatten");
                return Error_None;
             }
@@ -296,7 +341,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
-      const MonotoneDirection monotoneDirection) {
+      const MonotoneDirection monotoneDirection,
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppMissingValueTreeNode) {
 
    LOG_N(Trace_Verbose,
          "Entered FindBestSplitGain: "
@@ -310,7 +356,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          "regAlpha=%le, "
          "regLambda=%le, "
          "deltaStepMax=%le, "
-         "monotoneDirection=%" MonotoneDirectionPrintf,
+         "monotoneDirection=%" MonotoneDirectionPrintf ", "
+         "ppMissingValueTreeNode=%p",
          static_cast<void*>(pRng),
          static_cast<const void*>(pBoosterShell),
          static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
@@ -321,7 +368,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          static_cast<double>(regAlpha),
          static_cast<double>(regLambda),
          static_cast<double>(deltaStepMax),
-         monotoneDirection);
+         monotoneDirection,
+         static_cast<const void*>(ppMissingValueTreeNode));
+   EBM_ASSERT(nullptr != ppMissingValueTreeNode);
 
    if(!pTreeNode->BEFORE_IsSplittable()) {
 #ifndef NDEBUG
@@ -331,6 +380,10 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       pTreeNode->AFTER_RejectSplit();
       return 1;
    }
+
+   const auto* const aBins =
+         pBoosterShell->GetBoostingMainBins()
+               ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
    // in the future we could traverse in both directions
    ptrdiff_t incDirectionBytes = static_cast<ptrdiff_t>(+sizeof(void*));
@@ -358,7 +411,16 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       binParent.SetCountSamples(pTreeNode->GetBin()->GetCountSamples());
       binParent.SetWeight(pTreeNode->GetBin()->GetWeight());
    }
-   binInc.Zero(cScores, aIncGradHess);
+
+   UIntMain cSamplesDec = binParent.GetCountSamples();
+   const auto* const pMissingValueTreeNode = *ppMissingValueTreeNode;
+   if(pMissingValueTreeNode == pTreeNode) {
+      // missing value is stored at the start of aBins
+      binInc.Copy(cScores, *aBins, aBins->GetGradientPairs(), aIncGradHess);
+      cSamplesDec -= aBins->GetCountSamples();
+   } else {
+      binInc.Zero(cScores, aIncGradHess);
+   }
 
    const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
@@ -375,13 +437,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    pRightChild->BEFORE_SetBinLast(ppBinLast);
 
    MonotoneDirection monotoneAdjusted = monotoneDirection;
-   if(incDirectionBytes < ptrdiff_t{0}) {
-      const auto* const* const ppTmp = ppBinCur;
-      ppBinCur = ppBinLast;
-      ppBinLast = ppTmp;
-
-      monotoneAdjusted = -monotoneAdjusted;
-   }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
    EBM_ASSERT(!IsOverflowSplitPositionSize(bHessian, cScores)); // we're accessing allocated memory
@@ -390,124 +445,138 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    auto* pBestSplitsStart = pBoosterShell->GetSplitPositionsTemp<bHessian, GetArrayScores(cCompilerScores)>();
    auto* pBestSplitsCur = pBestSplitsStart;
 
-   UIntMain cSamplesDec = binParent.GetCountSamples();
-
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
    EBM_ASSERT(FloatCalc{0} <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
-   EBM_ASSERT(ppBinLast != ppBinCur); // then we would be non-splitable and would have exited above
-   do {
-      const auto* const pBinCur = *ppBinCur;
-      ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugMainBinsEnd());
 
-      const UIntMain cSamplesChange = pBinCur->GetCountSamples();
-      cSamplesDec -= cSamplesChange;
-      if(UNLIKELY(cSamplesDec < cSamplesLeafMin)) {
-         // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
-         goto done;
-      }
-      binInc.SetCountSamples(binInc.GetCountSamples() + cSamplesChange);
-
-      FloatMain hessIncOrig = binInc.GetWeight() + pBinCur->GetWeight();
-      FloatCalc hessDec = static_cast<FloatCalc>(binParent.GetWeight() - hessIncOrig);
-
-      binInc.SetWeight(hessIncOrig);
-      FloatCalc hessInc = static_cast<FloatCalc>(hessIncOrig);
-
-      FloatCalc hessDecUpdate = hessDec;
-      FloatCalc hessIncUpdate = hessInc;
-
-      const auto* const aBinGradHess = pBinCur->GetGradientPairs();
-      bool bLegal = true;
-      FloatCalc gain = 0;
-      size_t iScore = 0;
+   while(true) {
+      EBM_ASSERT(ppBinLast != ppBinCur); // then we would be non-splitable and would have exited above
       do {
-         const FloatMain gradIncOrig = aIncGradHess[iScore].m_sumGradients + aBinGradHess[iScore].m_sumGradients;
-         aIncGradHess[iScore].m_sumGradients = gradIncOrig;
-         const FloatCalc gradDec = static_cast<FloatCalc>(aParentGradHess[iScore].m_sumGradients - gradIncOrig);
+         const auto* const pBinCur = *ppBinCur;
+         ASSERT_BIN_OK(cBytesPerBin, pBinCur, pBoosterShell->GetDebugMainBinsEnd());
 
-         if(bHessian) {
-            const FloatMain newHessIncOrig = aIncGradHess[iScore].GetHess() + aBinGradHess[iScore].GetHess();
-            aIncGradHess[iScore].SetHess(newHessIncOrig);
-            const FloatCalc newHessDec = static_cast<FloatCalc>(aParentGradHess[iScore].GetHess() - newHessIncOrig);
-            const FloatCalc newHessInc = static_cast<FloatCalc>(newHessIncOrig);
-            if(bUseLogitBoost) {
-               hessInc = newHessInc;
-               hessDec = newHessDec;
-            }
-            if(bUpdateWithHessian) {
-               hessIncUpdate = newHessInc;
-               hessDecUpdate = newHessDec;
-            }
-         }
-         if(UNLIKELY(hessDec < hessianMin)) {
+         const UIntMain cSamplesChange = pBinCur->GetCountSamples();
+         cSamplesDec -= cSamplesChange;
+         if(UNLIKELY(cSamplesDec < cSamplesLeafMin)) {
             // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
             goto done;
          }
-         if(UNLIKELY(hessInc < hessianMin)) {
-            bLegal = false;
-         }
+         binInc.SetCountSamples(binInc.GetCountSamples() + cSamplesChange);
 
-         const FloatCalc gradInc = static_cast<FloatCalc>(gradIncOrig);
+         FloatMain hessIncOrig = binInc.GetWeight() + pBinCur->GetWeight();
+         FloatCalc hessDec = static_cast<FloatCalc>(binParent.GetWeight() - hessIncOrig);
 
-         if(MONOTONE_NONE != monotoneAdjusted) {
-            const FloatCalc negUpdateDec =
-                  CalcNegUpdate<true>(gradDec, hessDecUpdate, regAlpha, regLambda, deltaStepMax);
-            const FloatCalc negUpdateInc =
-                  CalcNegUpdate<true>(gradInc, hessIncUpdate, regAlpha, regLambda, deltaStepMax);
-            if(MonotoneDirection{0} < monotoneAdjusted) {
-               if(negUpdateInc < negUpdateDec) {
-                  bLegal = false;
+         binInc.SetWeight(hessIncOrig);
+         FloatCalc hessInc = static_cast<FloatCalc>(hessIncOrig);
+
+         FloatCalc hessDecUpdate = hessDec;
+         FloatCalc hessIncUpdate = hessInc;
+
+         const auto* const aBinGradHess = pBinCur->GetGradientPairs();
+         bool bLegal = true;
+         FloatCalc gain = 0;
+         size_t iScore = 0;
+         do {
+            const FloatMain gradIncOrig = aIncGradHess[iScore].m_sumGradients + aBinGradHess[iScore].m_sumGradients;
+            aIncGradHess[iScore].m_sumGradients = gradIncOrig;
+            const FloatCalc gradDec = static_cast<FloatCalc>(aParentGradHess[iScore].m_sumGradients - gradIncOrig);
+
+            if(bHessian) {
+               const FloatMain newHessIncOrig = aIncGradHess[iScore].GetHess() + aBinGradHess[iScore].GetHess();
+               aIncGradHess[iScore].SetHess(newHessIncOrig);
+               const FloatCalc newHessDec = static_cast<FloatCalc>(aParentGradHess[iScore].GetHess() - newHessIncOrig);
+               const FloatCalc newHessInc = static_cast<FloatCalc>(newHessIncOrig);
+               if(bUseLogitBoost) {
+                  hessInc = newHessInc;
+                  hessDec = newHessDec;
                }
-            } else {
-               EBM_ASSERT(monotoneAdjusted < MonotoneDirection{0});
-               if(negUpdateDec < negUpdateInc) {
-                  bLegal = false;
+               if(bUpdateWithHessian) {
+                  hessIncUpdate = newHessInc;
+                  hessDecUpdate = newHessDec;
                }
             }
+            if(UNLIKELY(hessDec < hessianMin)) {
+               // we'll just keep subtracting if we continue, so there won't be any more splits, so we're done
+               goto done;
+            }
+            if(UNLIKELY(hessInc < hessianMin)) {
+               bLegal = false;
+            }
+
+            const FloatCalc gradInc = static_cast<FloatCalc>(gradIncOrig);
+
+            if(MONOTONE_NONE != monotoneAdjusted) {
+               const FloatCalc negUpdateDec =
+                     CalcNegUpdate<true>(gradDec, hessDecUpdate, regAlpha, regLambda, deltaStepMax);
+               const FloatCalc negUpdateInc =
+                     CalcNegUpdate<true>(gradInc, hessIncUpdate, regAlpha, regLambda, deltaStepMax);
+               if(MonotoneDirection{0} < monotoneAdjusted) {
+                  if(negUpdateInc < negUpdateDec) {
+                     bLegal = false;
+                  }
+               } else {
+                  EBM_ASSERT(monotoneAdjusted < MonotoneDirection{0});
+                  if(negUpdateDec < negUpdateInc) {
+                     bLegal = false;
+                  }
+               }
+            }
+
+            const FloatCalc gainDec = CalcPartialGain<false>(gradDec, hessDec, regAlpha, regLambda, deltaStepMax);
+            EBM_ASSERT(!bLegal || std::isnan(gainDec) || 0 <= gainDec);
+            gain += gainDec;
+
+            // if bLegal was set to false, hessInc can be negative
+            const FloatCalc gainInc = CalcPartialGain<true>(gradInc, hessInc, regAlpha, regLambda, deltaStepMax);
+            EBM_ASSERT(!bLegal || std::isnan(gainInc) || 0 <= gainInc);
+            gain += gainInc;
+
+            ++iScore;
+         } while(cScores != iScore);
+         EBM_ASSERT(std::isnan(gain) || 0 <= gain);
+
+         if(!bLegal || binInc.GetCountSamples() < cSamplesLeafMin) {
+            goto next;
          }
 
-         const FloatCalc gainDec = CalcPartialGain<false>(gradDec, hessDec, regAlpha, regLambda, deltaStepMax);
-         EBM_ASSERT(!bLegal || std::isnan(gainDec) || 0 <= gainDec);
-         gain += gainDec;
+         if(UNLIKELY(/* NaN */ !LIKELY(gain < bestGain))) {
+            // propagate NaN values since we stop boosting when we see them
 
-         // if bLegal was set to false, hessInc can be negative
-         const FloatCalc gainInc = CalcPartialGain<true>(gradInc, hessInc, regAlpha, regLambda, deltaStepMax);
-         EBM_ASSERT(!bLegal || std::isnan(gainInc) || 0 <= gainInc);
-         gain += gainInc;
+            pBestSplitsCur = UNPREDICTABLE(bestGain == gain) ? pBestSplitsCur : pBestSplitsStart;
+            bestGain = gain;
 
-         ++iScore;
-      } while(cScores != iScore);
-      EBM_ASSERT(std::isnan(gain) || 0 <= gain);
+            pBestSplitsCur->SetBinPosition(ppBinCur);
+            pBestSplitsCur->SetIncDirectionBytes(incDirectionBytes);
 
-      if(!bLegal || binInc.GetCountSamples() < cSamplesLeafMin) {
-         goto next;
+            pBestSplitsCur->GetBinSum()->Copy(cScores, binInc, aIncGradHess);
+
+            pBestSplitsCur = IndexSplitPosition(pBestSplitsCur, cBytesPerSplitPosition);
+         } else {
+            EBM_ASSERT(!std::isnan(gain));
+         }
+
+      next:;
+         ppBinCur = IndexByte(ppBinCur, incDirectionBytes);
+      } while(ppBinLast != ppBinCur);
+
+   done:;
+
+      if(pMissingValueTreeNode != pTreeNode || incDirectionBytes < ptrdiff_t{0}) {
+         break;
       }
 
-      if(UNLIKELY(/* NaN */ !LIKELY(gain < bestGain))) {
-         // propagate NaN values since we stop boosting when we see them
+      // reverse direction
+      incDirectionBytes = -incDirectionBytes;
+      monotoneAdjusted = -monotoneAdjusted;
+      ppBinCur = pTreeNode->BEFORE_GetBinLast();
+      ppBinLast = pTreeNode->BEFORE_GetBinFirst();
 
-         pBestSplitsCur = UNPREDICTABLE(bestGain == gain) ? pBestSplitsCur : pBestSplitsStart;
-         bestGain = gain;
-
-         pBestSplitsCur->SetBinPosition(ppBinCur);
-         pBestSplitsCur->SetIncDirectionBytes(incDirectionBytes);
-
-         pBestSplitsCur->GetBinSum()->Copy(cScores, binInc, aIncGradHess);
-
-         pBestSplitsCur = IndexSplitPosition(pBestSplitsCur, cBytesPerSplitPosition);
-      } else {
-         EBM_ASSERT(!std::isnan(gain));
-      }
-
-   next:;
-      ppBinCur = IndexByte(ppBinCur, incDirectionBytes);
-   } while(ppBinLast != ppBinCur);
-
-done:;
+      binInc.Copy(cScores, *aBins, aBins->GetGradientPairs(), aIncGradHess);
+      cSamplesDec = binParent.GetCountSamples() - aBins->GetCountSamples();
+   }
 
    if(UNLIKELY(pBestSplitsStart == pBestSplitsCur)) {
       // no valid splits found
@@ -606,6 +675,10 @@ done:;
       pLeftChild->BEFORE_SetBinLast(ppBinLeftLast);
    }
 
+   if(pMissingValueTreeNode == pTreeNode) {
+      *ppMissingValueTreeNode = pIncChild;
+   }
+
    memcpy(pIncChild->GetBin(), pBestSplitsStart->GetBinSum(), cBytesPerBin);
 
    pDecChild->GetBin()->SetCountSamples(binParent.GetCountSamples() - pBestSplitsStart->GetBinSum()->GetCountSamples());
@@ -700,6 +773,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
    static ErrorEbm Func(RandomDeterministic* const pRng,
          BoosterShell* const pBoosterShell,
+         bool bMissing,
          bool bNominal,
          const TermBoostFlags flags,
          const size_t cBins,
@@ -726,6 +800,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
+      // Disable missing if bNominal since we'll treat missing as just any categorical bin.
+      // Disable missing if there are only 2 bins, because we'll end up just combining the bins always then.
+      bMissing = bMissing && !bNominal && 2 != cBins && (0 != (TermBoostFlags_MissingLossguide & flags));
+
 #ifndef NDEBUG
       pRootTreeNode->SetDebugProgression(0);
 #endif // NDEBUG
@@ -738,11 +816,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const ppBinsEnd =
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBinsEnd =
             apBins + cBins;
 
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBin = apBins;
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pBin = aBins;
+
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
+      if(bMissing) {
+         pMissingValueTreeNode = pRootTreeNode;
+         pBin = IndexBin(pBin, cBytesPerBin);
+         --ppBinsEnd;
+      }
       do {
          *ppBin = pBin;
          pBin = IndexBin(pBin, cBytesPerBin);
@@ -778,7 +863,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             regAlpha,
             regLambda,
             deltaStepMax,
-            monotoneDirection);
+            monotoneDirection,
+            &pMissingValueTreeNode);
       size_t cSplitsRemaining = cSplitsMax;
       FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
@@ -848,7 +934,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      regAlpha,
                      regLambda,
                      deltaStepMax,
-                     monotoneDirection);
+                     monotoneDirection,
+                     &pMissingValueTreeNode);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -873,7 +960,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      regAlpha,
                      regLambda,
                      deltaStepMax,
-                     monotoneDirection);
+                     monotoneDirection,
+                     &pMissingValueTreeNode);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -904,7 +992,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-      const size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
+      size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
+      if(nullptr != pMissingValueTreeNode) {
+         ++cSlices; // always add a cut at the missing bin
+      }
       return Flatten<bHessian>(pBoosterShell,
             bNominal,
             flags,
@@ -914,12 +1005,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             iDimension,
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(ppBinsEnd),
+            pMissingValueTreeNode->Downgrade(),
             cSlices);
    }
 };
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bMissing,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -946,6 +1039,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<true, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -964,6 +1058,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // 3 classes
          error = PartitionOneDimensionalBoostingInternal<true, 3>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -982,6 +1077,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // muticlass
          error = PartitionOneDimensionalBoostingInternal<true, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -1001,6 +1097,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<false, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -1019,6 +1116,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          error = PartitionOneDimensionalBoostingInternal<false, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,

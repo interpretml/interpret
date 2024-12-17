@@ -77,6 +77,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bMissing,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -196,6 +197,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell,
 
 static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bMissing,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -224,6 +226,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
 
    error = PartitionOneDimensionalBoosting(pRng,
          pBoosterShell,
+         bMissing,
          bNominal,
          flags,
          cBins,
@@ -723,8 +726,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
    if(flags &
          ~(TermBoostFlags_PurifyGain | TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableCategorical |
-               TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
-               TermBoostFlags_RandomSplits)) {
+               TermBoostFlags_MissingLossguide | TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate |
+               TermBoostFlags_GradientSums | TermBoostFlags_RandomSplits)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 
@@ -800,6 +803,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // this initialization isn't required, but this variable ends up touching a lot of downstream state
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t{0};
+   bool bMissing = false;
    bool bNominal = false;
    MonotoneDirection monotoneDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
@@ -851,6 +855,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                   iDimensionImportant = iDimensionInit;
                   cSignificantBinCount = cBins;
+                  bMissing = pFeature->IsMissing();
                   bNominal = pFeature->IsNominal();
                   monotoneDirection |= featureDirection;
                   EBM_ASSERT(nullptr != pLeavesMax);
@@ -1160,6 +1165,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
                error = BoostSingleDimensional(pRng,
                      pBoosterShell,
+                     bMissing,
                      bNominal,
                      flags,
                      cSignificantBinCount,

@@ -844,7 +844,8 @@ ErrorEbm BoosterCore::Create(void* const rng,
 
             const size_t cSingleDimensionSplitsMax = cSingleDimensionBinsMax - 1;
             const size_t cBytesPerSplitPosition = GetSplitPositionSize(bHessian, cScores);
-            if(IsMultiplyError(cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
+            // for missing values we can traverse in reverse and examine 2x the number of locations
+            if(IsMultiplyError(size_t{2}, cBytesPerSplitPosition, cSingleDimensionSplitsMax)) {
                LOG_0(Trace_Warning,
                      "WARNING BoosterCore::Create IsMultiplyError(cBytesPerSplitPosition, "
                      "cSingleDimensionSplitsMax)");
@@ -853,7 +854,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
             // TODO : someday add equal gain multidimensional randomized picking.  I think for that we should
             // generate
             //        random numbers as we find equal gains, so we won't need this memory if we do that
-            pBoosterCore->m_cBytesSplitPositions = cBytesPerSplitPosition * cSingleDimensionSplitsMax;
+            pBoosterCore->m_cBytesSplitPositions = size_t{2} * cBytesPerSplitPosition * cSingleDimensionSplitsMax;
 
             // If we have N bins, then we can have at most N - 1 splits.
             // At maximum if all splits are made, then we'll have a tree with N - 1 nodes.
