@@ -130,7 +130,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
 #ifndef NDEBUG
    auto* const pRootTreeNodeDebug = pBoosterShell->GetTreeNodesTemp<bHessian>();
-   size_t cSamplesExpectedDebug = pRootTreeNodeDebug->GetBin()->GetCountSamples();
+   size_t cSamplesExpectedDebug = static_cast<size_t>(pRootTreeNodeDebug->GetBin()->GetCountSamples());
    size_t cSamplesTotalDebug = 0;
 #endif // NDEBUG
 
@@ -241,7 +241,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          EBM_ASSERT(ppBinLast < ppBinsEnd);
 
 #ifndef NDEBUG
-         cSamplesTotalDebug += pTreeNode->GetBin()->GetCountSamples();
+         cSamplesTotalDebug += static_cast<size_t>(pTreeNode->GetBin()->GetCountSamples());
 #endif // NDEBUG
 
          size_t iEdge;
