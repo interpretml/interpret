@@ -64,6 +64,11 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return this->BEFORE_GetBinLast() != this->BEFORE_GetBinFirst();
    }
 
+   inline bool AFTER_IsSplittable() const {
+      EBM_ASSERT(1 == m_debugProgressionStage);
+      return 0.0 != m_UNION.m_afterGainCalc.m_splitGain;
+   }
+
    inline const void* DANGEROUS_GetBinLastOrChildren() const {
       EBM_ASSERT(1 == m_debugProgressionStage);
       return pPointerBinLastOrChildren;

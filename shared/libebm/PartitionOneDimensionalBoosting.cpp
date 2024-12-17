@@ -182,6 +182,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          // if the pointer points to the space within the bins, then the TreeNode could not be split
          // and this TreeNode never had children and we never wrote a pointer to the children in this memory
          if(pBinLastOrChildren < apBins || ppBinsEnd <= pBinLastOrChildren) {
+            EBM_ASSERT(pTreeNode->AFTER_IsSplittable());
             EBM_ASSERT(IndexTreeNode(pTreeNode, cBytesPerTreeNode) <= pBinLastOrChildren &&
                   pBinLastOrChildren <=
                         IndexTreeNode(pRootTreeNode, pBoosterCore->GetCountBytesTreeNodes() - cBytesPerTreeNode));
@@ -190,6 +191,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             // We can retrieve the split location by looking at where the right child would end its range
             const auto* const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
             pBinLastOrChildren = pRightChild->BEFORE_GetBinLast();
+         } else {
+            EBM_ASSERT(!pTreeNode->AFTER_IsSplittable());
          }
          const auto* const* const ppBinLast =
                reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(pBinLastOrChildren);
