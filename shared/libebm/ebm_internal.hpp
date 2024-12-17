@@ -42,9 +42,6 @@ typedef double FloatPrecomp;
 
 // TODO: search on all my epsilon values and see if they are being used consistently
 
-// gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that
-// we can't confuse it with small negative values close to zero that might occur due to numeric instability
-static constexpr FloatCalc k_illegalGainFloat = std::numeric_limits<FloatCalc>::lowest();
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
 
 #ifndef NDEBUG

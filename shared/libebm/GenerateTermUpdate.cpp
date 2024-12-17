@@ -1194,7 +1194,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
             // gain should be +inf if there was an overflow in our callees
             EBM_ASSERT(!std::isnan(gain));
-            EBM_ASSERT(0 <= gain);
+            EBM_ASSERT(0 == gain || k_gainMin <= gain);
 
             // this could re-promote gain to be +inf again if weightTotal < 1.0
             // do the sample count inversion here in case adding all the avgeraged gains pushes us into +inf

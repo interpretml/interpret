@@ -395,7 +395,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
-   EBM_ASSERT(FloatCalc{0} <= k_gainMin);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= k_gainMin);
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
    EBM_ASSERT(ppBinLast != ppBinCur); // then we would be non-splitable and would have exited above
@@ -520,7 +520,7 @@ done:;
       pTreeNode->AFTER_RejectSplit();
       return 1;
    }
-   EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
+   EBM_ASSERT(std::isnan(bestGain) || k_gainMin <= bestGain);
 
    if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<FloatCalc>::max()))) {
       // this tests for NaN and +inf
@@ -558,7 +558,7 @@ done:;
          k_epsilonNegativeGainAllowed <= bestGain);
    EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
 
-   EBM_ASSERT(FloatCalc{0} <= k_gainMin);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= k_gainMin);
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= bestGain))) {
       // do not allow splits on gains that are too small
       // also filter out slightly negative numbers that can arrise from floating point noise
@@ -574,7 +574,8 @@ done:;
    }
    EBM_ASSERT(!std::isnan(bestGain));
    EBM_ASSERT(!std::isinf(bestGain));
-   EBM_ASSERT(0 <= bestGain);
+   EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= bestGain);
+   EBM_ASSERT(k_gainMin <= bestGain);
 
    const size_t cTies = CountSplitPositions(pBestSplitsCur, pBestSplitsStart, cBytesPerSplitPosition);
    if(UNLIKELY(1 < cTies)) {

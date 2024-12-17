@@ -385,7 +385,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
       // TODO: we should calculate the default partial gain before splitting anything. Once we have that
       // number we can calculate the minimum gain we need to reach k_gainMin after the cuts are made
       // which will allow us to avoid some work when the eventual gain will be less than our minimum
-      FloatCalc bestGain = -std::numeric_limits<double>::infinity(); // do not allow bad cuts that lead to negative gain
+      FloatCalc bestGain = -std::numeric_limits<double>::infinity();
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
@@ -813,8 +813,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
       }
    done:;
 
-      EBM_ASSERT(std::isnan(bestGain) || k_illegalGainFloat == bestGain || FloatCalc{0} <= bestGain);
-
       // the bin before the aAuxiliaryBins is the last summation bin of aBinsBase,
       // which contains the totals of all bins
       const auto* const pTotal = NegativeIndexBin(aAuxiliaryBins, cBytesPerBin);
@@ -829,15 +827,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
       const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
       *pTotalGain = 0;
-      EBM_ASSERT(FloatCalc{0} <= k_gainMin);
+      EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= k_gainMin);
       if(LIKELY(/* NaN */ !UNLIKELY(bestGain < k_gainMin))) {
-         EBM_ASSERT(std::isnan(bestGain) || 0 <= bestGain);
+         EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatCalc>::min() <= bestGain);
 
          // signal that we've hit an overflow.  Use +inf here since our caller likes that and will flip to -inf
          *pTotalGain = std::numeric_limits<double>::infinity();
          if(LIKELY(/* NaN */ bestGain <= std::numeric_limits<FloatCalc>::max())) {
             EBM_ASSERT(!std::isnan(bestGain));
-            EBM_ASSERT(0 <= bestGain);
+            EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= bestGain);
             EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
 
             if(0 == (TermBoostFlags_PurifyGain & flags)) {
@@ -936,8 +934,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
          } else {
             EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<FloatCalc>::infinity() == bestGain);
          }
-      } else {
-         EBM_ASSERT(!std::isnan(bestGain));
       }
 
       // there were no good splits found

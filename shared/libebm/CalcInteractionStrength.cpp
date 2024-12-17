@@ -671,7 +671,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          return error;
       }
       EBM_ASSERT(!std::isnan(bestGain));
-      EBM_ASSERT(0 <= bestGain);
+      EBM_ASSERT(0 == bestGain || std::numeric_limits<FloatCalc>::min() <= bestGain);
    }
 
 #ifndef NDEBUG
@@ -693,11 +693,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
    bestGain *= gradientConstant;
 
    if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
-      // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being
+      // We simplify our caller's handling by returning -lowest as our overflow indicator. -lowest will sort to being
       // the least important item, which is good, but it also signals an overflow without the weirness of NaNs.
       EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
       bestGain = k_illegalGainDouble;
-   } else if(UNLIKELY(bestGain < 0.0)) {
+   } else if(UNLIKELY(bestGain < std::numeric_limits<FloatCalc>::min())) {
       // gain can't mathematically be legally negative, but it can be here in the following situations:
       //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
       //      noise that makes this slightly negative
@@ -710,16 +710,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       EBM_ASSERT(!std::isnan(bestGain));
       // make bestGain k_illegalGainDouble if it's -infinity, otherwise make it zero
       bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
-   } else {
-      EBM_ASSERT(!std::isnan(bestGain));
-      EBM_ASSERT(!std::isinf(bestGain));
    }
+
+   EBM_ASSERT(!std::isnan(bestGain));
+   EBM_ASSERT(!std::isinf(bestGain));
+   EBM_ASSERT(k_illegalGainDouble == bestGain || 0.0 == bestGain || std::numeric_limits<FloatCalc>::min() <= bestGain);
 
    if(nullptr != avgInteractionStrengthOut) {
       *avgInteractionStrengthOut = bestGain;
    }
 
-   EBM_ASSERT(k_illegalGainDouble == bestGain || 0.0 <= bestGain);
    LOG_COUNTED_N(pInteractionShell->GetPointerCountLogExitMessages(),
          Trace_Info,
          Trace_Verbose,

@@ -21,8 +21,7 @@ static_assert(std::numeric_limits<double>::is_iec559,
       "If IEEE 754 isn't guaranteed, then we can't use or compare infinity values in any standard way. "
       "We can't even guarantee that infinity exists as a concept.");
 
-// TODO: change this to k_gainMin = std::numeric_limits<FloatCalc>::min()
-static constexpr FloatCalc k_gainMin = 0;
+static constexpr FloatCalc k_gainMin = std::numeric_limits<FloatCalc>::min();
 
 // - most compilers have flags that give unspecified behavior when either NaN or +-infinity are generated,
 //   or propagated, or in conditional statements involving them.  Our code can't tolerate these switches being
