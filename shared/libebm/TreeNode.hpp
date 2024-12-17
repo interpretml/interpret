@@ -31,6 +31,12 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
+   inline void Init() {
+#ifndef NDEBUG
+      m_debugProgressionStage = 0;
+#endif // NDEBUG
+   }
+
    inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* BEFORE_GetBinFirst() const {
       EBM_ASSERT(0 == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
@@ -80,25 +86,31 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
-      EBM_ASSERT(FloatMain{0} <= splitGain);
+      EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= splitGain);
 
       return splitGain;
    }
    inline void AFTER_SetSplitGain(const FloatMain splitGain) {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(0 == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = 1;
+#endif // NDEBUG
 
       // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
 
       // our priority queue cannot handle NaN values so we filter them out before adding them
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
-      EBM_ASSERT(FloatMain{0} <= splitGain);
+      EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= splitGain);
 
       m_UNION.m_afterGainCalc.m_splitGain = splitGain;
    }
 
    inline void AFTER_RejectSplit() {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(0 == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = 1;
+#endif // NDEBUG
 
       // This TreeNode could not be split, so it won't be added to the priority queue, and it does not have a gain.
       //
@@ -131,7 +143,10 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return m_UNION.m_deconstruct.m_pParent;
    }
    inline void DECONSTRUCT_SetParent(TreeNode* const pParent) {
-      EBM_ASSERT(2 == m_debugProgressionStage);
+      EBM_ASSERT(1 == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = 2;
+#endif // NDEBUG
       m_UNION.m_deconstruct.m_pParent = pParent;
    }
 
@@ -141,13 +156,6 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return reinterpret_cast<TreeNode<bHessian, cNewCompilerScores>*>(this);
    }
    inline TreeNode<bHessian, 1>* Downgrade() { return reinterpret_cast<TreeNode<bHessian, 1>*>(this); }
-
-#ifndef NDEBUG
-   inline void SetDebugProgression(const int stage) {
-      EBM_ASSERT(0 == stage || m_debugProgressionStage < stage); // always progress after initialization
-      m_debugProgressionStage = stage;
-   }
-#endif // NDEBUG
 
  private:
    struct BeforeGainCalc final {

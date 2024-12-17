@@ -174,10 +174,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    while(true) {
       if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
-#ifndef NDEBUG
-         pTreeNode->SetDebugProgression(2);
-#endif // NDEBUG
-
          pTreeNode->DECONSTRUCT_SetParent(pParent);
          pParent = pTreeNode;
          pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren());
@@ -324,10 +320,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          monotoneDirection);
 
    if(!pTreeNode->BEFORE_IsSplittable()) {
-#ifndef NDEBUG
-      pTreeNode->SetDebugProgression(1);
-#endif // NDEBUG
-
       pTreeNode->AFTER_RejectSplit();
       return 1;
    }
@@ -339,9 +331,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
 
    auto* const pLeftChild = GetLeftNode(pTreeNodeScratchSpace);
-#ifndef NDEBUG
-   pLeftChild->SetDebugProgression(0);
-#endif // NDEBUG
+   pLeftChild->Init();
 
    Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)> binParent;
    Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)> binInc;
@@ -368,10 +358,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
    auto* const pRightChild = GetRightNode(pTreeNodeScratchSpace, cBytesPerTreeNode);
-
-#ifndef NDEBUG
-   pRightChild->SetDebugProgression(0);
-#endif // NDEBUG
+   pRightChild->Init();
    pRightChild->BEFORE_SetBinLast(ppBinLast);
 
    MonotoneDirection monotoneAdjusted = monotoneDirection;
@@ -513,10 +500,6 @@ done:;
       // no valid splits found
       EBM_ASSERT(k_gainMin == bestGain);
 
-#ifndef NDEBUG
-      pTreeNode->SetDebugProgression(1);
-#endif // NDEBUG
-
       pTreeNode->AFTER_RejectSplit();
       return 1;
    }
@@ -527,10 +510,6 @@ done:;
 
       // we need this test since the priority queue in the function that calls us cannot accept a NaN value
       // since we would break weak ordering with non-ordered NaN comparisons, thus create undefined behavior
-
-#ifndef NDEBUG
-      pTreeNode->SetDebugProgression(1);
-#endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
       return -1; // exit boosting with overflow
@@ -562,10 +541,6 @@ done:;
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= bestGain))) {
       // do not allow splits on gains that are too small
       // also filter out slightly negative numbers that can arrise from floating point noise
-
-#ifndef NDEBUG
-      pTreeNode->SetDebugProgression(1);
-#endif // NDEBUG
 
       pTreeNode->AFTER_RejectSplit();
 
@@ -625,12 +600,9 @@ done:;
 
    // IMPORTANT!! : We need to finish all our calls that use pTreeNode->m_UNION.m_beforeGainCalc BEFORE setting
    // anything in m_UNION.m_afterGainCalc as we do below this comment!
-#ifndef NDEBUG
-   pTreeNode->SetDebugProgression(1);
-#endif // NDEBUG
 
-   pTreeNode->AFTER_SetChildren(pTreeNodeScratchSpace);
    pTreeNode->AFTER_SetSplitGain(bestGain);
+   pTreeNode->AFTER_SetChildren(pTreeNodeScratchSpace);
 
    LOG_N(Trace_Verbose, "Exited FindBestSplitGain: gain=%le", bestGain);
 
@@ -723,13 +695,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
       auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
+      pRootTreeNode->Init();
 
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
-
-#ifndef NDEBUG
-      pRootTreeNode->SetDebugProgression(0);
-#endif // NDEBUG
 
       auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
