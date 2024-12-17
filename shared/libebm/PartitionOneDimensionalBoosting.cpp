@@ -1005,7 +1005,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             iDimension,
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(ppBinsEnd),
-            pMissingValueTreeNode->Downgrade(),
+            nullptr != pMissingValueTreeNode ? pMissingValueTreeNode->Downgrade() : nullptr,
             cSlices);
    }
 };
