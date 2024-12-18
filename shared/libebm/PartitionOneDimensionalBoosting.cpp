@@ -199,7 +199,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             const auto* const pRightChild = GetRightNode(pChildren, cBytesPerTreeNode);
             ppBinLast = pRightChild->BEFORE_GetBinLast();
          } else {
-            ppBinLast = pTreeNode->AFTER_GetBinLast();
+            ppBinLast = pTreeNode->BEFORE_GetBinLast();
          }
 
          EBM_ASSERT(apBins <= ppBinLast);
@@ -768,7 +768,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          // our priority queue comparison function cannot handle NaN gains so we filter out before
          EBM_ASSERT(!std::isnan(pRootTreeNode->AFTER_GetSplitGain()));
          EBM_ASSERT(!std::isinf(pRootTreeNode->AFTER_GetSplitGain()));
-         EBM_ASSERT(0 <= pRootTreeNode->AFTER_GetSplitGain());
+         EBM_ASSERT(std::numeric_limits<FloatMain>::min() <= pRootTreeNode->AFTER_GetSplitGain());
 
          try {
             // TODO: someday see if we can replace this with an in-class priority queue that stores it's info inside
@@ -807,7 +807,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                const FloatCalc totalGainUpdate = pTreeNode->AFTER_GetSplitGain();
                EBM_ASSERT(!std::isnan(totalGainUpdate));
                EBM_ASSERT(!std::isinf(totalGainUpdate));
-               EBM_ASSERT(0 <= totalGainUpdate);
+               EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= totalGainUpdate);
                totalGain += totalGainUpdate;
 
                auto* const pChildren = pTreeNode->AFTER_GetChildren();
@@ -835,7 +835,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pLeftChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pLeftChild->AFTER_GetSplitGain()));
-                  EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
+                  EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= pLeftChild->AFTER_GetSplitGain());
                   nodeGainRanking.push(pLeftChild->Downgrade());
                }
 
@@ -858,7 +858,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   // our priority queue comparison function cannot handle NaN gains so we filter out before
                   EBM_ASSERT(!std::isnan(pRightChild->AFTER_GetSplitGain()));
                   EBM_ASSERT(!std::isinf(pRightChild->AFTER_GetSplitGain()));
-                  EBM_ASSERT(0 <= pRightChild->AFTER_GetSplitGain());
+                  EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= pRightChild->AFTER_GetSplitGain());
                   nodeGainRanking.push(pRightChild->Downgrade());
                }
 
