@@ -180,9 +180,9 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    while(true) {
       if(UNPREDICTABLE(pTreeNode->AFTER_IsSplit())) {
-         pTreeNode->DECONSTRUCT_SetParent(pParent);
+         auto* const pLeftChild = pTreeNode->DECONSTRUCT_TraverseLeftAndMark(pParent);
          pParent = pTreeNode;
-         pTreeNode = GetLeftNode(pTreeNode->AFTER_GetChildren());
+         pTreeNode = pLeftChild;
       } else {
          const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinLast;
          // if the pointer points to the space within the bins, then the TreeNode could not be split
@@ -262,8 +262,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                LOG_0(Trace_Verbose, "Exited Flatten");
                return Error_None;
             }
-            auto* pChildren = pTreeNode->AFTER_GetChildren();
-            if(nullptr != pChildren) {
+            if(!pTreeNode->DECONSTRUCT_IsRightChildTraversal()) {
                // we checked earlier that countBins could be converted to a UIntSplit
                if(nullptr == ppBinCur) {
                   EBM_ASSERT(!IsConvertError<UIntSplit>(iEdge));
@@ -271,8 +270,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                   ++pSplit;
                }
                pParent = pTreeNode;
-               pTreeNode->AFTER_SetChildren(nullptr);
-               pTreeNode = GetRightNode(pChildren, cBytesPerTreeNode);
+               pTreeNode = pTreeNode->DECONSTRUCT_TraverseRightAndMark(cBytesPerTreeNode);
                break;
             } else {
                pTreeNode = pTreeNode->DECONSTRUCT_GetParent();
@@ -609,8 +607,7 @@ done:;
    // IMPORTANT!! : We need to finish all our calls that use pTreeNode->m_UNION.m_beforeGainCalc BEFORE setting
    // anything in m_UNION.m_afterGainCalc as we do below this comment!
 
-   pTreeNode->AFTER_SetSplitGain(bestGain);
-   pTreeNode->AFTER_SetChildren(pTreeNodeScratchSpace);
+   pTreeNode->AFTER_SetSplitGain(bestGain, pTreeNodeScratchSpace);
 
    LOG_N(Trace_Verbose, "Exited FindBestSplitGain: gain=%le", bestGain);
 

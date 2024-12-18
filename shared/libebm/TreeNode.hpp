@@ -76,12 +76,8 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    }
 
    inline TreeNode* AFTER_GetChildren() {
-      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
+      EBM_ASSERT(1 == m_debugProgressionStage);
       return reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren);
-   }
-   inline void AFTER_SetChildren(TreeNode* const pChildren) {
-      EBM_ASSERT(1 == m_debugProgressionStage || 2 == m_debugProgressionStage);
-      pPointerBinLastOrChildren = pChildren;
    }
 
    inline FloatMain AFTER_GetSplitGain() const {
@@ -96,7 +92,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
 
       return splitGain;
    }
-   inline void AFTER_SetSplitGain(const FloatMain splitGain) {
+   inline void AFTER_SetSplitGain(const FloatMain splitGain, TreeNode* const pChildren) {
       EBM_ASSERT(0 == m_debugProgressionStage);
 #ifndef NDEBUG
       m_debugProgressionStage = 1;
@@ -108,8 +104,10 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       EBM_ASSERT(!std::isnan(splitGain));
       EBM_ASSERT(!std::isinf(splitGain));
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= splitGain);
+      EBM_ASSERT(nullptr != pChildren);
 
       m_UNION.m_afterGainCalc.m_splitGain = splitGain;
+      pPointerBinLastOrChildren = pChildren;
    }
 
    inline void AFTER_RejectSplit() {
@@ -148,12 +146,27 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       EBM_ASSERT(2 == m_debugProgressionStage);
       return m_UNION.m_deconstruct.m_pParent;
    }
-   inline void DECONSTRUCT_SetParent(TreeNode* const pParent) {
+   inline TreeNode* DECONSTRUCT_TraverseLeftAndMark(TreeNode* const pParent) {
       EBM_ASSERT(1 == m_debugProgressionStage);
 #ifndef NDEBUG
       m_debugProgressionStage = 2;
 #endif // NDEBUG
       m_UNION.m_deconstruct.m_pParent = pParent;
+      // return the left child
+      return GetLeftNode(reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren));
+   }
+
+   inline bool DECONSTRUCT_IsRightChildTraversal() {
+      EBM_ASSERT(2 == m_debugProgressionStage);
+      return nullptr == pPointerBinLastOrChildren;
+   }
+   inline TreeNode* DECONSTRUCT_TraverseRightAndMark(const size_t cBytesPerTreeNode) {
+      EBM_ASSERT(2 == m_debugProgressionStage);
+
+      TreeNode* const pRightChild =
+            GetRightNode(reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren), cBytesPerTreeNode);
+      pPointerBinLastOrChildren = nullptr;
+      return pRightChild;
    }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() { return &m_bin; }
