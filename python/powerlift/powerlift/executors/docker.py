@@ -46,7 +46,8 @@ class InsecureDocker(LocalMachine):
     def __init__(
         self,
         store: Store,
-        image: str = "mcr.microsoft.com/devcontainers/python:latest",
+        # alternative: "mcr.microsoft.com/devcontainers/python:latest"
+        image: str = "mcr.microsoft.com/devcontainers/python:3.12",
         n_running_containers: Optional[int] = None,
         wheel_filepaths: Optional[List[str]] = None,
         docker_db_uri: Optional[str] = None,
@@ -55,7 +56,7 @@ class InsecureDocker(LocalMachine):
 
         Args:
             store (Store): Store that houses trials.
-            image (str, optional): Image to execute in container. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
+            image (str, optional): Image to execute in container. Defaults to "mcr.microsoft.com/devcontainers/python:3.12".
             n_running_containers (int, optional): Max number of containers running simultaneously. Defaults to None.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on docker trial run. Defaults to None.
             docker_db_uri (str, optional): Database URI for container. Defaults to None.

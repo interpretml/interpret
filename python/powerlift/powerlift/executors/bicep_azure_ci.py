@@ -33,8 +33,8 @@ class BicepAzureContainerInstance(Executor):
         mem_size_gb: int = 16,
         # other images available at:
         # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
-        # TODO: change default to mcr.microsoft.com/devcontainers/python:latest
-        image: str = "mcr.microsoft.com/devcontainers/python:latest",
+        # alternative: "mcr.microsoft.com/devcontainers/python:latest"
+        image: str = "mcr.microsoft.com/devcontainers/python:3.12",
         docker_db_uri: Optional[str] = None,
         resource_uris: Optional[List[str]] = None,
         delete_on_complete: bool = True,
@@ -55,7 +55,7 @@ class BicepAzureContainerInstance(Executor):
             n_instances (int, optional): Max number of containers to run simultaneously. Defaults to 1.
             num_cores (int, optional): Number of cores per container. Defaults to 1.
             mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
-            image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:latest".
+            image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:3.12".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             resource_uris (List[str], optional): Azure resources to grant contributor access permissions to.
             delete_on_complete (bool, optional): Delete group containers after completion. Defaults to True.
