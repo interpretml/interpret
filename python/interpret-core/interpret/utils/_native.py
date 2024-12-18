@@ -33,10 +33,11 @@ class Native:
     TermBoostFlags_PurifyGain = 0x00000001
     TermBoostFlags_DisableNewtonGain = 0x00000002
     TermBoostFlags_DisableCategorical = 0x00000004
-    TermBoostFlags_PurifyUpdate = 0x00000008
-    TermBoostFlags_DisableNewtonUpdate = 0x00000010
-    TermBoostFlags_GradientSums = 0x00000020
-    TermBoostFlags_RandomSplits = 0x00000040
+    TermBoostFlags_MissingLossguide = 0x00000008
+    TermBoostFlags_PurifyUpdate = 0x00000010
+    TermBoostFlags_DisableNewtonUpdate = 0x00000020
+    TermBoostFlags_GradientSums = 0x00000040
+    TermBoostFlags_RandomSplits = 0x00000080
 
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000

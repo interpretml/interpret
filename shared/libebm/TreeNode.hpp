@@ -204,11 +204,15 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    }
 
    inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() { return &m_bin; }
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBin() const { return &m_bin; }
 
    template<size_t cNewCompilerScores> inline TreeNode<bHessian, cNewCompilerScores>* Upgrade() {
       return reinterpret_cast<TreeNode<bHessian, cNewCompilerScores>*>(this);
    }
    inline TreeNode<bHessian, 1>* Downgrade() { return reinterpret_cast<TreeNode<bHessian, 1>*>(this); }
+   inline const TreeNode<bHessian, 1>* Downgrade() const {
+      return reinterpret_cast<const TreeNode<bHessian, 1>*>(this);
+   }
 
  private:
    struct BeforeGainCalc final {

@@ -13,6 +13,7 @@ _develop_options = {
     "n_intercept_rounds_initial": 25,
     "n_intercept_rounds_final": 100,
     "intercept_learning_rate": 0.25,
+    "missing_lossguide": False,
     "purify_boosting": False,
     "purify_result": False,
     "randomize_initial_feature_order": True,

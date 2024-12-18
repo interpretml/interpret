@@ -132,6 +132,12 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    ErrorEbm error;
 
+#ifndef NDEBUG
+   auto* const pRootTreeNodeDebug = pBoosterShell->GetTreeNodesTemp<bHessian>();
+   size_t cSamplesExpectedDebug = static_cast<size_t>(pRootTreeNodeDebug->GetBin()->GetCountSamples());
+   size_t cSamplesTotalDebug = 0;
+#endif // NDEBUG
+
    Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
    error = pInnerTermUpdate->SetCountSlices(iDimension, cSlices);
@@ -162,9 +168,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
    }
 
-   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pUpdateScore = aUpdateScore;
-
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
@@ -175,6 +178,9 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    auto* pTreeNode = pRootTreeNode;
 
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
+
+   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore* pUpdateScore = aUpdateScore;
 
    TreeNode<bHessian>* pParent = nullptr;
 
@@ -205,6 +211,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          EBM_ASSERT(apBins <= ppBinLast);
          EBM_ASSERT(ppBinLast < apBins + cBins);
 
+#ifndef NDEBUG
+         cSamplesTotalDebug += static_cast<size_t>(pTreeNode->GetBin()->GetCountSamples());
+#endif // NDEBUG
+
          size_t iEdge;
          const auto* const aGradientPair = pTreeNode->GetBin()->GetGradientPairs();
          size_t iScore;
@@ -214,7 +224,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
          // if bNominal, check the bin above and below for order
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
-         EBM_ASSERT(ppBinLast == apBins + cBins - 1 || *ppBinLast < *(ppBinLast + 1));
+         EBM_ASSERT(ppBinLast == apBins + (cBins - 1) || *ppBinLast < *(ppBinLast + 1));
 
          iEdge = ppBinLast - apBins + 1;
 
@@ -259,6 +269,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
          while(true) {
             if(nullptr == pTreeNode) {
+               EBM_ASSERT(cSamplesTotalDebug == cSamplesExpectedDebug);
+
                LOG_0(Trace_Verbose, "Exited Flatten");
                return Error_None;
             }
@@ -358,6 +370,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       binParent.SetCountSamples(pTreeNode->GetBin()->GetCountSamples());
       binParent.SetWeight(pTreeNode->GetBin()->GetWeight());
    }
+
+   UIntMain cSamplesDec = binParent.GetCountSamples();
    binInc.Zero(cScores, aIncGradHess);
 
    pLeftChild->BEFORE_SetBinFirst(ppBinCur);
@@ -383,8 +397,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
    auto* pBestSplitsStart = pBoosterShell->GetSplitPositionsTemp<bHessian, GetArrayScores(cCompilerScores)>();
    auto* pBestSplitsCur = pBestSplitsStart;
-
-   UIntMain cSamplesDec = binParent.GetCountSamples();
 
    const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
@@ -679,6 +691,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
    static ErrorEbm Func(RandomDeterministic* const pRng,
          BoosterShell* const pBoosterShell,
+         bool bMissing,
          bool bNominal,
          const TermBoostFlags flags,
          const size_t cBins,
@@ -706,6 +719,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
+      // Disable missing if bNominal since we'll treat missing as just any categorical bin.
+      // Disable missing if there are only 2 bins, because we'll end up just combining the bins always then.
+      bMissing = bMissing && !bNominal && 2 != cBins && (0 != (TermBoostFlags_MissingLossguide & flags));
+
       auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
@@ -714,11 +731,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const ppBinsEnd =
-            apBins + cBins;
 
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBin = apBins;
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pBin = aBins;
+
+      size_t cBinsAdjusted = cBins;
+
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBinsEnd =
+            apBins + cBinsAdjusted;
+
       do {
          *ppBin = pBin;
          pBin = IndexBin(pBin, cBytesPerBin);
@@ -880,7 +901,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-      const size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
+      size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
       return Flatten<bHessian>(pBoosterShell,
             bNominal,
             flags,
@@ -900,6 +921,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
+      const bool bMissing,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -926,6 +948,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<true, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -944,6 +967,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // 3 classes
          error = PartitionOneDimensionalBoostingInternal<true, 3>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -962,6 +986,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // muticlass
          error = PartitionOneDimensionalBoostingInternal<true, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -981,6 +1006,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       if(size_t{1} == cRuntimeScores) {
          error = PartitionOneDimensionalBoostingInternal<false, k_oneScore>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
@@ -999,6 +1025,7 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
          // Odd: gradient multiclass. Allow it, but do not optimize for it
          error = PartitionOneDimensionalBoostingInternal<false, k_dynamicScores>::Func(pRng,
                pBoosterShell,
+               bMissing,
                bNominal,
                flags,
                cBins,
