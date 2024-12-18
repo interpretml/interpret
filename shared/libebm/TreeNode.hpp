@@ -22,6 +22,20 @@ namespace DEFINED_ZONE_NAME {
 static bool IsOverflowTreeNodeSize(const bool bHessian, const size_t cScores);
 static size_t GetTreeNodeSize(const bool bHessian, const size_t cScores);
 
+#ifndef NDEBUG
+enum class DebugStage {
+   Initialized = 1,
+   SetFirstOrLastBin = 2,
+   SetFirstAndLastBin = 3,
+   QueuingRejected = 4,
+   Queued = 5,
+   Split = 6,
+   DestructTraversedLeft = 7,
+   DestructTraversedRight = 8,
+   DONE = 99
+};
+#endif // NDEBUG
+
 template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    friend bool IsOverflowTreeNodeSize(const bool, const size_t);
    friend size_t GetTreeNodeSize(const bool, const size_t);
@@ -33,55 +47,65 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
 
    inline void Init() {
 #ifndef NDEBUG
-      m_debugProgressionStage = 0;
+      m_debugProgressionStage = DebugStage::Initialized;
 #endif // NDEBUG
    }
 
    inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* BEFORE_GetBinFirst() const {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::SetFirstAndLastBin == m_debugProgressionStage);
       return m_UNION.m_beforeGainCalc.m_pBinFirst;
    }
    inline void BEFORE_SetBinFirst(
          const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const pBinFirst) {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+#ifndef NDEBUG
+      if(DebugStage::Initialized == m_debugProgressionStage) {
+         m_debugProgressionStage = DebugStage::SetFirstOrLastBin;
+      } else {
+         EBM_ASSERT(DebugStage::SetFirstOrLastBin == m_debugProgressionStage);
+         m_debugProgressionStage = DebugStage::SetFirstAndLastBin;
+      }
+#endif // NDEBUG
       m_UNION.m_beforeGainCalc.m_pBinFirst = pBinFirst;
    }
 
    inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* BEFORE_GetBinLast() const {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::SetFirstAndLastBin == m_debugProgressionStage);
       return reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const*>(
             pPointerBinLastOrChildren);
    }
    inline void BEFORE_SetBinLast(
          const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const pBinLast) {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+#ifndef NDEBUG
+      if(DebugStage::Initialized == m_debugProgressionStage) {
+         m_debugProgressionStage = DebugStage::SetFirstOrLastBin;
+      } else {
+         EBM_ASSERT(DebugStage::SetFirstOrLastBin == m_debugProgressionStage);
+         m_debugProgressionStage = DebugStage::SetFirstAndLastBin;
+      }
+#endif // NDEBUG
       // we aren't going to modify pBinLast, but we're storing it in a shared pointer, so remove the const for now
       pPointerBinLastOrChildren = const_cast<void*>(static_cast<const void*>(pBinLast));
    }
 
-   inline bool BEFORE_IsSplittable() const {
-      EBM_ASSERT(0 == m_debugProgressionStage);
-      return this->BEFORE_GetBinLast() != this->BEFORE_GetBinFirst();
-   }
-
    inline bool AFTER_IsSplittable() const {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(
+            DebugStage::QueuingRejected == m_debugProgressionStage || DebugStage::Queued == m_debugProgressionStage);
       return 0.0 != m_UNION.m_afterGainCalc.m_splitGain;
    }
 
    inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* AFTER_GetBinLast() const {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::QueuingRejected == m_debugProgressionStage);
       return reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const*>(
             pPointerBinLastOrChildren);
    }
 
    inline TreeNode* AFTER_GetChildren() {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::Queued == m_debugProgressionStage);
       return reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren);
    }
 
    inline FloatMain AFTER_GetSplitGain() const {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::Queued == m_debugProgressionStage);
 
       const FloatMain splitGain = m_UNION.m_afterGainCalc.m_splitGain;
 
@@ -93,9 +117,9 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
       return splitGain;
    }
    inline void AFTER_SetSplitGain(const FloatMain splitGain, TreeNode* const pChildren) {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::SetFirstAndLastBin == m_debugProgressionStage);
 #ifndef NDEBUG
-      m_debugProgressionStage = 1;
+      m_debugProgressionStage = DebugStage::Queued;
 #endif // NDEBUG
 
       // this is only called if there is a legal gain value. If the TreeNode cannot be split call AFTER_RejectSplit.
@@ -111,9 +135,9 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    }
 
    inline void AFTER_RejectSplit() {
-      EBM_ASSERT(0 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::SetFirstAndLastBin == m_debugProgressionStage);
 #ifndef NDEBUG
-      m_debugProgressionStage = 1;
+      m_debugProgressionStage = DebugStage::QueuingRejected;
 #endif // NDEBUG
 
       // This TreeNode could not be split, so it won't be added to the priority queue, and it does not have a gain.
@@ -133,23 +157,30 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    }
 
    inline void AFTER_SplitNode() {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::Queued == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = DebugStage::Split;
+#endif // NDEBUG
       m_UNION.m_afterGainCalc.m_splitGain = std::numeric_limits<FloatMain>::quiet_NaN();
    }
 
    inline bool AFTER_IsSplit() const {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::QueuingRejected == m_debugProgressionStage ||
+            DebugStage::Queued == m_debugProgressionStage || DebugStage::Split == m_debugProgressionStage);
       return std::isnan(m_UNION.m_afterGainCalc.m_splitGain);
    }
 
    inline TreeNode* DECONSTRUCT_GetParent() {
-      EBM_ASSERT(2 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::DestructTraversedRight == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = DebugStage::DONE;
+#endif // NDEBUG
       return m_UNION.m_deconstruct.m_pParent;
    }
    inline TreeNode* DECONSTRUCT_TraverseLeftAndMark(TreeNode* const pParent) {
-      EBM_ASSERT(1 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::Split == m_debugProgressionStage);
 #ifndef NDEBUG
-      m_debugProgressionStage = 2;
+      m_debugProgressionStage = DebugStage::DestructTraversedLeft;
 #endif // NDEBUG
       m_UNION.m_deconstruct.m_pParent = pParent;
       // return the left child
@@ -157,11 +188,15 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    }
 
    inline bool DECONSTRUCT_IsRightChildTraversal() {
-      EBM_ASSERT(2 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::DestructTraversedLeft == m_debugProgressionStage ||
+            DebugStage::DestructTraversedRight == m_debugProgressionStage);
       return nullptr == pPointerBinLastOrChildren;
    }
    inline TreeNode* DECONSTRUCT_TraverseRightAndMark(const size_t cBytesPerTreeNode) {
-      EBM_ASSERT(2 == m_debugProgressionStage);
+      EBM_ASSERT(DebugStage::DestructTraversedLeft == m_debugProgressionStage);
+#ifndef NDEBUG
+      m_debugProgressionStage = DebugStage::DestructTraversedRight;
+#endif // NDEBUG
 
       TreeNode* const pRightChild =
             GetRightNode(reinterpret_cast<TreeNode*>(pPointerBinLastOrChildren), cBytesPerTreeNode);
@@ -196,7 +231,7 @@ template<bool bHessian, size_t cCompilerScores = 1> struct TreeNode final {
    };
 
 #ifndef NDEBUG
-   int m_debugProgressionStage;
+   DebugStage m_debugProgressionStage;
 #endif // NDEBUG
 
    void* pPointerBinLastOrChildren;

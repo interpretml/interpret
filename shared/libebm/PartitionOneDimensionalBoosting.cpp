@@ -325,7 +325,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          static_cast<double>(deltaStepMax),
          monotoneDirection);
 
-   if(!pTreeNode->BEFORE_IsSplittable()) {
+   const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
+   const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
+
+   if(ppBinCur == ppBinLast) {
+      // There is just one bin and therefore no splits
       pTreeNode->AFTER_RejectSplit();
       return 1;
    }
@@ -355,9 +359,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       binParent.SetWeight(pTreeNode->GetBin()->GetWeight());
    }
    binInc.Zero(cScores, aIncGradHess);
-
-   const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
-   const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
 
    pLeftChild->BEFORE_SetBinFirst(ppBinCur);
 
@@ -733,7 +734,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       pRootTreeNode->BEFORE_SetBinFirst(apBins);
       pRootTreeNode->BEFORE_SetBinLast(ppBinsEnd - 1);
-      ASSERT_BIN_OK(cBytesPerBin, *pRootTreeNode->BEFORE_GetBinLast(), pBoosterShell->GetDebugMainBinsEnd());
+      ASSERT_BIN_OK(cBytesPerBin, *(ppBinsEnd - 1), pBoosterShell->GetDebugMainBinsEnd());
 
       SumAllBins<bHessian, cCompilerScores>(
             pBoosterShell, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
@@ -809,9 +810,11 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                EBM_ASSERT(0 <= totalGainUpdate);
                totalGain += totalGainUpdate;
 
-               pTreeNode->AFTER_SplitNode();
+               auto* const pChildren = pTreeNode->AFTER_GetChildren();
+               auto* const pLeftChild = GetLeftNode(pChildren);
+               auto* const pRightChild = GetRightNode(pChildren, cBytesPerTreeNode);
 
-               auto* const pLeftChild = GetLeftNode(pTreeNode->AFTER_GetChildren());
+               pTreeNode->AFTER_SplitNode();
 
                retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
                      pBoosterShell,
@@ -835,8 +838,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   EBM_ASSERT(0 <= pLeftChild->AFTER_GetSplitGain());
                   nodeGainRanking.push(pLeftChild->Downgrade());
                }
-
-               auto* const pRightChild = GetRightNode(pTreeNode->AFTER_GetChildren(), cBytesPerTreeNode);
 
                retFind = FindBestSplitGain<bHessian, cCompilerScores>(pRng,
                      pBoosterShell,
