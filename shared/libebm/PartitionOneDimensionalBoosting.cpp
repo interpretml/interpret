@@ -126,6 +126,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
+   EBM_ASSERT(!bNominal || nullptr == pMissingValueTreeNode);
    EBM_ASSERT(nullptr != apBins);
    EBM_ASSERT(1 <= cSlices);
    EBM_ASSERT(2 <= cBins);
@@ -808,6 +809,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
       if(bMissing) {
          pMissingValueTreeNode = pRootTreeNode;
+         // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous region.
          pBin = IndexBin(pBin, cBytesPerBin);
          --cBinsAdjusted;
       }

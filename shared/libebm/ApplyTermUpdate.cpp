@@ -445,9 +445,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetTermUpdateSplits(
 
    size_t cBins = pTerm->GetTermFeatures()[iDimension].m_pFeature->GetCountBins();
    const bool bMissing = pTerm->GetTermFeatures()[iDimension].m_pFeature->IsMissing();
-   const bool bUnknown = pTerm->GetTermFeatures()[iDimension].m_pFeature->IsUnknown();
+   const bool bUnseen = pTerm->GetTermFeatures()[iDimension].m_pFeature->IsUnseen();
    cBins += bMissing ? size_t{0} : size_t{1};
-   cBins += bUnknown ? size_t{0} : size_t{1};
+   cBins += bUnseen ? size_t{0} : size_t{1};
    cBins = size_t{0} == cBins ? size_t{1} : cBins; // for our purposes here, 0 bins means 0 splits
 
    // cBins started from IntEbm, so we should be able to convert back safely

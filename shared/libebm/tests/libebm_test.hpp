@@ -176,12 +176,12 @@ class FeatureTest final {
  public:
    const IntEbm m_countBins;
    const bool m_bMissing;
-   const bool m_bUnknown;
+   const bool m_bUnseen;
    const bool m_bNominal;
 
    inline FeatureTest(
-         const IntEbm countBins, const bool bMissing = true, const bool bUnknown = true, const bool bNominal = false) :
-         m_countBins(countBins), m_bMissing(bMissing), m_bUnknown(bUnknown), m_bNominal(bNominal) {}
+         const IntEbm countBins, const bool bMissing = true, const bool bUnseen = true, const bool bNominal = false) :
+         m_countBins(countBins), m_bMissing(bMissing), m_bUnseen(bUnseen), m_bNominal(bNominal) {}
 };
 
 class TestSample final {

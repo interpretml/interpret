@@ -373,7 +373,7 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
       IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets);
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes);
@@ -386,7 +386,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
       IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets, IntEbm countBytesAllocated, void* fillMem);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes,

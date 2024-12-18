@@ -2242,14 +2242,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        # the missing and unknown bins are not part of the continuous range
+        # the missing and unseen bins are not part of the continuous range
         y = self.term_scores_[term][1:-1]
         x = np.arange(len(y), dtype=np.int64)
 
         all_weights = self.bin_weights_[term]
         weights = all_weights[1:-1]
 
-        # this should normally be zero, except if there are missing or unknown values
+        # this should normally be zero, except if there are missing or unseen values
         original_mean = np.average(y, weights=weights)
 
         # Fit isotonic regression weighted by training data bin counts

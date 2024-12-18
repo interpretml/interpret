@@ -74,7 +74,7 @@ def convert_categorical_to_continuous(categories):
 
     # there's a super fringe case where two category strings map to the same bin, but
     # one of them is a float and the other is a non-float.  Normally, we'd include the
-    # non-float categorical in the unknowns, but in this case we'd need to include
+    # non-float categorical in the unseens, but in this case we'd need to include
     # a part of a bin.  Handling this just adds too much complexity for the benefit
     # and you could argue that the evidence from the other models is indicating that
     # the string should be closer to zero of the weight from the floating point bin
@@ -190,7 +190,7 @@ def process_bag_terms(intercept, term_scores, bin_weights):
         # importance values, so if we use Xuezhou's algorithm then apply it when generating an explanation
         # instead of here which will make calculating importances faster.
 
-        # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
+        # if the missing/unseen bin has zero weight then whatever number was generated via boosting is
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
 
         restore_missing_value_zeros(scores, weights)

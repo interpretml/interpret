@@ -46,16 +46,16 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
         processing = binning
 
     if processing == "quantile":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 3)
     elif processing == "rounded_quantile":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 3)
     elif processing == "uniform":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_uniform(X_col, max_bins - 3)
     elif processing == "winsorized":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_winsorized(X_col, max_bins - 3)
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
@@ -284,7 +284,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
             max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
             if max_bins < 3:
-                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values."
+                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
                 raise ValueError(msg)
 
             if not X_col.flags.c_contiguous:
@@ -420,9 +420,9 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     keep_bins, old_feature_bin_weights = private_categorical_binning(
                         X_col, sample_weight, noise_scale, max_bins - 1, rng
                     )
-                    unknown_weight = 0
+                    unseen_weight = 0
                     if keep_bins[-1] == "DPOther":
-                        unknown_weight = old_feature_bin_weights[-1]
+                        unseen_weight = old_feature_bin_weights[-1]
                         keep_bins = keep_bins[:-1]
                         old_feature_bin_weights = old_feature_bin_weights[:-1]
 
@@ -431,7 +431,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     feature_bin_weights = np.empty(len(keep_bins) + 2, np.float64)
                     feature_bin_weights[0] = 0
-                    feature_bin_weights[-1] = unknown_weight
+                    feature_bin_weights[-1] = unseen_weight
 
                     categories = list(map(tuple, map(reversed, categories.items())))
                     categories.sort()  # groupby requires sorted data

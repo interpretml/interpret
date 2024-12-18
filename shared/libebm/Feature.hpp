@@ -19,7 +19,7 @@ namespace DEFINED_ZONE_NAME {
 class FeatureBoosting final {
    size_t m_cBins;
    bool m_bMissing;
-   bool m_bUnknown;
+   bool m_bUnseen;
    bool m_bNominal;
 
  public:
@@ -28,10 +28,10 @@ class FeatureBoosting final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   inline void Initialize(const size_t cBins, const bool bMissing, const bool bUnknown, const bool bNominal) noexcept {
+   inline void Initialize(const size_t cBins, const bool bMissing, const bool bUnseen, const bool bNominal) noexcept {
       m_cBins = cBins;
       m_bMissing = bMissing;
-      m_bUnknown = bUnknown;
+      m_bUnseen = bUnseen;
       m_bNominal = bNominal;
    }
 
@@ -39,7 +39,7 @@ class FeatureBoosting final {
 
    inline bool IsMissing() const noexcept { return m_bMissing; }
 
-   inline bool IsUnknown() const noexcept { return m_bUnknown; }
+   inline bool IsUnseen() const noexcept { return m_bUnseen; }
 
    inline bool IsNominal() const noexcept { return m_bNominal; }
 };
@@ -53,7 +53,7 @@ static_assert(
 class FeatureInteraction final {
    size_t m_cBins;
    bool m_bMissing;
-   bool m_bUnknown;
+   bool m_bUnseen;
    bool m_bNominal;
    int m_cBitsRequiredMin;
 
@@ -63,10 +63,10 @@ class FeatureInteraction final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   inline void Initialize(const size_t cBins, const bool bMissing, const bool bUnknown, const bool bNominal) noexcept {
+   inline void Initialize(const size_t cBins, const bool bMissing, const bool bUnseen, const bool bNominal) noexcept {
       m_cBins = cBins;
       m_bMissing = bMissing;
-      m_bUnknown = bUnknown;
+      m_bUnseen = bUnseen;
       m_bNominal = bNominal;
 
       int cBitsRequiredMin = 0;
@@ -84,7 +84,7 @@ class FeatureInteraction final {
 
    inline bool IsMissing() const noexcept { return m_bMissing; }
 
-   inline bool IsUnknown() const noexcept { return m_bUnknown; }
+   inline bool IsUnseen() const noexcept { return m_bUnseen; }
 
    inline bool IsNominal() const noexcept { return m_bNominal; }
 };

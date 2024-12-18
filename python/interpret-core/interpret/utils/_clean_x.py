@@ -85,7 +85,7 @@ except ImportError:
 #   comparisons without examining all the internal dictionary definitions, and we can minimize
 #   work done by having a single object with a single id(..) pointer that is shared between prior_categories objects
 #   if they are identical at model load time.
-# - if we recieve an unknown float64 value in a 'nominal' or 'ordinal', then check if all the categorical
+# - if we recieve an unseen float64 value in a 'nominal' or 'ordinal', then check if all the categorical
 #   value strings are convertible to float64.  If that's the case then find the mid-point between the categories
 #   after they are converted to strings and create a pseudo-continuous value of the feature and figure out where
 #   the previously unseen float64 should go.  WE do need to sort the category strings by float64, but we don't
@@ -554,8 +554,8 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
             encoded = encoded_tmp
         else:
             bad = np.full(len(encoded), None, dtype=np.object_)
-            unknowns = encoded < 0
-            np.place(bad, unknowns, uniques[indexes[unknowns]])
+            unseens = encoded < 0
+            np.place(bad, unseens, uniques[indexes[unseens]])
     else:
         bad = None
         if nonmissings is not None:
@@ -657,23 +657,23 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     else:
         mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
         if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
-            unknowns = len(categories) <= X_col
+            unseens = len(categories) <= X_col
             bad = np.full(len(X_col), None, dtype=np.object_)
-            bad[unknowns] = pd_categories[X_col[unknowns]]
+            bad[unseens] = pd_categories[X_col[unseens]]
             # avoid overflows for np.int8
             X_col = X_col.astype(dtype=np.int64, copy=False)
             X_col = X_col + 1
-            X_col[unknowns] = -1
+            X_col[unseens] = -1
             return X_col, bad
 
     mapping = np.insert(mapping, 0, 0)
     encoded = mapping[X_col + 1]
 
     bad = None
-    unknowns = encoded < 0
-    if unknowns.any():
+    unseens = encoded < 0
+    if unseens.any():
         bad = np.full(len(X_col), None, dtype=np.object_)
-        bad[unknowns] = pd_categories[X_col[unknowns]]
+        bad[unseens] = pd_categories[X_col[unseens]]
 
     return encoded, bad
 

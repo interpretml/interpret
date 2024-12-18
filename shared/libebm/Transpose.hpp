@@ -72,13 +72,13 @@ extern void Transpose(const Term* const pTerm, const size_t cScores, TIncrement*
       const size_t cBinsReduced = pFeature->GetCountBins();
       EBM_ASSERT(1 <= cBinsReduced); // otherwise we should have exited in the caller
       bool bMissing = pFeature->IsMissing();
-      bool bUnknown = pFeature->IsUnknown();
-      const size_t cBins = cBinsReduced + (bMissing ? size_t{0} : size_t{1}) + (bUnknown ? size_t{0} : size_t{1});
-      EBM_ASSERT(2 <= cBins); // just missing and unknown required
+      bool bUnseen = pFeature->IsUnseen();
+      const size_t cBins = cBinsReduced + (bMissing ? size_t{0} : size_t{1}) + (bUnseen ? size_t{0} : size_t{1});
+      EBM_ASSERT(2 <= cBins); // just missing and unseen required
 
       pDimInit->cBins = cBins;
       pDimInit->bDropFirst = !bMissing;
-      pDimInit->bDropLast = !bUnknown;
+      pDimInit->bDropLast = !bUnseen;
 
       pDimInit->cBinsReduced = cBinsReduced;
       pDimInit->iBinsRemaining = cBins;
@@ -144,7 +144,7 @@ extern void Transpose(const Term* const pTerm, const size_t cScores, TIncrement*
 
             // we're moving into the last position
             if(!pDim->bDropLast) {
-               // there is a corner case to handle where we're leaving the missing and entering the unknown bin
+               // there is a corner case to handle where we're leaving the missing and entering the unseen bin
                if(1 != pDim->cBinsReduced) {
                   pStride = reinterpret_cast<TStride*>(reinterpret_cast<char*>(pStride) + pDim->cBytesStride);
                }

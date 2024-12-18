@@ -202,7 +202,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
       size_t iFeatureInitialize = 0;
       do {
          bool bMissing;
-         bool bUnknown;
+         bool bUnseen;
          bool bNominal;
          bool bSparse;
          UIntShared countBins;
@@ -211,7 +211,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
          GetDataSetSharedFeature(pDataSetShared,
                iFeatureInitialize,
                &bMissing,
-               &bUnknown,
+               &bUnseen,
                &bNominal,
                &bSparse,
                &countBins,
@@ -238,7 +238,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(Trace_Info, "INFO InteractionCore::Create feature with 1 value");
          }
-         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnseen, bNominal);
 
          cBinsMax = EbmMax(cBinsMax, cBins);
 

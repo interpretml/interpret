@@ -264,7 +264,7 @@ def test_copy():
 
 
 @pytest.mark.slow
-def test_unknown_multiclass_category():
+def test_unseen_multiclass_category():
     data = iris_classification()
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
@@ -277,7 +277,7 @@ def test_unknown_multiclass_category():
     ]
     X_test["cat_feature"] = [
         "d" for x in range(X_test.shape[0])
-    ]  # Unknown category in test set
+    ]  # Unseen category in test set
 
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
@@ -291,7 +291,7 @@ def test_unknown_multiclass_category():
 
 
 @pytest.mark.slow
-def test_unknown_binary_category():
+def test_unseen_binary_category():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
 
     ebm = ExplainableBoostingClassifier(
@@ -838,8 +838,8 @@ def test_ebm_calibrated_classifier_cv():
     calib.fit(X, y)
 
 
-def test_ebm_unknown_value_at_predict():
-    """Tests if unsigned integers can be handled when unknown values
+def test_ebm_unseen_value_at_predict():
+    """Tests if unsigned integers can be handled when unseen values
     are found by predict.
 
     e.g. feature 3 has only 0's in X but a 1 in X_test.

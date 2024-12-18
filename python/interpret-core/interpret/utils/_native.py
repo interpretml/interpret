@@ -595,11 +595,11 @@ class Native:
             raise Native._get_native_exception(n_bytes, "MeasureDataSetHeader")
         return n_bytes
 
-    def measure_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
+    def measure_feature(self, n_bins, is_missing, is_unseen, is_nominal, bin_indexes):
         n_bytes = self._unsafe.MeasureFeature(
             n_bins,
             is_missing,
-            is_unknown,
+            is_unseen,
             is_nominal,
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
@@ -648,12 +648,12 @@ class Native:
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
     def fill_feature(
-        self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, dataset
+        self, n_bins, is_missing, is_unseen, is_nominal, bin_indexes, dataset
     ):
         return_code = self._unsafe.FillFeature(
             n_bins,
             is_missing,
-            is_unknown,
+            is_unseen,
             is_nominal,
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
@@ -1223,7 +1223,7 @@ class Native:
             ct.c_int64,
             # int32_t isMissing
             ct.c_int32,
-            # int32_t isUnknown
+            # int32_t isUnseen
             ct.c_int32,
             # int32_t isNominal
             ct.c_int32,
@@ -1279,7 +1279,7 @@ class Native:
             ct.c_int64,
             # int32_t isMissing
             ct.c_int32,
-            # int32_t isUnknown
+            # int32_t isUnseen
             ct.c_int32,
             # int32_t isNominal
             ct.c_int32,

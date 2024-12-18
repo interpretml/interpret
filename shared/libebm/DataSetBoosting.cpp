@@ -420,7 +420,7 @@ ErrorEbm DataSetBoosting::InitTermData(const unsigned char* const pDataSetShared
                const size_t iFeature = static_cast<size_t>(indexFeature);
 
                bool bMissing;
-               bool bUnknown;
+               bool bUnseen;
                bool bNominal;
                bool bSparse;
                UIntShared cBinsUnused;
@@ -429,7 +429,7 @@ ErrorEbm DataSetBoosting::InitTermData(const unsigned char* const pDataSetShared
                const void* pFeatureDataFrom = GetDataSetSharedFeature(pDataSetShared,
                      iFeature,
                      &bMissing,
-                     &bUnknown,
+                     &bUnseen,
                      &bNominal,
                      &bSparse,
                      &cBinsUnused,

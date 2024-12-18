@@ -138,7 +138,7 @@ def _harmonize_tensor(
                         len(new_categories) / len(old_reversed[old_bin_idx])
                     )
                 else:
-                    # map to the unknown bin for scores, but take no percentage of the weight
+                    # map to the unseen bin for scores, but take no percentage of the weight
                     percentage.append(0.0)
                 lookup.append(old_bin_idx)
             percentage.append(1.0)

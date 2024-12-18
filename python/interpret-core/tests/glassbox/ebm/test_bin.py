@@ -20,10 +20,10 @@ def test_eval_terms():
     feature_names_in = ["f1", "99", "f3"]
     feature_types_in = ["nominal", "nominal", "continuous"]
 
-    shared_categores = {"a": 1}  # "b" is unknown category
+    shared_categores = {"a": 1}  # "b" is unseen category
     shared_cuts = np.array([8.5], dtype=np.float64)
 
-    # for level 1, "b" is unknown category
+    # for level 1, "b" is unseen category
     # for level 1, we combine "2" and "3" into one category!
     # for level 2, collapse all our categories to keep the tensor small for testing
     bins = [

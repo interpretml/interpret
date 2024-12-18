@@ -76,16 +76,16 @@ static double TestTranspose() {
 
          int cBins;
          bool bMissing;
-         bool bUnknown;
+         bool bUnseen;
          int cExpandedBins;
          do {
             cBins = dimensionsDistributions(testRandom);
             bMissing = 4 <= dimensionsDistributions(testRandom);
-            bUnknown = 4 <= dimensionsDistributions(testRandom);
-            cExpandedBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            bUnseen = 4 <= dimensionsDistributions(testRandom);
+            cExpandedBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
          } while(cExpandedBins < 2);
 
-         features[iDimension].Initialize(cBins, bMissing, bUnknown, EBM_FALSE);
+         features[iDimension].Initialize(cBins, bMissing, bUnseen, EBM_FALSE);
 
          cTensorBins *= cBins;
       }
@@ -117,12 +117,12 @@ static double TestTranspose() {
          for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
             const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
             size_t i = indexIncrement[iDimension];
 
-            if(i == cBins - 1 && !bUnknown) {
+            if(i == cBins - 1 && !bUnseen) {
                --i;
             }
             if(i == 0 && !bMissing) {
@@ -138,9 +138,9 @@ static double TestTranspose() {
          for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
             const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
 
             iFlatIncrement += indexIncrement[iDimension] * cTensorBins;
             iFlatCorrected += indexCorrected[iDimension] * cTensorBins;
@@ -154,9 +154,9 @@ static double TestTranspose() {
          for(iDimension = 0; iDimension < cDimensions; ++iDimension) {
             const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
             size_t i = indexIncrement[iDimension];
             ++i;
             indexIncrement[iDimension] = i;

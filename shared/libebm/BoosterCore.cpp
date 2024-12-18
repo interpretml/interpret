@@ -373,7 +373,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
       size_t iFeatureInitialize = size_t{0};
       do {
          bool bMissing;
-         bool bUnknown;
+         bool bUnseen;
          bool bNominal;
          bool bSparse;
          UIntShared countBins;
@@ -382,7 +382,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
          GetDataSetSharedFeature(pDataSetShared,
                iFeatureInitialize,
                &bMissing,
-               &bUnknown,
+               &bUnseen,
                &bNominal,
                &bSparse,
                &countBins,
@@ -413,7 +413,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
             // the user can specify interactions, so we handle them anyways in a consistent way by boosting on them
             LOG_0(Trace_Info, "INFO BoosterCore::Create feature with 1 value");
          }
-         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnseen, bNominal);
 
          ++iFeatureInitialize;
       } while(cFeatures != iFeatureInitialize);

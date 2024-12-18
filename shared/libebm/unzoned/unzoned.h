@@ -221,7 +221,7 @@ static const size_t k_cFloatSumLimit = 524288;
 
 // It is impossible for us to have tensors with more than k_cDimensionsMax dimensions.
 // Our public C interface passes tensors back and forth with our caller with each dimension having
-// a minimum of two bins, which only occurs for categoricals with just a missing and unknown bin.
+// a minimum of two bins, which only occurs for categoricals with just a missing and unseen bin.
 // This should only occur for nominal cateogricals with only missing values.  Other feature types
 // will have more bins, and thus will be restricted to even less dimensions. If all dimensions had the minimum
 // of two bins, we would need 2^N cells stored in the tensor.  If the tensor contained cells
