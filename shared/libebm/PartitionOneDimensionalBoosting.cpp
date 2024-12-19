@@ -126,7 +126,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
-   EBM_ASSERT(!bNominal || nullptr == pMissingValueTreeNode);
    EBM_ASSERT(nullptr != apBins);
    EBM_ASSERT(1 <= cSlices);
    EBM_ASSERT(2 <= cBins);
@@ -162,15 +161,29 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
 
+   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+   FloatScore* pMissingUpdateScore = aUpdateScore;
+   FloatScore* pUpdateScore;
+
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
    if(bNominal) {
-      EBM_ASSERT(nullptr == pMissingValueTreeNode);
       UIntSplit iSplit = 1;
       while(cSlices != iSplit) {
          pSplit[iSplit - 1] = iSplit;
          ++iSplit;
       }
       ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
+   } else {
+      pUpdateScore = aUpdateScore;
+
+      if(nullptr != pMissingValueTreeNode) {
+         // always put a split on the missing bin
+         *pSplit = 1;
+         ++pSplit;
+
+         // pUpdateScore is overwritten later if bNominal
+         pUpdateScore += cScores;
+      }
    }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
@@ -183,21 +196,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    auto* pTreeNode = pRootTreeNode;
 
    const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
-
-   FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pMissingUpdateScore;
-   FloatScore* pUpdateScore = aUpdateScore;
-
-   if(nullptr != pMissingValueTreeNode) {
-      EBM_ASSERT(!bNominal);
-
-      // always put a split on the missing bin
-      *pSplit = 1;
-      ++pSplit;
-
-      pMissingUpdateScore = aUpdateScore;
-      pUpdateScore += cScores;
-   }
 
    TreeNode<bHessian>* pParent = nullptr;
 
@@ -254,6 +252,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          if(nullptr != ppBinCur) {
             goto determine_bin;
          }
+         EBM_ASSERT(!bNominal);
 
          // if !bNominal, check the bin above and below for order
          EBM_ASSERT(apBins == ppBinLast || *(ppBinLast - 1) < *ppBinLast);
@@ -293,11 +292,12 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             if(nullptr == ppBinCur) {
                break;
             }
-            EBM_ASSERT(nullptr == pMissingValueTreeNode);
+            EBM_ASSERT(bNominal);
             ++ppBinCur;
             if(ppBinLast < ppBinCur) {
                break;
             }
+            bMissingNode = false;
          determine_bin:;
             const auto* const pBinCur = *ppBinCur;
             const size_t iBin = CountBins(pBinCur, aBins, cBytesPerBin);
@@ -789,9 +789,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
-      // Disable missing if bNominal since we'll treat missing as just any categorical bin.
       // Disable missing if there are only 2 bins, because we'll end up just combining the bins always then.
-      bMissing = bMissing && !bNominal && 2 != cBins && (0 != (TermBoostFlags_MissingLossguide & flags));
+      bMissing = bMissing && 2 != cBins && (0 != (TermBoostFlags_MissingLossguide & flags));
 
       auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
@@ -981,10 +980,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
       }
       *pTotalGain = static_cast<double>(totalGain);
-      size_t cSlices = bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1;
-      if(nullptr != pMissingValueTreeNode) {
-         ++cSlices; // always add a cut at the missing bin
-      }
+      size_t cSlices =
+            bNominal ? cBins : cSplitsMax - cSplitsRemaining + 1 + (nullptr != pMissingValueTreeNode ? 1 : 0);
       return Flatten<bHessian>(pBoosterShell,
             bNominal,
             flags,

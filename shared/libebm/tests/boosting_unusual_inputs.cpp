@@ -1992,3 +1992,33 @@ TEST_CASE("purified boosting and impure boosting different for impure input, reg
       }
    }
 }
+
+TEST_CASE("lossguide, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(5, true, true, false), FeatureTest(5, true, true, true)},
+         {{0}, {1}},
+         {
+               TestSample({0, 0}, 21),
+               TestSample({1, 1}, 10),
+               TestSample({2, 2}, 20),
+               TestSample({3, 3}, 30),
+               TestSample({4, 4}, 29),
+         },
+         {TestSample({0, 0}, 20.5)});
+
+   // boost continuous missing lossguide
+   double validationMetric = test.Boost(0, TermBoostFlags_MissingLossguide).validationMetric;
+   CHECK_APPROX(validationMetric, 411.88702500000005);
+
+   // boost nominal missing lossguide
+   validationMetric = test.Boost(1, TermBoostFlags_MissingLossguide).validationMetric;
+   CHECK_APPROX(validationMetric, 403.69047320250002);
+
+   // boost continuous missing lossguide
+   validationMetric = test.Boost(0, TermBoostFlags_MissingLossguide).validationMetric;
+   CHECK_APPROX(validationMetric, 395.65703278577030);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 0.40592050000000002);
+}

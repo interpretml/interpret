@@ -127,6 +127,18 @@ def boost(
                     contains_nominals = any(
                         nominals[i] for i in term_features[term_idx]
                     )
+
+                    if contains_nominals:
+                        if develop.get_option("missing_lossguide_nominal"):
+                            term_boost_flags_local |= (
+                                Native.TermBoostFlags_MissingLossguide
+                            )
+                    else:
+                        if develop.get_option("missing_lossguide_continuous"):
+                            term_boost_flags_local |= (
+                                Native.TermBoostFlags_MissingLossguide
+                            )
+
                     if smoothing_rounds > 0 and (
                         nominal_smoothing or not contains_nominals
                     ):
