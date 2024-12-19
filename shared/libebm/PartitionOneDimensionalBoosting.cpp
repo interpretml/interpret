@@ -779,9 +779,13 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(1 <= cSplitsMax); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(nullptr != pTotalGain);
+      EBM_ASSERT(!bNominal || MONOTONE_NONE == monotoneDirection);
 
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
+
+      EBM_ASSERT(1 == cScores || MONOTONE_NONE == monotoneDirection);
+
       const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
       auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
       pRootTreeNode->Init();
