@@ -28,6 +28,7 @@ def boost(
     reg_alpha,
     reg_lambda,
     max_delta_step,
+    missing,
     max_leaves,
     monotone_constraints,
     greedy_ratio,
@@ -74,9 +75,12 @@ def boost(
                     learning_rate=intercept_learning_rate,
                     min_samples_leaf=0,
                     min_hessian=0.0,
-                    reg_alpha=0.0,
-                    reg_lambda=0.0,
+                    reg_alpha=reg_alpha,
+                    reg_lambda=reg_lambda,
                     max_delta_step=0.0,
+                    cat_smooth=develop.get_option("cat_smooth"),
+                    max_cat_threshold=develop.get_option("max_cat_threshold"),
+                    cat_include=develop.get_option("cat_include"),
                     max_leaves=1,
                     monotone_constraints=None,
                 )
@@ -106,7 +110,6 @@ def boost(
             random_cyclic_ordering = np.arange(len(term_features), dtype=np.int64)
 
             while step_idx < max_steps:
-                term_boost_flags_local = term_boost_flags
                 if state_idx >= 0:
                     # cyclic
                     if state_idx == 0:
@@ -124,27 +127,6 @@ def boost(
 
                     term_idx = random_cyclic_ordering[state_idx]
 
-                    contains_nominals = any(
-                        nominals[i] for i in term_features[term_idx]
-                    )
-
-                    if contains_nominals:
-                        if develop.get_option("missing_lossguide_nominal"):
-                            term_boost_flags_local |= (
-                                Native.TermBoostFlags_MissingLossguide
-                            )
-                    else:
-                        if develop.get_option("missing_lossguide_continuous"):
-                            term_boost_flags_local |= (
-                                Native.TermBoostFlags_MissingLossguide
-                            )
-
-                    if smoothing_rounds > 0 and (
-                        nominal_smoothing or not contains_nominals
-                    ):
-                        # modify some of our parameters temporarily
-                        term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
-
                     make_progress = False
                     if cyclic_state >= 1.0 or smoothing_rounds > 0:
                         # if cyclic_state is above 1.0 we make progress
@@ -155,6 +137,37 @@ def boost(
                     make_progress = True
                     step_idx += 1
                     _, _, term_idx = heapq.heappop(heap)
+
+                contains_nominals = any(nominals[i] for i in term_features[term_idx])
+
+                term_boost_flags_local = term_boost_flags
+                reg_lambda_local = reg_lambda
+                min_samples_leaf_local = min_samples_leaf
+                if contains_nominals:
+                    reg_lambda_local += develop.get_option("cat_l2")
+
+                    if develop.get_option("min_samples_leaf_nominal") is not None:
+                        min_samples_leaf_local = develop.get_option(
+                            "min_samples_leaf_nominal"
+                        )
+
+                if missing == "low":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingLow
+                elif missing == "high":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingHigh
+                elif missing == "separate":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingSeparate
+                elif missing == "drop":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingDrop
+                elif missing != "gain":
+                    msg = f"Unrecognized missing option {missing}."
+                    raise Exception(msg)
+
+                if smoothing_rounds > 0 and (
+                    nominal_smoothing or not contains_nominals
+                ):
+                    # modify some of our parameters temporarily
+                    term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
 
                 if bestkey is None or state_idx >= 0:
                     term_monotone = None
@@ -169,11 +182,14 @@ def boost(
                         term_idx=term_idx,
                         term_boost_flags=term_boost_flags_local,
                         learning_rate=learning_rate,
-                        min_samples_leaf=min_samples_leaf,
+                        min_samples_leaf=min_samples_leaf_local,
                         min_hessian=min_hessian,
                         reg_alpha=reg_alpha,
-                        reg_lambda=reg_lambda,
+                        reg_lambda=reg_lambda_local,
                         max_delta_step=max_delta_step,
+                        cat_smooth=develop.get_option("cat_smooth"),
+                        max_cat_threshold=develop.get_option("max_cat_threshold"),
+                        cat_include=develop.get_option("cat_include"),
                         max_leaves=max_leaves,
                         monotone_constraints=term_monotone,
                     )

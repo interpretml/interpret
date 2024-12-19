@@ -361,6 +361,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        missing,
         max_leaves,
         monotone_constraints,
         objective,
@@ -408,6 +409,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             self.reg_alpha = reg_alpha
             self.reg_lambda = reg_lambda
             self.max_delta_step = max_delta_step
+            self.missing = missing
 
         self.max_leaves = max_leaves
         if not is_private(self):
@@ -936,6 +938,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = 0.0
             reg_lambda = 0.0
             max_delta_step = 0.0
+            missing = "low"
             interactions = 0
             monotone_constraints = None
             n_intercept_rounds = 0
@@ -956,6 +959,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = self.reg_alpha
             reg_lambda = self.reg_lambda
             max_delta_step = self.max_delta_step
+            missing = self.missing
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
             n_intercept_rounds = develop.get_option("n_intercept_rounds_initial")
@@ -1072,6 +1076,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     reg_alpha,
                     reg_lambda,
                     max_delta_step,
+                    missing,
                     self.max_leaves,
                     monotone_constraints,
                     greedy_ratio,
@@ -1344,6 +1349,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         reg_alpha,
                         reg_lambda,
                         max_delta_step,
+                        missing,
                         self.max_leaves,
                         monotone_constraints,
                         greedy_ratio,
@@ -1468,6 +1474,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     0.0,
                     0.0,
                     0.0,
+                    missing,
                     1,
                     None,
                     greedy_ratio,
@@ -2764,6 +2771,22 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    missing: str, default="low"
+
+        Method for handling missing values during boosting. The placement of the missing value bin can influence
+        the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
+        affect lower bins, and vice versa. This parameter does not affect the final placement
+        of the missing bin in the model (the missing bin will remain at index 0 in the term_scores\_ attribute).
+        Possible values for missing are:
+
+            - `'low'`: Place the missing bin on the left side of the graphs.
+            - `'high'`: Place the missing bin on the right side of the graphs.
+            - `'separate'`: Place the missing bin in its own leaf during each boosting step,
+              effectively making it location-agnostic. This can lead to overfitting, especially
+              when the proportion of missing values is small.
+            - `'drop'`: Ignore the contribution of the missing bin, or split the feature into two leaves based on gain:
+              one for missing values and one for non-missing values.
+            - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
@@ -2923,6 +2946,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        missing: str = "low",
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
@@ -2953,6 +2977,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -3120,6 +3145,22 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    missing: str, default="low"
+
+        Method for handling missing values during boosting. The placement of the missing value bin can influence
+        the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
+        affect lower bins, and vice versa. This parameter does not affect the final placement
+        of the missing bin in the model (the missing bin will remain at index 0 in the term_scores\_ attribute).
+        Possible values for missing are:
+
+            - `'low'`: Place the missing bin on the left side of the graphs.
+            - `'high'`: Place the missing bin on the right side of the graphs.
+            - `'separate'`: Place the missing bin in its own leaf during each boosting step,
+              effectively making it location-agnostic. This can lead to overfitting, especially
+              when the proportion of missing values is small.
+            - `'drop'`: Ignore the contribution of the missing bin, or split the feature into two leaves based on gain:
+              one for missing values and one for non-missing values.
+            - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
     max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
@@ -3279,6 +3320,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        missing: str = "low",
         max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
@@ -3309,6 +3351,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -3542,6 +3585,7 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="log_loss",
@@ -3820,6 +3864,7 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="rmse",

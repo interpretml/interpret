@@ -221,11 +221,14 @@ typedef struct _InteractionHandle {
 #define TermBoostFlags_PurifyGain          (TERM_BOOST_FLAGS_CAST(0x00000001))
 #define TermBoostFlags_DisableNewtonGain   (TERM_BOOST_FLAGS_CAST(0x00000002))
 #define TermBoostFlags_DisableCategorical  (TERM_BOOST_FLAGS_CAST(0x00000004))
-#define TermBoostFlags_MissingLossguide    (TERM_BOOST_FLAGS_CAST(0x00000008))
-#define TermBoostFlags_PurifyUpdate        (TERM_BOOST_FLAGS_CAST(0x00000010))
-#define TermBoostFlags_DisableNewtonUpdate (TERM_BOOST_FLAGS_CAST(0x00000020))
-#define TermBoostFlags_GradientSums        (TERM_BOOST_FLAGS_CAST(0x00000040))
-#define TermBoostFlags_RandomSplits        (TERM_BOOST_FLAGS_CAST(0x00000080))
+#define TermBoostFlags_PurifyUpdate        (TERM_BOOST_FLAGS_CAST(0x00000008))
+#define TermBoostFlags_DisableNewtonUpdate (TERM_BOOST_FLAGS_CAST(0x00000010))
+#define TermBoostFlags_GradientSums        (TERM_BOOST_FLAGS_CAST(0x00000020))
+#define TermBoostFlags_RandomSplits        (TERM_BOOST_FLAGS_CAST(0x00000040))
+#define TermBoostFlags_MissingLow          (TERM_BOOST_FLAGS_CAST(0x00000080))
+#define TermBoostFlags_MissingHigh         (TERM_BOOST_FLAGS_CAST(0x00000100))
+#define TermBoostFlags_MissingSeparate     (TERM_BOOST_FLAGS_CAST(0x00000200))
+#define TermBoostFlags_MissingDrop         (TERM_BOOST_FLAGS_CAST(0x00000400))
 
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))
@@ -463,6 +466,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double regAlpha,
       double regLambda,
       double maxDeltaStep,
+      double categoricalSmoothing,
+      IntEbm maxCategoricalThreshold,
+      double categoricalInclusionPercent,
       const IntEbm* leavesMax,
       const MonotoneDirection* direction,
       double* avgGainOut);

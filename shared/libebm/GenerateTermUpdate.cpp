@@ -78,6 +78,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const bool bMissing,
+      const bool bUnseen,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -87,6 +88,9 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
+      const FloatCalc categoricalSmoothing,
+      const size_t categoricalThresholdMax,
+      const FloatCalc categoricalInclusionPercent,
       const size_t cSplitsMax,
       const MonotoneDirection monotoneDirection,
       const size_t cSamplesTotal,
@@ -198,6 +202,7 @@ static void BoostZeroDimensional(BoosterShell* const pBoosterShell,
 static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const bool bMissing,
+      const bool bUnseen,
       const bool bNominal,
       const TermBoostFlags flags,
       const size_t cBins,
@@ -209,6 +214,9 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const FloatCalc regAlpha,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
+      const FloatCalc categoricalSmoothing,
+      const size_t categoricalThresholdMax,
+      const FloatCalc categoricalInclusionPercent,
       const IntEbm countLeavesMax,
       const MonotoneDirection monotoneDirection,
       double* const pTotalGain) {
@@ -227,6 +235,7 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
    error = PartitionOneDimensionalBoosting(pRng,
          pBoosterShell,
          bMissing,
+         bUnseen,
          bNominal,
          flags,
          cBins,
@@ -236,6 +245,9 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          regAlpha,
          regLambda,
          deltaStepMax,
+         categoricalSmoothing,
+         categoricalThresholdMax,
+         categoricalInclusionPercent,
          cSplitsMax,
          monotoneDirection,
          samplesTotal,
@@ -643,6 +655,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double regAlpha,
       double regLambda,
       double maxDeltaStep,
+      double categoricalSmoothing,
+      IntEbm maxCategoricalThreshold,
+      double categoricalInclusionPercent,
       const IntEbm* leavesMax,
       const MonotoneDirection* direction,
       double* avgGainOut) {
@@ -662,6 +677,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          "regAlpha=%le, "
          "regLambda=%le, "
          "maxDeltaStep=%le, "
+         "categoricalSmoothing=%le, "
+         "maxCategoricalThreshold=%" IntEbmPrintf ", "
+         "categoricalInclusionPercent=%le, "
          "leavesMax=%p, "
          "direction=%p, "
          "avgGainOut=%p",
@@ -675,6 +693,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          regAlpha,
          regLambda,
          maxDeltaStep,
+         categoricalSmoothing,
+         maxCategoricalThreshold,
+         categoricalInclusionPercent,
          static_cast<const void*>(leavesMax),
          static_cast<const void*>(direction),
          static_cast<void*>(avgGainOut));
@@ -726,9 +747,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
 
    if(flags &
          ~(TermBoostFlags_PurifyGain | TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableCategorical |
-               TermBoostFlags_MissingLossguide | TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate |
-               TermBoostFlags_GradientSums | TermBoostFlags_RandomSplits)) {
+               TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
+               TermBoostFlags_RandomSplits | TermBoostFlags_MissingLow | TermBoostFlags_MissingHigh |
+               TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
+   }
+
+   if(TermBoostFlags_MissingLow & flags) {
+      if((TermBoostFlags_MissingHigh | TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop) & flags) {
+         LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
+         return Error_IllegalParamVal;
+      }
+   } else if(TermBoostFlags_MissingHigh & flags) {
+      if((TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop) & flags) {
+         LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
+         return Error_IllegalParamVal;
+      }
+   } else if(TermBoostFlags_MissingSeparate & flags) {
+      if(TermBoostFlags_MissingDrop & flags) {
+         LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
+         return Error_IllegalParamVal;
+      }
    }
 
    if(std::isnan(learningRate)) {
@@ -780,6 +819,38 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       deltaStepMax = std::numeric_limits<FloatCalc>::infinity();
    }
 
+   FloatCalc categoricalSmoothingCalc = static_cast<FloatCalc>(categoricalSmoothing);
+   if(/* NaN */ !(std::numeric_limits<FloatCalc>::min() <= categoricalSmoothingCalc)) {
+      categoricalSmoothingCalc = std::numeric_limits<FloatCalc>::min();
+      if(/* NaN */ !(double{0} <= categoricalSmoothing)) {
+         LOG_0(Trace_Warning,
+               "WARNING GenerateTermUpdate categoricalSmoothing must be a positive number. Adjusting to minimum float");
+      }
+   }
+
+   size_t categoricalThresholdMax = size_t{2}; // this is the min value
+   if(IntEbm{2} <= maxCategoricalThreshold) {
+      categoricalThresholdMax = static_cast<size_t>(maxCategoricalThreshold);
+      if(IsConvertError<size_t>(maxCategoricalThreshold)) {
+         // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to
+         // overflow because it will generate the same results as if we used the true number
+         categoricalThresholdMax = std::numeric_limits<size_t>::max();
+      }
+   } else {
+      LOG_0(Trace_Warning, "WARNING GenerateTermUpdate maxCategoricalThreshold can't be less than 2.  Adjusting to 2.");
+   }
+
+   FloatCalc categoricalInclusionPercentCalc = static_cast<FloatCalc>(categoricalInclusionPercent);
+   if(/* NaN */ !(categoricalInclusionPercentCalc <= double{1})) {
+      categoricalInclusionPercentCalc = double{1};
+      LOG_0(Trace_Warning,
+            "WARNING GenerateTermUpdate categoricalInclusionPercent must be a positive number between 0 and 1.");
+   } else if(/* NaN */ !(double{0} <= categoricalInclusionPercentCalc)) {
+      categoricalInclusionPercentCalc = 0;
+      LOG_0(Trace_Warning,
+            "WARNING GenerateTermUpdate categoricalInclusionPercent must be a positive number between 0 and 1.");
+   }
+
    const size_t cScores = pBoosterCore->GetCountScores();
    if(size_t{0} == cScores) {
       // if there is only 1 target class for classification, then we can predict the output with 100% accuracy.
@@ -804,6 +875,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    // and g++ seems to warn about all of that usage, even in other downstream functions!
    size_t cSignificantBinCount = size_t{0};
    bool bMissing = false;
+   bool bUnseen = false;
    bool bNominal = false;
    MonotoneDirection monotoneDirection = MONOTONE_NONE;
    size_t iDimensionImportant = 0;
@@ -856,6 +928,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                   iDimensionImportant = iDimensionInit;
                   cSignificantBinCount = cBins;
                   bMissing = pFeature->IsMissing();
+                  bUnseen = pFeature->IsUnseen();
                   bNominal = pFeature->IsNominal();
                   monotoneDirection |= featureDirection;
                   EBM_ASSERT(nullptr != pLeavesMax);
@@ -1167,6 +1240,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                error = BoostSingleDimensional(pRng,
                      pBoosterShell,
                      bMissing,
+                     bUnseen,
                      bNominal,
                      flags,
                      cSignificantBinCount,
@@ -1178,6 +1252,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      regAlphaCalc,
                      regLambdaCalc,
                      deltaStepMax,
+                     categoricalSmoothingCalc,
+                     categoricalThresholdMax,
+                     categoricalInclusionPercentCalc,
                      lastDimensionLeavesMax,
                      monotoneDirection,
                      &gain);

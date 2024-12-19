@@ -13,8 +13,11 @@ _develop_options = {
     "n_intercept_rounds_initial": 25,
     "n_intercept_rounds_final": 100,
     "intercept_learning_rate": 0.25,
-    "missing_lossguide_continuous": False,
-    "missing_lossguide_nominal": False,
+    "cat_l2": 0.0,  # TODO: change to 10.0 (see Lightgbm cat_l2)
+    "min_samples_leaf_nominal": None,  # TODO: LightGBM uses min_data_per_group = 100
+    "cat_smooth": 10.0,
+    "max_cat_threshold": 32,
+    "cat_include": 0.75,
     "purify_boosting": False,
     "purify_result": False,
     "randomize_initial_feature_order": True,

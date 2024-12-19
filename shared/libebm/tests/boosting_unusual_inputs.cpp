@@ -267,8 +267,19 @@ TEST_CASE("leave one potential cut uncut, boosting, regression") {
          },
          {TestSample({1}, 12)});
 
-   double validationMetric =
-         test.Boost(0, TermBoostFlags_Default, k_learningRateDefault, 0, 0, 0, 0, 0, {2}).validationMetric;
+   double validationMetric = test.Boost(0,
+                                       TermBoostFlags_MissingLow,
+                                       k_learningRateDefault,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       k_categoricalSmoothingDefault,
+                                       k_maxCategoricalThresholdDefault,
+                                       k_categoricalInclusionPercentDefault,
+                                       {2})
+                                   .validationMetric;
    CHECK_APPROX(validationMetric, 141.25322499999999);
    double termScore;
    termScore = test.GetCurrentTermScore(0, {0}, 0);
@@ -542,6 +553,9 @@ TEST_CASE("one leavesMax, boosting, regression") {
                                        k_regAlphaDefault,
                                        k_regLambdaDefault,
                                        k_maxDeltaStepDefault,
+                                       k_categoricalSmoothingDefault,
+                                       k_maxCategoricalThresholdDefault,
+                                       k_categoricalInclusionPercentDefault,
                                        k_leavesMax)
                                    .validationMetric;
    CHECK_APPROX(validationMetric, 141.61);
@@ -577,6 +591,9 @@ TEST_CASE("mono-classification") {
          k_regAlphaDefault,
          k_regLambdaDefault,
          k_maxDeltaStepDefault,
+         k_categoricalSmoothingDefault,
+         k_maxCategoricalThresholdDefault,
+         k_categoricalInclusionPercentDefault,
          &k_leavesMaxDefault[0],
          nullptr,
          &avgGain);
@@ -1231,6 +1248,9 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
                                              k_regAlphaDefault,
                                              k_regLambdaDefault,
                                              k_maxDeltaStepDefault,
+                                             k_categoricalSmoothingDefault,
+                                             k_maxCategoricalThresholdDefault,
+                                             k_categoricalInclusionPercentDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1267,6 +1287,9 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
                                              k_regAlphaDefault,
                                              k_regLambdaDefault,
                                              k_maxDeltaStepDefault,
+                                             k_categoricalSmoothingDefault,
+                                             k_maxCategoricalThresholdDefault,
+                                             k_categoricalInclusionPercentDefault,
                                              k_leavesMax)
                                          .validationMetric;
          if(0 == iEpoch) {
@@ -1323,6 +1346,9 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
                                       k_regAlphaDefault,
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
+                                      k_categoricalSmoothingDefault,
+                                      k_maxCategoricalThresholdDefault,
+                                      k_categoricalInclusionPercentDefault,
                                       k_leavesMax)
                                   .validationMetric;
       }
@@ -1386,6 +1412,9 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
                                       k_regAlphaDefault,
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
+                                      k_categoricalSmoothingDefault,
+                                      k_maxCategoricalThresholdDefault,
+                                      k_categoricalInclusionPercentDefault,
                                       k_leavesMax)
                                   .validationMetric;
       }
@@ -1450,6 +1479,9 @@ TEST_CASE("Random splitting, pure tripples, regression") {
                                       k_regAlphaDefault,
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
+                                      k_categoricalSmoothingDefault,
+                                      k_maxCategoricalThresholdDefault,
+                                      k_categoricalInclusionPercentDefault,
                                       k_leavesMax)
                                   .validationMetric;
       }
@@ -1511,6 +1543,9 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
                                       k_regAlphaDefault,
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
+                                      k_categoricalSmoothingDefault,
+                                      k_maxCategoricalThresholdDefault,
+                                      k_categoricalInclusionPercentDefault,
                                       k_leavesMax)
                                   .validationMetric;
       }
@@ -1567,6 +1602,9 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
                                       k_regAlphaDefault,
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
+                                      k_categoricalSmoothingDefault,
+                                      k_maxCategoricalThresholdDefault,
+                                      k_categoricalInclusionPercentDefault,
                                       k_leavesMax)
                                   .validationMetric;
          if(0 == iEpoch) {
@@ -2007,15 +2045,15 @@ TEST_CASE("lossguide, boosting, regression") {
          {TestSample({0, 0}, 20.5)});
 
    // boost continuous missing lossguide
-   double validationMetric = test.Boost(0, TermBoostFlags_MissingLossguide).validationMetric;
+   double validationMetric = test.Boost(0, TermBoostFlags_Default).validationMetric;
    CHECK_APPROX(validationMetric, 411.88702500000005);
 
    // boost nominal missing lossguide
-   validationMetric = test.Boost(1, TermBoostFlags_MissingLossguide).validationMetric;
+   validationMetric = test.Boost(1, TermBoostFlags_Default).validationMetric;
    CHECK_APPROX(validationMetric, 403.69047320250002);
 
    // boost continuous missing lossguide
-   validationMetric = test.Boost(0, TermBoostFlags_MissingLossguide).validationMetric;
+   validationMetric = test.Boost(0, TermBoostFlags_Default).validationMetric;
    CHECK_APPROX(validationMetric, 395.65703278577030);
 
    double termScore;

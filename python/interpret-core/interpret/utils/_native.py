@@ -33,11 +33,14 @@ class Native:
     TermBoostFlags_PurifyGain = 0x00000001
     TermBoostFlags_DisableNewtonGain = 0x00000002
     TermBoostFlags_DisableCategorical = 0x00000004
-    TermBoostFlags_MissingLossguide = 0x00000008
-    TermBoostFlags_PurifyUpdate = 0x00000010
-    TermBoostFlags_DisableNewtonUpdate = 0x00000020
-    TermBoostFlags_GradientSums = 0x00000040
-    TermBoostFlags_RandomSplits = 0x00000080
+    TermBoostFlags_PurifyUpdate = 0x00000008
+    TermBoostFlags_DisableNewtonUpdate = 0x00000010
+    TermBoostFlags_GradientSums = 0x00000020
+    TermBoostFlags_RandomSplits = 0x00000040
+    TermBoostFlags_MissingLow = 0x00000080
+    TermBoostFlags_MissingHigh = 0x00000100
+    TermBoostFlags_MissingSeparate = 0x00000200
+    TermBoostFlags_MissingDrop = 0x00000400
 
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
@@ -1507,6 +1510,12 @@ class Native:
             ct.c_double,
             # double maxDeltaStep
             ct.c_double,
+            # double categoricalSmoothing
+            ct.c_double,
+            # int64_t maxCategoricalThreshold
+            ct.c_int64,
+            # double categoricalInclusionPercent
+            ct.c_double,
             # int64_t * leavesMax
             ct.c_void_p,
             # MonotoneDirection * direction
@@ -1822,6 +1831,9 @@ class Booster(AbstractContextManager):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        cat_smooth,
+        max_cat_threshold,
+        cat_include,
         max_leaves,
         monotone_constraints,
     ):
@@ -1837,6 +1849,9 @@ class Booster(AbstractContextManager):
             reg_alpha: L1 regularization.
             reg_lambda: L2 regularization.
             max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
+            cat_smooth: Parameter used to determine which categories are included each boosting round and ordering.
+            max_cat_threshold: max number of categories to include each boosting round
+            cat_include: percentage of categories to include in each boosting round
             max_leaves: Max leaf nodes on feature step.
             monotone_constraints: monotone constraints (1=increasing, 0=none, -1=decreasing)
 
@@ -1881,6 +1896,9 @@ class Booster(AbstractContextManager):
             reg_alpha,
             reg_lambda,
             max_delta_step,
+            cat_smooth,
+            max_cat_threshold,
+            cat_include,
             Native._make_pointer(max_leaves_arr, np.int64, is_null_allowed=True),
             Native._make_pointer(monotone_constraints, np.int32, is_null_allowed=True),
             ct.byref(avg_gain),

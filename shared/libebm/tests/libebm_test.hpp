@@ -292,6 +292,9 @@ static constexpr double k_minHessianDefault = 1e-3;
 static constexpr double k_regAlphaDefault = 0.0;
 static constexpr double k_regLambdaDefault = 0.0;
 static constexpr double k_maxDeltaStepDefault = 0.0;
+static constexpr double k_categoricalSmoothingDefault = 10.0;
+static constexpr IntEbm k_maxCategoricalThresholdDefault = IntEbm{32};
+static constexpr double k_categoricalInclusionPercentDefault = 0.75;
 
 #ifdef EXPAND_BINARY_LOGITS
 static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_BinaryAsMulticlass;
@@ -484,6 +487,9 @@ class TestBoost {
          const double regAlpha = k_regAlphaDefault,
          const double regLambda = k_regLambdaDefault,
          const double maxDeltaStep = k_maxDeltaStepDefault,
+         const double categoricalSmoothing = k_categoricalSmoothingDefault,
+         const IntEbm maxCategoricalThreshold = k_maxCategoricalThresholdDefault,
+         const double categoricalInclusionPercent = k_categoricalInclusionPercentDefault,
          const std::vector<IntEbm> leavesMax = k_leavesMaxDefault,
          const std::vector<MonotoneDirection> monotonicity = k_monotonicityDefault);
 
