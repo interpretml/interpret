@@ -2060,3 +2060,114 @@ TEST_CASE("lossguide, boosting, regression") {
    termScore = test.GetCurrentTermScore(0, {0}, 0);
    CHECK_APPROX(termScore, 0.40592050000000002);
 }
+
+TEST_CASE("stress test, boosting") {
+   auto rng = MakeRng(0);
+   const IntEbm cTrainSamples = 200;
+   const IntEbm cValidationSamples = 100;
+   const std::vector<FeatureTest> features = {
+         FeatureTest(10, false, false, false),
+         FeatureTest(10, false, false, true),
+         FeatureTest(10, false, true, false),
+         FeatureTest(10, false, true, true),
+         FeatureTest(10, true, false, false),
+         FeatureTest(10, true, false, true),
+         FeatureTest(10, true, true, false),
+         FeatureTest(10, true, true, true),
+   };
+   auto terms = MakeMains(features);
+   terms.push_back({0, 0});
+   if(2 <= features.size()) {
+      terms.push_back({0, 1});
+      terms.push_back({1, 0});
+   }
+   if(3 <= features.size()) {
+      // terms.push_back({0, 1, 2}); // TODO: enable when fast enough
+   }
+   if(4 <= features.size()) {
+      // terms.push_back({0, 1, 2, 3}); // TODO: enable when fast enough
+   }
+   const size_t cRounds = 200;
+   std::vector<IntEbm> boostFlagsAny{// TermBoostFlags_PurifyGain,
+         TermBoostFlags_DisableNewtonGain,
+         TermBoostFlags_DisableCategorical,
+         // TermBoostFlags_PurifyUpdate,
+         // TermBoostFlags_GradientSums, // does not return a metric
+         TermBoostFlags_DisableNewtonUpdate,
+         TermBoostFlags_RandomSplits};
+   std::vector<IntEbm> boostFlagsChoose{TermBoostFlags_Default,
+         TermBoostFlags_MissingLow,
+         TermBoostFlags_MissingHigh,
+         TermBoostFlags_MissingSeparate,
+         TermBoostFlags_MissingDrop};
+
+   double validationMetric = 1.0;
+
+   for(IntEbm classesCount = Task_Regression; classesCount < 5; ++classesCount) {
+      if(classesCount != Task_Regression && classesCount < 1) {
+         continue;
+      }
+      const auto train = MakeRandomDataset(rng, classesCount, cTrainSamples, features);
+      const auto validation = MakeRandomDataset(rng, classesCount, cValidationSamples, features);
+      for(IntEbm innerBagCount = 0; innerBagCount < 3; ++innerBagCount) {
+         TestBoost test = TestBoost(classesCount,
+               features,
+               terms,
+               train,
+               validation,
+               innerBagCount,
+               k_testCreateBoosterFlags_Default,
+               AccelerationFlags_NONE);
+
+         double validationMetricIteration = 0.0;
+         for(size_t iRound = 0; iRound < cRounds; ++iRound) {
+            for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
+               const IntEbm cRealBins = features[terms[iTerm][0]].CountRealBins();
+               const IntEbm cDimensions = terms[iTerm].size();
+
+               const TermBoostFlags boostFlags =
+                     static_cast<TermBoostFlags>(ChooseAny(rng, boostFlagsAny) | ChooseFrom(rng, boostFlagsChoose));
+
+               const double learningRate = 0.015625;
+               const IntEbm minSamplesLeaf = TestRand(rng, 5) + 1;
+               const double minHessian = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
+               const double regAlpha = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
+               const double regLambda = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
+               const double maxDeltaStep = 0 == TestRand(rng, 5) ? 1.0 : 0.0;
+               const double categoricalSmoothing = 10.0;
+               const IntEbm maxCategoricalThreshold = 1 + TestRand(rng, cRealBins + 1);
+               const double categoricalInclusionPercent = 0 == TestRand(rng, 2) ? 0.75 : 1.0;
+
+               // we allow 1 cut more than the number of bins to test excessive leaves.
+               const IntEbm cLeaves = 1 + TestRand(rng, cRealBins + 1);
+               const std::vector<IntEbm> leaves(cDimensions, cLeaves);
+               const MonotoneDirection direction =
+                     0 == TestRand(rng, 5) ? static_cast<MonotoneDirection>(TestRand(rng, 2) * 2 - 1) : 0;
+               const std::vector<MonotoneDirection> monotonicity(cDimensions, direction);
+
+               validationMetricIteration = test.Boost(iTerm,
+                                                     boostFlags,
+                                                     learningRate,
+                                                     minSamplesLeaf,
+                                                     minHessian,
+                                                     regAlpha,
+                                                     regLambda,
+                                                     maxDeltaStep,
+                                                     categoricalSmoothing,
+                                                     maxCategoricalThreshold,
+                                                     categoricalInclusionPercent,
+                                                     leaves,
+                                                     monotonicity)
+                                                 .validationMetric;
+            }
+         }
+         if(classesCount == 1) {
+            CHECK(std::numeric_limits<double>::infinity() == validationMetricIteration);
+         } else {
+            validationMetric *= validationMetricIteration;
+         }
+      }
+   }
+
+   CHECK(validationMetric == 62013566170252.117);
+}

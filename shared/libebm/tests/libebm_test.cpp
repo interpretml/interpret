@@ -607,18 +607,22 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
 
    std::vector<double> scoreTensor(cUpdateScores);
 
-   memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
-   error = GetTermUpdate(m_boosterHandle, &scoreTensor[0]);
+   if(0 != cUpdateScores) {
+      memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+   }
+   error = GetTermUpdate(m_boosterHandle, scoreTensor.data());
    if(Error_None != error) {
       throw TestException(error, "SetTermUpdate");
    }
 
    if(0 != (TermBoostFlags_GradientSums & flags)) {
       // if sums are on, then we MUST change the term update
-      memset(&scoreTensor[0], 0, sizeof(double) * cUpdateScores);
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0, sizeof(double) * cUpdateScores);
+      }
    }
 
-   error = SetTermUpdate(m_boosterHandle, indexTerm, &scoreTensor[0]);
+   error = SetTermUpdate(m_boosterHandle, indexTerm, scoreTensor.data());
    if(Error_None != error) {
       throw TestException(error, "SetTermUpdate");
    }
@@ -629,14 +633,18 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
    }
 
    if(0 <= indexTerm) {
-      memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
-      error = GetBestTermScores(m_boosterHandle, indexTerm, &scoreTensor[0]);
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+      }
+      error = GetBestTermScores(m_boosterHandle, indexTerm, scoreTensor.data());
       if(Error_None != error) {
          throw TestException(error, "ApplyTermUpdate");
       }
 
-      memset(&scoreTensor[0], 0xFF, sizeof(double) * cUpdateScores);
-      error = GetCurrentTermScores(m_boosterHandle, indexTerm, &scoreTensor[0]);
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+      }
+      error = GetCurrentTermScores(m_boosterHandle, indexTerm, scoreTensor.data());
       if(Error_None != error) {
          throw TestException(error, "ApplyTermUpdate");
       }
@@ -1002,6 +1010,57 @@ extern void DisplayCuts(IntEbm countSamples,
    }
 
    std::cout << std::endl << std::endl;
+}
+
+extern IntEbm ChooseAny(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options) {
+   IntEbm ret = 0;
+   for(const IntEbm option : options) {
+      if(0 == TestRand(rng, 3)) {
+         ret |= option;
+      }
+   }
+   return ret;
+}
+
+extern IntEbm ChooseFrom(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options) {
+   return options[TestRand(rng, options.size())];
+}
+
+extern std::vector<TestSample> MakeRandomDataset(std::vector<unsigned char>& rng,
+      const IntEbm cClasses,
+      const size_t cSamples,
+      const std::vector<FeatureTest>& features) {
+   std::vector<TestSample> samples;
+
+   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+      std::vector<IntEbm> sampleBinIndexes;
+      for(const FeatureTest& feature : features) {
+         IntEbm iBin = TestRand(rng, feature.CountRealBins());
+         if(!feature.m_bMissing) {
+            ++iBin;
+         }
+         sampleBinIndexes.push_back(iBin);
+      }
+
+      double target;
+      if(Task_GeneralClassification <= cClasses) {
+         target = static_cast<double>(TestRand(rng, cClasses));
+      } else {
+         target = TestRand(rng);
+      }
+
+      samples.push_back(TestSample(sampleBinIndexes, target));
+   }
+   return samples;
+}
+
+extern std::vector<std::vector<IntEbm>> MakeMains(const std::vector<FeatureTest>& features) {
+   const IntEbm cFeatures = static_cast<IntEbm>(features.size());
+   std::vector<std::vector<IntEbm>> termFeatures;
+   for(IntEbm iFeature = 0; iFeature < cFeatures; ++iFeature) {
+      termFeatures.push_back({iFeature});
+   }
+   return termFeatures;
 }
 
 int main() {

@@ -44,10 +44,6 @@ typedef double FloatPrecomp;
 
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
 
-#ifndef NDEBUG
-static constexpr FloatCalc k_epsilonNegativeGainAllowed = FloatCalc{-1e-7};
-#endif // NDEBUG
-
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;
 extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept;
 

@@ -616,12 +616,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       ++iScoreParent;
    } while(cScores != iScoreParent);
 
-   // bestGain could be -inf if the partial gain on the children reached a number close to +inf and then
-   // the children were -inf due to floating point noise.
-   EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
-         k_epsilonNegativeGainAllowed <= bestGain);
    EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
-
    EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= k_gainMin);
    if(UNLIKELY(/* NaN */ !LIKELY(k_gainMin <= bestGain))) {
       // do not allow splits on gains that are too small

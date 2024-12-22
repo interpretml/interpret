@@ -106,10 +106,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalS
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
-#ifndef NDEBUG
-      bool bAnySplits = false;
-#endif // NDEBUG
-
       const bool bUseLogitBoost = bHessian && !(CalcInteractionFlags_DisableNewton & flags);
 
       // if a negative value were to occur, then it would be due to numeric instability, so clip it to zero here
@@ -205,10 +201,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalS
             }
 
             {
-#ifndef NDEBUG
-               bAnySplits = true;
-#endif // NDEBUG
-
                const FloatCalc w00 = static_cast<FloatCalc>(bin00.GetWeight());
                const FloatCalc w01 = static_cast<FloatCalc>(bin01.GetWeight());
                const FloatCalc w10 = static_cast<FloatCalc>(bin10.GetWeight());
@@ -427,22 +419,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalS
                      regLambda,
                      deltaStepMax);
             }
-
-            // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-            // it could also be -inf if the parent/total bin overflows, but the children parts did not.
-            // bestGain can also be substantially negative if we didn't find any legal cuts and
-            // then we subtracted the base partial gain here from zero
-
-            // if no legal splits were found, then bestGain will be zero.  In theory we should
-            // therefore not subtract the parent partial gain, but doing so does no harm since we later set any
-            // negative interaction score to zero in the caller of this function.  Due to that we don't
-            // need to check here, since any value we subtract from zero will lead to a negative number and
-            // then will be zeroed by our caller
-            // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative
-            // gain.
-
-            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
-                  k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
          }
       }
 

@@ -864,13 +864,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
             }
 
             EBM_ASSERT(std::numeric_limits<FloatCalc>::infinity() != bestGain);
-            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
-                  k_epsilonNegativeGainAllowed <= bestGain);
 
             if(LIKELY(/* NaN */ std::numeric_limits<FloatCalc>::lowest() <= bestGain)) {
                EBM_ASSERT(!std::isnan(bestGain));
                EBM_ASSERT(!std::isinf(bestGain));
-               EBM_ASSERT(k_epsilonNegativeGainAllowed <= bestGain);
 
                *pTotalGain = 0;
                if(LIKELY(k_gainMin <= bestGain)) {

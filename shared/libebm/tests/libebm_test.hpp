@@ -179,6 +179,8 @@ class FeatureTest final {
    const bool m_bUnseen;
    const bool m_bNominal;
 
+   inline IntEbm CountRealBins() const { return m_countBins - (m_bMissing ? 0 : 1) - (m_bUnseen ? 0 : 1); }
+
    inline FeatureTest(
          const IntEbm countBins, const bool bMissing = true, const bool bUnseen = true, const bool bNominal = false) :
          m_countBins(countBins), m_bMissing(bMissing), m_bUnseen(bUnseen), m_bNominal(bNominal) {}
@@ -535,5 +537,34 @@ void DisplayCuts(IntEbm countSamples,
       IntEbm isMissingPresent,
       double minFeatureVal,
       double maxFeatureVal);
+
+std::vector<TestSample> MakeRandomDataset(std::vector<unsigned char>& rng,
+      const IntEbm cClasses,
+      const size_t cSamples,
+      const std::vector<FeatureTest>& features);
+
+std::vector<std::vector<IntEbm>> MakeMains(const std::vector<FeatureTest>& features);
+
+IntEbm ChooseAny(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options);
+IntEbm ChooseFrom(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options);
+
+inline static std::vector<unsigned char> MakeRng(const SeedEbm seed) {
+   std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+   InitRNG(seed, &rng[0]);
+   return rng;
+}
+
+inline IntEbm TestRand(std::vector<unsigned char>& rng, const IntEbm count) {
+   // this isn't balanced, but good enough for tests
+   SeedEbm randomNum;
+   GenerateSeed(&rng[0], &randomNum);
+   return static_cast<IntEbm>(static_cast<USeedEbm>(randomNum) % static_cast<USeedEbm>(count));
+}
+
+inline double TestRand(std::vector<unsigned char>& rng) {
+   double ret;
+   GenerateGaussianRandom(&rng[0], 100.0, 1, &ret);
+   return ret;
+}
 
 #endif // LIBEBM_TEST_HPP
