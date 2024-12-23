@@ -628,8 +628,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalT
                      ++iDimension;
                   } while(cDimensions != iDimension);
 
-                  constexpr double tolerance =
-                        0.0; // TODO: for now purify to the max, but test tolerances and profile them
+                  // TODO: for now purify to the max, but test tolerances and profile them
+                  constexpr double tolerance = 0.0;
 
                   // TODO: in the future try randomizing the purification order.  It probably doesn't make much
                   // difference

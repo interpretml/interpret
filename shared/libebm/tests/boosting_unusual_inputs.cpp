@@ -2088,10 +2088,10 @@ TEST_CASE("stress test, boosting") {
       // terms.push_back({0, 1, 2, 3}); // TODO: enable when fast enough
    }
    const size_t cRounds = 200;
-   std::vector<IntEbm> boostFlagsAny{// TermBoostFlags_PurifyGain,
+   std::vector<IntEbm> boostFlagsAny{TermBoostFlags_PurifyGain,
          TermBoostFlags_DisableNewtonGain,
          TermBoostFlags_DisableCategorical,
-         // TermBoostFlags_PurifyUpdate,
+         TermBoostFlags_PurifyUpdate,
          // TermBoostFlags_GradientSums, // does not return a metric
          TermBoostFlags_DisableNewtonUpdate,
          TermBoostFlags_RandomSplits};
@@ -2169,5 +2169,5 @@ TEST_CASE("stress test, boosting") {
       }
    }
 
-   CHECK(validationMetric == 62013566170252.117);
+   CHECK(validationMetric == 30885317143376.566);
 }
