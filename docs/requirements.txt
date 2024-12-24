@@ -22,7 +22,7 @@ importlib-metadata==6.1.0
 ipykernel==6.22.0
 ipython==8.11.0
 jedi==0.18.2
-Jinja2==3.1.4
+Jinja2==3.1.5
 jsonschema==4.17.3
 jupyter-book==0.15.1
 jupyter-cache==0.5.0
