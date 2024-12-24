@@ -785,8 +785,21 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
+      size_t cNormalBins = cBins;
+      if(bMissing) {
+         --cNormalBins;
+      }
+      if(bUnseen) {
+         --cNormalBins;
+      }
+      if(cNormalBins <= 1) {
+         // we could have just missing and unknown bins an no normal bins, or a normal bin plus missing and/or unseen.
+         bMissing = false;
+         bUnseen = false;
+      }
+
       // Disable missing if there are only 2 bins, because we'll end up just combining the bins always then.
-      bMissing = bMissing && 2 != cBins && (0 == (TermBoostFlags_MissingLow & flags));
+      bMissing = bMissing && (0 == (TermBoostFlags_MissingLow & flags));
 
       auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
