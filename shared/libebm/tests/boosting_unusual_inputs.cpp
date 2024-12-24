@@ -2175,7 +2175,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 26838942758406.215;
+   const double expected = 26758407585917.129;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);

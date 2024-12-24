@@ -655,7 +655,12 @@ def test_eval_terms_multiclass():
 
 
 def test_ebm_sample_weight():
+    from interpret.develop import get_option, set_option
+
     X, y, names, types = make_synthetic(classes=2, output_type="float")
+
+    cat_smooth = get_option("cat_smooth")
+    set_option("cat_smooth", 2.2250738585072014e-308)
 
     ebm = ExplainableBoostingClassifier(names, types)
     ebm.fit(X, y)
@@ -671,6 +676,9 @@ def test_ebm_sample_weight():
     weights[0] = 1.1
     changed = ExplainableBoostingClassifier(names, types)
     changed.fit(X, y, sample_weight=weights)
+
+    # restore cat_smooth value
+    set_option("cat_smooth", cat_smooth)
 
     assert not np.array_equal(ebm.predict_proba(X), changed.predict_proba(X))
 
