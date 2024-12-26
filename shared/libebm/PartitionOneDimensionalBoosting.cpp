@@ -137,8 +137,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    size_t cSamplesTotalDebug = 0;
 #endif // NDEBUG
 
-   const Bin<FloatMain, UIntMain, true, true, bHessian>* pMissingBin = nullptr;
-
    Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
    error = pInnerTermUpdate->SetCountSlices(iDimension, cSlices);
@@ -162,6 +160,9 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
    FloatScore* pUpdateScore;
 
+   auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
+
+   const Bin<FloatMain, UIntMain, true, true, bHessian>* pMissingBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
    if(bNominal) {
       UIntSplit iSplit = 1;
@@ -176,6 +177,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       if(bMissing) {
          EBM_ASSERT(2 <= cSlices); // no cuts if there was only missing bin
 
+         if(TermBoostFlags_MissingSeparate & flags) {
+            pMissingBin = aBins;
+         }
+
          // always put a split on the missing bin
          *pSplit = 1;
          ++pSplit;
@@ -186,7 +191,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
-   auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
    const size_t cBytesPerTreeNode = GetTreeNodeSize(bHessian, cScores);
@@ -272,6 +276,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                      // this cut would isolate the missing bin, but we handle those scores separately
                      goto done;
                   }
+               } else if(TermBoostFlags_MissingSeparate & flags) {
+                  ++iEdge; // missing is at index 0 in the model, so we are offset by one
                }
             }
 
@@ -917,6 +923,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                pMissingBin = pBin;
                pBin = IndexBin(pBin, cBytesPerBin);
             }
+         } else if(TermBoostFlags_MissingSeparate & flags) {
+            if(bMissing) {
+               pBin = IndexBin(pBin, cBytesPerBin);
+            }
          } else {
             if(bMissing) {
                pMissingValueTreeNode = pRootTreeNode;
@@ -1106,10 +1116,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       if(nullptr != pMissingValueTreeNode) {
          EBM_ASSERT(nullptr == pMissingBin);
          ++cSlices;
-      } else {
-         if(nullptr != pMissingBin && !bMissingIsolated) {
-            ++cSlices;
-         }
+      } else if(!bNominal && bMissing && (TermBoostFlags_MissingSeparate & flags)) {
+         ++cSlices; // missing is at index 0 but was unavailable to tree boosting, so add space for it
+      } else if(nullptr != pMissingBin && !bMissingIsolated) {
+         ++cSlices;
       }
       if(bNominal) {
          cSlices = cBins;
