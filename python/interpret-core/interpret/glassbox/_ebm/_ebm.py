@@ -2784,8 +2784,6 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             - `'separate'`: Place the missing bin in its own leaf during each boosting step,
               effectively making it location-agnostic. This can lead to overfitting, especially
               when the proportion of missing values is small.
-            - `'drop'`: Ignore the contribution of the missing bin, or split the feature into two leaves based on gain:
-              one for missing values and one for non-missing values.
             - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
@@ -3158,8 +3156,6 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             - `'separate'`: Place the missing bin in its own leaf during each boosting step,
               effectively making it location-agnostic. This can lead to overfitting, especially
               when the proportion of missing values is small.
-            - `'drop'`: Ignore the contribution of the missing bin, or split the feature into two leaves based on gain:
-              one for missing values and one for non-missing values.
             - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
     max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.

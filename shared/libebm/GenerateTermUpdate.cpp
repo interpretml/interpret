@@ -749,22 +749,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          ~(TermBoostFlags_PurifyGain | TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableCategorical |
                TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
                TermBoostFlags_RandomSplits | TermBoostFlags_MissingLow | TermBoostFlags_MissingHigh |
-               TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop)) {
+               TermBoostFlags_MissingSeparate | TermBoostFlags_MissingCategory)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 
    if(TermBoostFlags_MissingLow & flags) {
-      if((TermBoostFlags_MissingHigh | TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop) & flags) {
+      if((TermBoostFlags_MissingHigh | TermBoostFlags_MissingSeparate) & flags) {
          LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
          return Error_IllegalParamVal;
       }
    } else if(TermBoostFlags_MissingHigh & flags) {
-      if((TermBoostFlags_MissingSeparate | TermBoostFlags_MissingDrop) & flags) {
-         LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
-         return Error_IllegalParamVal;
-      }
-   } else if(TermBoostFlags_MissingSeparate & flags) {
-      if(TermBoostFlags_MissingDrop & flags) {
+      if(TermBoostFlags_MissingSeparate & flags) {
          LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains multiple Missing value flags.");
          return Error_IllegalParamVal;
       }

@@ -2096,12 +2096,10 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
          TermBoostFlags_PurifyUpdate,
          // TermBoostFlags_GradientSums, // does not return a metric
          TermBoostFlags_DisableNewtonUpdate,
-         TermBoostFlags_RandomSplits};
-   std::vector<IntEbm> boostFlagsChoose{TermBoostFlags_Default,
-         TermBoostFlags_MissingLow,
-         TermBoostFlags_MissingHigh,
-         TermBoostFlags_MissingSeparate,
-         TermBoostFlags_MissingDrop};
+         TermBoostFlags_RandomSplits,
+         TermBoostFlags_MissingCategory};
+   std::vector<IntEbm> boostFlagsChoose{
+         TermBoostFlags_Default, TermBoostFlags_MissingLow, TermBoostFlags_MissingHigh, TermBoostFlags_MissingSeparate};
 
    double validationMetric = 1.0;
    for(IntEbm classesCount = Task_Regression; classesCount < 5; ++classesCount) {
@@ -2175,7 +2173,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 26746562197367.172;
+   const double expected = 14939439873840.908;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);

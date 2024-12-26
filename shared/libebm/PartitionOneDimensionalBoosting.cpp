@@ -895,22 +895,35 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       bool bMissingIsolated = false;
 
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
-      if(TermBoostFlags_MissingLow & flags) {
-         if(bMissing && !bNominal) {
-            pMissingBin = pBin;
-         }
-      } else if(TermBoostFlags_MissingHigh & flags) {
-         if(bMissing && !bNominal) {
-            pMissingBin = pBin;
-            // the concept of TermBoostFlags_MissingHigh does not exist for nominals
-            pBin = IndexBin(pBin, cBytesPerBin);
+
+      if(bNominal) {
+         if(TermBoostFlags_MissingCategory & flags) {
+            // nothing to do
+         } else {
+            if(bMissing) {
+               pMissingValueTreeNode = pRootTreeNode;
+               // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
+               // region.
+               pBin = IndexBin(pBin, cBytesPerBin);
+            }
          }
       } else {
-         if(bMissing) {
-            pMissingValueTreeNode = pRootTreeNode;
-            // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
-            // region.
-            pBin = IndexBin(pBin, cBytesPerBin);
+         if(TermBoostFlags_MissingLow & flags) {
+            if(bMissing) {
+               pMissingBin = pBin;
+            }
+         } else if(TermBoostFlags_MissingHigh & flags) {
+            if(bMissing) {
+               pMissingBin = pBin;
+               pBin = IndexBin(pBin, cBytesPerBin);
+            }
+         } else {
+            if(bMissing) {
+               pMissingValueTreeNode = pRootTreeNode;
+               // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
+               // region.
+               pBin = IndexBin(pBin, cBytesPerBin);
+            }
          }
       }
 
