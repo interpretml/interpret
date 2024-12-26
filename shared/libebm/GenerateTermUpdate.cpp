@@ -585,9 +585,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       }
 
       *pTotalGain = gain;
-
-      free(aWeights);
    }
+
+   free(aWeights);
 
 #ifndef NDEBUG
    free(aDebugCopyBins);
