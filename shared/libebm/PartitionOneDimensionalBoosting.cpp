@@ -326,50 +326,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
          while(true) {
             if(nullptr == pTreeNode) {
-            done:;
-               EBM_ASSERT(cSamplesTotalDebug == cSamplesExpectedDebug);
-
-               EBM_ASSERT(bNominal || pUpdateScore == aUpdateScore + cScores * cSlices);
-
-               EBM_ASSERT(bNominal || pSplit == cSlices - 1 + pInnerTermUpdate->GetSplitPointer(iDimension));
-
-#ifndef NDEBUG
-               UIntSplit prevDebug = 0;
-               for(size_t iDebug = 0; iDebug < cSlices - 1; ++iDebug) {
-                  UIntSplit curDebug = pInnerTermUpdate->GetSplitPointer(iDimension)[iDebug];
-                  EBM_ASSERT(prevDebug < curDebug);
-                  prevDebug = curDebug;
-               }
-               EBM_ASSERT(prevDebug < cBins);
-#endif
-
-               EBM_ASSERT(nullptr == pMissingValueTreeNode || nullptr != pMissingBin);
-               if(nullptr != pMissingBin) {
-                  EBM_ASSERT(bMissing);
-
-                  FloatScore hess = static_cast<FloatCalc>(pMissingBin->GetWeight());
-                  const auto* pGradientPair = pMissingBin->GetGradientPairs();
-                  const auto* const pGradientPairEnd = pGradientPair + cScores;
-                  FloatScore* pMissingUpdateScore = aUpdateScore;
-                  do {
-                     if(bUpdateWithHessian) {
-                        hess = static_cast<FloatCalc>(pGradientPair->GetHess());
-                     }
-                     FloatCalc updateScore = -CalcNegUpdate<true>(static_cast<FloatCalc>(pGradientPair->m_sumGradients),
-                           hess,
-                           regAlpha,
-                           regLambda,
-                           deltaStepMax);
-
-                     *pMissingUpdateScore = updateScore;
-                     ++pMissingUpdateScore;
-
-                     ++pGradientPair;
-                  } while(pGradientPairEnd != pGradientPair);
-               }
-
-               LOG_0(Trace_Verbose, "Exited Flatten");
-               return Error_None;
+               goto done;
             }
             if(!pTreeNode->DECONSTRUCT_IsRightChildTraversal()) {
                // we checked earlier that countBins could be converted to a UIntSplit
@@ -411,6 +368,48 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          }
       }
    }
+
+done:;
+   EBM_ASSERT(cSamplesTotalDebug == cSamplesExpectedDebug);
+
+   EBM_ASSERT(bNominal || pUpdateScore == aUpdateScore + cScores * cSlices);
+
+   EBM_ASSERT(bNominal || pSplit == cSlices - 1 + pInnerTermUpdate->GetSplitPointer(iDimension));
+
+#ifndef NDEBUG
+   UIntSplit prevDebug = 0;
+   for(size_t iDebug = 0; iDebug < cSlices - 1; ++iDebug) {
+      UIntSplit curDebug = pInnerTermUpdate->GetSplitPointer(iDimension)[iDebug];
+      EBM_ASSERT(prevDebug < curDebug);
+      prevDebug = curDebug;
+   }
+   EBM_ASSERT(prevDebug < cBins);
+#endif
+
+   EBM_ASSERT(nullptr == pMissingValueTreeNode || nullptr != pMissingBin);
+   if(nullptr != pMissingBin) {
+      EBM_ASSERT(bMissing);
+
+      FloatScore hess = static_cast<FloatCalc>(pMissingBin->GetWeight());
+      const auto* pGradientPair = pMissingBin->GetGradientPairs();
+      const auto* const pGradientPairEnd = pGradientPair + cScores;
+      FloatScore* pMissingUpdateScore = aUpdateScore;
+      do {
+         if(bUpdateWithHessian) {
+            hess = static_cast<FloatCalc>(pGradientPair->GetHess());
+         }
+         FloatCalc updateScore = -CalcNegUpdate<true>(
+               static_cast<FloatCalc>(pGradientPair->m_sumGradients), hess, regAlpha, regLambda, deltaStepMax);
+
+         *pMissingUpdateScore = updateScore;
+         ++pMissingUpdateScore;
+
+         ++pGradientPair;
+      } while(pGradientPairEnd != pGradientPair);
+   }
+
+   LOG_0(Trace_Verbose, "Exited Flatten");
+   return Error_None;
 }
 WARNING_POP
 

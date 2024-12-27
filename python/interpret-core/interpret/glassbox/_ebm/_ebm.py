@@ -2771,7 +2771,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    missing: str, default="low"
+    missing: str, default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
         the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
@@ -2944,7 +2944,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        missing: str = "low",
+        missing: str = "separate",
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
@@ -3143,7 +3143,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    missing: str, default="low"
+    missing: str, default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
         the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
@@ -3316,7 +3316,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        missing: str = "low",
+        missing: str = "separate",
         max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
