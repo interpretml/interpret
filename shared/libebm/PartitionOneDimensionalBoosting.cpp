@@ -913,7 +913,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                pMissingBin = pBin;
                pBin = IndexBin(pBin, cBytesPerBin);
             } else if(TermBoostFlags_MissingSeparate & flags) {
-               cSamplesTotal -= aSumBins->GetCountSamples();
+               cSamplesTotal -= static_cast<size_t>(aSumBins->GetCountSamples());
                weightTotal -= aSumBins->GetWeight();
                aSumBins = IndexBin(aSumBins, cBytesPerBin);
 
