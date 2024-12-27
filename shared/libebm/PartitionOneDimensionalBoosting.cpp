@@ -896,37 +896,29 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
 
       const auto* aSumBins = aBins;
-      if(bNominal) {
-         if(TermBoostFlags_MissingCategory & flags) {
-            // Nothing to do. Treat missing like any other category.
-         } else {
-            if(bMissing) {
+      if(bMissing) {
+         if(bNominal) {
+            if(TermBoostFlags_MissingCategory & flags) {
+               // Nothing to do. Treat missing like any other category.
+            } else {
                pMissingValueTreeNode = pRootTreeNode;
                // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
                // region.
                pBin = IndexBin(pBin, cBytesPerBin);
             }
-         }
-      } else {
-         if(TermBoostFlags_MissingLow & flags) {
-            if(bMissing) {
-               pMissingBin = pBin;
-            }
-         } else if(TermBoostFlags_MissingHigh & flags) {
-            if(bMissing) {
-               pMissingBin = pBin;
-               pBin = IndexBin(pBin, cBytesPerBin);
-            }
-         } else if(TermBoostFlags_MissingSeparate & flags) {
-            cSamplesTotal -= aSumBins->GetCountSamples();
-            weightTotal -= aSumBins->GetWeight();
-            aSumBins = IndexBin(aSumBins, cBytesPerBin);
-
-            if(bMissing) {
-               pBin = IndexBin(pBin, cBytesPerBin);
-            }
          } else {
-            if(bMissing) {
+            if(TermBoostFlags_MissingLow & flags) {
+               pMissingBin = pBin;
+            } else if(TermBoostFlags_MissingHigh & flags) {
+               pMissingBin = pBin;
+               pBin = IndexBin(pBin, cBytesPerBin);
+            } else if(TermBoostFlags_MissingSeparate & flags) {
+               cSamplesTotal -= aSumBins->GetCountSamples();
+               weightTotal -= aSumBins->GetWeight();
+               aSumBins = IndexBin(aSumBins, cBytesPerBin);
+
+               pBin = IndexBin(pBin, cBytesPerBin);
+            } else {
                pMissingValueTreeNode = pRootTreeNode;
                // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
                // region.
@@ -944,11 +936,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          ++ppBin;
       } while(pBinsEnd != pBin);
 
-      if(TermBoostFlags_MissingHigh & flags) {
-         if(bMissing && !bNominal) {
-            *ppBin = aBins;
-            ++ppBin;
-         }
+      if(bMissing && !bNominal && (TermBoostFlags_MissingHigh & flags)) {
+         *ppBin = aBins;
+         ++ppBin;
       }
 
       if(bNominal) {

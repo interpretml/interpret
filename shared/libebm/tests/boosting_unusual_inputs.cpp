@@ -2061,6 +2061,29 @@ TEST_CASE("lossguide, boosting, regression") {
    CHECK_APPROX(termScore, 0.40592050000000002);
 }
 
+TEST_CASE("missing separate continuous with non-missing data, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(4, false, false, false)},
+         {{0}},
+         {
+               TestSample({1}, 20.0),
+               TestSample({2}, 30.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost continuous missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_MissingSeparate, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 30.0);
+}
+
 TEST_CASE("missing separate continuous, boosting, regression") {
    TestBoost test = TestBoost(Task_Regression,
          {FeatureTest(4, true, false, false)},
@@ -2073,12 +2096,40 @@ TEST_CASE("missing separate continuous, boosting, regression") {
          {TestSample({1}, 20.0)});
 
    // boost continuous missing separate
-   double validationMetric = test.Boost(0, TermBoostFlags_MissingSeparate).validationMetric;
-   CHECK_APPROX(validationMetric, 392.04000000000002);
+   double validationMetric = test.Boost(0, TermBoostFlags_MissingSeparate, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
 
    double termScore;
    termScore = test.GetCurrentTermScore(0, {0}, 0);
-   CHECK_APPROX(termScore, 0.10000000000000001);
+   CHECK_APPROX(termScore, 10.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 30.0);
+}
+
+TEST_CASE("missing category nominal, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(4, true, false, true)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+               TestSample({2}, 30.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_MissingCategory, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 10.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 30.0);
 }
 
 static double RandomizedTesting(const AccelerationFlags acceleration) {
@@ -2193,7 +2244,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 16554721767106.137;
+   const double expected = 15052328055998.955;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);
