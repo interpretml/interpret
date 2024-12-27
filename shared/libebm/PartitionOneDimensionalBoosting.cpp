@@ -36,6 +36,7 @@ namespace DEFINED_ZONE_NAME {
 
 template<bool bHessian, size_t cCompilerScores>
 INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShell,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const aBins,
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pBinsEnd,
       const size_t cSamplesTotal,
       const FloatMain weightTotal,
@@ -53,10 +54,6 @@ INLINE_RELEASE_TEMPLATED static void SumAllBins(BoosterShell* const pBoosterShel
    auto* const aSumGradHess = bUseStackMemory ? aSumGradHessLocal : pBinOut->GetGradientPairs();
 
    ZeroGradientPairs(aSumGradHess, cScores);
-
-   const auto* const aBins =
-         pBoosterShell->GetBoostingMainBins()
-               ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
 #ifndef NDEBUG
    UIntMain cSamplesTotalDebug = 0;
@@ -242,7 +239,12 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          }
 
          EBM_ASSERT(apBins <= ppBinLast);
-         EBM_ASSERT(ppBinLast < apBins + (cBins - (nullptr != pMissingValueTreeNode ? size_t{1} : size_t{0})));
+         EBM_ASSERT(ppBinLast < apBins +
+                     (cBins -
+                           (nullptr != pMissingValueTreeNode ||
+                                             bMissing && !bNominal && (TermBoostFlags_MissingSeparate & flags) ?
+                                       size_t{1} :
+                                       size_t{0})));
 
 #ifndef NDEBUG
          cSamplesTotalDebug += static_cast<size_t>(pTreeNode->GetBin()->GetCountSamples());
@@ -842,8 +844,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          const FloatCalc categoricalInclusionPercent,
          const size_t cSplitsMax,
          const MonotoneDirection monotoneDirection,
-         const size_t cSamplesTotal,
-         const FloatMain weightTotal,
+         size_t cSamplesTotal,
+         FloatMain weightTotal,
          double* const pTotalGain) {
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(1 <= cSplitsMax); // filter these out at the start where we can handle this case easily
@@ -886,9 +888,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
       auto* pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
-      SumAllBins<bHessian, cCompilerScores>(
-            pBoosterShell, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
-
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
@@ -901,6 +900,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
 
+      const auto* aSumBins = aBins;
       if(bNominal) {
          if(TermBoostFlags_MissingCategory & flags) {
             // nothing to do
@@ -923,6 +923,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                pBin = IndexBin(pBin, cBytesPerBin);
             }
          } else if(TermBoostFlags_MissingSeparate & flags) {
+            cSamplesTotal -= aSumBins->GetCountSamples();
+            weightTotal -= aSumBins->GetWeight();
+            aSumBins = IndexBin(aSumBins, cBytesPerBin);
+
             if(bMissing) {
                pBin = IndexBin(pBin, cBytesPerBin);
             }
@@ -935,6 +939,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             }
          }
       }
+
+      SumAllBins<bHessian, cCompilerScores>(
+            pBoosterShell, aSumBins, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
 
       do {
          *ppBin = pBin;

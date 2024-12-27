@@ -2061,6 +2061,26 @@ TEST_CASE("lossguide, boosting, regression") {
    CHECK_APPROX(termScore, 0.40592050000000002);
 }
 
+TEST_CASE("missing separate continuous, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(4, true, false, false)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+               TestSample({2}, 30.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost continuous missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_MissingSeparate).validationMetric;
+   CHECK_APPROX(validationMetric, 392.04000000000002);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 0.10000000000000001);
+}
+
 static double RandomizedTesting(const AccelerationFlags acceleration) {
    const IntEbm cTrainSamples = 211; // have some non-SIMD residuals
    const IntEbm cValidationSamples = 101; // have some non-SIMD residuals
@@ -2173,7 +2193,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 14909739735305.580;
+   const double expected = 16554721767106.137;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);
