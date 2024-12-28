@@ -112,8 +112,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t iDimension,
-      const Bin<FloatMain, UIntMain, true, true, bHessian>* const* const apBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian>** const apBins,
+      const Bin<FloatMain, UIntMain, true, true, bHessian>** const apBinsEnd,
       const TreeNode<bHessian>* pMissingValueTreeNode,
+      const TreeNode<bHessian>* pDregsTreeNode,
       const size_t cSlices,
       const size_t cBins) {
    LOG_0(Trace_Verbose, "Entered Flatten");
@@ -160,6 +162,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pMissingBin = nullptr;
+   const Bin<FloatMain, UIntMain, true, true, bHessian>* pDregsBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
    if(bNominal) {
       UIntSplit iSplit = 1;
@@ -220,6 +223,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                EBM_ASSERT(nullptr == pMissingBin);
                pMissingBin = pTreeNode->GetBin();
             }
+            if(pDregsTreeNode == GetLeftNode(pChildren)) {
+               EBM_ASSERT(nullptr == pDregsBin);
+               pDregsBin = pTreeNode->GetBin();
+            }
 
             // the node was examined and a gain calculated, so it has left and right children.
             // We can retrieve the split location by looking at where the right child would end its range
@@ -230,11 +237,19 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                EBM_ASSERT(nullptr == pMissingBin);
                pMissingBin = pTreeNode->GetBin();
             }
+            if(pDregsTreeNode == pRightChild) {
+               EBM_ASSERT(nullptr == pDregsBin);
+               pDregsBin = pTreeNode->GetBin();
+            }
          } else {
             ppBinLast = pTreeNode->BEFORE_GetBinLast();
             if(pMissingValueTreeNode == pTreeNode) {
                EBM_ASSERT(nullptr == pMissingBin);
                pMissingBin = pTreeNode->GetBin();
+            }
+            if(pDregsTreeNode == pTreeNode) {
+               EBM_ASSERT(nullptr == pDregsBin);
+               pDregsBin = pTreeNode->GetBin();
             }
          }
 
@@ -382,6 +397,45 @@ done:;
    EBM_ASSERT(prevDebug < cBins);
 #endif
 
+   if(nullptr != pDregsBin) {
+      EBM_ASSERT(bNominal);
+
+      std::sort(apBins, apBinsEnd);
+
+      const auto* const* ppBinSweep =
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
+
+      // for nominal, we would only skip the 0th missing bin if missing was assigned based on gain
+      size_t iBin = nullptr == pMissingValueTreeNode ? size_t{0} : size_t{1};
+      do {
+         const auto* const pBin = IndexBin(aBins, cBytesPerBin * iBin);
+         if(apBinsEnd != ppBinSweep && *ppBinSweep == pBin) {
+            // this bin was in the tree nodes
+            ++ppBinSweep;
+         } else {
+            // This bin is missing from the tree nodes, so it's a dreg
+            FloatScore* pUpdateScoreDregs = aUpdateScore + cScores * iBin;
+
+            FloatScore hess = static_cast<FloatCalc>(pDregsBin->GetWeight());
+            const auto* pGradientPair = pDregsBin->GetGradientPairs();
+            const auto* const pGradientPairEnd = pGradientPair + cScores;
+            do {
+               if(bUpdateWithHessian) {
+                  hess = static_cast<FloatCalc>(pGradientPair->GetHess());
+               }
+               FloatCalc updateScore = -CalcNegUpdate<true>(
+                     static_cast<FloatCalc>(pGradientPair->m_sumGradients), hess, regAlpha, regLambda, deltaStepMax);
+
+               *pUpdateScoreDregs = static_cast<FloatScore>(updateScore);
+               ++pUpdateScoreDregs;
+
+               ++pGradientPair;
+            } while(pGradientPairEnd != pGradientPair);
+         }
+         ++iBin;
+      } while(cBins != iBin);
+   }
+
    if(nullptr != pMissingBin) {
       EBM_ASSERT(bMissing);
 
@@ -430,7 +484,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       const MonotoneDirection monotoneDirection,
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pMissingBin,
       bool* pbMissingIsolated,
-      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppMissingValueTreeNode) {
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppMissingValueTreeNode,
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppDregsTreeNode,
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pDregSumBin) {
 
    LOG_N(Trace_Verbose,
          "Entered FindBestSplitGain: "
@@ -445,7 +501,11 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          "regLambda=%le, "
          "deltaStepMax=%le, "
          "monotoneDirection=%" MonotoneDirectionPrintf ", "
-         "ppMissingValueTreeNode=%p",
+         "pMissingBin=%p, "
+         "pbMissingIsolated=%p, "
+         "ppMissingValueTreeNode=%p, "
+         "ppDregsTreeNode=%p, "
+         "pDregSumBin=%p",
          static_cast<void*>(pRng),
          static_cast<const void*>(pBoosterShell),
          static_cast<UTermBoostFlags>(flags), // signed to unsigned conversion is defined behavior in C++
@@ -457,8 +517,16 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          static_cast<double>(regLambda),
          static_cast<double>(deltaStepMax),
          monotoneDirection,
-         static_cast<const void*>(ppMissingValueTreeNode));
+         static_cast<const void*>(pMissingBin),
+         static_cast<const void*>(pbMissingIsolated),
+         static_cast<const void*>(ppMissingValueTreeNode),
+         static_cast<const void*>(ppDregsTreeNode),
+         static_cast<const void*>(pDregSumBin));
+
    EBM_ASSERT(nullptr != ppMissingValueTreeNode);
+   EBM_ASSERT(nullptr != ppDregsTreeNode);
+   EBM_ASSERT(nullptr == *ppDregsTreeNode && nullptr == pDregSumBin ||
+         nullptr != *ppDregsTreeNode && nullptr != pDregSumBin);
 
    const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
@@ -475,9 +543,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    const auto* const aBins =
          pBoosterShell->GetBoostingMainBins()
                ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
-
-   // in the future we could traverse in both directions
-   ptrdiff_t incDirectionBytes = static_cast<ptrdiff_t>(+sizeof(void*));
 
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
@@ -501,16 +566,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       binParent.SetWeight(pTreeNode->GetBin()->GetWeight());
    }
 
-   UIntMain cSamplesDec = binParent.GetCountSamples();
-   const auto* const pMissingValueTreeNode = *ppMissingValueTreeNode;
-   if(pMissingValueTreeNode == pTreeNode) {
-      // missing value is stored at the start of aBins
-      binInc.Copy(cScores, *aBins, aBins->GetGradientPairs(), aIncGradHess);
-      cSamplesDec -= aBins->GetCountSamples();
-   } else {
-      binInc.Zero(cScores, aIncGradHess);
-   }
-
    pLeftChild->BEFORE_SetBinFirst(ppBinCur);
 
    EBM_ASSERT(!IsOverflowTreeNodeSize(bHessian, cScores)); // we're accessing allocated memory
@@ -518,8 +573,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    auto* const pRightChild = GetRightNode(pTreeNodeScratchSpace, cBytesPerTreeNode);
    pRightChild->Init();
    pRightChild->BEFORE_SetBinLast(ppBinLast);
-
-   MonotoneDirection monotoneAdjusted = monotoneDirection;
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
    EBM_ASSERT(!IsOverflowSplitPositionSize(bHessian, cScores)); // we're accessing allocated memory
@@ -535,7 +588,81 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    FloatCalc bestGain = k_gainMin; // it must at least be this, and maybe it needs to be more
    EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
 
-   while(true) {
+   const auto* const pMissingValueTreeNode = *ppMissingValueTreeNode;
+   const auto* const pDregsTreeNode = *ppDregsTreeNode;
+
+   struct PassState {
+      ptrdiff_t m_incDirectionBytes;
+      bool m_includeMissing;
+      bool m_includeDregs;
+   };
+
+   PassState state[4];
+   PassState* pStateEnd = state;
+
+   if(pMissingValueTreeNode == pTreeNode) {
+      pStateEnd->m_incDirectionBytes = static_cast<ptrdiff_t>(sizeof(void*));
+      pStateEnd->m_includeMissing = true;
+      pStateEnd->m_includeDregs = false;
+      ++pStateEnd;
+      pStateEnd->m_incDirectionBytes = -static_cast<ptrdiff_t>(sizeof(void*));
+      pStateEnd->m_includeMissing = true;
+      pStateEnd->m_includeDregs = false;
+      ++pStateEnd;
+      if(pDregsTreeNode == pTreeNode) {
+         pStateEnd->m_incDirectionBytes = static_cast<ptrdiff_t>(sizeof(void*));
+         pStateEnd->m_includeMissing = true;
+         pStateEnd->m_includeDregs = true;
+         ++pStateEnd;
+         pStateEnd->m_incDirectionBytes = -static_cast<ptrdiff_t>(sizeof(void*));
+         pStateEnd->m_includeMissing = true;
+         pStateEnd->m_includeDregs = true;
+         ++pStateEnd;
+      }
+   } else {
+      if(pDregsTreeNode == pTreeNode) {
+         pStateEnd->m_incDirectionBytes = static_cast<ptrdiff_t>(sizeof(void*));
+         pStateEnd->m_includeMissing = false;
+         pStateEnd->m_includeDregs = true;
+         ++pStateEnd;
+         pStateEnd->m_incDirectionBytes = -static_cast<ptrdiff_t>(sizeof(void*));
+         pStateEnd->m_includeMissing = false;
+         pStateEnd->m_includeDregs = true;
+         ++pStateEnd;
+      } else {
+         pStateEnd->m_incDirectionBytes = static_cast<ptrdiff_t>(sizeof(void*));
+         pStateEnd->m_includeMissing = false;
+         pStateEnd->m_includeDregs = false;
+         ++pStateEnd;
+      }
+   }
+
+   PassState* pStateCur = state;
+   do {
+      ptrdiff_t incDirectionBytes = pStateCur->m_incDirectionBytes;
+      MonotoneDirection monotoneAdjusted;
+      if(ptrdiff_t{0} <= incDirectionBytes) {
+         ppBinCur = pTreeNode->BEFORE_GetBinFirst();
+         ppBinLast = pTreeNode->BEFORE_GetBinLast();
+         monotoneAdjusted = monotoneDirection;
+      } else {
+         ppBinCur = pTreeNode->BEFORE_GetBinLast();
+         ppBinLast = pTreeNode->BEFORE_GetBinFirst();
+         monotoneAdjusted = -monotoneDirection;
+      }
+
+      binInc.Zero(cScores, aIncGradHess);
+      UIntMain cSamplesDec = binParent.GetCountSamples();
+
+      if(pStateCur->m_includeMissing) {
+         binInc.Add(cScores, *aBins, aBins->GetGradientPairs(), aIncGradHess);
+         cSamplesDec -= aBins->GetCountSamples();
+      }
+      if(pStateCur->m_includeDregs) {
+         binInc.Add(cScores, *pDregSumBin, pDregSumBin->GetGradientPairs(), aIncGradHess);
+         cSamplesDec -= pDregSumBin->GetCountSamples();
+      }
+
       EBM_ASSERT(ppBinLast != ppBinCur); // then we would be non-splitable and would have exited above
       do {
          const auto* const pBinCur = *ppBinCur;
@@ -647,19 +774,8 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
    done:;
 
-      if(pMissingValueTreeNode != pTreeNode || incDirectionBytes < ptrdiff_t{0}) {
-         break;
-      }
-
-      // reverse direction
-      incDirectionBytes = -incDirectionBytes;
-      monotoneAdjusted = -monotoneAdjusted;
-      ppBinCur = pTreeNode->BEFORE_GetBinLast();
-      ppBinLast = pTreeNode->BEFORE_GetBinFirst();
-
-      binInc.Copy(cScores, *aBins, aBins->GetGradientPairs(), aIncGradHess);
-      cSamplesDec = binParent.GetCountSamples() - aBins->GetCountSamples();
-   }
+      ++pStateCur;
+   } while(pStateEnd != pStateCur);
 
    if(UNLIKELY(pBestSplitsStart == pBestSplitsCur)) {
       // no valid splits found
@@ -744,6 +860,9 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
 
    if(pMissingValueTreeNode == pTreeNode) {
       *ppMissingValueTreeNode = pIncChild;
+   }
+   if(pDregsTreeNode == pTreeNode) {
+      *ppDregsTreeNode = pIncChild;
    }
 
    memcpy(pIncChild->GetBin(), pBestSplitsStart->GetBinSum(), cBytesPerBin);
@@ -894,6 +1013,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       bool bMissingIsolated = false;
 
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pDregsTreeNode = nullptr;
+
+      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pDregSumBin = nullptr;
 
       const auto* aSumBins = aBins;
       if(bMissing) {
@@ -970,7 +1092,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             monotoneDirection,
             pMissingBin,
             &bMissingIsolated,
-            &pMissingValueTreeNode);
+            &pMissingValueTreeNode,
+            &pDregsTreeNode,
+            pDregSumBin);
       size_t cSplitsRemaining = cSplitsMax;
       FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
@@ -1045,7 +1169,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      monotoneDirection,
                      pMissingBin,
                      &bMissingIsolated,
-                     &pMissingValueTreeNode);
+                     &pMissingValueTreeNode,
+                     &pDregsTreeNode,
+                     pDregSumBin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -1071,7 +1197,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      monotoneDirection,
                      pMissingBin,
                      &bMissingIsolated,
-                     &pMissingValueTreeNode);
+                     &pMissingValueTreeNode,
+                     &pDregsTreeNode,
+                     pDregSumBin);
                // if FindBestSplitGain returned -1 to indicate an
                // overflow ignore it here. We successfully made a root node split, so we might as well continue
                // with the successful tree that we have which can make progress in boosting down the residuals
@@ -1123,8 +1251,10 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             regLambda,
             deltaStepMax,
             iDimension,
-            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins),
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>**>(apBins),
+            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>**>(ppBin),
             nullptr != pMissingValueTreeNode ? pMissingValueTreeNode->Downgrade() : nullptr,
+            nullptr != pDregsTreeNode ? pDregsTreeNode->Downgrade() : nullptr,
             cSlices,
             cBins);
 
