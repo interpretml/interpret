@@ -78,6 +78,10 @@ def boost(
                     reg_alpha=reg_alpha,
                     reg_lambda=reg_lambda,
                     max_delta_step=0.0,
+                    min_cat_samples=develop.get_option("min_cat_samples"),
+                    min_cat_hessian_percent=develop.get_option(
+                        "min_cat_hessian_percent"
+                    ),
                     cat_smooth=develop.get_option("cat_smooth"),
                     max_cat_threshold=develop.get_option("max_cat_threshold"),
                     cat_include=develop.get_option("cat_include"),
@@ -194,6 +198,10 @@ def boost(
                         reg_alpha=reg_alpha,
                         reg_lambda=reg_lambda_local,
                         max_delta_step=max_delta_step,
+                        min_cat_samples=develop.get_option("min_cat_samples"),
+                        min_cat_hessian_percent=develop.get_option(
+                            "min_cat_hessian_percent"
+                        ),
                         cat_smooth=develop.get_option("cat_smooth"),
                         max_cat_threshold=develop.get_option("max_cat_threshold"),
                         cat_include=develop.get_option("cat_include"),

@@ -1510,6 +1510,10 @@ class Native:
             ct.c_double,
             # double maxDeltaStep
             ct.c_double,
+            # int64_t minCategorySamples
+            ct.c_int64,
+            # double minCategoryHessianPercent
+            ct.c_double,
             # double categoricalSmoothing
             ct.c_double,
             # int64_t maxCategoricalThreshold
@@ -1831,6 +1835,8 @@ class Booster(AbstractContextManager):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        min_cat_samples,
+        min_cat_hessian_percent,
         cat_smooth,
         max_cat_threshold,
         cat_include,
@@ -1849,6 +1855,8 @@ class Booster(AbstractContextManager):
             reg_alpha: L1 regularization.
             reg_lambda: L2 regularization.
             max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
+            min_cat_samples: Min samples to consider category independently
+            min_cat_hessian_percent: Min percentage of the hessians to consider category independently
             cat_smooth: Parameter used to determine which categories are included each boosting round and ordering.
             max_cat_threshold: max number of categories to include each boosting round
             cat_include: percentage of categories to include in each boosting round
@@ -1896,6 +1904,8 @@ class Booster(AbstractContextManager):
             reg_alpha,
             reg_lambda,
             max_delta_step,
+            min_cat_samples,
+            min_cat_hessian_percent,
             cat_smooth,
             max_cat_threshold,
             cat_include,

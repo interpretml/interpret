@@ -294,6 +294,8 @@ static constexpr double k_minHessianDefault = 1e-3;
 static constexpr double k_regAlphaDefault = 0.0;
 static constexpr double k_regLambdaDefault = 0.0;
 static constexpr double k_maxDeltaStepDefault = 0.0;
+static constexpr IntEbm k_minCategorySamplesDefault = 0;
+static constexpr double k_minCategoryHessianPercentDefault = 0.0;
 static constexpr double k_categoricalSmoothingDefault = 10.0;
 static constexpr IntEbm k_maxCategoricalThresholdDefault = IntEbm{32};
 static constexpr double k_categoricalInclusionPercentDefault = 0.75;
@@ -489,6 +491,8 @@ class TestBoost {
          const double regAlpha = k_regAlphaDefault,
          const double regLambda = k_regLambdaDefault,
          const double maxDeltaStep = k_maxDeltaStepDefault,
+         IntEbm minCategorySamplesDefault = k_minCategorySamplesDefault,
+         double minCategoryHessianPercentDefault = k_minCategoryHessianPercentDefault,
          const double categoricalSmoothing = k_categoricalSmoothingDefault,
          const IntEbm maxCategoricalThreshold = k_maxCategoricalThresholdDefault,
          const double categoricalInclusionPercent = k_categoricalInclusionPercentDefault,
