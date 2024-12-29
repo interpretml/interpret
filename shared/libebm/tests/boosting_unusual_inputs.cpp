@@ -2224,7 +2224,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                const double regAlpha = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
                const double regLambda = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
                const double maxDeltaStep = 0 == TestRand(rng, 5) ? 1.0 : 0.0;
-               const IntEbm minCategorySamples = 0; // TODO: make random
+               const IntEbm minCategorySamples = TestRand(rng, 100);
                const double minCategoryHessianPercent = 0.0; // TODO: make random
                const double categoricalSmoothing = 10.0;
                const IntEbm maxCategoricalThreshold = 1 + TestRand(rng, cRealBins + 1);
@@ -2268,7 +2268,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 15052328055998.955;
+   const double expected = 17508883449920.195;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);
