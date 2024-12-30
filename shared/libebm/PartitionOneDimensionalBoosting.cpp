@@ -123,6 +123,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
    EBM_ASSERT(nullptr != apBins);
+   EBM_ASSERT(nullptr != apBinsEnd);
+   EBM_ASSERT(apBins < apBinsEnd); // if zero bins then we should have handled elsewhere
    EBM_ASSERT(1 <= cSlices);
    EBM_ASSERT(2 <= cBins);
    EBM_ASSERT(cSlices <= cBins);
@@ -972,7 +974,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       // TODO: use all of these!
       UNUSED(bUnseen);
-      UNUSED(cCategorySamplesMin);
       UNUSED(categoryHessianPercentMin);
       UNUSED(categoricalThresholdMax);
       UNUSED(categoricalInclusionPercent);
@@ -987,7 +988,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       pRootTreeNode->Init();
 
       // we can only sort if there's a single sortable index, so 1 score value
-      bNominal = 1 == cCompilerScores && bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
+      bNominal = bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
       size_t cNormalBins = cBins;
       if(bMissing) {
@@ -1073,7 +1074,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       } while(pBinsEnd != pBin);
 
       if(bNominal) {
-         if(apBins == ppBin) {
+         size_t cRemaining = ppBin - apBins;
+         if(0 == cRemaining) {
             // all categories are dregs, so pretend there's just one bin and everything is inside it
 
             const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
@@ -1128,7 +1130,20 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
             *pTotalGain = 0;
             return error;
-         } else {
+         }
+
+         // shuffle
+         while(size_t{1} != cRemaining) {
+            const size_t iSwap = pRng->NextFast(cRemaining);
+            auto* const pTemp = apBins[iSwap];
+            --cRemaining;
+            apBins[iSwap] = apBins[cRemaining];
+            apBins[cRemaining] = pTemp;
+         }
+
+         static constexpr bool bSingleScore = 1 == cCompilerScores;
+         if(bSingleScore) {
+            // there isn't a single key to sort on with multiple grad/hess pairs, so use random ordering otherwise.
             std::sort(apBins,
                   ppBin,
                   CompareBin<bHessian, cCompilerScores>(
