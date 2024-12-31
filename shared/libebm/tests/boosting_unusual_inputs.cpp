@@ -2152,6 +2152,118 @@ TEST_CASE("missing category nominal, boosting, regression") {
    CHECK_APPROX(termScore, 30.0);
 }
 
+TEST_CASE("missing + unseen continuous, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(2, true, true, false)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 10.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+}
+
+TEST_CASE("missing + unseen nominal, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(2, true, true, true)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 10.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+}
+
+TEST_CASE("missing category nominal, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(3, true, false, true)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 10.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 20.0);
+}
+
+TEST_CASE("missing category nominal, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(3, false, true, true)},
+         {{0}},
+         {
+               TestSample({1}, 20.0),
+               TestSample({2}, 30.0),
+         },
+         {TestSample({1}, 20.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 20.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 30.0);
+}
+
+TEST_CASE("missing category nominal, boosting, regression") {
+   TestBoost test = TestBoost(Task_Regression,
+         {FeatureTest(3, true, true, true)},
+         {{0}},
+         {
+               TestSample({0}, 10.0),
+               TestSample({1}, 20.0),
+               TestSample({2}, 30.0),
+         },
+         {TestSample({2}, 30.0)});
+
+   // boost nominal missing separate
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
+   CHECK_APPROX(validationMetric, 0.0);
+
+   double termScore;
+   termScore = test.GetCurrentTermScore(0, {0}, 0);
+   CHECK_APPROX(termScore, 15.0);
+   termScore = test.GetCurrentTermScore(0, {1}, 0);
+   CHECK_APPROX(termScore, 15.0);
+   termScore = test.GetCurrentTermScore(0, {2}, 0);
+   CHECK_APPROX(termScore, 30.0);
+}
+
 static double RandomizedTesting(const AccelerationFlags acceleration) {
    const IntEbm cTrainSamples = 211; // have some non-SIMD residuals
    const IntEbm cValidationSamples = 101; // have some non-SIMD residuals

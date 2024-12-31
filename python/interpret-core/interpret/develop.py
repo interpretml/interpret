@@ -15,7 +15,7 @@ _develop_options = {
     "intercept_learning_rate": 0.25,
     "cat_l2": 0.0,  # TODO: change to 10.0 (see Lightgbm cat_l2)
     "min_samples_leaf_nominal": None,  # TODO: LightGBM uses min_data_per_group = 100
-    "min_cat_samples": 0,
+    "min_cat_samples": 12,
     "min_cat_hessian_percent": 0.0,
     "cat_smooth": 10.0,
     "max_cat_threshold": 32,

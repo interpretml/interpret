@@ -458,7 +458,7 @@ done:;
          ++pGradientPair;
       } while(pGradientPairEnd != pGradientPair);
    } else {
-      EBM_ASSERT(!bMissing || bNominal && (TermBoostFlags_MissingCategory & flags));
+      EBM_ASSERT(!bMissing || bNominal && ((TermBoostFlags_MissingCategory & flags) || 2 == cBins));
    }
 
    LOG_0(Trace_Verbose, "Exited Flatten");
@@ -947,7 +947,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          bool bMissing,
          bool bUnseen,
          bool bNominal,
-         const TermBoostFlags flags,
+         TermBoostFlags flags,
          const size_t cBins,
          const size_t iDimension,
          const size_t cSamplesLeafMin,
@@ -990,19 +990,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // we can only sort if there's a single sortable index, so 1 score value
       bNominal = bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
-      size_t cNormalBins = cBins;
-      if(bMissing) {
-         --cNormalBins;
-      }
-      if(bUnseen) {
-         --cNormalBins;
-      }
-      if(cNormalBins <= 1) {
-         // we could have just missing and unknown bins an no normal bins, or a normal bin plus missing and/or unseen.
-         bMissing = false;
-         bUnseen = false;
-      }
-
       auto* const aBins =
             pBoosterShell->GetBoostingMainBins()
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
@@ -1029,10 +1016,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             if(TermBoostFlags_MissingCategory & flags) {
                // Nothing to do. Treat missing like any other category.
             } else {
-               pMissingValueTreeNode = pRootTreeNode;
-               // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
-               // region.
-               pBin = IndexBin(pBin, cBytesPerBin);
+               // as a special case, if there are only 2 bins, then treat it like TermBoostFlags_MissingCategory
+               // because merging the missing bin into the only category will generate no gain
+               if(2 != cBins) {
+                  pMissingValueTreeNode = pRootTreeNode;
+                  // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
+                  // region.
+                  pBin = IndexBin(pBin, cBytesPerBin);
+               }
             }
          } else {
             if(TermBoostFlags_MissingLow & flags) {
@@ -1047,10 +1038,17 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
                pBin = IndexBin(pBin, cBytesPerBin);
             } else {
-               pMissingValueTreeNode = pRootTreeNode;
-               // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
-               // region.
-               pBin = IndexBin(pBin, cBytesPerBin);
+               if(2 == cBins) {
+                  // as a special case, if there are only 2 bins, then treat it like TermBoostFlags_MissingLow
+                  // because merging the missing bin into the only category will generate no gain
+                  flags |= TermBoostFlags_MissingLow;
+                  pMissingBin = pBin;
+               } else {
+                  pMissingValueTreeNode = pRootTreeNode;
+                  // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
+                  // region.
+                  pBin = IndexBin(pBin, cBytesPerBin);
+               }
             }
          }
       }
