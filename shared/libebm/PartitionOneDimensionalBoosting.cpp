@@ -919,17 +919,24 @@ template<bool bHessian, size_t cCompilerScores> class CompareBin final {
       // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
       // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
 
-      const bool bUpdateWithHessian = bHessian && m_bHessianRuntime;
+      EBM_ASSERT(!std::isnan(m_categoricalSmoothing));
 
-      const FloatCalc hess1 =
-            static_cast<FloatCalc>(bUpdateWithHessian ? lhs->GetGradientPairs()[0].GetHess() : lhs->GetWeight());
-      const FloatCalc val1 =
-            static_cast<FloatCalc>(lhs->GetGradientPairs()[0].m_sumGradients) / (hess1 + m_categoricalSmoothing);
-
-      const FloatCalc hess2 =
-            static_cast<FloatCalc>(bUpdateWithHessian ? rhs->GetGradientPairs()[0].GetHess() : rhs->GetWeight());
-      const FloatCalc val2 =
-            static_cast<FloatCalc>(rhs->GetGradientPairs()[0].m_sumGradients) / (hess2 + m_categoricalSmoothing);
+      FloatCalc val1 = static_cast<FloatCalc>(lhs->GetGradientPairs()[0].m_sumGradients);
+      FloatCalc val2 = static_cast<FloatCalc>(rhs->GetGradientPairs()[0].m_sumGradients);
+      if(!std::isinf(m_categoricalSmoothing)) {
+         FloatCalc hess1;
+         FloatCalc hess2;
+         const bool bUpdateWithHessian = bHessian && m_bHessianRuntime;
+         if(!bUpdateWithHessian) {
+            hess1 = static_cast<FloatCalc>(lhs->GetWeight());
+            hess2 = static_cast<FloatCalc>(rhs->GetWeight());
+         } else {
+            hess1 = static_cast<FloatCalc>(lhs->GetGradientPairs()[0].GetHess());
+            hess2 = static_cast<FloatCalc>(rhs->GetGradientPairs()[0].GetHess());
+         }
+         val1 /= (hess1 + m_categoricalSmoothing);
+         val2 /= (hess2 + m_categoricalSmoothing);
+      }
 
       if(val1 == val2) {
          return lhs < rhs;
@@ -1130,17 +1137,22 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             return error;
          }
 
-         // shuffle
-         while(size_t{1} != cRemaining) {
-            const size_t iSwap = pRng->NextFast(cRemaining);
-            auto* const pTemp = apBins[iSwap];
-            --cRemaining;
-            apBins[iSwap] = apBins[cRemaining];
-            apBins[cRemaining] = pTemp;
+         const bool bShuffle = 1 != cCompilerScores || std::isnan(categoricalSmoothing);
+         const bool bSort = 1 == cCompilerScores && !std::isnan(categoricalSmoothing);
+
+         EBM_ASSERT(bShuffle || bSort);
+
+         if(bShuffle) {
+            while(size_t{1} != cRemaining) {
+               const size_t iSwap = pRng->NextFast(cRemaining);
+               auto* const pTemp = apBins[iSwap];
+               --cRemaining;
+               apBins[iSwap] = apBins[cRemaining];
+               apBins[cRemaining] = pTemp;
+            }
          }
 
-         static constexpr bool bSingleScore = 1 == cCompilerScores;
-         if(bSingleScore) {
+         if(bSort) {
             // there isn't a single key to sort on with multiple grad/hess pairs, so use random ordering otherwise.
             std::sort(apBins,
                   ppBin,

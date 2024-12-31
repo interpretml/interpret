@@ -847,9 +847,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    }
 
    FloatCalc categoricalSmoothingCalc = static_cast<FloatCalc>(categoricalSmoothing);
-   if(/* NaN */ !(std::numeric_limits<FloatCalc>::min() <= categoricalSmoothingCalc)) {
+   if(categoricalSmoothingCalc < std::numeric_limits<FloatCalc>::min()) {
+      // allow isnan(categoricalSmoothingCalc) through unscathed
       categoricalSmoothingCalc = std::numeric_limits<FloatCalc>::min();
-      if(/* NaN */ !(double{0} <= categoricalSmoothing)) {
+      if(categoricalSmoothing < 0.0) {
          LOG_0(Trace_Warning,
                "WARNING GenerateTermUpdate categoricalSmoothing must be a positive number. Adjusting to minimum float");
       }
