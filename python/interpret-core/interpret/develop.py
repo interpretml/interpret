@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import sys
+import math
 
 from .utils._native import Native
 
@@ -17,7 +18,7 @@ _develop_options = {
     "min_samples_leaf_nominal": None,  # TODO: LightGBM uses min_data_per_group = 100
     "min_cat_samples": 12,
     "min_cat_hessian_percent": 0.0,
-    "cat_smooth": 10.0,
+    "cat_smooth": math.inf,  # math.inf means use only the gradient for sorting
     "max_cat_threshold": 32,
     "cat_include": 0.75,
     "purify_boosting": False,

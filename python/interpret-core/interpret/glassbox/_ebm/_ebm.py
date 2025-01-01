@@ -2718,7 +2718,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=14
+    outer_bags : int, default=16
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
@@ -2808,7 +2808,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
     objective : str, default="log_loss"
         The objective to optimize.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=42
@@ -2927,7 +2927,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
+        outer_bags: int = 16,
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.015,
@@ -2949,7 +2949,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = 42,
     ):
         super().__init__(
@@ -3090,7 +3090,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=14
+    outer_bags : int, default=16
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
@@ -3182,7 +3182,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         The objective to optimize. Options include: "rmse",
         "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
         "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=42
@@ -3299,7 +3299,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
+        outer_bags: int = 16,
         inner_bags: Optional[int] = 0,
         # Boosting
         learning_rate: float = 0.04,
@@ -3321,7 +3321,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = 42,
     ):
         super().__init__(
@@ -3423,7 +3423,7 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=None
@@ -3547,7 +3547,7 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
@@ -3691,7 +3691,7 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=None
@@ -3824,7 +3824,7 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
