@@ -1063,6 +1063,50 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       SumAllBins<bHessian, cCompilerScores>(
             pBoosterShell, aSumBins, pBinsEnd, cSamplesTotal, weightTotal, pRootTreeNode->GetBin());
 
+      FloatCalc totalGain = 0;
+      if(!bNominal && bMissing && (TermBoostFlags_MissingSeparate & flags)) {
+         // we have a forced split on the missing bin, so calculate the gain from that split
+         // this needs to happen here instead of afterwards since we can modify the bins if there
+         // are dregs and we need to access the missing bin's information here
+
+         const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+
+         FloatCalc hessMissing = static_cast<FloatCalc>(aBins->GetWeight());
+         FloatCalc hessNonMissing = static_cast<FloatCalc>(pRootTreeNode->GetBin()->GetWeight());
+
+         const auto* const aGradHessMissing = aBins->GetGradientPairs();
+         const auto* const aGradHessNonMissing = pRootTreeNode->GetBin()->GetGradientPairs();
+
+         size_t iScore = 0;
+         do {
+            if(bUseLogitBoost) {
+               hessMissing = static_cast<FloatCalc>(aGradHessMissing[iScore].GetHess());
+               hessNonMissing = static_cast<FloatCalc>(aGradHessNonMissing[iScore].GetHess());
+            }
+            const FloatCalc gradMissing = static_cast<FloatCalc>(aGradHessMissing[iScore].m_sumGradients);
+            const FloatCalc gradNonMissing = static_cast<FloatCalc>(aGradHessNonMissing[iScore].m_sumGradients);
+
+            const FloatCalc gainMissing =
+                  CalcPartialGain<true>(gradMissing, hessMissing, regAlpha, regLambda, deltaStepMax);
+            EBM_ASSERT(std::isnan(gainMissing) || 0 <= gainMissing);
+
+            const FloatCalc gainNonMissing =
+                  CalcPartialGain<true>(gradNonMissing, hessNonMissing, regAlpha, regLambda, deltaStepMax);
+            EBM_ASSERT(std::isnan(gainNonMissing) || 0 <= gainNonMissing);
+
+            const FloatCalc gradParent = gradMissing + gradNonMissing;
+            const FloatCalc hessParent = hessMissing + hessNonMissing;
+            const FloatCalc gainParent =
+                  CalcPartialGain<true>(gradParent, hessParent, regAlpha, regLambda, deltaStepMax);
+            EBM_ASSERT(std::isnan(gainParent) || 0 <= gainParent);
+
+            const FloatCalc gain = gainMissing + gainNonMissing - gainParent;
+            totalGain += gain;
+
+            ++iScore;
+         } while(cScores != iScore);
+      }
+
       do {
          if(bNominal && pBin->GetCountSamples() < cCategorySamplesMin) {
             if(pDregSumBin) {
@@ -1078,60 +1122,45 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          pBin = IndexBin(pBin, cBytesPerBin);
       } while(pBinsEnd != pBin);
 
+      size_t cRemaining;
       if(bNominal) {
-         size_t cRemaining = ppBin - apBins;
+         cRemaining = ppBin - apBins;
          if(0 == cRemaining) {
             // all categories are dregs, so pretend there's just one bin and everything is inside it
+         one_bin_return:;
 
             const bool bUpdateWithHessian = bHessian && !(TermBoostFlags_DisableNewtonUpdate & flags);
 
             Tensor* const pInnerTermUpdate = pBoosterShell->GetInnerTermUpdate();
 
-            error = pInnerTermUpdate->SetCountSlices(iDimension, cBins);
+            error = pInnerTermUpdate->SetCountSlices(iDimension, 1);
             if(UNLIKELY(Error_None != error)) {
                // already logged
                return error;
             }
 
-            EBM_ASSERT(!IsMultiplyError(cScores, cBins));
-            error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores * cBins);
+            error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores);
             if(UNLIKELY(Error_None != error)) {
                // already logged
                return error;
             }
 
-            UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
-
-            UIntSplit iSplit = 1;
-            while(cBins != iSplit) {
-               pSplit[iSplit - 1] = iSplit;
-               ++iSplit;
-            }
-
-            FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-
-            size_t iBin = 0;
+            FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
+            FloatScore hess = static_cast<FloatCalc>(pRootTreeNode->GetBin()->GetWeight());
+            const auto* pGradientPair = pRootTreeNode->GetBin()->GetGradientPairs();
+            const auto* const pGradientPairEnd = pGradientPair + cScores;
             do {
-               // This bin is missing from the tree nodes, so it's a dreg
-               FloatScore* pUpdateScoreDregs = aUpdateScore + cScores * iBin;
+               if(bUpdateWithHessian) {
+                  hess = static_cast<FloatCalc>(pGradientPair->GetHess());
+               }
+               FloatCalc updateScore = -CalcNegUpdate<true>(
+                     static_cast<FloatCalc>(pGradientPair->m_sumGradients), hess, regAlpha, regLambda, deltaStepMax);
 
-               FloatScore hess = static_cast<FloatCalc>(pRootTreeNode->GetBin()->GetWeight());
-               const auto* pGradientPair = pRootTreeNode->GetBin()->GetGradientPairs();
-               const auto* const pGradientPairEnd = pGradientPair + cScores;
-               do {
-                  if(bUpdateWithHessian) {
-                     hess = static_cast<FloatCalc>(pGradientPair->GetHess());
-                  }
-                  FloatCalc updateScore = -CalcNegUpdate<true>(
-                        static_cast<FloatCalc>(pGradientPair->m_sumGradients), hess, regAlpha, regLambda, deltaStepMax);
+               *pUpdateScore = static_cast<FloatScore>(updateScore);
+               ++pUpdateScore;
 
-                  *pUpdateScoreDregs = static_cast<FloatScore>(updateScore);
-                  ++pUpdateScoreDregs;
-
-                  ++pGradientPair;
-               } while(pGradientPairEnd != pGradientPair);
-               ++iBin;
-            } while(cBins != iBin);
+               ++pGradientPair;
+            } while(pGradientPairEnd != pGradientPair);
 
             *pTotalGain = 0;
             return error;
@@ -1192,7 +1221,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             &pDregsTreeNode,
             pDregSumBin);
       size_t cSplitsRemaining = cSplitsMax;
-      FloatCalc totalGain = 0;
       if(UNLIKELY(0 != retFind)) {
          // there will be no splits at all
          if(UNLIKELY(retFind < 0)) {
@@ -1325,6 +1353,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             return Error_UnexpectedInternal;
          }
       }
+      if(totalGain < k_gainMin) {
+         if(!bNominal && bMissing && (TermBoostFlags_MissingSeparate & flags)) {
+            // we can start from a negative gain when we have a forced split
+            // we first need to add the missing bin into the totals that we have
+            pRootTreeNode->GetBin()->Add(cScores, *aBins, aBins->GetGradientPairs());
+         }
+         goto one_bin_return;
+      }
+
       *pTotalGain = static_cast<double>(totalGain);
 
       size_t cSlices = cSplitsMax - cSplitsRemaining + 1;
