@@ -2068,13 +2068,13 @@ TEST_CASE("lossguide, boosting, regression") {
    double validationMetric = test.Boost(0, TermBoostFlags_Default).validationMetric;
    CHECK_APPROX(validationMetric, 411.88702500000005);
 
-   // boost nominal missing lossguide
+   // boost nominal
    validationMetric = test.Boost(1, TermBoostFlags_Default).validationMetric;
-   CHECK_APPROX(validationMetric, 403.69047320250002);
+   CHECK_APPROX(validationMetric, 403.48957770250007);
 
    // boost continuous missing lossguide
    validationMetric = test.Boost(0, TermBoostFlags_Default).validationMetric;
-   CHECK_APPROX(validationMetric, 395.65703278577030);
+   CHECK_APPROX(validationMetric, 395.45814649077033);
 
    double termScore;
    termScore = test.GetCurrentTermScore(0, {0}, 0);
@@ -2140,7 +2140,7 @@ TEST_CASE("missing category nominal, boosting, regression") {
          {TestSample({1}, 20.0)});
 
    // boost nominal missing separate
-   double validationMetric = test.Boost(0, TermBoostFlags_MissingCategory, 1.0).validationMetric;
+   double validationMetric = test.Boost(0, TermBoostFlags_Default, 1.0).validationMetric;
    CHECK_APPROX(validationMetric, 0.0);
 
    double termScore;
@@ -2257,9 +2257,9 @@ TEST_CASE("missing category nominal, boosting, regression") {
 
    double termScore;
    termScore = test.GetCurrentTermScore(0, {0}, 0);
-   CHECK_APPROX(termScore, 15.0);
+   CHECK_APPROX(termScore, 10.0);
    termScore = test.GetCurrentTermScore(0, {1}, 0);
-   CHECK_APPROX(termScore, 15.0);
+   CHECK_APPROX(termScore, 20.0);
    termScore = test.GetCurrentTermScore(0, {2}, 0);
    CHECK_APPROX(termScore, 30.0);
 }
@@ -2299,8 +2299,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
          TermBoostFlags_PurifyUpdate,
          // TermBoostFlags_GradientSums, // does not return a metric
          TermBoostFlags_DisableNewtonUpdate,
-         TermBoostFlags_RandomSplits,
-         TermBoostFlags_MissingCategory};
+         TermBoostFlags_RandomSplits};
    std::vector<IntEbm> boostFlagsChoose{
          TermBoostFlags_Default, TermBoostFlags_MissingLow, TermBoostFlags_MissingHigh, TermBoostFlags_MissingSeparate};
 
@@ -2380,7 +2379,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 15453628422513.807;
+   const double expected = 12442461586398.865;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);

@@ -228,7 +228,6 @@ typedef struct _InteractionHandle {
 #define TermBoostFlags_MissingLow          (TERM_BOOST_FLAGS_CAST(0x00000080))
 #define TermBoostFlags_MissingHigh         (TERM_BOOST_FLAGS_CAST(0x00000100))
 #define TermBoostFlags_MissingSeparate     (TERM_BOOST_FLAGS_CAST(0x00000200))
-#define TermBoostFlags_MissingCategory     (TERM_BOOST_FLAGS_CAST(0x00000400))
 
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))

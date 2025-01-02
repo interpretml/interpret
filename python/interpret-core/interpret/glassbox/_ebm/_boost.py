@@ -156,20 +156,11 @@ def boost(
                         )
 
                 if missing == "low":
-                    term_boost_flags_local |= (
-                        Native.TermBoostFlags_MissingLow
-                        | Native.TermBoostFlags_MissingCategory
-                    )
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingLow
                 elif missing == "high":
-                    term_boost_flags_local |= (
-                        Native.TermBoostFlags_MissingHigh
-                        | Native.TermBoostFlags_MissingCategory
-                    )
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingHigh
                 elif missing == "separate":
-                    term_boost_flags_local |= (
-                        Native.TermBoostFlags_MissingSeparate
-                        | Native.TermBoostFlags_MissingCategory
-                    )
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingSeparate
                 elif missing != "gain":
                     msg = f"Unrecognized missing option {missing}."
                     raise Exception(msg)

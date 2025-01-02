@@ -458,7 +458,7 @@ done:;
          ++pGradientPair;
       } while(pGradientPairEnd != pGradientPair);
    } else {
-      EBM_ASSERT(!bMissing || bNominal && ((TermBoostFlags_MissingCategory & flags) || 2 == cBins));
+      EBM_ASSERT(!bMissing || bNominal);
    }
 
    LOG_0(Trace_Verbose, "Exited Flatten");
@@ -1019,20 +1019,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       const auto* aSumBins = aBins;
       if(bMissing) {
-         if(bNominal) {
-            if(TermBoostFlags_MissingCategory & flags) {
-               // Nothing to do. Treat missing like any other category.
-            } else {
-               // as a special case, if there are only 2 bins, then treat it like TermBoostFlags_MissingCategory
-               // because merging the missing bin into the only category will generate no gain
-               if(2 != cBins) {
-                  pMissingValueTreeNode = pRootTreeNode;
-                  // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
-                  // region.
-                  pBin = IndexBin(pBin, cBytesPerBin);
-               }
-            }
-         } else {
+         if(!bNominal) {
+            // For nominal, missing is just a category.
+
             if(TermBoostFlags_MissingLow & flags) {
                pMissingBin = pBin;
             } else if(TermBoostFlags_MissingHigh & flags) {
