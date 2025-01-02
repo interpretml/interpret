@@ -19,7 +19,7 @@ _develop_options = {
     "min_cat_samples": 12,
     "min_cat_hessian_percent": 0.0,
     "cat_smooth": math.inf,  # math.inf means use only the gradient for sorting
-    "max_cat_threshold": 32,
+    "max_cat_threshold": 9223372036854775807,
     "cat_include": 0.75,
     "purify_boosting": False,
     "purify_result": False,

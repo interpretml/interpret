@@ -982,8 +982,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       // TODO: use all of these!
       UNUSED(bUnseen);
       UNUSED(categoryHessianPercentMin);
-      UNUSED(categoricalThresholdMax);
-      UNUSED(categoricalInclusionPercent);
 
       BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
       const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
@@ -1159,14 +1157,18 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          if(cRemaining <= cKeep && categoricalInclusionPercent < 1.0) {
             cKeep = cRemaining - 1;
          }
+         if(categoricalThresholdMax < cKeep) {
+            cKeep = categoricalThresholdMax;
+         }
          if(cKeep <= 1) {
             cKeep = 2;
          }
          if(cRemaining < cKeep) {
             cKeep = cRemaining;
          }
+         EBM_ASSERT(2 <= cKeep);
 
-         const bool bShuffle = 1 != cCompilerScores || std::isnan(categoricalSmoothing);
+         const bool bShuffle = 1 != cCompilerScores || std::isnan(categoricalSmoothing) || cKeep != cRemaining;
          const bool bSort = 1 == cCompilerScores && !std::isnan(categoricalSmoothing);
 
          EBM_ASSERT(bShuffle || bSort);
