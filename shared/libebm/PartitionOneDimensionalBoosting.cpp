@@ -1002,12 +1002,12 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
       auto* pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** const apBins =
+      const auto** const apBins =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
 
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>** ppBin = apBins;
-      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pBin = aBins;
+      const auto** ppBin = apBins;
+      auto* pBin = aBins;
 
       const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pMissingBin = nullptr;
       bool bMissingIsolated = false;
@@ -1125,7 +1125,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       size_t cRemaining;
       if(bNominal) {
          cRemaining = ppBin - apBins;
-         if(0 == cRemaining) {
+         if(cRemaining <= 1) {
             // all categories are dregs, so pretend there's just one bin and everything is inside it
          one_bin_return:;
 
@@ -1166,19 +1166,34 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             return error;
          }
 
+         size_t cKeep = static_cast<size_t>(std::round(categoricalInclusionPercent * cRemaining));
+         if(cRemaining <= cKeep && categoricalInclusionPercent < 1.0) {
+            cKeep = cRemaining - 1;
+         }
+         if(cKeep <= 1) {
+            cKeep = 2;
+         }
+         if(cRemaining < cKeep) {
+            cKeep = cRemaining;
+         }
+
          const bool bShuffle = 1 != cCompilerScores || std::isnan(categoricalSmoothing);
          const bool bSort = 1 == cCompilerScores && !std::isnan(categoricalSmoothing);
 
          EBM_ASSERT(bShuffle || bSort);
 
          if(bShuffle) {
-            while(size_t{1} != cRemaining) {
+            const auto** ppBinShuffle = apBins;
+            const auto* const* const ppBinShuffleEnd = apBins + cKeep;
+            do {
+               EBM_ASSERT(1 <= cRemaining);
                const size_t iSwap = pRng->NextFast(cRemaining);
-               auto* const pTemp = apBins[iSwap];
+               auto* const pTemp = ppBinShuffle[iSwap];
                --cRemaining;
-               apBins[iSwap] = apBins[cRemaining];
-               apBins[cRemaining] = pTemp;
-            }
+               ppBinShuffle[iSwap] = *ppBinShuffle;
+               *ppBinShuffle = pTemp;
+               ++ppBinShuffle;
+            } while(ppBinShuffleEnd != ppBinShuffle);
          }
 
          if(bSort) {
