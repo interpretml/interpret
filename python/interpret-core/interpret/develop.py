@@ -21,7 +21,7 @@ _develop_options = {
     "cat_smooth": math.inf,  # math.inf means use only the gradient for sorting
     "max_cat_threshold": 9223372036854775807,
     "cat_include": 1.0,
-    "cat_penalty": 0.0,
+    "cat_scale": 1.0,
     "purify_boosting": False,
     "purify_result": False,
     "randomize_initial_feature_order": True,
