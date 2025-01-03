@@ -89,7 +89,6 @@ extern ErrorEbm PartitionOneDimensionalBoosting(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t cCategorySamplesMin,
-      const FloatCalc categoryHessianPercentMin,
       const FloatCalc categoricalSmoothing,
       const size_t categoricalThresholdMax,
       const FloatCalc categoricalInclusionPercent,
@@ -217,7 +216,6 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t cCategorySamplesMin,
-      const FloatCalc categoryHessianPercentMin,
       const FloatCalc categoricalSmoothing,
       const size_t categoricalThresholdMax,
       const FloatCalc categoricalInclusionPercent,
@@ -250,7 +248,6 @@ static ErrorEbm BoostSingleDimensional(RandomDeterministic* const pRng,
          regLambda,
          deltaStepMax,
          cCategorySamplesMin,
-         categoryHessianPercentMin,
          categoricalSmoothing,
          categoricalThresholdMax,
          categoricalInclusionPercent,
@@ -662,7 +659,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double regLambda,
       double maxDeltaStep,
       IntEbm minCategorySamples,
-      double minCategoryHessianPercent,
       double categoricalSmoothing,
       IntEbm maxCategoricalThreshold,
       double categoricalInclusionPercent,
@@ -686,7 +682,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          "regLambda=%le, "
          "maxDeltaStep=%le, "
          "minCategorySamples=%" IntEbmPrintf ", "
-         "minCategoryHessianPercent=%le, "
          "categoricalSmoothing=%le, "
          "maxCategoricalThreshold=%" IntEbmPrintf ", "
          "categoricalInclusionPercent=%le, "
@@ -704,7 +699,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
          regLambda,
          maxDeltaStep,
          minCategorySamples,
-         minCategoryHessianPercent,
          categoricalSmoothing,
          maxCategoricalThreshold,
          categoricalInclusionPercent,
@@ -836,14 +830,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       }
    } else {
       LOG_0(Trace_Warning, "WARNING GenerateTermUpdate minSamplesLeaf can't be less than 0.  Adjusting to 0.");
-   }
-
-   FloatCalc categoryHessianPercentMin = static_cast<FloatCalc>(minCategoryHessianPercent);
-   if(/* NaN */ !(0.0 <= categoryHessianPercentMin)) {
-      categoryHessianPercentMin = 0.0;
-      LOG_0(Trace_Warning,
-            "WARNING GenerateTermUpdate minCategoryHessianPercent must be a positive number. Adjusting to minimum "
-            "float");
    }
 
    FloatCalc categoricalSmoothingCalc = static_cast<FloatCalc>(categoricalSmoothing);
@@ -1281,7 +1267,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
                      regLambdaCalc,
                      deltaStepMax,
                      cCategorySamplesMin,
-                     categoryHessianPercentMin,
                      categoricalSmoothingCalc,
                      categoricalThresholdMax,
                      categoricalInclusionPercentCalc,

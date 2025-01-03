@@ -276,7 +276,6 @@ TEST_CASE("leave one potential cut uncut, boosting, regression") {
                                        0,
                                        0,
                                        k_minCategorySamplesDefault,
-                                       k_minCategoryHessianPercentDefault,
                                        k_categoricalSmoothingDefault,
                                        k_maxCategoricalThresholdDefault,
                                        k_categoricalInclusionPercentDefault,
@@ -556,7 +555,6 @@ TEST_CASE("one leavesMax, boosting, regression") {
                                        k_regLambdaDefault,
                                        k_maxDeltaStepDefault,
                                        k_minCategorySamplesDefault,
-                                       k_minCategoryHessianPercentDefault,
                                        k_categoricalSmoothingDefault,
                                        k_maxCategoricalThresholdDefault,
                                        k_categoricalInclusionPercentDefault,
@@ -596,7 +594,6 @@ TEST_CASE("mono-classification") {
          k_regLambdaDefault,
          k_maxDeltaStepDefault,
          k_minCategorySamplesDefault,
-         k_minCategoryHessianPercentDefault,
          k_categoricalSmoothingDefault,
          k_maxCategoricalThresholdDefault,
          k_categoricalInclusionPercentDefault,
@@ -1255,7 +1252,6 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass") {
                                              k_regLambdaDefault,
                                              k_maxDeltaStepDefault,
                                              k_minCategorySamplesDefault,
-                                             k_minCategoryHessianPercentDefault,
                                              k_categoricalSmoothingDefault,
                                              k_maxCategoricalThresholdDefault,
                                              k_categoricalInclusionPercentDefault,
@@ -1296,7 +1292,6 @@ TEST_CASE("Random splitting with 3 features, boosting, multiclass, sums") {
                                              k_regLambdaDefault,
                                              k_maxDeltaStepDefault,
                                              k_minCategorySamplesDefault,
-                                             k_minCategoryHessianPercentDefault,
                                              k_categoricalSmoothingDefault,
                                              k_maxCategoricalThresholdDefault,
                                              k_categoricalInclusionPercentDefault,
@@ -1357,7 +1352,6 @@ TEST_CASE("Random splitting, tripple with one dimension missing, multiclass") {
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
                                       k_minCategorySamplesDefault,
-                                      k_minCategoryHessianPercentDefault,
                                       k_categoricalSmoothingDefault,
                                       k_maxCategoricalThresholdDefault,
                                       k_categoricalInclusionPercentDefault,
@@ -1425,7 +1419,6 @@ TEST_CASE("Random splitting, pure tripples, multiclass") {
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
                                       k_minCategorySamplesDefault,
-                                      k_minCategoryHessianPercentDefault,
                                       k_categoricalSmoothingDefault,
                                       k_maxCategoricalThresholdDefault,
                                       k_categoricalInclusionPercentDefault,
@@ -1494,7 +1487,6 @@ TEST_CASE("Random splitting, pure tripples, regression") {
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
                                       k_minCategorySamplesDefault,
-                                      k_minCategoryHessianPercentDefault,
                                       k_categoricalSmoothingDefault,
                                       k_maxCategoricalThresholdDefault,
                                       k_categoricalInclusionPercentDefault,
@@ -1560,7 +1552,6 @@ TEST_CASE("Random splitting, pure tripples, only 1 leaf, multiclass") {
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
                                       k_minCategorySamplesDefault,
-                                      k_minCategoryHessianPercentDefault,
                                       k_categoricalSmoothingDefault,
                                       k_maxCategoricalThresholdDefault,
                                       k_categoricalInclusionPercentDefault,
@@ -1621,7 +1612,6 @@ TEST_CASE("Random splitting, no splits, binary, sums") {
                                       k_regLambdaDefault,
                                       k_maxDeltaStepDefault,
                                       k_minCategorySamplesDefault,
-                                      k_minCategoryHessianPercentDefault,
                                       k_categoricalSmoothingDefault,
                                       k_maxCategoricalThresholdDefault,
                                       k_categoricalInclusionPercentDefault,
@@ -2336,7 +2326,6 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                const double regLambda = 0 == TestRand(rng, 5) ? 0.015625 : 0.0;
                const double maxDeltaStep = 0 == TestRand(rng, 5) ? 1.0 : 0.0;
                const IntEbm minCategorySamples = TestRand(rng, 100);
-               const double minCategoryHessianPercent = 0.0; // TODO: make random
                const double categoricalSmoothing = 10.0;
                const IntEbm maxCategoricalThreshold = 1 + TestRand(rng, cRealBins + 1);
                const double categoricalInclusionPercent = 0 == TestRand(rng, 2) ? 0.75 : 1.0;
@@ -2357,7 +2346,6 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                                                      regLambda,
                                                      maxDeltaStep,
                                                      minCategorySamples,
-                                                     minCategoryHessianPercent,
                                                      categoricalSmoothing,
                                                      maxCategoricalThreshold,
                                                      categoricalInclusionPercent,
