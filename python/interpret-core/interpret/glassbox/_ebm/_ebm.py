@@ -361,6 +361,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        min_cat_samples,
+        cat_smooth,
         missing,
         max_leaves,
         monotone_constraints,
@@ -409,6 +411,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             self.reg_alpha = reg_alpha
             self.reg_lambda = reg_lambda
             self.max_delta_step = max_delta_step
+            self.min_cat_samples = min_cat_samples
+            self.cat_smooth = cat_smooth
             self.missing = missing
 
         self.max_leaves = max_leaves
@@ -938,6 +942,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = 0.0
             reg_lambda = 0.0
             max_delta_step = 0.0
+            min_cat_samples = 0
+            cat_smooth = 0.0
             missing = "low"
             interactions = 0
             monotone_constraints = None
@@ -959,6 +965,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = self.reg_alpha
             reg_lambda = self.reg_lambda
             max_delta_step = self.max_delta_step
+            min_cat_samples = self.min_cat_samples
+            cat_smooth = self.cat_smooth
             missing = self.missing
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
@@ -1076,6 +1084,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     reg_alpha,
                     reg_lambda,
                     max_delta_step,
+                    min_cat_samples,
+                    cat_smooth,
                     missing,
                     self.max_leaves,
                     monotone_constraints,
@@ -1349,6 +1359,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         reg_alpha,
                         reg_lambda,
                         max_delta_step,
+                        min_cat_samples,
+                        cat_smooth,
                         missing,
                         self.max_leaves,
                         monotone_constraints,
@@ -1474,6 +1486,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     0.0,
                     0.0,
                     0.0,
+                    min_cat_samples,
+                    cat_smooth,
                     missing,
                     1,
                     None,
@@ -2771,6 +2785,12 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    min_cat_samples : int, default=10
+        Minimum number of samples in order to treat a category separately. If lower than this threshold
+        the category is combined with other categories that have low numbers of samples.
+    cat_smooth : float, default=10.0
+        Used for the categorical features. This can reduce the effect of noises in categorical features,
+        especially for categories with limited data.
     missing: str, default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
@@ -2944,6 +2964,8 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        min_cat_samples: Optional[int] = 10,
+        cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
@@ -2975,6 +2997,8 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            min_cat_samples=min_cat_samples,
+            cat_smooth=cat_smooth,
             missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
@@ -3143,6 +3167,12 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    min_cat_samples : int, default=10
+        Minimum number of samples in order to treat a category separately. If lower than this threshold
+        the category is combined with other categories that have low numbers of samples.
+    cat_smooth : float, default=10.0
+        Used for the categorical features. This can reduce the effect of noises in categorical features,
+        especially for categories with limited data.
     missing: str, default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
@@ -3316,6 +3346,8 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        min_cat_samples: Optional[int] = 10,
+        cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
         max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
@@ -3347,6 +3379,8 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            min_cat_samples=min_cat_samples,
+            cat_smooth=cat_smooth,
             missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
@@ -3581,6 +3615,8 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            min_cat_samples=0,
+            cat_smooth=0.0,
             missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,
@@ -3860,6 +3896,8 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            min_cat_samples=0,
+            cat_smooth=0.0,
             missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,

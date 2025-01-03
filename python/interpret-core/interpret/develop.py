@@ -16,8 +16,6 @@ _develop_options = {
     "intercept_learning_rate": 0.25,
     "cat_l2": 0.0,
     "min_samples_leaf_nominal": None,
-    "min_cat_samples": 10,
-    "cat_smooth": math.inf,  # math.inf means use only the gradient for sorting
     "max_cat_threshold": 9223372036854775807,
     "cat_include": 1.0,
     "cat_scale": 1.0,
