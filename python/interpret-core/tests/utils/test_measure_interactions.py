@@ -292,6 +292,7 @@ def test_nulticlass_task():
     assert len(ranked_strengths) == 45
 
 
+@pytest.mark.skip(reason="measure_interaction no longer purifies the interaction score")
 def test_impure_interaction_is_zero():
     X = [
         ["A", "A"],
@@ -338,4 +339,4 @@ def test_added_impure_contribution_is_zero():
             X, y, min_samples_leaf=1, min_hessian=1e-99, sample_weight=sample_weight
         )
     )
-    assert ranked_strengths_pure_int[(0, 1)] == ranked_strengths_impure[(0, 1)]
+    assert isclose(ranked_strengths_pure_int[(0, 1)], ranked_strengths_impure[(0, 1)])

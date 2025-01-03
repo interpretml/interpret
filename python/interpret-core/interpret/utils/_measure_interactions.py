@@ -260,11 +260,6 @@ def measure_interactions(
         n_output_interactions = 0
         iter_term_features = interactions
 
-    # TODO: benchmarking indicates that using CalcInteractionFlags_Purify is
-    # slightly worse than not using it when boosting pairs AFTER mains, but
-    # I'm leaving it here for now until we can benchmark the scenario where
-    # interaction detection is used without fitting any mains which someone
-    # could do using this interaface currently, but is not possible in regular EBMs.
     ranked_interactions = rank_interactions(
         dataset=dataset,
         intercept=None,
@@ -273,7 +268,7 @@ def measure_interactions(
         iter_term_features=iter_term_features,
         exclude=set(),
         exclude_features=set(),
-        calc_interaction_flags=Native.CalcInteractionFlags_Purify,
+        calc_interaction_flags=Native.CalcInteractionFlags_Default,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         min_hessian=min_hessian,
