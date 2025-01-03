@@ -199,6 +199,11 @@ def boost(
                         max_leaves=max_leaves,
                         monotone_constraints=term_monotone,
                     )
+
+                    if contains_nominals and len(term_features[term_idx]) == 1:
+                        # penalize nominals a bit because they benefit from sorting categories
+                        avg_gain *= 1.0 - develop.get_option("cat_penalty")
+
                     gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
                     if not make_progress:
                         if bestkey is None or gainkey < bestkey:
