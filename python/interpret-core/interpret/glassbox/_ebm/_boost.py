@@ -28,6 +28,7 @@ def boost(
     reg_alpha,
     reg_lambda,
     max_delta_step,
+    gain_scale,
     min_cat_samples,
     cat_smooth,
     missing,
@@ -198,7 +199,7 @@ def boost(
 
                     if contains_nominals and len(term_features[term_idx]) == 1:
                         # penalize nominals a bit because they benefit from sorting categories
-                        avg_gain *= develop.get_option("cat_scale")
+                        avg_gain *= gain_scale
 
                     gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
                     if not make_progress:

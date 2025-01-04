@@ -361,6 +361,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        gain_scale,
         min_cat_samples,
         cat_smooth,
         missing,
@@ -411,6 +412,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             self.reg_alpha = reg_alpha
             self.reg_lambda = reg_lambda
             self.max_delta_step = max_delta_step
+            self.gain_scale = gain_scale
             self.min_cat_samples = min_cat_samples
             self.cat_smooth = cat_smooth
             self.missing = missing
@@ -942,6 +944,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = 0.0
             reg_lambda = 0.0
             max_delta_step = 0.0
+            gain_scale = 1.0
             min_cat_samples = 0
             cat_smooth = 0.0
             missing = "low"
@@ -965,6 +968,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             reg_alpha = self.reg_alpha
             reg_lambda = self.reg_lambda
             max_delta_step = self.max_delta_step
+            gain_scale = self.gain_scale
             min_cat_samples = self.min_cat_samples
             cat_smooth = self.cat_smooth
             missing = self.missing
@@ -1084,6 +1088,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     reg_alpha,
                     reg_lambda,
                     max_delta_step,
+                    gain_scale,
                     min_cat_samples,
                     cat_smooth,
                     missing,
@@ -1359,6 +1364,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         reg_alpha,
                         reg_lambda,
                         max_delta_step,
+                        gain_scale,
                         min_cat_samples,
                         cat_smooth,
                         missing,
@@ -1486,6 +1492,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     0.0,
                     0.0,
                     0.0,
+                    1.0,
                     min_cat_samples,
                     cat_smooth,
                     missing,
@@ -2785,6 +2792,9 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    gain_scale : float, default=1.0
+        Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
+        algorithm focus more on the nominal categoricals.
     min_cat_samples : int, default=10
         Minimum number of samples in order to treat a category separately. If lower than this threshold
         the category is combined with other categories that have low numbers of samples.
@@ -2964,6 +2974,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        gain_scale: Optional[float] = 1.0,
         min_cat_samples: Optional[int] = 10,
         cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
@@ -2997,6 +3008,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            gain_scale=gain_scale,
             min_cat_samples=min_cat_samples,
             cat_smooth=cat_smooth,
             missing=missing,
@@ -3167,6 +3179,9 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    gain_scale : float, default=1.0
+        Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
+        algorithm focus more on the nominal categoricals.
     min_cat_samples : int, default=10
         Minimum number of samples in order to treat a category separately. If lower than this threshold
         the category is combined with other categories that have low numbers of samples.
@@ -3346,6 +3361,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        gain_scale: Optional[float] = 1.0,
         min_cat_samples: Optional[int] = 10,
         cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
@@ -3379,6 +3395,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            gain_scale=gain_scale,
             min_cat_samples=min_cat_samples,
             cat_smooth=cat_smooth,
             missing=missing,
@@ -3615,6 +3632,7 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            gain_scale=1.0,
             min_cat_samples=0,
             cat_smooth=0.0,
             missing=None,
@@ -3896,6 +3914,7 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            gain_scale=1.0,
             min_cat_samples=0,
             cat_smooth=0.0,
             missing=None,
