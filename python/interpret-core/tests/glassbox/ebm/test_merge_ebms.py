@@ -22,6 +22,7 @@ _fast_kwds = {
 
 
 def valid_ebm(ebm):
+    assert repr(ebm), "Cannot represent EBM which is important for debugging"
     assert ebm.term_features_[0] == (0,)
 
     for term_scores in ebm.term_scores_:
@@ -30,12 +31,6 @@ def valid_ebm(ebm):
 
 
 def test_merge_ebms():
-    # TODO: improve this test by checking the merged ebms for validity.
-    #       Right now the merged ebms fail the check for valid_ebm.
-    #       The failure might be related to the warning we're getting
-    #       about the scalar divide in the merge_ebms line:
-    #       "percentage.append((new_high - new_low) / (old_high - old_low))"
-
     X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
 
     with warnings.catch_warnings():
@@ -97,7 +92,7 @@ def test_merge_ebms():
         ebm3.fit(X_train, y_train)
 
         merged_ebm1 = merge_ebms([ebm1, ebm2, ebm3])
-        # valid_ebm(merged_ebm1)
+        valid_ebm(merged_ebm1)
         global_exp = merged_ebm1.explain_global()
         local_exp = merged_ebm1.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -117,7 +112,7 @@ def test_merge_ebms():
         ebm4.fit(X_train, y_train)
 
         merged_ebm2 = merge_ebms([merged_ebm1, ebm4])
-        # valid_ebm(merged_ebm2)
+        valid_ebm(merged_ebm2)
         global_exp = merged_ebm2.explain_global()
         local_exp = merged_ebm2.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -137,7 +132,7 @@ def test_merge_ebms():
         ebm5.fit(X_train, y_train)
 
         merged_ebm3 = merge_ebms([ebm5, merged_ebm2])
-        # valid_ebm(merged_ebm3)
+        valid_ebm(merged_ebm3)
         global_exp = merged_ebm3.explain_global()
         local_exp = merged_ebm3.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
