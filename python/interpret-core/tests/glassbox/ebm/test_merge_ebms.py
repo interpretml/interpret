@@ -2,8 +2,10 @@
 # Distributed under the MIT software license
 
 import warnings
+from functools import partial
 
 import numpy as np
+import pytest
 from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
 from interpret.utils import make_synthetic
 from sklearn.model_selection import train_test_split
@@ -222,3 +224,20 @@ def test_merge_ebms_multiclass():
     global_exp = merged_ebm3.explain_global()
     local_exp = merged_ebm3.explain_local(X_te, y_te)
     smoke_test_explanations(global_exp, local_exp, 6000)
+
+
+def test_unfitted():
+    """To merge EBMs, all have to be fitted."""
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingClassifier,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    ebm1 = TestEBM()
+    ebm1.fit(X, y)
+    ebm2 = TestEBM()
+    # ebm2 is not fitted
+    with pytest.raises(Exception, match="All models must be fitted."):
+        merge_ebms([ebm1, ebm2])

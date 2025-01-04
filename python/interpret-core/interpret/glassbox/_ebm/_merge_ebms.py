@@ -540,13 +540,11 @@ def merge_ebms(models):
         raise Exception(msg)
 
     ebm_type = _get_model_type(models)
-    ebm = _initialize_ebm(models, ebm_type=ebm_type)
 
-    if any(
-        not getattr(model, "has_fitted_", False) for model in models
-    ):  # pragma: no cover
+    if any(not getattr(model, "has_fitted_", False) for model in models):
         msg = "All models must be fitted."
         raise Exception(msg)
+    ebm = _initialize_ebm(models, ebm_type=ebm_type)
     ebm.has_fitted_ = True
 
     link = models[0].link_
