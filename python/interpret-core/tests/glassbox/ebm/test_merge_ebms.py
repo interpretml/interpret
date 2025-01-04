@@ -241,3 +241,54 @@ def test_unfitted():
     # ebm2 is not fitted
     with pytest.raises(Exception, match="All models must be fitted."):
         merge_ebms([ebm1, ebm2])
+
+
+@pytest.mark.skip(reason="Extremely slow")
+def test_merge_monotone():
+    """Check merging of features with `monotone_constraints`."""
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingClassifier,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    ebm1 = TestEBM(monotone_constraints=[+0, +0, +0, +1, +1, -1, 0, 0, 0, 0])
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(monotone_constraints=[+0, +1, -1, +1, -1, -1, 0, 0, 0, 0])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.monotone_constraints == [+0, +0, +0, +1, 0, -1, 0, 0, 0, 0]
+    ebm3 = TestEBM(monotone_constraints=None)
+    ebm3.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2, ebm3])
+    assert merged_ebm.monotone_constraints is None
+
+
+def test_merge_exclude():
+    """Check merging of features with `exclude`."""
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingClassifier,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    ebm1 = TestEBM(exclude=None)
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude is None
+    ebm1 = TestEBM(exclude=[0, 2])
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude == [(0,), (2,)]
+    ebm1 = TestEBM(exclude="mains")
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude == [(0,), (1,), (2,)]

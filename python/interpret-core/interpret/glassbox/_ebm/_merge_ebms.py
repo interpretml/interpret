@@ -17,6 +17,7 @@ from ._ebm import (
     EBMModel,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
+    _clean_exclude,
     is_private,
 )
 from ._utils import (
@@ -450,14 +451,16 @@ def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
         # none of the models contains all feature_idxs
         # merged EBM should exclude features included by none of the models
         # -> overlap of all features
-        # following algorithm works only if all models use the same feature names
-        # interactions are probably not handled correctly
-        excluded = {(feat,) for feat in models[0].feature_names_in_}
+        clean_excludes = []
         for model in models:
             if model.exclude == "mains":
-                excluded &= set(models[0].feature_names_in_)
+                clean_excludes.append({(idx,) for idx in range(model.n_features_in_)})
                 continue
-            excluded &= set(model.exclude)
+            feature_map = {
+                name: idx for idx, name in enumerate(model.feature_names_in_)
+            }
+            clean_excludes.append(_clean_exclude(model.exclude, feature_map))
+        excluded = set.intersection(*clean_excludes)
         manual_kdws["exclude"] = list(excluded) if excluded else None
 
     # handle `interactions`
@@ -498,7 +501,6 @@ def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
             for item in zip(*(model.monotone_constraints for model in models))
         ]
 
-    # TODO: treat special cases: exclude, interactions
     for key in kdws:
         values = np.array([getattr(model, key, np.nan) for model in models])
         nan_weight = np.copy(weights)
@@ -544,6 +546,7 @@ def merge_ebms(models):
     if any(not getattr(model, "has_fitted_", False) for model in models):
         msg = "All models must be fitted."
         raise Exception(msg)
+
     ebm = _initialize_ebm(models, ebm_type=ebm_type)
     ebm.has_fitted_ = True
 
