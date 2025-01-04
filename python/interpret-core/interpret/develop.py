@@ -16,6 +16,7 @@ _develop_options = {
     "intercept_learning_rate": 0.25,
     "cat_l2": 0.0,
     "min_samples_leaf_nominal": None,
+    "learning_rate_scale": 1.0,
     "max_cat_threshold": 9223372036854775807,
     "cat_include": 1.0,
     "purify_boosting": False,

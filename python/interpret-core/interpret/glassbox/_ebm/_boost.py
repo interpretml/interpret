@@ -179,11 +179,15 @@ def boost(
                             dtype=np.int32,
                         )
 
+                    learning_rate_local = learning_rate
+                    if contains_nominals and len(term_features[term_idx]) == 1:
+                        learning_rate_local *= develop.get_option("learning_rate_scale")
+
                     avg_gain = booster.generate_term_update(
                         rng,
                         term_idx=term_idx,
                         term_boost_flags=term_boost_flags_local,
-                        learning_rate=learning_rate,
+                        learning_rate=learning_rate_local,
                         min_samples_leaf=min_samples_leaf_local,
                         min_hessian=min_hessian,
                         reg_alpha=reg_alpha,
