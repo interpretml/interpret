@@ -6,12 +6,19 @@ import warnings
 from collections.abc import Sequence
 from itertools import chain, count
 from math import isnan
-from typing import List
+from typing import List, Type
 
 import numpy as np
 
 from ...utils._native import Native
-from ._ebm import EBMModel
+from ._ebm import (
+    DPExplainableBoostingClassifier,
+    DPExplainableBoostingRegressor,
+    EBMModel,
+    ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
+    is_private,
+)
 from ._utils import (
     convert_categorical_to_continuous,
     deduplicate_bins,
@@ -500,6 +507,25 @@ def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
     return ebm_type(**kdws, **manual_kdws)
 
 
+def _get_model_type(models: List[EBMModel]) -> Type[EBMModel]:
+    model_types = {type(mod) for mod in models}
+    if len(model_types) == 1:
+        return model_types.pop()
+    if len(model_types) == 2:
+        if model_types == {
+            ExplainableBoostingClassifier,
+            DPExplainableBoostingClassifier,
+        }:
+            return ExplainableBoostingClassifier
+        if model_types == {
+            ExplainableBoostingRegressor,
+            DPExplainableBoostingRegressor,
+        }:
+            return ExplainableBoostingRegressor
+    msg = f"Inconsistent model types attempting to be merged: {model_types}."
+    raise ValueError(msg)
+
+
 def merge_ebms(models):
     """Merge EBM models trained on similar datasets that have the same set of features.
 
@@ -513,47 +539,7 @@ def merge_ebms(models):
         msg = "0 models to merge."
         raise Exception(msg)
 
-    model_types = list(set(map(type, models)))
-    if len(model_types) == 2:
-        type_names = [model_type.__name__ for model_type in model_types]
-        if (
-            "ExplainableBoostingClassifier" in type_names
-            and "DPExplainableBoostingClassifier" in type_names
-        ):
-            ebm_type = model_types[type_names.index("ExplainableBoostingClassifier")]
-            is_classification = True
-            is_dp = False
-        elif (
-            "ExplainableBoostingRegressor" in type_names
-            and "DPExplainableBoostingRegressor" in type_names
-        ):
-            ebm_type = model_types[type_names.index("ExplainableBoostingRegressor")]
-            is_classification = False
-            is_dp = False
-        else:
-            msg = "Inconsistent model types attempting to be merged."
-            raise Exception(msg)
-    elif len(model_types) == 1:
-        ebm_type = model_types[0]
-        if ebm_type.__name__ == "ExplainableBoostingClassifier":
-            is_classification = True
-            is_dp = False
-        elif ebm_type.__name__ == "DPExplainableBoostingClassifier":
-            is_classification = True
-            is_dp = True
-        elif ebm_type.__name__ == "ExplainableBoostingRegressor":
-            is_classification = False
-            is_dp = False
-        elif ebm_type.__name__ == "DPExplainableBoostingRegressor":
-            is_classification = False
-            is_dp = True
-        else:
-            msg = f"Invalid EBM model type {ebm_type.__name__} attempting to be merged."
-            raise Exception(msg)
-    else:
-        msg = "Inconsistent model types being merged."
-        raise Exception(msg)
-
+    ebm_type = _get_model_type(models)
     ebm = _initialize_ebm(models, ebm_type=ebm_type)
 
     if any(
@@ -640,7 +626,7 @@ def merge_ebms(models):
                 )
 
     if (
-        not is_dp
+        not is_private(ebm_type)
         and hasattr(ebm, "feature_bounds_")
         and all(
             hasattr(model, "histogram_weights_") and hasattr(model, "feature_bounds_")
@@ -653,7 +639,7 @@ def merge_ebms(models):
         # they reduce the RMSE of the integer counts from the ideal floating point counts.
         pass
 
-    if is_classification:
+    if ebm_type in (ExplainableBoostingClassifier, DPExplainableBoostingClassifier):
         ebm.classes_ = models[0].classes_.copy()
         if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):
             # pragma: no cover
