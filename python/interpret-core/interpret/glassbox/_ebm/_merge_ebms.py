@@ -425,7 +425,7 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
     return new_bins, new_feature_types
 
 
-def _initialize_ebm(models: List[EBMModel], ebm_type=EBMModel) -> EBMModel:
+def _initialize_ebm(models: List[EBMModel], ebm_type: Type[EBMModel]) -> EBMModel:
     """Fully initialize new model from existing `models`."""
     weights = np.fromiter(
         (np.sum(model.bag_weights_) for model in models), dtype=np.float64
