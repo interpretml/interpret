@@ -1174,6 +1174,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             auto** const ppBinShuffleEnd = apBins + cKeep;
             do {
                EBM_ASSERT(1 <= cRemaining);
+               if(1 == cRemaining) {
+                  break; // it will always be zero
+               }
                const size_t iSwap = pRng->NextFast(cRemaining);
                auto* const pTemp = ppBinShuffle[iSwap];
                --cRemaining;
@@ -1181,6 +1184,22 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                *ppBinShuffle = pTemp;
                ++ppBinShuffle;
             } while(ppBinShuffleEnd != ppBinShuffle);
+
+            // anything left goes into the dregs
+            if(ppBin != ppBinShuffle) {
+               if(!pDregSumBin) {
+                  pDregSumBin = *ppBinShuffle;
+                  pDregsTreeNode = pRootTreeNode;
+                  ++ppBinShuffle;
+               }
+               while(ppBin != ppBinShuffle) {
+                  const auto* const pBinDrop = *ppBinShuffle;
+                  pDregSumBin->Add(cScores, *pBinDrop, pBinDrop->GetGradientPairs());
+                  ++ppBinShuffle;
+               }
+               EBM_ASSERT(ppBinShuffleEnd == apBins + cKeep);
+               ppBin = ppBinShuffleEnd;
+            }
          }
 
          if(bSort) {
