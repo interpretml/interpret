@@ -24,6 +24,7 @@ namespace DEFINED_ZONE_NAME {
 
 extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* const pDataSetShared,
       const size_t cWeights,
+      const double intercept,
       const BagEbm* const aBag,
       const double* const aInitScores,
       DataSetInteraction* const pDataSet);
@@ -62,67 +63,33 @@ InteractionShell* InteractionShell::Create(InteractionCore* const pInteractionCo
 }
 
 BinBase* InteractionShell::GetInteractionFastBinsTemp(const size_t cBytes) {
-   ANALYSIS_ASSERT(0 != cBytes);
-
-   BinBase* aBuffer = m_aInteractionFastBinsTemp;
-   if(UNLIKELY(m_cBytesFastBins < cBytes)) {
-      AlignedFree(aBuffer);
-      m_aInteractionFastBinsTemp = nullptr;
-
-      if(IsAddError(cBytes, cBytes)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp IsAddError(cBytes, cBytes)");
-         return nullptr;
-      }
-      const size_t cNewAllocatedFastBins = cBytes + cBytes;
-
-      m_cBytesFastBins = cNewAllocatedFastBins;
-      LOG_N(Trace_Info, "Growing Interaction fast bins to %zu", cNewAllocatedFastBins);
-
-      aBuffer = static_cast<BinBase*>(AlignedAlloc(cNewAllocatedFastBins));
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp OutOfMemory");
-         return nullptr;
-      }
-      m_aInteractionFastBinsTemp = aBuffer;
+   const ErrorEbm error =
+         AlignedGrow(reinterpret_cast<void**>(&m_aInteractionFastBinsTemp), &m_cBytesFastBins, cBytes, EBM_FALSE);
+   if(Error_None != error) {
+      LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionFastBinsTemp AlignedGrow failed");
+      return nullptr;
    }
-   return aBuffer;
+   return m_aInteractionFastBinsTemp;
 }
 
 BinBase* InteractionShell::GetInteractionMainBins(const size_t cBytesPerMainBin, const size_t cMainBins) {
-   ANALYSIS_ASSERT(0 != cBytesPerMainBin);
-
-   BinBase* aBuffer = m_aInteractionMainBins;
-   if(UNLIKELY(m_cAllocatedMainBins < cMainBins)) {
-      AlignedFree(aBuffer);
-      m_aInteractionMainBins = nullptr;
-
-      const size_t cItemsGrowth = (cMainBins >> 2) + 16; // cannot overflow
-      if(IsAddError(cItemsGrowth, cMainBins)) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins IsAddError(cItemsGrowth, cMainBins)");
-         return nullptr;
-      }
-      const size_t cNewAllocatedMainBins = cMainBins + cItemsGrowth;
-
-      m_cAllocatedMainBins = cNewAllocatedMainBins;
-      LOG_N(Trace_Info, "Growing Interaction big bins to %zu", cNewAllocatedMainBins);
-
-      if(IsMultiplyError(cBytesPerMainBin, cNewAllocatedMainBins)) {
-         LOG_0(Trace_Warning,
-               "WARNING InteractionShell::GetInteractionMainBins IsMultiplyError(cBytesPerMainBin, "
-               "cNewAllocatedMainBins)");
-         return nullptr;
-      }
-      aBuffer = static_cast<BinBase*>(AlignedAlloc(cBytesPerMainBin * cNewAllocatedMainBins));
-      if(nullptr == aBuffer) {
-         LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins OutOfMemory");
-         return nullptr;
-      }
-      m_aInteractionMainBins = aBuffer;
+   if(IsMultiplyError(cBytesPerMainBin, cMainBins)) {
+      LOG_0(Trace_Warning,
+            "WARNING InteractionShell::GetInteractionMainBins IsMultiplyError(cBytesPerMainBin, cMainBins)");
+      return nullptr;
    }
-   return aBuffer;
+   const size_t cBytes = cBytesPerMainBin * cMainBins;
+   const ErrorEbm error =
+         AlignedGrow(reinterpret_cast<void**>(&m_aInteractionMainBins), &m_cAllocatedMainBinBytes, cBytes, EBM_FALSE);
+   if(Error_None != error) {
+      LOG_0(Trace_Warning, "WARNING InteractionShell::GetInteractionMainBins AlignedGrow failed");
+      return nullptr;
+   }
+   return m_aInteractionMainBins;
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       const double* initScores, // only samples with non-zeros in the bag are included
       CreateInteractionFlags flags,
@@ -133,6 +100,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
    LOG_N(Trace_Info,
          "Entered CreateInteractionDetector: "
          "dataSet=%p, "
+         "intercept=%p, "
          "bag=%p, "
          "initScores=%p, "
          "flags=0x%" UCreateInteractionFlagsPrintf ", "
@@ -141,6 +109,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
          "experimentalParams=%p, "
          "interactionHandleOut=%p",
          static_cast<const void*>(dataSet),
+         static_cast<const void*>(intercept),
          static_cast<const void*>(bag),
          static_cast<const void*>(initScores),
          static_cast<UCreateInteractionFlags>(flags), // signed to unsigned conversion is defined behavior in C++
@@ -158,7 +127,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
    *interactionHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(flags &
-         ~(CreateInteractionFlags_DifferentialPrivacy | CreateInteractionFlags_DisableApprox |
+         ~(CreateInteractionFlags_DifferentialPrivacy | CreateInteractionFlags_UseApprox |
                CreateInteractionFlags_BinaryAsMulticlass)) {
       LOG_0(Trace_Error, "ERROR CreateInteractionDetector flags contains unknown flags. Ignoring extras.");
    }
@@ -222,7 +191,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
    if(size_t{0} != pInteractionCore->GetCountScores()) {
       if(!pInteractionCore->IsRmse()) {
          error = pInteractionCore->InitializeInteractionGradientsAndHessians(
-               static_cast<const unsigned char*>(dataSet), cWeights, bag, initScores);
+               static_cast<const unsigned char*>(dataSet), cWeights, intercept, bag, initScores);
          if(Error_None != error) {
             // DO NOT FREE pInteractionCore since it's owned by pInteractionShell, which we free here
             InteractionShell::Free(pInteractionShell);
@@ -231,6 +200,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const voi
       } else {
          InitializeRmseGradientsAndHessiansInteraction(static_cast<const unsigned char*>(dataSet),
                cWeights,
+               nullptr == intercept ? 0.0 : *intercept,
                bag,
                initScores,
                pInteractionCore->GetDataSetInteraction());

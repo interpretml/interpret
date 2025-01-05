@@ -29,7 +29,7 @@ class InteractionShell final {
    size_t m_cBytesFastBins;
 
    BinBase* m_aInteractionMainBins;
-   size_t m_cAllocatedMainBins;
+   size_t m_cAllocatedMainBinBytes;
 
    int m_cLogEnterMessages;
    int m_cLogExitMessages;
@@ -48,7 +48,7 @@ class InteractionShell final {
       m_cBytesFastBins = 0;
 
       m_aInteractionMainBins = nullptr;
-      m_cAllocatedMainBins = 0;
+      m_cAllocatedMainBinBytes = 0;
 
       m_cLogEnterMessages = 1000;
       m_cLogExitMessages = 1000;

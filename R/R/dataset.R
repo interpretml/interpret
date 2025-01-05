@@ -12,14 +12,14 @@ measure_dataset_header <- function(n_features, n_weights, n_targets) {
    return(n_bytes)
 }
 
-measure_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_indexes) {
+measure_feature <- function(n_bins, is_missing, is_unseen, is_nominal, bin_indexes) {
    n_bins <- as.double(n_bins)
    is_missing <- as.logical(is_missing)
-   is_unknown <- as.logical(is_unknown)
+   is_unseen <- as.logical(is_unseen)
    is_nominal <- as.logical(is_nominal)
    bin_indexes <- as.double(bin_indexes)
 
-   n_bytes <- .Call(MeasureFeature_R, n_bins, is_missing, is_unknown, is_nominal, bin_indexes)
+   n_bytes <- .Call(MeasureFeature_R, n_bins, is_missing, is_unseen, is_nominal, bin_indexes)
 
    return(n_bytes)
 }
@@ -56,16 +56,16 @@ fill_dataset_header <- function(n_features, n_weights, n_targets, n_bytes_alloca
    return(NULL)
 }
 
-fill_feature <- function(n_bins, is_missing, is_unknown, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset) {
+fill_feature <- function(n_bins, is_missing, is_unseen, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset) {
    n_bins <- as.double(n_bins)
    is_missing <- as.logical(is_missing)
-   is_unknown <- as.logical(is_unknown)
+   is_unseen <- as.logical(is_unseen)
    is_nominal <- as.logical(is_nominal)
    bin_indexes <- as.double(bin_indexes)
    n_bytes_allocated <- as.double(n_bytes_allocated)
    stopifnot(class(incomplete_dataset) == "externalptr")
 
-   .Call(FillFeature_R, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset)
+   .Call(FillFeature_R, n_bins, is_missing, is_unseen, is_nominal, bin_indexes, n_bytes_allocated, incomplete_dataset)
 
    return(NULL)
 }
@@ -111,10 +111,10 @@ make_dataset <- function(n_classes, X, y, max_bins, col_names) {
 
       n_bins = length(feature_cuts) + 3
       is_missing <- TRUE
-      is_unknown <- TRUE
+      is_unseen <- TRUE
       is_nominal <- FALSE
 
-      n_bytes <- n_bytes + measure_feature(n_bins, is_missing, is_unknown, is_nominal, bin_indexes)
+      n_bytes <- n_bytes + measure_feature(n_bins, is_missing, is_unseen, is_nominal, bin_indexes)
    }
 
    n_bytes <- n_bytes + measure_classification_target(n_classes, y)
@@ -134,10 +134,10 @@ make_dataset <- function(n_classes, X, y, max_bins, col_names) {
 
       n_bins = length(feature_cuts) + 3
       is_missing <- TRUE
-      is_unknown <- TRUE
+      is_unseen <- TRUE
       is_nominal <- FALSE
 
-      fill_feature(n_bins, is_missing, is_unknown, is_nominal, bin_indexes, n_bytes, dataset)
+      fill_feature(n_bins, is_missing, is_unseen, is_nominal, bin_indexes, n_bytes, dataset)
    }
 
    fill_classification_target(n_classes, y, n_bytes, dataset)

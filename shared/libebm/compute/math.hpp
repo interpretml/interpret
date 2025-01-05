@@ -15,21 +15,23 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 template<typename TFloat> static INLINE_ALWAYS TFloat Mantissa32(const TFloat& val) noexcept {
-   return TFloat::ReinterpretFloat((TFloat::ReinterpretInt(val) & 0x007FFFFF) | 0x3F000000);
+   return TFloat::ReinterpretFloat(
+         (TFloat::ReinterpretInt(val) & typename TFloat::TInt{0x007FFFFF}) | typename TFloat::TInt{0x3F000000});
 }
 
 template<typename TFloat> static INLINE_ALWAYS typename TFloat::TInt Exponent32(const TFloat& val) noexcept {
-   return ((TFloat::ReinterpretInt(val) << 1) >> 24) - typename TFloat::TInt(0x7F);
+   return ((TFloat::ReinterpretInt(val) << 1) >> 24) - typename TFloat::TInt{0x7F};
 }
 
 template<typename TFloat> static INLINE_ALWAYS TFloat Mantissa64(const TFloat& val) noexcept {
-   return TFloat::ReinterpretFloat((TFloat::ReinterpretInt(val) & 0x000FFFFFFFFFFFFFll) | 0x3FE0000000000000ll);
+   return TFloat::ReinterpretFloat((TFloat::ReinterpretInt(val) & typename TFloat::TInt{0x000FFFFFFFFFFFFFll}) |
+         typename TFloat::TInt{0x3FE0000000000000ll});
 }
 
 template<typename TFloat> static INLINE_ALWAYS TFloat Exponent64(const TFloat& val) noexcept {
    return TFloat::ReinterpretFloat(
                 ((TFloat::ReinterpretInt(val) >> 52) | TFloat::ReinterpretInt(TFloat{4503599627370496.0}))) -
-         TFloat(4503599627370496.0 + 1023.0);
+         TFloat{4503599627370496.0 + 1023.0};
 }
 
 template<typename TFloat> static INLINE_ALWAYS TFloat Power32(const TFloat val) {
@@ -137,11 +139,16 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
    static constexpr float k_expUnderflow = -87.25f; // this is exactly representable in IEEE 754
    static constexpr float k_expOverflow = 87.25f; // this is exactly representable in IEEE 754
 
-   // TODO: make this negation more efficient
-   TFloat x = bNegateInput ? -val : val;
-   const TFloat rounded = Round(x * TFloat{1.44269504088896340736f});
-   x = FusedNegateMultiplyAdd(rounded, TFloat{0.693359375f}, x);
-   x = FusedNegateMultiplyAdd(rounded, TFloat{-2.12194440e-4f}, x);
+   TFloat rounded;
+   TFloat x;
+   if(bNegateInput) {
+      rounded = Round(val * TFloat{-1.44269504088896340736f});
+      x = FusedMultiplySubtract(rounded, TFloat{-0.693359375f}, val);
+   } else {
+      rounded = Round(val * TFloat{1.44269504088896340736f});
+      x = FusedMultiplyAdd(rounded, TFloat{-0.693359375f}, val);
+   }
+   x = FusedMultiplyAdd(rounded, TFloat{2.12194440e-4f}, x);
 
    const TFloat x2 = x * x;
    TFloat ret = Polynomial32(x,
@@ -159,32 +166,26 @@ static INLINE_ALWAYS TFloat Exp32(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(val,
-               static_cast<typename TFloat::T>(-k_expOverflow),
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(val < TFloat{-k_expOverflow}, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       } else {
-         ret = IfLess(static_cast<typename TFloat::T>(k_expOverflow),
-               val,
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(TFloat{k_expOverflow} < val, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       }
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, TFloat{0}, ret);
+         ret = IfThenElse(TFloat{-k_expUnderflow} < val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), TFloat{0}, ret);
+         ret = IfThenElse(val < TFloat{k_expUnderflow}, TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
-      ret = IfNaN(val, val, ret);
+      ret = IfThenElse(IsNaN(val), val, ret);
    }
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::exp(orig), ret, typename TFloat::T{1e-6}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::exp(orig), retDebug, typename TFloat::T{1e-6}));
          },
          bNegateInput ? -val : val,
          ret);
@@ -206,13 +207,13 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    TFloat x = Mantissa32(val);
    typename TFloat::TInt exponent = Exponent32(val);
 
-   const auto comparison = x <= TFloat(float{1.41421356237309504880} * 0.5f);
-   x = IfThenElse(comparison, x + x, x);
-   exponent = IfThenElse(TFloat::ReinterpretInt(~comparison), exponent + 1, exponent);
+   const auto comparison = x <= TFloat{float{1.41421356237309504880} * 0.5f};
+   x = IfAdd(comparison, x, x);
+   exponent = IfAdd(~comparison, exponent, typename TFloat::TInt{1});
 
    TFloat exponentFloat = TFloat(exponent);
 
-   x -= 1.0f;
+   x += TFloat{-1};
 
    TFloat ret = Polynomial32(x,
          TFloat{3.3333331174E-1f},
@@ -228,44 +229,41 @@ static INLINE_ALWAYS TFloat Log32(const TFloat& val) noexcept {
    ret *= x2 * x;
 
    ret = FusedMultiplyAdd(exponentFloat, TFloat{-2.12194440E-4f}, ret);
-   ret += FusedNegateMultiplyAdd(x2, 0.5f, x);
-   ret = FusedMultiplyAdd(exponentFloat, TFloat{0.693359375f}, ret);
+   ret += FusedMultiplyAdd(x2, TFloat{-0.5f}, x);
+
+   // exponentFloat must be a finite number, so use ret if we want an inf or NaN ret value
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, val);
+      } else {
+         ret = IfThenElse(IsNaN(val), val, ret);
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val, val, ret);
+      }
+   }
 
    if(bNegateOutput) {
-      // TODO: do this with an alternate to FusedMultiplyAdd
-      ret = -ret;
+      ret = FusedMultiplySubtract(exponentFloat, TFloat{-0.693359375f}, ret);
+   } else {
+      ret = FusedMultiplyAdd(exponentFloat, TFloat{0.693359375f}, ret);
    }
 
    if(bZeroPossible) {
-      ret = IfLess(val,
-            std::numeric_limits<typename TFloat::T>::min(),
+      ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::min(),
             bNegateOutput ? std::numeric_limits<typename TFloat::T>::infinity() :
                             -std::numeric_limits<typename TFloat::T>::infinity(),
             ret);
    }
    if(bNegativePossible) {
-      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
-   }
-   if(bNaNPossible) {
-      if(bPositiveInfinityPossible) {
-         ret = IfLess(val, std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
-      } else {
-         ret = IfNaN(val, val, ret);
-      }
-   } else {
-      if(bPositiveInfinityPossible) {
-         ret = IfEqual(std::numeric_limits<typename TFloat::T>::infinity(),
-               val,
-               bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
-                               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
-      }
+      ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
    }
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::log(orig), ret, typename TFloat::T{1e-6}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::log(orig), retDebug, typename TFloat::T{1e-6}));
          },
          val,
          bNegateOutput ? -ret : ret);
@@ -287,11 +285,16 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
    static constexpr double k_expUnderflow = -708.25; // this is exactly representable in IEEE 754
    static constexpr double k_expOverflow = 708.25; // this is exactly representable in IEEE 754
 
-   // TODO: make this negation more efficient
-   TFloat x = bNegateInput ? -val : val;
-   const TFloat rounded = Round(x * TFloat{1.44269504088896340736});
-   x = FusedNegateMultiplyAdd(rounded, TFloat{0.693145751953125}, x);
-   x = FusedNegateMultiplyAdd(rounded, TFloat{1.42860682030941723212E-6}, x);
+   TFloat rounded;
+   TFloat x;
+   if(bNegateInput) {
+      rounded = Round(val * TFloat{-1.44269504088896340736});
+      x = FusedMultiplySubtract(rounded, TFloat{-0.693145751953125}, val);
+   } else {
+      rounded = Round(val * TFloat{1.44269504088896340736});
+      x = FusedMultiplyAdd(rounded, TFloat{-0.693145751953125}, val);
+   }
+   x = FusedMultiplyAdd(rounded, TFloat{-1.42860682030941723212E-6}, x);
 
    TFloat ret = Polynomial64(x,
          TFloat{1} / TFloat{2},
@@ -313,32 +316,26 @@ static INLINE_ALWAYS TFloat Exp64(const TFloat val) {
 
    if(bOverflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(val,
-               static_cast<typename TFloat::T>(-k_expOverflow),
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(val < TFloat{-k_expOverflow}, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       } else {
-         ret = IfLess(static_cast<typename TFloat::T>(k_expOverflow),
-               val,
-               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
+         ret = IfThenElse(TFloat{k_expOverflow} < val, std::numeric_limits<typename TFloat::T>::infinity(), ret);
       }
    }
    if(bUnderflowPossible) {
       if(bNegateInput) {
-         ret = IfLess(static_cast<typename TFloat::T>(-k_expUnderflow), val, TFloat{0}, ret);
+         ret = IfThenElse(TFloat{-k_expUnderflow} < val, TFloat{0}, ret);
       } else {
-         ret = IfLess(val, static_cast<typename TFloat::T>(k_expUnderflow), TFloat{0}, ret);
+         ret = IfThenElse(val < TFloat{k_expUnderflow}, TFloat{0}, ret);
       }
    }
    if(bNaNPossible) {
-      ret = IfNaN(val, val, ret);
+      ret = IfThenElse(IsNaN(val), val, ret);
    }
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::exp(orig), ret, typename TFloat::T{1e-12}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::exp(orig), retDebug, typename TFloat::T{1e-12}));
          },
          bNegateInput ? -val : val,
          ret);
@@ -360,11 +357,11 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    TFloat x = Mantissa64(val);
    TFloat exponent = Exponent64(val);
 
-   const auto comparison = x <= TFloat(1.41421356237309504880 * 0.5);
-   x = IfThenElse(comparison, x + x, x);
-   exponent = IfThenElse(~comparison, exponent + 1, exponent);
+   const auto comparison = x <= TFloat{1.41421356237309504880 * 0.5};
+   x = IfAdd(comparison, x, x);
+   exponent = IfAdd(~comparison, exponent, TFloat{1});
 
-   x -= 1.0;
+   x += TFloat{-1};
 
    TFloat poly1 = Polynomial64(x,
          TFloat{7.70838733755885391666E0},
@@ -384,44 +381,41 @@ static INLINE_ALWAYS TFloat Log64(const TFloat& val) noexcept {
    TFloat ret = poly1 / poly2;
 
    ret = FusedMultiplyAdd(exponent, TFloat{-2.121944400546905827679E-4}, ret);
-   ret += FusedNegateMultiplyAdd(x2, 0.5, x);
-   ret = FusedMultiplyAdd(exponent, TFloat{0.693359375}, ret);
+   ret += FusedMultiplyAdd(x2, TFloat{-0.5}, x);
+
+   // exponent must be a finite number, so use ret if we want an inf or NaN ret value
+   if(bNaNPossible) {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::infinity(), ret, val);
+      } else {
+         ret = IfThenElse(IsNaN(val), val, ret);
+      }
+   } else {
+      if(bPositiveInfinityPossible) {
+         ret = IfThenElse(std::numeric_limits<typename TFloat::T>::infinity() == val, val, ret);
+      }
+   }
 
    if(bNegateOutput) {
-      // TODO: do this with an alternate to FusedMultiplyAdd
-      ret = -ret;
+      ret = FusedMultiplySubtract(exponent, TFloat{-0.693359375}, ret);
+   } else {
+      ret = FusedMultiplyAdd(exponent, TFloat{0.693359375}, ret);
    }
 
    if(bZeroPossible) {
-      ret = IfLess(val,
-            std::numeric_limits<typename TFloat::T>::min(),
+      ret = IfThenElse(val < std::numeric_limits<typename TFloat::T>::min(),
             bNegateOutput ? std::numeric_limits<typename TFloat::T>::infinity() :
                             -std::numeric_limits<typename TFloat::T>::infinity(),
             ret);
    }
    if(bNegativePossible) {
-      ret = IfLess(val, TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
-   }
-   if(bNaNPossible) {
-      if(bPositiveInfinityPossible) {
-         ret = IfLess(val, std::numeric_limits<typename TFloat::T>::infinity(), ret, bNegateOutput ? -val : val);
-      } else {
-         ret = IfNaN(val, val, ret);
-      }
-   } else {
-      if(bPositiveInfinityPossible) {
-         ret = IfEqual(std::numeric_limits<typename TFloat::T>::infinity(),
-               val,
-               bNegateOutput ? -std::numeric_limits<typename TFloat::T>::infinity() :
-                               std::numeric_limits<typename TFloat::T>::infinity(),
-               ret);
-      }
+      ret = IfThenElse(val < TFloat{0}, std::numeric_limits<typename TFloat::T>::quiet_NaN(), ret);
    }
 
 #ifndef NDEBUG
    TFloat::Execute(
-         [](int, typename TFloat::T orig, typename TFloat::T ret) {
-            EBM_ASSERT(IsApproxEqual(std::log(orig), ret, typename TFloat::T{1e-12}));
+         [](int, typename TFloat::T orig, typename TFloat::T retDebug) {
+            EBM_ASSERT(IsApproxEqual(std::log(orig), retDebug, typename TFloat::T{1e-12}));
          },
          val,
          bNegateOutput ? -ret : ret);

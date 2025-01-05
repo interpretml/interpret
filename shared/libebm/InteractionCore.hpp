@@ -31,7 +31,7 @@ class InteractionCore final {
    std::atomic_size_t m_REFERENCE_COUNT;
 
    size_t m_cScores;
-   BoolEbm m_bDisableApprox;
+   BoolEbm m_bUseApprox;
 
    size_t m_cFeatures;
    FeatureInteraction* m_aFeatures;
@@ -53,7 +53,7 @@ class InteractionCore final {
    inline InteractionCore() noexcept :
          m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
          m_cScores(0),
-         m_bDisableApprox(EBM_FALSE),
+         m_bUseApprox(EBM_FALSE),
          m_cFeatures(0),
          m_aFeatures(nullptr) {
       m_dataFrame.SafeInitDataSetInteraction();
@@ -92,6 +92,7 @@ class InteractionCore final {
 
    ErrorEbm InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
          const size_t cWeights,
+         const double* const aIntercept,
          const BagEbm* const aBag,
          const double* const aInitScores);
 
@@ -103,7 +104,7 @@ class InteractionCore final {
 
    inline bool IsRmse() {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
-      return EBM_FALSE != m_objectiveCpu.m_bRmse;
+      return Objective_Rmse == m_objectiveCpu.m_objective;
    }
 
    inline bool IsHessian() {
@@ -111,7 +112,7 @@ class InteractionCore final {
       return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
-   inline BoolEbm IsDisableApprox() const { return m_bDisableApprox; }
+   inline BoolEbm IsUseApprox() const { return m_bUseApprox; }
 
    inline double GainAdjustmentGradientBoosting() const noexcept {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);

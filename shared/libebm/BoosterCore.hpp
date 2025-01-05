@@ -23,10 +23,8 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-class RandomDeterministic;
 class FeatureBoosting;
 class Term;
-struct InnerBag;
 class Tensor;
 
 class BoosterCore final {
@@ -39,7 +37,7 @@ class BoosterCore final {
    std::atomic_size_t m_REFERENCE_COUNT;
 
    size_t m_cScores;
-   BoolEbm m_bDisableApprox;
+   BoolEbm m_bUseApprox;
 
    size_t m_cFeatures;
    FeatureBoosting* m_aFeatures;
@@ -76,7 +74,7 @@ class BoosterCore final {
    inline BoosterCore() noexcept :
          m_REFERENCE_COUNT(1), // we're not visible on any other thread yet, so no synchronization required
          m_cScores(0),
-         m_bDisableApprox(EBM_FALSE),
+         m_bUseApprox(EBM_FALSE),
          m_cFeatures(0),
          m_aFeatures(nullptr),
          m_cTerms(0),
@@ -140,6 +138,7 @@ class BoosterCore final {
          const IntEbm* const acTermDimensions,
          const IntEbm* const aiTermFeatures,
          const unsigned char* const pDataSetShared,
+         const double* const aIntercept,
          const BagEbm* const aBag,
          const double* const aInitScores,
          const CreateBoosterFlags flags,
@@ -162,7 +161,7 @@ class BoosterCore final {
 
    inline bool IsRmse() {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);
-      return EBM_FALSE != m_objectiveCpu.m_bRmse;
+      return Objective_Rmse == m_objectiveCpu.m_objective;
    }
 
    inline bool IsHessian() {
@@ -170,7 +169,7 @@ class BoosterCore final {
       return EBM_FALSE != m_objectiveCpu.m_bObjectiveHasHessian;
    }
 
-   inline BoolEbm IsDisableApprox() const { return m_bDisableApprox; }
+   inline BoolEbm IsUseApprox() const { return m_bUseApprox; }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
       EBM_ASSERT(nullptr != m_objectiveCpu.m_pObjective);

@@ -22,7 +22,7 @@ importlib-metadata==6.1.0
 ipykernel==6.22.0
 ipython==8.11.0
 jedi==0.18.2
-Jinja2==3.1.4
+Jinja2==3.1.5
 jsonschema==4.17.3
 jupyter-book==0.15.1
 jupyter-cache==0.5.0
@@ -81,7 +81,7 @@ sphinxcontrib-serializinghtml==1.1.5
 SQLAlchemy==1.4.47
 stack-data==0.6.2
 tabulate==0.9.0
-tornado==6.4.1
+tornado==6.4.2
 traitlets==5.9.0
 typing_extensions==4.5.0
 uc-micro-py==1.0.1

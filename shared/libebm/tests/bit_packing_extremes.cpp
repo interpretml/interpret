@@ -20,8 +20,8 @@ TEST_CASE("Test data bit packing extremes, boosting, regression") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed
          // into a single data value on a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            // add one to the bins because our interface needs missing and unknown bins but
-            // internally drop the unknown bin to make it possible to have 1 bin
+            // add one to the bins because our interface needs missing and unseen bins but
+            // internally drop the unseen bin to make it possible to have 1 bin
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -53,8 +53,8 @@ TEST_CASE("Test data bit packing extremes, boosting, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed
          // into a single data value on a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            // add one to the bins because our interface needs missing and unknown bins but
-            // internally drop the unknown bin to make it possible to have 1 bin
+            // add one to the bins because our interface needs missing and unseen bins but
+            // internally drop the unseen bin to make it possible to have 1 bin
 
             std::vector<TestSample> trainingSamples;
             std::vector<TestSample> validationSamples;
@@ -98,8 +98,8 @@ TEST_CASE("Test data bit packing extremes, interaction, regression") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed
          // into a single data value on a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            // add one to the bins because our interface needs missing and unknown bins but
-            // internally drop the unknown bin to make it possible to have 1 bin
+            // add one to the bins because our interface needs missing and unseen bins but
+            // internally drop the unseen bin to make it possible to have 1 bin
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {
@@ -127,8 +127,8 @@ TEST_CASE("Test data bit packing extremes, interaction, binary") {
          // try everything from 0 samples to 65 samples because for bitpacks with 1 bit, we can have up to 64 packed
          // into a single data value on a 64 bit machine
          for(size_t cSamples = 1; cSamples < 66; ++cSamples) {
-            // add one to the bins because our interface needs missing and unknown bins but
-            // internally drop the unknown bin to make it possible to have 1 bin
+            // add one to the bins because our interface needs missing and unseen bins but
+            // internally drop the unseen bin to make it possible to have 1 bin
 
             std::vector<TestSample> samples;
             for(size_t iSample = 0; iSample < cSamples; ++iSample) {

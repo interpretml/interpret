@@ -27,10 +27,11 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
    friend size_t GetSplitPositionSize(const bool, const size_t);
 
  private:
-   const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* m_pBinPosition;
+   const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* m_ppBinPosition;
+   ptrdiff_t m_incDirectionBytes;
 
-   // IMPORTANT: m_leftSum must be in the last position for the struct hack and this must be standard layout
-   Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_leftSum;
+   // IMPORTANT: m_BinSum must be in the last position for the struct hack and this must be standard layout
+   Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores> m_binSum;
 
  public:
    SplitPosition() = default; // preserve our POD status
@@ -38,15 +39,18 @@ template<bool bHessian, size_t cCompilerScores = 1> struct SplitPosition final {
    void* operator new(std::size_t) = delete; // we only use malloc/free in this library
    void operator delete(void*) = delete; // we only use malloc/free in this library
 
-   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinPosition() const {
-      return m_pBinPosition;
+   inline const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* GetBinPosition() const {
+      return m_ppBinPosition;
    }
    inline void SetBinPosition(
-         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const pBinPosition) {
-      m_pBinPosition = pBinPosition;
+         const Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* const* const ppBinPosition) {
+      m_ppBinPosition = ppBinPosition;
    }
 
-   inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetLeftSum() { return &m_leftSum; }
+   inline ptrdiff_t GetIncDirectionBytes() const { return m_incDirectionBytes; }
+   inline void SetIncDirectionBytes(const ptrdiff_t incDirectionBytes) { m_incDirectionBytes = incDirectionBytes; }
+
+   inline Bin<FloatMain, UIntMain, true, true, bHessian, cCompilerScores>* GetBinSum() { return &m_binSum; }
 };
 static_assert(
       std::is_standard_layout<SplitPosition<true>>::value && std::is_standard_layout<SplitPosition<false>>::value,
@@ -62,10 +66,10 @@ inline static bool IsOverflowSplitPositionSize(const bool bHessian, const size_t
    size_t cBytesSplitPositionComponent;
    if(bHessian) {
       typedef SplitPosition<true> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    } else {
       typedef SplitPosition<false> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    }
 
    if(UNLIKELY(IsAddError(cBytesSplitPositionComponent, cBytesPerBin))) {
@@ -81,10 +85,10 @@ inline static size_t GetSplitPositionSize(bool bHessian, const size_t cScores) {
    size_t cBytesSplitPositionComponent;
    if(bHessian) {
       typedef SplitPosition<true> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    } else {
       typedef SplitPosition<false> OffsetType;
-      cBytesSplitPositionComponent = offsetof(OffsetType, m_leftSum);
+      cBytesSplitPositionComponent = offsetof(OffsetType, m_binSum);
    }
 
    return cBytesSplitPositionComponent + cBytesPerBin;

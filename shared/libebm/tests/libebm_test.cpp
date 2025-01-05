@@ -279,7 +279,7 @@ TestBoost::TestBoost(const TaskEbm cClasses,
       }
       sizeChange = MeasureFeature(feature.m_countBins,
             feature.m_bMissing ? EBM_TRUE : EBM_FALSE,
-            feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
+            feature.m_bUnseen ? EBM_TRUE : EBM_FALSE,
             feature.m_bNominal ? EBM_TRUE : EBM_FALSE,
             cSamples,
             0 == binIndexes.size() ? nullptr : &binIndexes[0]);
@@ -352,7 +352,7 @@ TestBoost::TestBoost(const TaskEbm cClasses,
       }
       error = FillFeature(feature.m_countBins,
             feature.m_bMissing ? EBM_TRUE : EBM_FALSE,
-            feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
+            feature.m_bUnseen ? EBM_TRUE : EBM_FALSE,
             feature.m_bNominal ? EBM_TRUE : EBM_FALSE,
             cSamples,
             0 == binIndexes.size() ? nullptr : &binIndexes[0],
@@ -512,6 +512,7 @@ TestBoost::TestBoost(const TaskEbm cClasses,
 
    error = CreateBooster(&m_rng[0],
          &dataset[0],
+         nullptr,
          0 == bag.size() ? nullptr : &bag[0],
          bInitScores ? &initScores[0] : nullptr,
          dimensionCounts.size(),
@@ -545,6 +546,10 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
       const double regAlpha,
       const double regLambda,
       const double maxDeltaStep,
+      const IntEbm minCategorySamples,
+      const double categoricalSmoothing,
+      const IntEbm maxCategoricalThreshold,
+      const double categoricalInclusionPercent,
       const std::vector<IntEbm> leavesMax,
       const std::vector<MonotoneDirection> monotonicity) {
    ErrorEbm error;
@@ -562,35 +567,89 @@ BoostRet TestBoost::Boost(const IntEbm indexTerm,
          regAlpha,
          regLambda,
          maxDeltaStep,
+         minCategorySamples,
+         categoricalSmoothing,
+         maxCategoricalThreshold,
+         categoricalInclusionPercent,
          0 == leavesMax.size() ? nullptr : &leavesMax[0],
          0 == monotonicity.size() ? nullptr : &monotonicity[0],
          &gainAvg);
    if(Error_None != error) {
       throw TestException(error, "GenerateTermUpdate");
    }
-   if(0 != (TermBoostFlags_GradientSums & flags)) {
-      // if sums are on, then we MUST change the term update
+   size_t cUpdateScores = GetCountScores(m_cClasses);
 
-      size_t cUpdateScores = GetCountScores(m_cClasses);
-
+   size_t cDimensions = 0;
+   IntEbm countSplits;
+   if(0 <= indexTerm) {
+      cDimensions = m_termFeatures[static_cast<size_t>(indexTerm)].size();
       for(const IntEbm iFeature : m_termFeatures[static_cast<size_t>(indexTerm)]) {
          const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
          cUpdateScores *= cBins;
       }
 
-      std::vector<double> scoreTensor(cUpdateScores);
-      if(0 != cUpdateScores) {
-         memset(&scoreTensor[0], 0, sizeof(double) * cUpdateScores);
+      for(size_t iDimension = 0; iDimension < cDimensions; ++iDimension) {
+         size_t iFeature = static_cast<size_t>(m_termFeatures[static_cast<size_t>(indexTerm)][iDimension]);
+         const size_t cBins = static_cast<size_t>(m_features[static_cast<size_t>(iFeature)].m_countBins);
+         countSplits = cBins - 1;
+         std::vector<IntEbm> splits(static_cast<size_t>(countSplits));
+         memset(&splits[0], 0, sizeof(IntEbm) * static_cast<size_t>(countSplits));
+         error = GetTermUpdateSplits(m_boosterHandle, iDimension, &countSplits, &splits[0]);
+         if(Error_None != error) {
+            throw TestException(error, "SetTermUpdate");
+         }
       }
-
-      error = SetTermUpdate(m_boosterHandle, indexTerm, &scoreTensor[0]);
+   } else {
+      countSplits = 0;
+      error = GetTermUpdateSplits(m_boosterHandle, -1, &countSplits, nullptr);
       if(Error_None != error) {
          throw TestException(error, "SetTermUpdate");
       }
    }
+
+   std::vector<double> scoreTensor(cUpdateScores);
+
+   if(0 != cUpdateScores) {
+      memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+   }
+   error = GetTermUpdate(m_boosterHandle, scoreTensor.data());
+   if(Error_None != error) {
+      throw TestException(error, "SetTermUpdate");
+   }
+
+   if(0 != (TermBoostFlags_GradientSums & flags)) {
+      // if sums are on, then we MUST change the term update
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0, sizeof(double) * cUpdateScores);
+      }
+   }
+
+   error = SetTermUpdate(m_boosterHandle, indexTerm, scoreTensor.data());
+   if(Error_None != error) {
+      throw TestException(error, "SetTermUpdate");
+   }
+
    error = ApplyTermUpdate(m_boosterHandle, &validationMetricAvg);
    if(Error_None != error) {
       throw TestException(error, "ApplyTermUpdate");
+   }
+
+   if(0 <= indexTerm) {
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+      }
+      error = GetBestTermScores(m_boosterHandle, indexTerm, scoreTensor.data());
+      if(Error_None != error) {
+         throw TestException(error, "ApplyTermUpdate");
+      }
+
+      if(0 != cUpdateScores) {
+         memset(scoreTensor.data(), 0xFF, sizeof(double) * cUpdateScores);
+      }
+      error = GetCurrentTermScores(m_boosterHandle, indexTerm, scoreTensor.data());
+      if(Error_None != error) {
+         throw TestException(error, "ApplyTermUpdate");
+      }
    }
 
    return BoostRet{gainAvg, validationMetricAvg};
@@ -700,7 +759,7 @@ TestInteraction::TestInteraction(const TaskEbm cClasses,
       }
       sizeChange = MeasureFeature(feature.m_countBins,
             feature.m_bMissing ? EBM_TRUE : EBM_FALSE,
-            feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
+            feature.m_bUnseen ? EBM_TRUE : EBM_FALSE,
             feature.m_bNominal ? EBM_TRUE : EBM_FALSE,
             cSamples,
             0 == binIndexes.size() ? nullptr : &binIndexes[0]);
@@ -761,7 +820,7 @@ TestInteraction::TestInteraction(const TaskEbm cClasses,
       }
       error = FillFeature(feature.m_countBins,
             feature.m_bMissing ? EBM_TRUE : EBM_FALSE,
-            feature.m_bUnknown ? EBM_TRUE : EBM_FALSE,
+            feature.m_bUnseen ? EBM_TRUE : EBM_FALSE,
             feature.m_bNominal ? EBM_TRUE : EBM_FALSE,
             cSamples,
             0 == binIndexes.size() ? nullptr : &binIndexes[0],
@@ -858,6 +917,7 @@ TestInteraction::TestInteraction(const TaskEbm cClasses,
    }
 
    error = CreateInteractionDetector(&dataset[0],
+         nullptr,
          0 == bag.size() ? nullptr : &bag[0],
          0 == initScores.size() ? nullptr : &initScores[0],
          flags,
@@ -952,6 +1012,57 @@ extern void DisplayCuts(IntEbm countSamples,
    }
 
    std::cout << std::endl << std::endl;
+}
+
+extern IntEbm ChooseAny(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options) {
+   IntEbm ret = 0;
+   for(const IntEbm option : options) {
+      if(0 == TestRand(rng, 3)) {
+         ret |= option;
+      }
+   }
+   return ret;
+}
+
+extern IntEbm ChooseFrom(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options) {
+   return options[TestRand(rng, options.size())];
+}
+
+extern std::vector<TestSample> MakeRandomDataset(std::vector<unsigned char>& rng,
+      const IntEbm cClasses,
+      const size_t cSamples,
+      const std::vector<FeatureTest>& features) {
+   std::vector<TestSample> samples;
+
+   for(size_t iSample = 0; iSample < cSamples; ++iSample) {
+      std::vector<IntEbm> sampleBinIndexes;
+      for(const FeatureTest& feature : features) {
+         IntEbm iBin = TestRand(rng, feature.CountRealBins());
+         if(!feature.m_bMissing) {
+            ++iBin;
+         }
+         sampleBinIndexes.push_back(iBin);
+      }
+
+      double target;
+      if(Task_GeneralClassification <= cClasses) {
+         target = static_cast<double>(TestRand(rng, cClasses));
+      } else {
+         target = TestRand(rng);
+      }
+
+      samples.push_back(TestSample(sampleBinIndexes, target));
+   }
+   return samples;
+}
+
+extern std::vector<std::vector<IntEbm>> MakeMains(const std::vector<FeatureTest>& features) {
+   const IntEbm cFeatures = static_cast<IntEbm>(features.size());
+   std::vector<std::vector<IntEbm>> termFeatures;
+   for(IntEbm iFeature = 0; iFeature < cFeatures; ++iFeature) {
+      termFeatures.push_back({iFeature});
+   }
+   return termFeatures;
 }
 
 int main() {

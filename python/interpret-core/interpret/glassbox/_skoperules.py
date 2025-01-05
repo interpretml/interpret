@@ -5,6 +5,8 @@ import logging
 import re
 from copy import deepcopy
 from itertools import count
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -107,6 +109,57 @@ class RulesExplanation(ExplanationMixin):
         msg = f"Not suppported: {self.explanation_type}, {key}"
         _log.error(msg)
         raise Exception(msg)
+
+
+@dataclass
+class DecisionInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = False
+    pairwise: bool = False
+
+
+@dataclass
+class DecisionTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class DecisionClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = False
+    multi_label: bool = False
+
+
+@dataclass
+class DecisionRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class DecisionTags:
+    estimator_type: Optional[str] = None
+    target_tags: DecisionTargetTags = field(default_factory=DecisionTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[DecisionClassifierTags] = None
+    regressor_tags: Optional[DecisionRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: DecisionInputTags = field(default_factory=DecisionInputTags)
 
 
 class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
@@ -438,3 +491,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             name=name,
             selector=self.global_selector_,
         )
+
+    def __sklearn_tags__(self):
+        tags = DecisionTags()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = DecisionClassifierTags()
+        return tags

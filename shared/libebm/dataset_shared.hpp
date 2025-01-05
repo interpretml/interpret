@@ -38,7 +38,7 @@ extern ErrorEbm GetDataSetSharedHeader(const unsigned char* const pDataSetShared
 extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetShared,
       const size_t iFeature,
       bool* const pbMissingOut,
-      bool* const pbUnknownOut,
+      bool* const pbUnseenOut,
       bool* const pbNominalOut,
       bool* const pbSparseOut,
       UIntShared* const pcBinsOut,

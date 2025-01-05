@@ -8,12 +8,11 @@
 
 template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
    using TFloatInternal = TFloat;
-   static constexpr bool k_bRmse = true;
    static constexpr bool k_bHessian = false;
-   static constexpr bool k_bApprox = false;
+   static constexpr bool k_bHasApprox = false;
    static constexpr BoolEbm k_bMaximizeMetric = MINIMIZE_METRIC;
+   static constexpr ObjectiveEbm k_objective = Objective_Rmse;
    static constexpr LinkEbm k_linkFunction = Link_identity;
-   static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);
    static constexpr int k_cItemsPerBitPackMax = 64;
    static constexpr int k_cItemsPerBitPackMin = 1;
    static ErrorEbm StaticApplyUpdate(const Objective* const pThis, ApplyUpdateBridge* const pData) {
@@ -108,14 +107,14 @@ template<typename TFloat> struct RmseRegressionObjective : RegressionObjective {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
       static_assert(k_oneScore == cCompilerScores, "for RMSE regression there should always be one score");
       static_assert(!bHessian, "for RMSE regression we should never need the hessians");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
-      static_assert(!bDisableApprox, "Approximations cannot be disabled on RMSE since there are none on RMSE");
+      static_assert(!bUseApprox, "Approximations cannot be enabled on RMSE since there are none on RMSE");
 
       static constexpr bool bFixedSizePack = k_cItemsPerBitPackUndefined != cCompilerPack;
 

@@ -65,7 +65,7 @@ static constexpr UIntShared k_sharedDataSetDoneId = 0x61E3; // random 15 bit num
 
 // feature ids
 static constexpr UIntShared k_missingFeatureBit = 0x1;
-static constexpr UIntShared k_unknownFeatureBit = 0x2;
+static constexpr UIntShared k_unseenFeatureBit = 0x2;
 static constexpr UIntShared k_nominalFeatureBit = 0x4;
 static constexpr UIntShared k_sparseFeatureBit = 0x8;
 static constexpr UIntShared k_featureId = 0x2B40; // random 15 bit number with lower 4 bits set to zero
@@ -78,18 +78,18 @@ static constexpr UIntShared k_classificationBit = 0x1;
 static constexpr UIntShared k_targetId = 0x5A92; // random 15 bit number with lowest bit set to zero
 
 INLINE_ALWAYS static bool IsFeature(const UIntShared id) noexcept {
-   return (k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
-         ((k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit) | id);
+   return (k_missingFeatureBit | k_unseenFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
+         ((k_missingFeatureBit | k_unseenFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit) | id);
 }
 INLINE_ALWAYS static bool IsMissingFeature(const UIntShared id) noexcept {
    static_assert(0 == (k_missingFeatureBit & k_featureId), "k_featureId should not be missing");
    EBM_ASSERT(IsFeature(id));
    return 0 != (k_missingFeatureBit & id);
 }
-INLINE_ALWAYS static bool IsUnknownFeature(const UIntShared id) noexcept {
-   static_assert(0 == (k_unknownFeatureBit & k_featureId), "k_featureId should not be unknown");
+INLINE_ALWAYS static bool IsUnseenFeature(const UIntShared id) noexcept {
+   static_assert(0 == (k_unseenFeatureBit & k_featureId), "k_featureId should not be unseen");
    EBM_ASSERT(IsFeature(id));
-   return 0 != (k_unknownFeatureBit & id);
+   return 0 != (k_unseenFeatureBit & id);
 }
 INLINE_ALWAYS static bool IsNominalFeature(const UIntShared id) noexcept {
    static_assert(0 == (k_nominalFeatureBit & k_featureId), "k_featureId should not be nominal");
@@ -102,9 +102,9 @@ INLINE_ALWAYS static bool IsSparseFeature(const UIntShared id) noexcept {
    return 0 != (k_sparseFeatureBit & id);
 }
 INLINE_ALWAYS static UIntShared GetFeatureId(
-      const bool bMissing, const bool bUnknown, const bool bNominal, const bool bSparse) noexcept {
+      const bool bMissing, const bool bUnseen, const bool bNominal, const bool bSparse) noexcept {
    return k_featureId | (bMissing ? k_missingFeatureBit : UIntShared{0}) |
-         (bUnknown ? k_unknownFeatureBit : UIntShared{0}) | (bNominal ? k_nominalFeatureBit : UIntShared{0}) |
+         (bUnseen ? k_unseenFeatureBit : UIntShared{0}) | (bNominal ? k_nominalFeatureBit : UIntShared{0}) |
          (bSparse ? k_sparseFeatureBit : UIntShared{0});
 }
 
@@ -142,7 +142,7 @@ static const size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_off
 static const UIntShared k_unfilledOffset = static_cast<UIntShared>(k_cBytesHeaderNoOffset - size_t{1});
 
 struct FeatureDataSetShared {
-   UIntShared m_id; // dense or sparse?  nominal, missing, unknown or not?
+   UIntShared m_id; // dense or sparse?  nominal, missing, unseen or not?
    UIntShared m_cBins;
 };
 static_assert(std::is_standard_layout<FeatureDataSetShared>::value,
@@ -983,7 +983,7 @@ WARNING_PUSH
 WARNING_REDUNDANT_CODE
 static IntEbm AppendFeature(const IntEbm countBins,
       const BoolEbm isMissing,
-      const BoolEbm isUnknown,
+      const BoolEbm isUnseen,
       const BoolEbm isNominal,
       const IntEbm countSamples,
       const IntEbm* binIndexes,
@@ -996,7 +996,7 @@ static IntEbm AppendFeature(const IntEbm countBins,
          "Entered AppendFeature: "
          "countBins=%" IntEbmPrintf ", "
          "isMissing=%s, "
-         "isUnknown=%s, "
+         "isUnseen=%s, "
          "isNominal=%s, "
          "countSamples=%" IntEbmPrintf ", "
          "binIndexes=%p, "
@@ -1004,7 +1004,7 @@ static IntEbm AppendFeature(const IntEbm countBins,
          "pFillMem=%p",
          countBins,
          ObtainTruth(isMissing),
-         ObtainTruth(isUnknown),
+         ObtainTruth(isUnseen),
          ObtainTruth(isNominal),
          countSamples,
          static_cast<const void*>(binIndexes),
@@ -1023,14 +1023,14 @@ static IntEbm AppendFeature(const IntEbm countBins,
       }
       UIntShared cBins = static_cast<UIntShared>(countBins);
       cBins -= EBM_FALSE != isMissing ? UIntShared{0} : UIntShared{1};
-      cBins -= EBM_FALSE != isUnknown ? UIntShared{0} : UIntShared{1};
+      cBins -= EBM_FALSE != isUnseen ? UIntShared{0} : UIntShared{1};
 
       if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
          LOG_0(Trace_Error, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
-      if(EBM_FALSE != isUnknown && EBM_TRUE != isUnknown) {
-         LOG_0(Trace_Error, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
+      if(EBM_FALSE != isUnseen && EBM_TRUE != isUnseen) {
+         LOG_0(Trace_Error, "ERROR AppendFeature isUnseen is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
       if(EBM_FALSE != isNominal && EBM_TRUE != isNominal) {
@@ -1095,7 +1095,7 @@ static IntEbm AppendFeature(const IntEbm countBins,
                reinterpret_cast<FeatureDataSetShared*>(pFillMem + iHighestOffset);
 
          pFeatureDataSetShared->m_id =
-               GetFeatureId(EBM_FALSE != isMissing, EBM_FALSE != isUnknown, EBM_FALSE != isNominal, bSparse);
+               GetFeatureId(EBM_FALSE != isMissing, EBM_FALSE != isUnseen, EBM_FALSE != isNominal, bSparse);
          pFeatureDataSetShared->m_cBins = cBins;
       }
 
@@ -1160,7 +1160,7 @@ static IntEbm AppendFeature(const IntEbm countBins,
                int cShift =
                      static_cast<int>((cSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
                const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-               const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm{0} : IntEbm{1});
+               const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnseen ? IntEbm{0} : IntEbm{1});
                do {
                   UIntShared bits = 0;
                   do {
@@ -1712,16 +1712,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes) {
-   return AppendFeature(countBins, isMissing, isUnknown, isNominal, countSamples, binIndexes, 0, nullptr);
+   return AppendFeature(countBins, isMissing, isUnseen, isNominal, countSamples, binIndexes, 0, nullptr);
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes,
@@ -1754,7 +1754,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(IntEbm countBins,
 
    const IntEbm ret = AppendFeature(countBins,
          isMissing,
-         isUnknown,
+         isUnseen,
          isNominal,
          countSamples,
          binIndexes,
@@ -1968,7 +1968,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(const void* da
 extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetShared,
       const size_t iFeature,
       bool* const pbMissingOut,
-      bool* const pbUnknownOut,
+      bool* const pbUnseenOut,
       bool* const pbNominalOut,
       bool* const pbSparseOut,
       UIntShared* const pcBinsOut,
@@ -1976,7 +1976,7 @@ extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetSh
       size_t* const pcNonDefaultsSparseOut) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(nullptr != pbMissingOut);
-   EBM_ASSERT(nullptr != pbUnknownOut);
+   EBM_ASSERT(nullptr != pbUnseenOut);
    EBM_ASSERT(nullptr != pbNominalOut);
    EBM_ASSERT(nullptr != pbSparseOut);
    EBM_ASSERT(nullptr != pcBinsOut);
@@ -2000,7 +2000,7 @@ extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetSh
    const UIntShared id = pFeatureDataSetShared->m_id;
    EBM_ASSERT(IsFeature(id));
    *pbMissingOut = IsMissingFeature(id);
-   *pbUnknownOut = IsUnknownFeature(id);
+   *pbUnseenOut = IsUnseenFeature(id);
    *pbNominalOut = IsNominalFeature(id);
    const bool bSparse = IsSparseFeature(id);
    *pbSparseOut = bSparse;
@@ -2129,7 +2129,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
          UIntShared countBins = pFeatureDataSetShared->m_cBins;
          // countBins originally fit into UIntShared so it should still with these additions
          countBins += IsMissingFeature(pFeatureDataSetShared->m_id) ? UIntShared{0} : UIntShared{1};
-         countBins += IsUnknownFeature(pFeatureDataSetShared->m_id) ? UIntShared{0} : UIntShared{1};
+         countBins += IsUnseenFeature(pFeatureDataSetShared->m_id) ? UIntShared{0} : UIntShared{1};
          if(IsConvertError<IntEbm>(countBins)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbm>(countBins)");
             return Error_IllegalParamVal;

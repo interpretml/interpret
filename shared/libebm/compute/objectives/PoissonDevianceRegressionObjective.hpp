@@ -7,7 +7,7 @@
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat> struct PoissonDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Link_log, true)
+   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
 
    // The constructor parameters following config must match the RegisterObjective parameters in
    // objective_registrations.hpp
@@ -74,7 +74,7 @@ template<typename TFloat> struct PoissonDevianceRegressionObjective : Regression
       // Log succeeded and was subsequently multiplied by 0. But due to floating point considerations the
       // fraction inside the log can underflow to zero or a denormal if target is a small non-zero number. We want to
       // treat denormals as zero, so check if less than the minimum non-denormal as our check for zero.
-      const TFloat conditionalExtra = IfLess(frac, std::numeric_limits<typename TFloat::T>::min(), 0.0, extra);
+      const TFloat conditionalExtra = IfThenElse(frac < std::numeric_limits<typename TFloat::T>::min(), 0.0, extra);
       return error + conditionalExtra;
    }
 

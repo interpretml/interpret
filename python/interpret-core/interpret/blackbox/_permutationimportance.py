@@ -1,7 +1,7 @@
 # # Copyright (c) 2023 The InterpretML Contributors
 # # Distributed under the MIT software license
 #
-# import scipy as sp
+# import scipy as sp -> use safe_isinstance instead
 # import numpy as np
 #
 # import sklearn.metrics

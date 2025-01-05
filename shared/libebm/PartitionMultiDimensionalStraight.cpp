@@ -25,9 +25,12 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInteractionInternal final {
+// TODO: Modify this file so that it can return a boosting update corresponding to the straight cuts
+//       that were selected. After that we can use it for both boosting and interaction detection.
+
+template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalStraightInternal final {
  public:
-   PartitionTwoDimensionalInteractionInternal() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightInternal() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRuntimeRealDimensions,
@@ -102,10 +105,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             bUseStackMemory ? bin11.GetGradientPairs() : p_DO_NOT_USE_DIRECTLY_11->GetGradientPairs();
 
       EBM_ASSERT(std::numeric_limits<FloatCalc>::min() <= hessianMin);
-
-#ifndef NDEBUG
-      bool bAnySplits = false;
-#endif // NDEBUG
 
       const bool bUseLogitBoost = bHessian && !(CalcInteractionFlags_DisableNewton & flags);
 
@@ -202,10 +201,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
             }
 
             {
-#ifndef NDEBUG
-               bAnySplits = true;
-#endif // NDEBUG
-
                const FloatCalc w00 = static_cast<FloatCalc>(bin00.GetWeight());
                const FloatCalc w01 = static_cast<FloatCalc>(bin01.GetWeight());
                const FloatCalc w10 = static_cast<FloatCalc>(bin10.GetWeight());
@@ -351,10 +346,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                         const FloatCalc negPure11 = common / (FloatCalc{1} + w11 / w00 + w11 / w01 + w11 / w10);
 
                         // g = partial gain
-                        const FloatCalc g00 = CalcPartialGainFromUpdate(grad00, hess00, negPure00, regAlpha, regLambda);
-                        const FloatCalc g01 = CalcPartialGainFromUpdate(grad01, hess01, negPure01, regAlpha, regLambda);
-                        const FloatCalc g10 = CalcPartialGainFromUpdate(grad10, hess10, negPure10, regAlpha, regLambda);
-                        const FloatCalc g11 = CalcPartialGainFromUpdate(grad11, hess11, negPure11, regAlpha, regLambda);
+                        const FloatCalc g00 =
+                              CalcPartialGainFromUpdate<false>(grad00, hess00, negPure00, regAlpha, regLambda);
+                        const FloatCalc g01 =
+                              CalcPartialGainFromUpdate<false>(grad01, hess01, negPure01, regAlpha, regLambda);
+                        const FloatCalc g10 =
+                              CalcPartialGainFromUpdate<false>(grad10, hess10, negPure10, regAlpha, regLambda);
+                        const FloatCalc g11 =
+                              CalcPartialGainFromUpdate<false>(grad11, hess11, negPure11, regAlpha, regLambda);
 
                         gain += g00;
                         gain += g01;
@@ -363,13 +362,14 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
                      }
                   } else {
                      // non-purified gain
-                     gain += CalcPartialGain(grad00, hess00, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad01, hess01, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad10, hess10, regAlpha, regLambda, deltaStepMax);
-                     gain += CalcPartialGain(grad11, hess11, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad00, hess00, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad01, hess01, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad10, hess10, regAlpha, regLambda, deltaStepMax);
+                     gain += CalcPartialGain<false>(grad11, hess11, regAlpha, regLambda, deltaStepMax);
                   }
                }
-               EBM_ASSERT(std::isnan(gain) || 0 <= gain); // sumations of positive numbers should be positive
+               // gain should be positive if we're dealing with unpurified updates
+               EBM_ASSERT(0 != (CalcInteractionFlags_Purify & flags) || std::isnan(gain) || 0 <= gain);
 
                // If we get a NaN result, we'd like to propagate it by making bestGain NaN.
                // The rules for NaN values say that non equality comparisons are all false so,
@@ -413,28 +413,12 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
 
                EBM_ASSERT(hessianMin <= hess);
 
-               bestGain -= CalcPartialGain(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
+               bestGain -= CalcPartialGain<false>(static_cast<FloatCalc>(aGradientPairs[iScore].m_sumGradients),
                      hess,
                      regAlpha,
                      regLambda,
                      deltaStepMax);
             }
-
-            // bestGain should be positive, or NaN, BUT it can be slightly negative due to floating point noise
-            // it could also be -inf if the parent/total bin overflows, but the children parts did not.
-            // bestGain can also be substantially negative if we didn't find any legal cuts and
-            // then we subtracted the base partial gain here from zero
-
-            // if no legal splits were found, then bestGain will be zero.  In theory we should
-            // therefore not subtract the parent partial gain, but doing so does no harm since we later set any
-            // negative interaction score to zero in the caller of this function.  Due to that we don't
-            // need to check here, since any value we subtract from zero will lead to a negative number and
-            // then will be zeroed by our caller
-            // BUT, for debugging purposes, check here for that condition so that we can check for illegal negative
-            // gain.
-
-            EBM_ASSERT(std::isnan(bestGain) || -std::numeric_limits<FloatCalc>::infinity() == bestGain ||
-                  k_epsilonNegativeGainAllowed <= bestGain || !bAnySplits);
          }
       }
 
@@ -443,9 +427,9 @@ template<bool bHessian, size_t cCompilerScores> class PartitionTwoDimensionalInt
    }
 };
 
-template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInteractionTarget final {
+template<bool bHessian, size_t cPossibleScores> class PartitionMultiDimensionalStraightTarget final {
  public:
-   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRealDimensions,
@@ -465,7 +449,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
 #endif // NDEBUG
    ) {
       if(cPossibleScores == pInteractionCore->GetCountScores()) {
-         return PartitionTwoDimensionalInteractionInternal<bHessian, cPossibleScores>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<bHessian, cPossibleScores>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -483,7 +467,7 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionTarget<bHessian, cPossibleScores + 1>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightTarget<bHessian, cPossibleScores + 1>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -504,9 +488,9 @@ template<bool bHessian, size_t cPossibleScores> class PartitionTwoDimensionalInt
    }
 };
 
-template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian, k_cCompilerScoresMax + 1> final {
+template<bool bHessian> class PartitionMultiDimensionalStraightTarget<bHessian, k_cCompilerScoresMax + 1> final {
  public:
-   PartitionTwoDimensionalInteractionTarget() = delete; // this is a static class.  Do not construct
+   PartitionMultiDimensionalStraightTarget() = delete; // this is a static class.  Do not construct
 
    INLINE_RELEASE_UNTEMPLATED static double Func(InteractionCore* const pInteractionCore,
          const size_t cRealDimensions,
@@ -525,7 +509,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
          const BinBase* const pBinsEndDebug
 #endif // NDEBUG
    ) {
-      return PartitionTwoDimensionalInteractionInternal<bHessian, k_dynamicScores>::Func(pInteractionCore,
+      return PartitionMultiDimensionalStraightInternal<bHessian, k_dynamicScores>::Func(pInteractionCore,
             cRealDimensions,
             acBins,
             flags,
@@ -545,7 +529,7 @@ template<bool bHessian> class PartitionTwoDimensionalInteractionTarget<bHessian,
    }
 };
 
-extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInteractionCore,
+extern double PartitionMultiDimensionalStraight(InteractionCore* const pInteractionCore,
       const size_t cRealDimensions,
       const size_t* const acBins,
       const CalcInteractionFlags flags,
@@ -568,7 +552,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
    if(pInteractionCore->IsHessian()) {
       if(size_t{1} != cRuntimeScores) {
          // muticlass
-         return PartitionTwoDimensionalInteractionTarget<true, k_cCompilerScoresStart>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightTarget<true, k_cCompilerScoresStart>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -586,7 +570,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionInternal<true, k_oneScore>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<true, k_oneScore>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -607,7 +591,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
    } else {
       if(size_t{1} != cRuntimeScores) {
          // Odd: gradient multiclass. Allow it, but do not optimize for it
-         return PartitionTwoDimensionalInteractionInternal<false, k_dynamicScores>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<false, k_dynamicScores>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,
@@ -625,7 +609,7 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
 #endif // NDEBUG
          );
       } else {
-         return PartitionTwoDimensionalInteractionInternal<false, k_oneScore>::Func(pInteractionCore,
+         return PartitionMultiDimensionalStraightInternal<false, k_oneScore>::Func(pInteractionCore,
                cRealDimensions,
                acBins,
                flags,

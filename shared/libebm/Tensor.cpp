@@ -30,7 +30,7 @@ Tensor* Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
       LOG_0(Trace_Warning, "WARNING Allocate IsMultiplyError(k_initialTensorCapacity, cScores)");
       return nullptr;
    }
-   const size_t cTensorScoreCapacity = k_initialTensorCapacity * cScores;
+   const size_t cTensorScoreCapacity = sizeof(FloatScore) * k_initialTensorCapacity * cScores;
 
    // this can't overflow since cDimensionsMax can't be bigger than k_cDimensionsMax, which is arround 64
    const size_t cBytesTensor = offsetof(Tensor, m_aDimensions) + sizeof(DimensionInfo) * cDimensionsMax;
@@ -47,7 +47,7 @@ Tensor* Tensor::Allocate(const size_t cDimensionsMax, const size_t cScores) {
    pTensor->m_bExpanded = false;
 
    // this isn't required to be aligned, but do it anyways to keep as much of it on a single cache line as possible
-   FloatScore* const aTensorScores = static_cast<FloatScore*>(AlignedAlloc(sizeof(FloatScore) * cTensorScoreCapacity));
+   FloatScore* const aTensorScores = static_cast<FloatScore*>(AlignedAlloc(cTensorScoreCapacity));
    if(UNLIKELY(nullptr == aTensorScores)) {
       LOG_0(Trace_Warning, "WARNING Allocate nullptr == aTensorScores");
       free(pTensor); // don't need to call the full Free(*) yet
@@ -159,38 +159,12 @@ ErrorEbm Tensor::SetCountSlices(const size_t iDimension, const size_t cSlices) {
 }
 
 ErrorEbm Tensor::EnsureTensorScoreCapacity(const size_t cTensorScores) {
-   if(UNLIKELY(m_cTensorScoreCapacity < cTensorScores)) {
-      EBM_ASSERT(!m_bExpanded); // we shouldn't be able to expand our length after we're been expanded since expanded
-                                // should be the maximum size already
-
-      if(IsAddError(cTensorScores, cTensorScores >> 1)) {
-         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsAddError(cTensorScores, cTensorScores >> 1)");
-         return Error_OutOfMemory;
-      }
-      // just increase it by 50% since we don't expect to grow our scores often after an initial period, and realloc
-      // takes some of the cost of growing away
-      size_t cNewTensorScoreCapacity = cTensorScores + (cTensorScores >> 1);
-      LOG_N(Trace_Info, "EnsureTensorScoreCapacity Growing to size %zu", cNewTensorScoreCapacity);
-
-      if(IsMultiplyError(sizeof(FloatScore), cNewTensorScoreCapacity)) {
-         LOG_0(Trace_Warning,
-               "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatScore), cNewTensorScoreCapacity)");
-         return Error_OutOfMemory;
-      }
-      size_t cBytes = sizeof(FloatScore) * cNewTensorScoreCapacity;
-      FloatScore* const aNewTensorScores = static_cast<FloatScore*>(
-            AlignedRealloc(m_aTensorScores, sizeof(FloatScore) * m_cTensorScoreCapacity, cBytes));
-      if(UNLIKELY(nullptr == aNewTensorScores)) {
-         // according to the realloc spec, if realloc fails to allocate the new memory, it returns nullptr BUT the old
-         // memory is valid. we leave m_aThreadByteBuffer1 alone in this instance and will free that memory later in the
-         // destructor
-         LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity nullptr == aNewTensorScores");
-         return Error_OutOfMemory;
-      }
-      m_aTensorScores = aNewTensorScores;
-      m_cTensorScoreCapacity = cNewTensorScoreCapacity;
-   } // never shrink our array unless the user chooses to Trim()
-   return Error_None;
+   if(IsMultiplyError(sizeof(FloatScore), cTensorScores)) {
+      LOG_0(Trace_Warning, "WARNING EnsureTensorScoreCapacity IsMultiplyError(sizeof(FloatScore), cTensorScores)");
+      return Error_OutOfMemory;
+   }
+   size_t cBytes = sizeof(FloatScore) * cTensorScores;
+   return AlignedGrow(reinterpret_cast<void**>(&m_aTensorScores), &m_cTensorScoreCapacity, cBytes, EBM_TRUE);
 }
 
 ErrorEbm Tensor::Copy(const Tensor& rhs) {

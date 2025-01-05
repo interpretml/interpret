@@ -12,10 +12,12 @@ of the interaction of all pairs of features in a dataset.
 import heapq
 
 from ._native import InteractionDetector
+from .. import develop
 
 
 def rank_interactions(
     dataset,
+    intercept,
     bag,
     init_scores,
     iter_term_features,
@@ -30,17 +32,22 @@ def rank_interactions(
     max_delta_step,
     create_interaction_flags,
     objective,
-    experimental_params=None,
-    n_output_interactions=0,
+    acceleration,
+    experimental_params,
+    n_output_interactions,
+    develop_options,
 ):
     try:
+        develop._develop_options = develop_options  # restore these in this process
         interaction_strengths = []
         with InteractionDetector(
             dataset,
+            intercept,
             bag,
             init_scores,
             create_interaction_flags,
             objective,
+            acceleration,
             experimental_params,
         ) as interaction_detector:
             for feature_idxs in iter_term_features:

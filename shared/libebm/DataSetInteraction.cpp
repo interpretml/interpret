@@ -103,7 +103,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(const unsigned char* const pDataSet
    size_t iFeature = 0;
    do {
       bool bMissing;
-      bool bUnknown;
+      bool bUnseen;
       bool bNominal;
       bool bSparse;
       UIntShared countBins;
@@ -112,7 +112,7 @@ ErrorEbm DataSetInteraction::InitFeatureData(const unsigned char* const pDataSet
       const void* aFeatureDataFrom = GetDataSetSharedFeature(pDataSetShared,
             iFeature,
             &bMissing,
-            &bUnknown,
+            &bUnseen,
             &bNominal,
             &bSparse,
             &countBins,

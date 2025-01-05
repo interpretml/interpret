@@ -7,7 +7,8 @@
 // Do not use this file as a reference for other objectives. LogLoss is special.
 
 template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
-   OBJECTIVE_CONSTANTS_BOILERPLATE(LogLossBinaryObjective, MINIMIZE_METRIC, Link_logit, true, true, 64, 1)
+   OBJECTIVE_CONSTANTS_BOILERPLATE(
+         LogLossBinaryObjective, MINIMIZE_METRIC, Objective_LogLossBinary, Link_logit, true, true, 64, 1)
 
    inline LogLossBinaryObjective(const Config& config) {
       if(1 != config.cOutputs) {
@@ -67,7 +68,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
@@ -214,15 +215,15 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
             if(bValidation) {
                // TODO: similar to the gradient calculation above, once we sort our data by the target values we
                //       will be able to pass all the targets==0 and target==1 in to a single call to this function
-               //       and we can therefore template the target value.  We can then call ExpForBinaryClassification
+               //       and we can therefore template the target value.  We can then call ApproxExp
                //       with a TEMPLATED parameter that indicates it if should negative sampleScore within the function
                //       This will eliminate both the IfEqual call, and also the negation, so it's a great optimization.
 
-               TFloat metric = IfEqual(typename TFloat::TInt(0), target, sampleScore, -sampleScore);
-               metric = TFloat::template ApproxExp<bDisableApprox, false>(metric);
+               TFloat metric = IfThenElse(typename TFloat::TInt(0) == target, sampleScore, -sampleScore);
+               metric = TFloat::template ApproxExp<bUseApprox, false>(metric);
                metric += 1.0;
                // zero and negative are impossible since 1.0 is the lowest possible value
-               metric = TFloat::template ApproxLog<bDisableApprox, false, true, false, false>(metric);
+               metric = TFloat::template ApproxLog<bUseApprox, false, true, false, false>(metric);
 
                if(bWeight) {
                   metricSum = FusedMultiplyAdd(metric, weight, metricSum);
@@ -245,7 +246,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //    to be either +1 or -1 as a template controlled constant that doesn't need to be runtime selected
                // TODO : In the future we'll sort our data by the target value and process them together. Once that
                //    happens we can eliminate the runtime check that can negate sampleScore AND we can also
-               //    avoid the negation itself by calling ExpForBinaryClassification with a templated parameter
+               //    avoid the negation itself by calling ApproxExp with a templated parameter
                //    to use negative constants that will effectively take the exp of -sampleScore for no cost
                //
                // !!! IMPORTANT: when using an approximate exp function, the formula used to compute the gradients
@@ -263,13 +264,14 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
                //                error sums of zero. I've made a copy of this formula as a comment to reference to what
                //                is good in-case the formula is changed in the code without reading this comment const
                //                FLOAT gradient = (UNPREDICTABLE(0 == target) ? FLOAT { -1 } : FLOAT { 1 }) / (FLOAT{ 1
-               //                } + ExpForBinaryClassification(UNPREDICTABLE(0 == target) ? -sampleScore :
+               //                } + ApproxExp(UNPREDICTABLE(0 == target) ? -sampleScore :
                //                sampleScore));
                // !!! IMPORTANT: SEE ABOVE
 
-               const TFloat numerator = IfEqual(typename TFloat::TInt(0), target, TFloat(1), TFloat(-1));
-               TFloat denominator = IfEqual(typename TFloat::TInt(0), target, -sampleScore, sampleScore);
-               denominator = TFloat::template ApproxExp<bDisableApprox, false>(denominator);
+               auto cmp = typename TFloat::TInt(0) == target;
+               const TFloat numerator = IfThenElse(cmp, TFloat(1), TFloat(-1));
+               TFloat denominator = IfThenElse(cmp, -sampleScore, sampleScore);
+               denominator = TFloat::template ApproxExp<bUseApprox, false>(denominator);
                denominator += 1.0;
 
                // I think using FastApproxDivide means that sometimes the gradient can be slightly above 1.0

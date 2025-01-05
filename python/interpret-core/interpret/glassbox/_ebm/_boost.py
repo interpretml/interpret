@@ -14,6 +14,9 @@ _log = logging.getLogger(__name__)
 
 def boost(
     dataset,
+    intercept_rounds,
+    intercept_learning_rate,
+    intercept,
     bag,
     init_scores,
     term_features,
@@ -25,6 +28,10 @@ def boost(
     reg_alpha,
     reg_lambda,
     max_delta_step,
+    gain_scale,
+    min_cat_samples,
+    cat_smooth,
+    missing,
     max_leaves,
     monotone_constraints,
     greedy_ratio,
@@ -39,12 +46,20 @@ def boost(
     rng,
     create_booster_flags,
     objective,
-    experimental_params=None,
+    acceleration,
+    experimental_params,
+    develop_options,
 ):
     try:
+        develop._develop_options = develop_options  # restore these in this process
         step_idx = 0
+
+        _log.info("Start boosting")
+        native = Native.get_native_singleton()
+
         with Booster(
             dataset,
+            intercept,
             bag,
             init_scores,
             term_features,
@@ -52,8 +67,30 @@ def boost(
             rng,
             create_booster_flags,
             objective,
+            acceleration,
             experimental_params,
         ) as booster:
+            for _ in range(intercept_rounds):
+                booster.generate_term_update(
+                    rng,
+                    term_idx=-1,
+                    term_boost_flags=term_boost_flags,
+                    learning_rate=intercept_learning_rate,
+                    min_samples_leaf=0,
+                    min_hessian=0.0,
+                    reg_alpha=reg_alpha,
+                    reg_lambda=reg_lambda,
+                    max_delta_step=0.0,
+                    min_cat_samples=min_cat_samples,
+                    cat_smooth=cat_smooth,
+                    max_cat_threshold=develop.get_option("max_cat_threshold"),
+                    cat_include=develop.get_option("cat_include"),
+                    max_leaves=1,
+                    monotone_constraints=None,
+                )
+                intercept += booster.get_term_update()
+                booster.apply_term_update()
+
             min_metric = np.inf
             min_prev_metric = np.inf
             circular = np.full(
@@ -73,40 +110,26 @@ def boost(
 
             state_idx = 0
 
-            _log.info("Start boosting")
-            native = Native.get_native_singleton()
             nominals = native.extract_nominals(dataset)
             random_cyclic_ordering = np.arange(len(term_features), dtype=np.int64)
 
             while step_idx < max_steps:
-                term_boost_flags_local = term_boost_flags
                 if state_idx >= 0:
                     # cyclic
                     if state_idx == 0:
                         # starting a fresh cyclic round. Clear the priority queue
                         bestkey = None
                         heap = []
-                        # if pure cyclical then only randomize at start
                         if (
                             step_idx == 0
-                            and develop._randomize_initial_feature_order
-                            or develop._randomize_greedy_feature_order
+                            and develop.get_option("randomize_initial_feature_order")
+                            or develop.get_option("randomize_greedy_feature_order")
                             and greedy_steps > 0
-                            or develop._randomize_feature_order
+                            or develop.get_option("randomize_feature_order")
                         ):
-                            # TODO: test if shuffling during pure cyclic is better
                             native.shuffle(rng, random_cyclic_ordering)
 
                     term_idx = random_cyclic_ordering[state_idx]
-
-                    contains_nominals = any(
-                        nominals[i] for i in term_features[term_idx]
-                    )
-                    if smoothing_rounds > 0 and (
-                        nominal_smoothing or not contains_nominals
-                    ):
-                        # modify some of our parameters temporarily
-                        term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
 
                     make_progress = False
                     if cyclic_state >= 1.0 or smoothing_rounds > 0:
@@ -119,6 +142,35 @@ def boost(
                     step_idx += 1
                     _, _, term_idx = heapq.heappop(heap)
 
+                contains_nominals = any(nominals[i] for i in term_features[term_idx])
+
+                term_boost_flags_local = term_boost_flags
+                reg_lambda_local = reg_lambda
+                min_samples_leaf_local = min_samples_leaf
+                if contains_nominals:
+                    reg_lambda_local += develop.get_option("cat_l2")
+
+                    if develop.get_option("min_samples_leaf_nominal") is not None:
+                        min_samples_leaf_local = develop.get_option(
+                            "min_samples_leaf_nominal"
+                        )
+
+                if missing == "low":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingLow
+                elif missing == "high":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingHigh
+                elif missing == "separate":
+                    term_boost_flags_local |= Native.TermBoostFlags_MissingSeparate
+                elif missing != "gain":
+                    msg = f"Unrecognized missing option {missing}."
+                    raise Exception(msg)
+
+                if smoothing_rounds > 0 and (
+                    nominal_smoothing or not contains_nominals
+                ):
+                    # modify some of our parameters temporarily
+                    term_boost_flags_local |= Native.TermBoostFlags_RandomSplits
+
                 if bestkey is None or state_idx >= 0:
                     term_monotone = None
                     if monotone_constraints is not None:
@@ -127,19 +179,32 @@ def boost(
                             dtype=np.int32,
                         )
 
+                    learning_rate_local = learning_rate
+                    if contains_nominals and len(term_features[term_idx]) == 1:
+                        learning_rate_local *= develop.get_option("learning_rate_scale")
+
                     avg_gain = booster.generate_term_update(
                         rng,
                         term_idx=term_idx,
                         term_boost_flags=term_boost_flags_local,
-                        learning_rate=learning_rate,
-                        min_samples_leaf=min_samples_leaf,
+                        learning_rate=learning_rate_local,
+                        min_samples_leaf=min_samples_leaf_local,
                         min_hessian=min_hessian,
                         reg_alpha=reg_alpha,
-                        reg_lambda=reg_lambda,
+                        reg_lambda=reg_lambda_local,
                         max_delta_step=max_delta_step,
+                        min_cat_samples=min_cat_samples,
+                        cat_smooth=cat_smooth,
+                        max_cat_threshold=develop.get_option("max_cat_threshold"),
+                        cat_include=develop.get_option("cat_include"),
                         max_leaves=max_leaves,
                         monotone_constraints=term_monotone,
                     )
+
+                    if contains_nominals and len(term_features[term_idx]) == 1:
+                        # penalize nominals a bit because they benefit from sorting categories
+                        avg_gain *= gain_scale
+
                     gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
                     if not make_progress:
                         if bestkey is None or gainkey < bestkey:
@@ -241,6 +306,6 @@ def boost(
             else:
                 model_update = booster.get_current_model()
 
-        return None, model_update, step_idx, rng
+        return None, intercept, model_update, step_idx, rng
     except Exception as e:
-        return e, None, None, None
+        return e, None, None, None, None

@@ -60,18 +60,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineTask(const char* objective
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-      LinkFlags flags, const char* objective, IntEbm countClasses, LinkEbm* linkOut, double* linkParamOut) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags flags,
+      const char* objective,
+      IntEbm countClasses,
+      ObjectiveEbm* objectiveOut,
+      LinkEbm* linkOut,
+      double* linkParamOut) {
    LOG_N(Trace_Info,
          "Entered DetermineLinkFunction: "
          "flags=0x%" ULinkFlagsPrintf ", "
          "objective=%p, "
          "countClasses=%" IntEbmPrintf ", "
+         "objectiveOut=%p, "
          "linkOut=%p, "
          "linkParamOut=%p",
          static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          static_cast<const void*>(objective),
          countClasses,
+         static_cast<void*>(objectiveOut),
          static_cast<void*>(linkOut),
          static_cast<void*>(linkParamOut));
 
@@ -80,25 +86,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
       return Error_IllegalParamVal;
    }
    const ptrdiff_t cClasses = static_cast<ptrdiff_t>(countClasses);
-
-   if(ptrdiff_t{0} == cClasses || ptrdiff_t{1} == cClasses) {
-      if(nullptr != linkOut) {
-         *linkOut = Link_monoclassification;
-      }
-      if(nullptr != linkParamOut) {
-         *linkParamOut = std::numeric_limits<double>::quiet_NaN();
-      }
-
-      LOG_0(Trace_Info, "Exited DetermineLinkFunction");
-
-      return Error_None;
-   }
-
    size_t cScores;
    if(LinkFlags_BinaryAsMulticlass & flags) {
-      cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+      cScores = cClasses < ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
    } else {
-      cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+      cScores = cClasses <= ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
    }
 
    ObjectiveWrapper objectiveWrapper;
@@ -111,8 +103,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    if(Error_None != error) {
       LOG_0(Trace_Error, "ERROR DetermineLinkFunction GetObjective failed");
 
+      if(nullptr != objectiveOut) {
+         *objectiveOut = Objective_Other;
+      }
       if(nullptr != linkOut) {
-         *linkOut = Link_ERROR;
+         *linkOut = Link_Unknown;
       }
       if(nullptr != linkParamOut) {
          *linkParamOut = std::numeric_limits<double>::quiet_NaN();
@@ -123,6 +118,55 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
    // this leaves the contents that are not pointers
    FreeObjectiveWrapperInternals(&objectiveWrapper);
 
+   const TaskEbm task = IdentifyTask(objectiveWrapper.m_linkFunction);
+   if(Task_GeneralClassification <= task) {
+      // ignore cClasses value unless the link is classification
+
+      if(cClasses < ptrdiff_t{Task_GeneralClassification}) {
+         LOG_0(Trace_Error, "ERROR DetermineLinkFunction cClasses mismatch to objective");
+
+         if(nullptr != objectiveOut) {
+            *objectiveOut = Objective_Other;
+         }
+         if(nullptr != linkOut) {
+            *linkOut = Link_Unknown;
+         }
+         if(nullptr != linkParamOut) {
+            *linkParamOut = std::numeric_limits<double>::quiet_NaN();
+         }
+         return Error_IllegalParamVal;
+      }
+      if(ptrdiff_t{Task_GeneralClassification} == cClasses) {
+         LOG_0(Trace_Error, "ERROR DetermineLinkFunction cClasses cannot be zero");
+
+         if(nullptr != objectiveOut) {
+            *objectiveOut = Objective_Other;
+         }
+         if(nullptr != linkOut) {
+            *linkOut = Link_Unknown;
+         }
+         if(nullptr != linkParamOut) {
+            *linkParamOut = std::numeric_limits<double>::quiet_NaN();
+         }
+         return Error_IllegalParamVal;
+      }
+      if(ptrdiff_t{Task_MonoClassification} == cClasses) {
+         if(nullptr != objectiveOut) {
+            *objectiveOut = Objective_MonoClassification;
+         }
+         if(nullptr != linkOut) {
+            *linkOut = Link_monoclassification;
+         }
+         if(nullptr != linkParamOut) {
+            *linkParamOut = std::numeric_limits<double>::quiet_NaN();
+         }
+         return Error_None;
+      }
+   }
+
+   if(nullptr != objectiveOut) {
+      *objectiveOut = objectiveWrapper.m_objective;
+   }
    if(nullptr != linkOut) {
       *linkOut = objectiveWrapper.m_linkFunction;
    }
@@ -242,7 +286,7 @@ EBM_API_BODY LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* link)
       if(IsStringEqualsForgiving(link, g_sSqrt))
          return Link_sqrt;
    }
-   return Link_ERROR;
+   return Link_Unknown;
 }
 
 static const char g_sClassification[] = "classification";

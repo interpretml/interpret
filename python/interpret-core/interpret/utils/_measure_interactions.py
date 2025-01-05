@@ -12,6 +12,7 @@ of the interaction of all pairs of features in a dataset.
 import logging
 from itertools import combinations, count
 
+from .. import develop
 import numpy as np
 from sklearn.base import is_classifier, is_regressor
 from sklearn.utils.multiclass import type_of_target
@@ -116,20 +117,20 @@ def measure_interactions(
 
         if task is None:
             task = "classification"
-            link, link_param = native.determine_link(flags, "log_loss", len(classes))
+            _, link, link_param = native.determine_link(flags, "log_loss", len(classes))
         elif task == "classification":
-            link, link_param = native.determine_link(flags, objective, len(classes))
+            _, link, link_param = native.determine_link(flags, objective, len(classes))
         else:
             msg = f"init_score is a classifier, but the objective is: {objective}"
             raise ValueError(msg)
     elif is_regressor(init_score):
         if task is None:
             task = "regression"
-            link, link_param = native.determine_link(
+            _, link, link_param = native.determine_link(
                 flags, "rmse", Native.Task_Regression
             )
         elif task == "regression":
-            link, link_param = native.determine_link(
+            _, link, link_param = native.determine_link(
                 flags, objective, Native.Task_Regression
             )
         else:
@@ -139,7 +140,7 @@ def measure_interactions(
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
         classes, y = np.unique(y, return_inverse=True)
-        link, link_param = native.determine_link(flags, objective, len(classes))
+        _, link, link_param = native.determine_link(flags, objective, len(classes))
 
     init_score, X, n_samples = clean_init_score_and_X(
         link, link_param, init_score, X, feature_names, feature_types, len(y)
@@ -195,21 +196,21 @@ def measure_interactions(
         raise ValueError(msg)
 
     if init_score is not None:
-        if n_classes == 2 or n_classes < 0:
-            if init_score.ndim != 1:
-                msg = "diagreement between the number of classes in y and in the init_score shape"
-                raise ValueError(msg)
-        elif n_classes >= 3:
-            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
-                msg = "diagreement between the number of classes in y and in the init_score shape"
-                raise ValueError(msg)
-        else:  # 1 class
+        if n_classes == Native.Task_MonoClassification:
             # what the init_score should be for mono-classifiction is somewhat abiguous,
             # so allow either 0 or 1 (which means the dimension is eliminated)
             if init_score.ndim == 2 and init_score.shape[1] >= 2:
                 msg = "diagreement between the number of classes in y and in the init_score shape"
                 raise ValueError(msg)
             init_score = None
+        elif n_classes >= Native.Task_MulticlassPlus:
+            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
+        else:
+            if init_score.ndim != 1:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
 
     if sample_weight is not None:
         sample_weight = clean_dimensions(sample_weight, "sample_weight")
@@ -259,19 +260,15 @@ def measure_interactions(
         n_output_interactions = 0
         iter_term_features = interactions
 
-    # TODO: benchmarking indicates that using CalcInteractionFlags_Purify is
-    # slightly worse than not using it when boosting pairs AFTER mains, but
-    # I'm leaving it here for now until we can benchmark the scenario where
-    # interaction detection is used without fitting any mains which someone
-    # could do using this interaface currently, but is not possible in regular EBMs.
     ranked_interactions = rank_interactions(
         dataset=dataset,
+        intercept=None,
         bag=None,
         init_scores=init_score,
         iter_term_features=iter_term_features,
         exclude=set(),
         exclude_features=set(),
-        calc_interaction_flags=Native.CalcInteractionFlags_Purify,
+        calc_interaction_flags=Native.CalcInteractionFlags_Default,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         min_hessian=min_hessian,
@@ -284,8 +281,10 @@ def measure_interactions(
             else Native.CreateInteractionFlags_Default
         ),
         objective=objective,
+        acceleration=develop.get_option("acceleration"),
         experimental_params=None,
         n_output_interactions=n_output_interactions,
+        develop_options=develop._develop_options,
     )
 
     if isinstance(ranked_interactions, Exception):

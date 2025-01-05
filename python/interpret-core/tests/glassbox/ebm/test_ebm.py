@@ -264,7 +264,7 @@ def test_copy():
 
 
 @pytest.mark.slow
-def test_unknown_multiclass_category():
+def test_unseen_multiclass_category():
     data = iris_classification()
     X_train = data["train"]["X"]
     y_train = data["train"]["y"]
@@ -277,7 +277,7 @@ def test_unknown_multiclass_category():
     ]
     X_test["cat_feature"] = [
         "d" for x in range(X_test.shape[0])
-    ]  # Unknown category in test set
+    ]  # Unseen category in test set
 
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
@@ -291,7 +291,7 @@ def test_unknown_multiclass_category():
 
 
 @pytest.mark.slow
-def test_unknown_binary_category():
+def test_unseen_binary_category():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
 
     ebm = ExplainableBoostingClassifier(
@@ -657,11 +657,15 @@ def test_eval_terms_multiclass():
 def test_ebm_sample_weight():
     X, y, names, types = make_synthetic(classes=2, output_type="float")
 
-    ebm = ExplainableBoostingClassifier(names, types)
+    ebm = ExplainableBoostingClassifier(
+        names, types, cat_smooth=2.2250738585072014e-308
+    )
     ebm.fit(X, y)
 
     weights = np.full(len(y), 128.0)
-    weighted = ExplainableBoostingClassifier(names, types)
+    weighted = ExplainableBoostingClassifier(
+        names, types, cat_smooth=2.2250738585072014e-308
+    )
     weighted.fit(X, y, sample_weight=weights)
 
     # if all the weights are identical the models should be identical
@@ -669,7 +673,9 @@ def test_ebm_sample_weight():
 
     # change a single weight
     weights[0] = 1.1
-    changed = ExplainableBoostingClassifier(names, types)
+    changed = ExplainableBoostingClassifier(
+        names, types, cat_smooth=2.2250738585072014e-308
+    )
     changed.fit(X, y, sample_weight=weights)
 
     assert not np.array_equal(ebm.predict_proba(X), changed.predict_proba(X))
@@ -698,23 +704,29 @@ def test_ebm_iris():
 
 @pytest.mark.visual
 @pytest.mark.slow
-def test_ebm_sparse():
+def test_ebm_sparse_matrix():
     """Validate running EBM on scipy sparse data"""
-    from sklearn.datasets import make_multilabel_classification  # type: ignore
 
-    np.random.seed(0)
-    n_features = 5
-    X, y = make_multilabel_classification(
-        n_samples=20, sparse=True, n_features=n_features, n_classes=1, n_labels=2
-    )
+    X, y, names, types = make_synthetic(classes=4, output_type="csc_matrix")
+    ebm = ExplainableBoostingClassifier(names, types)
+    ebm.fit(X, y)
 
-    # train linear model
-    clf = ExplainableBoostingClassifier()
-    clf.fit(X, y)
+    global_exp = ebm.explain_global()
+    local_exp = ebm.explain_local(X, y)
+    smoke_test_explanations(global_exp, local_exp, 6002)
 
-    assert accuracy_score(y, clf.predict(X)) >= 0.8
-    global_exp = clf.explain_global()
-    local_exp = clf.explain_local(X, y)
+
+@pytest.mark.visual
+@pytest.mark.slow
+def test_ebm_sparse_array():
+    """Validate running EBM on scipy sparse data"""
+
+    X, y, names, types = make_synthetic(classes=4, output_type="csc_array")
+    ebm = ExplainableBoostingClassifier(names, types)
+    ebm.fit(X, y)
+
+    global_exp = ebm.explain_global()
+    local_exp = ebm.explain_local(X, y)
     smoke_test_explanations(global_exp, local_exp, 6002)
 
 
@@ -832,8 +844,8 @@ def test_ebm_calibrated_classifier_cv():
     calib.fit(X, y)
 
 
-def test_ebm_unknown_value_at_predict():
-    """Tests if unsigned integers can be handled when unknown values
+def test_ebm_unseen_value_at_predict():
+    """Tests if unsigned integers can be handled when unseen values
     are found by predict.
 
     e.g. feature 3 has only 0's in X but a 1 in X_test.
@@ -865,8 +877,11 @@ _fast_kwds = {
 @pytest.fixture
 def skip_sklearn() -> set:
     """Test which we do not adhere to."""
+    # TODO: whittle these down to the minimum
     return {
         "check_sample_weights_invariance",  # EBMs do not support sample weight=0
+        "check_sample_weight_equivalence_on_dense_data",  # EBMs do not support sample weight=0
+        "check_sample_weight_equivalence_on_sparse_data",  # EBMs do not support sample weight=0
         # EBM allows fitting to zero features. Is this meaningful?
         "check_estimators_empty_data_messages",
         # test is bad, trained on floats, EBM predicts string labels
@@ -879,6 +894,8 @@ def skip_sklearn() -> set:
         "check_classifiers_regression_target",
         "check_supervised_y_2d",  # EBM deliberately support `y.shape = (nsamples, 1)`
         "check_requires_y_none",  # error message differs
+        "check_valid_tag_types",  # EBM uses custom tag classes
+        "check_n_features_in_after_fitting",  # EBM is more permissive and allows more features
     }
 
 
@@ -1167,3 +1184,35 @@ def test_ebm_scale():
     assert len(clf.bagged_intercept_) == len(clf.bagged_scores_[0])
     assert len(clf.standard_deviations_) == 2
     assert len(clf.bin_weights_) == 2
+
+
+def test_ebm_uncertainty():
+    data = synthetic_classification()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingClassifier(
+        outer_bags=5,
+        random_state=42,
+    )
+    clf.fit(X, y)
+
+    result = clf.predict_with_uncertainty(X)
+    assert result.shape == (len(X), 2), "Should return (n_samples, 2) shape"
+
+    clf2 = ExplainableBoostingClassifier(outer_bags=5, random_state=42)
+    clf2.fit(X, y)
+    result_same_seed = clf2.predict_with_uncertainty(X)
+    assert np.array_equal(
+        result,
+        result_same_seed,
+    ), "Results should be deterministic with same random seed"
+
+    mean_predictions = result[:, 0]
+    assert np.all(np.isfinite(mean_predictions)), "All predictions should be finite"
+
+    uncertainties = result[:, 1]
+    assert np.all(uncertainties >= 0), "Uncertainties should be non-negative"
+    assert not np.all(
+        uncertainties == uncertainties[0]
+    ), "Different samples should have different uncertainties"

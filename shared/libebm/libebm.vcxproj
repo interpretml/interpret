@@ -23,7 +23,9 @@
     <ClInclude Include="bridge\bridge.hpp" />
     <ClInclude Include="bridge\GradientPair.hpp" />
     <ClInclude Include="bridge\bridge.h" />
+    <ClInclude Include="DataSetInnerBag.hpp" />
     <ClInclude Include="TermInnerBag.hpp" />
+    <ClInclude Include="TreeNodeMulti.hpp" />
     <ClInclude Include="unzoned\logging.h" />
     <ClInclude Include="bridge\zones.h" />
     <ClInclude Include="bridge\common.hpp" />
@@ -44,7 +46,7 @@
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="RandomNondeterministic.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
-    <ClInclude Include="InnerBag.hpp" />
+    <ClInclude Include="SubsetInnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="Transpose.hpp" />
@@ -53,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApplyTermUpdate.cpp" />
+    <ClCompile Include="DataSetInnerBag.cpp" />
     <ClCompile Include="Purify.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="unzoned\logging.cpp">
@@ -81,8 +84,8 @@
     <ClCompile Include="PartitionRandomBoosting.cpp" />
     <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="Term.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalBoosting.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
     <ClCompile Include="GenerateTermUpdate.cpp" />
     <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
@@ -107,7 +110,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="RandomDeterministic.cpp" />
-    <ClCompile Include="InnerBag.cpp" />
+    <ClCompile Include="SubsetInnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
     <ClCompile Include="special\linux_wrap_functions.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

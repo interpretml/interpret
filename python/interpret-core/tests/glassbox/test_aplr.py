@@ -6,6 +6,7 @@ from aplr import APLRClassifier as APLRClassifierNative
 from aplr import APLRRegressor as APLRRegressorNative
 from interpret.glassbox import APLRClassifier, APLRRegressor
 from sklearn.datasets import load_breast_cancer, load_diabetes
+import warnings
 
 
 def test_regression():
@@ -35,9 +36,15 @@ def test_regression():
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
-    global_expl = our_aplr.explain_global()
-    global_viz = global_expl.visualize()
-    assert global_viz is not None
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Dropping term .* from explanation since we can't graph more than 2 dimensions.",
+            category=UserWarning,
+        )
+        global_expl = our_aplr.explain_global()
+        global_viz = global_expl.visualize()
+        assert global_viz is not None
 
 
 def test_classification():
@@ -76,6 +83,12 @@ def test_classification():
     local_viz = local_expl.visualize(0)
     assert local_viz is not None
 
-    global_expl = our_aplr.explain_global()
-    global_viz = global_expl.visualize()
-    assert global_viz is not None
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Dropping term .* from explanation since we can't graph more than 2 dimensions.",
+            category=UserWarning,
+        )
+        global_expl = our_aplr.explain_global()
+        global_viz = global_expl.visualize()
+        assert global_viz is not None

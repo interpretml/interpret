@@ -239,8 +239,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    const IntEbm* const pTargetsEnd = &targets[cSamples];
    do {
       const IntEbm indexClass = *pTargetInit;
-      if(indexClass < 0) {
-         LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified indexClass < 0");
+      if(indexClass < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified indexClass < IntEbm{0}");
          free(aTargetClasses);
          return Error_IllegalParamVal;
       }
@@ -288,8 +288,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    const double idealTrainingProportion = static_cast<double>(cTrainingSamples) / cSamples;
    EBM_ASSERT(!std::isnan(idealTrainingProportion)); // since we checked cSamples not zero above
    EBM_ASSERT(!std::isinf(idealTrainingProportion)); // since we checked cSamples not zero above
-   EBM_ASSERT(0 <= idealTrainingProportion);
-   EBM_ASSERT(idealTrainingProportion <= 1);
+   EBM_ASSERT(0.0 <= idealTrainingProportion);
+   EBM_ASSERT(idealTrainingProportion <= 1.0);
 
    size_t cLeftoverTrainingSamples = cTrainingSamples;
    if(cClasses < cTrainingSamples) {

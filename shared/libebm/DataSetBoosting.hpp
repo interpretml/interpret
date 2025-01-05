@@ -13,7 +13,8 @@
 
 #include "bridge.h" // UIntMain
 
-#include "InnerBag.hpp" // InnerBag
+#include "DataSetInnerBag.hpp" // DataSetInnerBag
+#include "SubsetInnerBag.hpp" // SubsetInnerBag
 #include "TermInnerBag.hpp" // TermInnerBag
 
 namespace DEFINED_ZONE_NAME {
@@ -39,7 +40,7 @@ struct DataSubsetBoosting final {
       m_aSampleScores = nullptr;
       m_aTargetData = nullptr;
       m_aaTermData = nullptr;
-      m_aInnerBags = nullptr;
+      m_aSubsetInnerBags = nullptr;
    }
 
    void DestructDataSubsetBoosting(const size_t cTerms, const size_t cInnerBags);
@@ -78,9 +79,9 @@ struct DataSubsetBoosting final {
       return m_aaTermData[iTerm];
    }
 
-   inline const InnerBag* GetInnerBag(const size_t iBag) const {
-      EBM_ASSERT(nullptr != m_aInnerBags);
-      return &m_aInnerBags[iBag];
+   inline const SubsetInnerBag* GetSubsetInnerBag(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aSubsetInnerBags);
+      return &m_aSubsetInnerBags[iBag];
    }
 
  private:
@@ -90,7 +91,7 @@ struct DataSubsetBoosting final {
    void* m_aSampleScores;
    void* m_aTargetData;
    void** m_aaTermData;
-   InnerBag* m_aInnerBags;
+   SubsetInnerBag* m_aSubsetInnerBags;
 };
 static_assert(std::is_standard_layout<DataSubsetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");
@@ -107,9 +108,8 @@ struct DataSetBoosting final {
       m_cSamples = 0;
       m_cSubsets = 0;
       m_aSubsets = nullptr;
-      m_aBagWeightTotals = nullptr;
+      m_aDataSetInnerBags = nullptr;
       m_aOriginalWeights = nullptr;
-      m_aaTermInnerBags = nullptr;
    }
 
    ErrorEbm InitDataSetBoosting(const bool bAllocateGradients,
@@ -123,6 +123,7 @@ struct DataSetBoosting final {
          const ObjectiveWrapper* const pObjectiveCpu,
          const ObjectiveWrapper* const pObjectiveSIMD,
          const unsigned char* const pDataSetShared,
+         const double* const aIntercept,
          const BagEbm direction,
          const size_t cSharedSamples,
          const BagEbm* const aBag,
@@ -143,19 +144,26 @@ struct DataSetBoosting final {
       return m_aSubsets;
    }
    inline double GetBagWeightTotal(const size_t iBag) const {
-      EBM_ASSERT(nullptr != m_aBagWeightTotals);
-      return m_aBagWeightTotals[iBag];
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return static_cast<double>(*m_aDataSetInnerBags[iBag].GetTotalWeight());
    }
-   inline const TermInnerBag* const* GetTermInnerBags() {
-      EBM_ASSERT(nullptr != m_aaTermInnerBags);
-      return m_aaTermInnerBags;
+   inline size_t GetBagCountTotal(const size_t iBag) const {
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return static_cast<size_t>(*m_aDataSetInnerBags[iBag].GetTotalCount());
+   }
+   inline const DataSetInnerBag* GetDataSetInnerBag() {
+      EBM_ASSERT(nullptr != m_aDataSetInnerBags);
+      return m_aDataSetInnerBags;
    }
 
  private:
    ErrorEbm InitGradHess(const bool bAllocateHessians, const size_t cScores);
 
-   ErrorEbm InitSampleScores(
-         const size_t cScores, const BagEbm direction, const BagEbm* const aBag, const double* const aInitScores);
+   ErrorEbm InitSampleScores(const size_t cScores,
+         const double* const aIntercept,
+         const BagEbm direction,
+         const BagEbm* const aBag,
+         const double* const aInitScores);
 
    ErrorEbm InitTargetData(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 
@@ -169,14 +177,17 @@ struct DataSetBoosting final {
 
    ErrorEbm CopyWeights(const unsigned char* const pDataSetShared, const BagEbm direction, const BagEbm* const aBag);
 
-   ErrorEbm InitBags(void* const rng, const size_t cInnerBags, const size_t cTerms, const Term* const* const apTerms);
+   ErrorEbm InitBags(const bool bAllocateCachedTensors,
+         void* const rng,
+         const size_t cInnerBags,
+         const size_t cTerms,
+         const Term* const* const apTerms);
 
    size_t m_cSamples;
    size_t m_cSubsets;
    DataSubsetBoosting* m_aSubsets;
-   double* m_aBagWeightTotals;
+   DataSetInnerBag* m_aDataSetInnerBags;
    FloatShared* m_aOriginalWeights;
-   TermInnerBag** m_aaTermInnerBags;
 };
 static_assert(std::is_standard_layout<DataSetBoosting>::value,
       "We use the struct hack in several places, so disallow non-standard_layout types in general");

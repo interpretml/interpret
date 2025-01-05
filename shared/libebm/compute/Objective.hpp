@@ -77,7 +77,7 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores,
       int cCompilerPack>
 GPU_DEVICE INLINE_RELEASE_TEMPLATED static void DoneBitpacking(
@@ -87,7 +87,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void DoneBitpacking(
          bValidation,
          bWeight,
          bHessian,
-         bDisableApprox,
+         bUseApprox,
          cCompilerScores,
          cCompilerPack>(pData);
 }
@@ -99,7 +99,7 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores,
       int cCompilerPack>
 struct BitPackObjective final {
@@ -122,7 +122,7 @@ struct BitPackObjective final {
                   bValidation,
                   bWeight,
                   bHessian,
-                  bDisableApprox,
+                  bUseApprox,
                   cCompilerScores,
                   k_cItemsPerBitPackUndefined>(pObjective, pData);
 
@@ -142,7 +142,8 @@ struct BitPackObjective final {
 
             const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pData->m_cScores);
 
-            constexpr bool bGradientsAndHessians = TObjective::k_bRmse || !bValidation;
+            constexpr bool bRmse = Objective_Rmse == TObjective::k_objective;
+            constexpr bool bGradientsAndHessians = bRmse || !bValidation;
             if(bGradientsAndHessians) {
                EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians);
                pData->m_aGradientsAndHessians = IndexByte(pData->m_aGradientsAndHessians,
@@ -152,11 +153,11 @@ struct BitPackObjective final {
                EBM_ASSERT(nullptr == pData->m_aGradientsAndHessians);
             }
 
-            if(!TObjective::k_bRmse) {
+            if(!bRmse) {
                EBM_ASSERT(nullptr != pData->m_aTargets);
                EBM_ASSERT(nullptr != pData->m_aSampleScores);
 
-               constexpr bool bClassification = Task_GeneralClassification == TObjective::k_task;
+               constexpr bool bClassification = Task_GeneralClassification == IdentifyTask(TObjective::k_linkFunction);
                if(bClassification) {
                   // targets are integers
                   pData->m_aTargets =
@@ -178,7 +179,7 @@ struct BitPackObjective final {
                bValidation,
                bWeight,
                bHessian,
-               bDisableApprox,
+               bUseApprox,
                cCompilerScores,
                cCompilerPack>(pObjective, pData);
       } else {
@@ -187,7 +188,7 @@ struct BitPackObjective final {
                bValidation,
                bWeight,
                bHessian,
-               bDisableApprox,
+               bUseApprox,
                cCompilerScores,
                GetNextBitPack<typename TObjective::TFloatInternal::TInt::T>(
                      cCompilerPack, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
@@ -199,14 +200,14 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores>
 struct BitPackObjective<TObjective,
       bCollapsed,
       bValidation,
       bWeight,
       bHessian,
-      bDisableApprox,
+      bUseApprox,
       cCompilerScores,
       k_cItemsPerBitPackUndefined>
       final {
@@ -220,7 +221,7 @@ struct BitPackObjective<TObjective,
             bValidation,
             bWeight,
             bHessian,
-            bDisableApprox,
+            bUseApprox,
             cCompilerScores,
             k_cItemsPerBitPackUndefined>(pObjective, pData);
    }
@@ -231,9 +232,9 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores,
-      typename std::enable_if<!(bCollapsed || 1 != cCompilerScores || bDisableApprox ||
+      typename std::enable_if<!(bCollapsed || 1 != cCompilerScores || bUseApprox ||
                                     AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone),
             int>::type = 0>
 GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
@@ -243,7 +244,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
          bValidation,
          bWeight,
          bHessian,
-         bDisableApprox,
+         bUseApprox,
          cCompilerScores,
          GetFirstBitPack<typename TObjective::TFloatInternal::TInt::T>(
                TObjective::k_cItemsPerBitPackMax, TObjective::k_cItemsPerBitPackMin)>::Func(pObjective, pData);
@@ -253,9 +254,9 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores,
-      typename std::enable_if<bCollapsed || 1 != cCompilerScores || bDisableApprox ||
+      typename std::enable_if<bCollapsed || 1 != cCompilerScores || bUseApprox ||
                   AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
             int>::type = 0>
 GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
@@ -265,7 +266,7 @@ GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
          bValidation,
          bWeight,
          bHessian,
-         bDisableApprox,
+         bUseApprox,
          cCompilerScores,
          k_cItemsPerBitPackUndefined>(pObjective, pData);
 }
@@ -275,10 +276,10 @@ template<typename TObjective,
       bool bValidation,
       bool bWeight,
       bool bHessian,
-      bool bDisableApprox,
+      bool bUseApprox,
       size_t cCompilerScores>
 GPU_GLOBAL static void RemoteApplyUpdate(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-   ApplyBitpacking<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+   ApplyBitpacking<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
          pObjective, pData);
 }
 
@@ -303,7 +304,9 @@ struct Objective : public Registrable {
             std::is_base_of<RegressionMultitaskObjective, TObjective>::value;
    }
 
-   template<typename TObjective, bool bCollapsed, typename std::enable_if<!TObjective::k_bRmse, int>::type = 0>
+   template<typename TObjective,
+         bool bCollapsed,
+         typename std::enable_if<Objective_Rmse != TObjective::k_objective, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge* const pData) const {
       if(EBM_FALSE != pData->m_bValidation) {
          static constexpr bool bValidation = true;
@@ -335,7 +338,9 @@ struct Objective : public Registrable {
          return HessianApplyUpdate<TObjective, bCollapsed, bValidation, bWeight>(pData);
       }
    }
-   template<typename TObjective, bool bCollapsed, typename std::enable_if<TObjective::k_bRmse, int>::type = 0>
+   template<typename TObjective,
+         bool bCollapsed,
+         typename std::enable_if<Objective_Rmse == TObjective::k_objective, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm OptionsApplyUpdate(ApplyUpdateBridge* const pData) const {
       EBM_ASSERT(nullptr != pData->m_aGradientsAndHessians); // we always keep gradients for regression
 
@@ -391,9 +396,9 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         typename std::enable_if<TObjective::k_bApprox, int>::type = 0>
+         typename std::enable_if<TObjective::k_bHasApprox, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm ApproxApplyUpdate(ApplyUpdateBridge* const pData) const {
-      if(EBM_FALSE != pData->m_bDisableApprox) {
+      if(EBM_FALSE != pData->m_bUseApprox) {
          return CountApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, true>(pData);
       } else {
          return CountApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, false>(pData);
@@ -404,7 +409,7 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         typename std::enable_if<!TObjective::k_bApprox, int>::type = 0>
+         typename std::enable_if<!TObjective::k_bHasApprox, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm ApproxApplyUpdate(ApplyUpdateBridge* const pData) const {
       return CountApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, false>(pData);
    }
@@ -421,10 +426,25 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          typename std::enable_if<!TObjective::IsMultiScore, int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
-      return OperatorApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, k_oneScore>(
+      return OperatorApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, k_oneScore>(pData);
+   }
+   template<typename TObjective,
+         bool bCollapsed,
+         bool bValidation,
+         bool bWeight,
+         bool bHessian,
+         bool bUseApprox,
+         typename std::enable_if<TObjective::IsMultiScore &&
+                     (std::is_base_of<MulticlassMultitaskObjective, TObjective>::value || !bHessian || bUseApprox ||
+                           bCollapsed),
+               int>::type = 0>
+   INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
+      // multiclass multitask is going to need some really special handling, so use dynamic scores
+      // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
+      return OperatorApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, k_dynamicScores>(
             pData);
    }
    template<typename TObjective,
@@ -432,31 +452,10 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          typename std::enable_if<TObjective::IsMultiScore &&
-                     (std::is_base_of<MulticlassMultitaskObjective, TObjective>::value || !bHessian || bDisableApprox ||
+                     !(std::is_base_of<MulticlassMultitaskObjective, TObjective>::value || !bHessian || bUseApprox ||
                            bCollapsed),
-               int>::type = 0>
-   INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
-      // multiclass multitask is going to need some really special handling, so use dynamic scores
-      // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
-      return OperatorApplyUpdate<TObjective,
-            bCollapsed,
-            bValidation,
-            bWeight,
-            bHessian,
-            bDisableApprox,
-            k_dynamicScores>(pData);
-   }
-   template<typename TObjective,
-         bool bCollapsed,
-         bool bValidation,
-         bool bWeight,
-         bool bHessian,
-         bool bDisableApprox,
-         typename std::enable_if<TObjective::IsMultiScore &&
-                     !(std::is_base_of<MulticlassMultitaskObjective, TObjective>::value || !bHessian ||
-                           bDisableApprox || bCollapsed),
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED ErrorEbm CountApplyUpdate(ApplyUpdateBridge* const pData) const {
       // don't blow up our complexity if we have only 1 bin or during init. Just use dynamic for the count of scores
@@ -465,7 +464,7 @@ struct Objective : public Registrable {
             bValidation,
             bWeight,
             bHessian,
-            bDisableApprox,
+            bUseApprox,
             (k_cCompilerScoresMax < k_cCompilerScoresStart ? k_dynamicScores : k_cCompilerScoresStart)>::Func(this,
             pData);
    }
@@ -475,7 +474,7 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores>
    struct CountScores final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
@@ -485,24 +484,24 @@ struct Objective : public Registrable {
                   bValidation,
                   bWeight,
                   bHessian,
-                  bDisableApprox,
+                  bUseApprox,
                   cCompilerScores>(pData);
          } else {
-            return CountScores < TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox,
+            return CountScores < TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox,
                    k_cCompilerScoresMax == cCompilerScores ? k_dynamicScores :
                                                              cCompilerScores + 1 > ::Func(pObjective, pData);
          }
       }
    };
-   template<typename TObjective, bool bCollapsed, bool bValidation, bool bWeight, bool bHessian, bool bDisableApprox>
-   struct CountScores<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, k_dynamicScores> final {
+   template<typename TObjective, bool bCollapsed, bool bValidation, bool bWeight, bool bHessian, bool bUseApprox>
+   struct CountScores<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, k_dynamicScores> final {
       INLINE_ALWAYS static ErrorEbm Func(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
          return pObjective->OperatorApplyUpdate<TObjective,
                bCollapsed,
                bValidation,
                bWeight,
                bHessian,
-               bDisableApprox,
+               bUseApprox,
                k_dynamicScores>(pData);
       }
    };
@@ -512,7 +511,7 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED ErrorEbm OperatorApplyUpdate(ApplyUpdateBridge* const pData) const {
       return TObjective::TFloatInternal::template OperatorApplyUpdate<TObjective,
@@ -520,7 +519,7 @@ struct Objective : public Registrable {
             bValidation,
             bWeight,
             bHessian,
-            bDisableApprox,
+            bUseApprox,
             cCompilerScores>(this, pData);
    }
 
@@ -552,7 +551,7 @@ struct Objective : public Registrable {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
    GPU_DEVICE NEVER_INLINE void ChildApplyUpdate(ApplyUpdateBridge* const pData) const {
@@ -745,7 +744,7 @@ struct Objective : public Registrable {
 
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_Regression,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_Regression,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // regression
@@ -763,7 +762,7 @@ struct Objective : public Registrable {
    }
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_GeneralClassification,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_GeneralClassification,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // classification
@@ -773,7 +772,7 @@ struct Objective : public Registrable {
    }
    template<typename TObjective,
          typename std::enable_if<AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone &&
-                     TObjective::k_task == Task_Ranking,
+                     IdentifyTask(TObjective::k_linkFunction) == Task_Ranking,
                int>::type = 0>
    INLINE_RELEASE_TEMPLATED BoolEbm TypeCheckTargets(const size_t c, const void* const aTargets) const noexcept {
       // classification
@@ -821,6 +820,7 @@ struct Objective : public Registrable {
       static_assert(bMaximizeMetricGood, "TObjective::k_bMaximizeMetric should be a BoolEbm");
       pObjectiveWrapperOut->m_bMaximizeMetric = bMaximizeMetric;
 
+      pObjectiveWrapperOut->m_objective = TObjective::k_objective;
       pObjectiveWrapperOut->m_linkFunction = TObjective::k_linkFunction;
 
       const auto linkParam = (static_cast<TObjective*>(this))->LinkParam();
@@ -876,7 +876,6 @@ struct Objective : public Registrable {
       pObjectiveWrapperOut->m_hessianConstant = hessianConstant;
 
       pObjectiveWrapperOut->m_bObjectiveHasHessian = TObjective::k_bHessian ? EBM_TRUE : EBM_FALSE;
-      pObjectiveWrapperOut->m_bRmse = TObjective::k_bRmse ? EBM_TRUE : EBM_FALSE;
 
       pObjectiveWrapperOut->m_pObjective = this;
 
@@ -1068,16 +1067,21 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
    ~RegressionMultitaskObjective() = default;
 };
 
-#define OBJECTIVE_CONSTANTS_BOILERPLATE(                                                                               \
-      __EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian, bApprox, cItemsPerBitPackMax, cItemsPerBitPackMin)     \
+#define OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE,                                                                    \
+      __MAXIMIZE_METRIC,                                                                                               \
+      __OBJECTIVE,                                                                                                     \
+      __LINK_FUNCTION,                                                                                                 \
+      bHessian,                                                                                                        \
+      bHasApprox,                                                                                                      \
+      cItemsPerBitPackMax,                                                                                             \
+      cItemsPerBitPackMin)                                                                                             \
  public:                                                                                                               \
    using TFloatInternal = TFloat;                                                                                      \
-   static constexpr bool k_bRmse = false;                                                                              \
    static constexpr bool k_bHessian = (bHessian);                                                                      \
-   static constexpr bool k_bApprox = (bApprox);                                                                        \
+   static constexpr bool k_bHasApprox = (bHasApprox);                                                                  \
    static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC);                                                   \
+   static constexpr ObjectiveEbm k_objective = (__OBJECTIVE);                                                          \
    static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION);                                                        \
-   static constexpr TaskEbm k_task = IdentifyTask(k_linkFunction);                                                     \
    static constexpr int k_cItemsPerBitPackMax = (cItemsPerBitPackMax);                                                 \
    static constexpr int k_cItemsPerBitPackMin = (cItemsPerBitPackMin);                                                 \
    static ErrorEbm StaticApplyUpdate(const Objective* const pThis, ApplyUpdateBridge* const pData) {                   \
@@ -1104,7 +1108,7 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
          bool bValidation,                                                                                             \
          bool bWeight,                                                                                                 \
          bool bHessian,                                                                                                \
-         bool bDisableApprox,                                                                                          \
+         bool bUseApprox,                                                                                              \
          size_t cCompilerScores,                                                                                       \
          int cCompilerPack>                                                                                            \
    GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {                                         \
@@ -1113,14 +1117,15 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
             bValidation,                                                                                               \
             bWeight,                                                                                                   \
             bHessian,                                                                                                  \
-            bDisableApprox,                                                                                            \
+            bUseApprox,                                                                                                \
             cCompilerScores,                                                                                           \
             cCompilerPack>(pData);                                                                                     \
    }
 
-#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __LINK_FUNCTION, bHessian)                                \
+#define OBJECTIVE_BOILERPLATE(__EBM_TYPE, __MAXIMIZE_METRIC, __OBJECTIVE, __LINK_FUNCTION, bHessian)                   \
    OBJECTIVE_CONSTANTS_BOILERPLATE(__EBM_TYPE,                                                                         \
          __MAXIMIZE_METRIC,                                                                                            \
+         __OBJECTIVE,                                                                                                  \
          __LINK_FUNCTION,                                                                                              \
          bHessian,                                                                                                     \
          false,                                                                                                        \

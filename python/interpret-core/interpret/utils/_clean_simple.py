@@ -10,6 +10,9 @@ from sklearn.base import is_classifier, is_regressor
 from ._clean_x import preclean_X
 from ._link import link_func
 
+from ._misc import safe_isinstance
+
+
 _log = logging.getLogger(__name__)
 
 try:
@@ -19,31 +22,21 @@ try:
 except ImportError:
     _pandas_installed = False
 
-try:
-    import scipy as sp
-
-    _scipy_installed = True
-except ImportError:
-    _scipy_installed = False
-
-
 _none_list = [None]
 _none_ndarray = np.array(None)
 
 
 def _remove_extra_dimensions(arr):
+    arr = arr.squeeze()
     shape = arr.shape
     if len(shape) == 0 or 0 in shape:
-        # 0 dimensional items exist, but are weird/unexpected. len fails, shape is length 0.
-        # arrays with dimension having 0 length exist, but cannot contain anything
-        return np.empty(0, arr.dtype)
-
-    shape = [x for x in arr.shape if x != 1]
-    if len(shape) == 0:
-        shape = (1,)
-
-    # reshape returns a view
-    return arr.reshape(shape)
+        # 0 dimensional items exist, but are weird/unexpected. len fails, shape is
+        # length 0, and they contain a single scalar, so they are similar to an array
+        # of length 1.  In this case make it 1D array with 1 element.
+        # If any dimension is length 0 then the array cannot contain anything. ravel
+        # turns it into a 1D array of length 0, which is what we want.
+        arr = arr.ravel()
+    return arr
 
 
 def clean_dimensions(data, param_name):
@@ -86,7 +79,9 @@ def clean_dimensions(data, param_name):
             else:
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
                 data = data.astype(np.object_, copy=False).values
-        elif _scipy_installed and sp.sparse.issparse(data):
+        elif safe_isinstance(data, "scipy.sparse.spmatrix") or safe_isinstance(
+            data, "scipy.sparse.sparray"
+        ):
             data = data.toarray()
         elif isinstance(data, (list, tuple)):
             data = np.array(data, np.object_)

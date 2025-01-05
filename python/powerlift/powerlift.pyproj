@@ -27,14 +27,16 @@
     <Compile Include="powerlift\db\schema.py" />
     <Compile Include="powerlift\db\__init__.py" />
     <Compile Include="powerlift\executors\azure_ci.py" />
+    <Compile Include="powerlift\executors\azure_vm.py" />
     <Compile Include="powerlift\executors\base.py" />
     <Compile Include="powerlift\executors\docker.py" />
     <Compile Include="powerlift\executors\localmachine.py" />
     <Compile Include="powerlift\executors\__init__.py" />
     <Compile Include="powerlift\measures\task_measures.py" />
     <Compile Include="powerlift\measures\__init__.py" />
+    <Compile Include="powerlift\run\azure_ci.py" />
+    <Compile Include="powerlift\run\azure_vm.py" />
     <Compile Include="powerlift\run\__main__.py" />
-    <Compile Include="powerlift\run_azure\__main__.py" />
     <Compile Include="powerlift\_version.py" />
     <Compile Include="powerlift\__init__.py" />
     <Compile Include="setup.py" />
@@ -50,7 +52,6 @@
     <Folder Include="powerlift\executors" />
     <Folder Include="powerlift\measures" />
     <Folder Include="powerlift\run" />
-    <Folder Include="powerlift\run_azure\" />
     <Folder Include="tests" />
     <Folder Include="tests\powerlift\" />
     <Folder Include="tests\powerlift\bench" />

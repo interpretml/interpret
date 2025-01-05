@@ -78,7 +78,6 @@ set_visualize_provider(InlineProvider())
 
 - test the R package
   - run the "--as-cran" checks on the downloaded package:
-    - TODO: add this as a step in the build pipeline so that we can just check it there, but make it not fail the pipeline if it fails since we'd then have to keep updating the date in the package
     - cd <PACKAGE_DOWNLOAD_DIRECTORY>
     - R CMD check --as-cran -o ../tmp/R interpret_*.tar.gz
   - upload the R package at <PACKAGE_DOWNLOAD_DIRECTORY> to test on multiple platforms in: https://builder.r-hub.io

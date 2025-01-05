@@ -120,10 +120,12 @@ typedef int32_t AccelerationFlags;
 // printf hexidecimals must be unsigned, so convert first to unsigned before calling printf
 typedef uint32_t UAccelerationFlags;
 #define UAccelerationFlagsPrintf PRIx32
-typedef int32_t LinkEbm;
-#define LinkEbmPrintf PRId32
 typedef int64_t TaskEbm;
 #define TaskEbmPrintf PRId64
+typedef int32_t ObjectiveEbm;
+#define ObjectiveEbmPrintf PRId32
+typedef int32_t LinkEbm;
+#define LinkEbmPrintf PRId32
 
 typedef struct _BoosterHandle {
    uint32_t handleVerification; // should be 10995 if ok. Do not use size_t since that requires an additional header.
@@ -143,8 +145,9 @@ typedef struct _InteractionHandle {
 #define CALC_INTERACTION_FLAGS_CAST(val)   (STATIC_CAST(CalcInteractionFlags, (val)))
 #define ACCELERATION_CAST(val)             (STATIC_CAST(AccelerationFlags, (val)))
 #define TRACE_CAST(val)                    (STATIC_CAST(TraceEbm, (val)))
-#define LINK_CAST(val)                     (STATIC_CAST(LinkEbm, (val)))
 #define TASK_CAST(val)                     (STATIC_CAST(TaskEbm, (val)))
+#define OBJECTIVE_CAST(val)                (STATIC_CAST(ObjectiveEbm, (val)))
+#define LINK_CAST(val)                     (STATIC_CAST(LinkEbm, (val)))
 
 // TODO: look through our code for places where SAFE_FLOAT64_AS_INT64_MAX or FLOAT64_TO_INT64_MAX would be useful
 
@@ -211,25 +214,29 @@ typedef struct _InteractionHandle {
 
 #define CreateBoosterFlags_Default             (CREATE_BOOSTER_FLAGS_CAST(0x00000000))
 #define CreateBoosterFlags_DifferentialPrivacy (CREATE_BOOSTER_FLAGS_CAST(0x00000001))
-#define CreateBoosterFlags_DisableApprox       (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
+#define CreateBoosterFlags_UseApprox           (CREATE_BOOSTER_FLAGS_CAST(0x00000002))
 #define CreateBoosterFlags_BinaryAsMulticlass  (CREATE_BOOSTER_FLAGS_CAST(0x00000004))
 
 #define TermBoostFlags_Default             (TERM_BOOST_FLAGS_CAST(0x00000000))
-#define TermBoostFlags_DisableNewtonGain   (TERM_BOOST_FLAGS_CAST(0x00000001))
-#define TermBoostFlags_DisableNewtonUpdate (TERM_BOOST_FLAGS_CAST(0x00000002))
-#define TermBoostFlags_PurifyGain          (TERM_BOOST_FLAGS_CAST(0x00000004))
+#define TermBoostFlags_PurifyGain          (TERM_BOOST_FLAGS_CAST(0x00000001))
+#define TermBoostFlags_DisableNewtonGain   (TERM_BOOST_FLAGS_CAST(0x00000002))
+#define TermBoostFlags_DisableCategorical  (TERM_BOOST_FLAGS_CAST(0x00000004))
 #define TermBoostFlags_PurifyUpdate        (TERM_BOOST_FLAGS_CAST(0x00000008))
-#define TermBoostFlags_GradientSums        (TERM_BOOST_FLAGS_CAST(0x00000010))
-#define TermBoostFlags_RandomSplits        (TERM_BOOST_FLAGS_CAST(0x00000020))
+#define TermBoostFlags_DisableNewtonUpdate (TERM_BOOST_FLAGS_CAST(0x00000010))
+#define TermBoostFlags_GradientSums        (TERM_BOOST_FLAGS_CAST(0x00000020))
+#define TermBoostFlags_RandomSplits        (TERM_BOOST_FLAGS_CAST(0x00000040))
+#define TermBoostFlags_MissingLow          (TERM_BOOST_FLAGS_CAST(0x00000080))
+#define TermBoostFlags_MissingHigh         (TERM_BOOST_FLAGS_CAST(0x00000100))
+#define TermBoostFlags_MissingSeparate     (TERM_BOOST_FLAGS_CAST(0x00000200))
 
 #define CreateInteractionFlags_Default             (CREATE_INTERACTION_FLAGS_CAST(0x00000000))
 #define CreateInteractionFlags_DifferentialPrivacy (CREATE_INTERACTION_FLAGS_CAST(0x00000001))
-#define CreateInteractionFlags_DisableApprox       (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
+#define CreateInteractionFlags_UseApprox           (CREATE_INTERACTION_FLAGS_CAST(0x00000002))
 #define CreateInteractionFlags_BinaryAsMulticlass  (CREATE_INTERACTION_FLAGS_CAST(0x00000004))
 
 #define CalcInteractionFlags_Default       (CALC_INTERACTION_FLAGS_CAST(0x00000000))
-#define CalcInteractionFlags_DisableNewton (CALC_INTERACTION_FLAGS_CAST(0x00000001))
-#define CalcInteractionFlags_Purify        (CALC_INTERACTION_FLAGS_CAST(0x00000002))
+#define CalcInteractionFlags_Purify        (CALC_INTERACTION_FLAGS_CAST(0x00000001))
+#define CalcInteractionFlags_DisableNewton (CALC_INTERACTION_FLAGS_CAST(0x00000002))
 
 #define AccelerationFlags_NONE      (ACCELERATION_CAST(0x00000000))
 #define AccelerationFlags_Nvidia    (ACCELERATION_CAST(0x00000001))
@@ -251,9 +258,23 @@ typedef struct _InteractionHandle {
 // All messages logged. Useful for tracing execution in detail. Might log too much detail for production systems.
 #define Trace_Verbose (TRACE_CAST(4))
 
+#define Task_Ranking               (TASK_CAST(-3))
+#define Task_Regression            (TASK_CAST(-2))
+#define Task_Unknown               (TASK_CAST(-1))
+#define Task_GeneralClassification (TASK_CAST(0)) // classification with unspecified # classes
+#define Task_MonoClassification    (TASK_CAST(1)) // degenerate case of predicting 1 class
+#define Task_BinaryClassification  (TASK_CAST(2)) // 2 classes
+#define Task_MulticlassPlus        (TASK_CAST(3)) // 3+ classes (the value is the # of classes)
+
+#define Objective_Other              (OBJECTIVE_CAST(0))
+#define Objective_MonoClassification (OBJECTIVE_CAST(1))
+#define Objective_LogLossBinary      (OBJECTIVE_CAST(2))
+#define Objective_LogLossMulticlass  (OBJECTIVE_CAST(3))
+#define Objective_Rmse               (OBJECTIVE_CAST(4))
+
 // https://www.sagepub.com/sites/default/files/upm-binaries/21121_Chapter_15.pdf
 // https://www.rdocumentation.org/packages/VGAM/versions/1.1-8/topics/Links
-#define Link_ERROR (LINK_CAST(0))
+#define Link_Unknown (LINK_CAST(0))
 // custom (uses link param potentially)
 #define Link_custom_regression  (LINK_CAST(1))
 #define Link_custom_ranking     (LINK_CAST(2))
@@ -281,14 +302,6 @@ typedef struct _InteractionHandle {
 #define Link_inverse        (LINK_CAST(102)) // Gamma regression (although we use log)
 #define Link_inverse_square (LINK_CAST(103)) // Inverse Gaussian regression
 #define Link_sqrt           (LINK_CAST(104)) // Square root regression
-
-#define Task_Ranking               (TASK_CAST(-3))
-#define Task_Regression            (TASK_CAST(-2))
-#define Task_Unknown               (TASK_CAST(-1))
-#define Task_GeneralClassification (TASK_CAST(0)) // classification with unspecified # classes
-#define Task_MonoClassification    (TASK_CAST(1)) // degenerate case of predicting 1 class
-#define Task_BinaryClassification  (TASK_CAST(2)) // 2 classes
-#define Task_MulticlassPlus        (TASK_CAST(3)) // 3+ classes (the value is the # of classes)
 
 // All our logging messages are pure ASCII (127 values), and therefore also conform to UTF-8
 typedef void(EBM_CALLING_CONVENTION* LogCallbackFunction)(TraceEbm traceLevel, const char* message);
@@ -362,7 +375,7 @@ EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
       IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets);
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes);
@@ -375,7 +388,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
       IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets, IntEbm countBytesAllocated, void* fillMem);
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION FillFeature(IntEbm countBins,
       BoolEbm isMissing,
-      BoolEbm isUnknown,
+      BoolEbm isUnseen,
       BoolEbm isNominal,
       IntEbm countSamples,
       const IntEbm* binIndexes,
@@ -415,13 +428,18 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineTask(const char* object
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetTaskStr(TaskEbm task);
 EBM_API_INCLUDE TaskEbm EBM_CALLING_CONVENTION GetTaskInt(const char* task);
 
-EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(
-      LinkFlags flags, const char* objective, IntEbm countClasses, LinkEbm* linkOut, double* linkParamOut);
+EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags flags,
+      const char* objective,
+      IntEbm countClasses,
+      ObjectiveEbm* objectiveOut,
+      LinkEbm* linkOut,
+      double* linkParamOut);
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link);
 EBM_API_INCLUDE LinkEbm EBM_CALLING_CONVENTION GetLinkFunctionInt(const char* link);
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
       const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       // TODO: add a baseScore parameter here so that we can initialize the mains boosting without initScores
       const double* initScores, // only samples with non-zeros in the bag are included
@@ -447,6 +465,10 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
       double regAlpha,
       double regLambda,
       double maxDeltaStep,
+      IntEbm minCategorySamples,
+      double categoricalSmoothing,
+      IntEbm maxCategoricalThreshold,
+      double categoricalInclusionPercent,
       const IntEbm* leavesMax,
       const MonotoneDirection* direction,
       double* avgGainOut);
@@ -465,6 +487,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       BoosterHandle boosterHandle, IntEbm indexTerm, double* termScoresTensorOut);
 
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION CreateInteractionDetector(const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       // TODO: add a baseScore parameter here for symmetry with CreateBooster
       const double* initScores, // only samples with non-zeros in the bag are included

@@ -29,6 +29,7 @@ namespace DEFINED_ZONE_NAME {
 struct BinBase;
 
 extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* const pDataSetShared,
+      const double intercept,
       const BagEbm direction,
       const BagEbm* const aBag,
       const double* const aInitScores,
@@ -45,6 +46,7 @@ void BoosterShell::Free(BoosterShell* const pBoosterShell) {
       AlignedFree(pBoosterShell->m_aMulticlassMidwayTemp);
       AlignedFree(pBoosterShell->m_aSplitPositionsTemp);
       AlignedFree(pBoosterShell->m_aTreeNodesTemp);
+      AlignedFree(pBoosterShell->m_aTemp1);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -106,7 +108,9 @@ ErrorEbm BoosterShell::FillAllocations() {
       if(size_t{1} != cScores) {
          size_t cBytesMulticlassMidwayMax = 0;
          if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
+            EBM_ASSERT(1 <= GetBoosterCore()->GetTrainingSet()->GetCountSubsets());
             DataSubsetBoosting* pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
             const DataSubsetBoosting* const pSubsetsEnd =
                   pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
             do {
@@ -124,7 +128,9 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
 
          if(0 != GetBoosterCore()->GetValidationSet()->GetCountSamples()) {
+            EBM_ASSERT(1 <= GetBoosterCore()->GetValidationSet()->GetCountSubsets());
             DataSubsetBoosting* pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
             const DataSubsetBoosting* const pSubsetsEnd =
                   pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
             do {
@@ -162,6 +168,7 @@ ErrorEbm BoosterShell::FillAllocations() {
          if(nullptr == m_aTreeNodesTemp) {
             goto failed_allocation;
          }
+         m_cTreeNodesTempBytes = m_pBoosterCore->GetCountBytesTreeNodes();
       }
    }
 
@@ -175,6 +182,7 @@ failed_allocation:;
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
       const void* dataSet,
+      const double* intercept,
       const BagEbm* bag,
       const double* initScores,
       IntEbm countTerms,
@@ -190,6 +198,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          "Entered CreateBooster: "
          "rng=%p, "
          "dataSet=%p, "
+         "intercept=%p, "
          "bag=%p, "
          "initScores=%p, "
          "countTerms=%" IntEbmPrintf ", "
@@ -203,6 +212,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          "boosterHandleOut=%p",
          rng,
          dataSet,
+         static_cast<const void*>(intercept),
          static_cast<const void*>(bag),
          static_cast<const void*>(initScores),
          countTerms,
@@ -224,7 +234,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
    if(flags &
-         ~(CreateBoosterFlags_DifferentialPrivacy | CreateBoosterFlags_DisableApprox |
+         ~(CreateBoosterFlags_DifferentialPrivacy | CreateBoosterFlags_UseApprox |
                CreateBoosterFlags_BinaryAsMulticlass)) {
       LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
    }
@@ -266,6 +276,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
          dimensionCounts,
          featureIndexes,
          static_cast<const unsigned char*>(dataSet),
+         intercept,
          bag,
          initScores,
          flags,
@@ -300,9 +311,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
             return error;
          }
       } else {
-         InitializeRmseGradientsAndHessiansBoosting(
-               static_cast<const unsigned char*>(dataSet), BagEbm{1}, bag, initScores, pBoosterCore->GetTrainingSet());
          InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
+               nullptr == intercept ? 0.0 : *intercept,
+               BagEbm{1},
+               bag,
+               initScores,
+               pBoosterCore->GetTrainingSet());
+         InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
+               nullptr == intercept ? 0.0 : *intercept,
                BagEbm{-1},
                bag,
                initScores,

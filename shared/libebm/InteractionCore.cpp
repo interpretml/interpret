@@ -180,7 +180,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
    // give ownership of our object back to the caller, even if there is a failure
    *ppInteractionCoreOut = pInteractionCore;
 
-   pInteractionCore->m_bDisableApprox = CreateInteractionFlags_DisableApprox & flags ? EBM_TRUE : EBM_FALSE;
+   pInteractionCore->m_bUseApprox = CreateInteractionFlags_UseApprox & flags ? EBM_TRUE : EBM_FALSE;
 
    size_t cBinsMax = 0;
 
@@ -202,7 +202,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
       size_t iFeatureInitialize = 0;
       do {
          bool bMissing;
-         bool bUnknown;
+         bool bUnseen;
          bool bNominal;
          bool bSparse;
          UIntShared countBins;
@@ -211,7 +211,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
          GetDataSetSharedFeature(pDataSetShared,
                iFeatureInitialize,
                &bMissing,
-               &bUnknown,
+               &bUnseen,
                &bNominal,
                &bSparse,
                &countBins,
@@ -238,7 +238,7 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
             // Dimensions with 1 bin don't contribute anything since they always have the same value.
             LOG_0(Trace_Info, "INFO InteractionCore::Create feature with 1 value");
          }
-         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnknown, bNominal);
+         aFeatures[iFeatureInitialize].Initialize(cBins, bMissing, bUnseen, bNominal);
 
          cBinsMax = EbmMax(cBinsMax, cBins);
 
@@ -257,9 +257,9 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
    if(ptrdiff_t{0} != cClasses && ptrdiff_t{1} != cClasses) {
       size_t cScores;
       if(CreateInteractionFlags_BinaryAsMulticlass & flags) {
-         cScores = cClasses < ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+         cScores = cClasses < ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
       } else {
-         cScores = cClasses <= ptrdiff_t{2} ? size_t{1} : static_cast<size_t>(cClasses);
+         cScores = cClasses <= ptrdiff_t{Task_BinaryClassification} ? size_t{1} : static_cast<size_t>(cClasses);
       }
       pInteractionCore->m_cScores = cScores;
 
@@ -354,6 +354,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsigned char* const pDataSetShared,
       const size_t cWeights,
+      const double* const aIntercept,
       const BagEbm* const aBag,
       const double* const aInitScores) {
    ErrorEbm error = Error_None;
@@ -480,7 +481,6 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             void* pSampleScoreTo = aSampleScoreTo;
             const void* const pTargetToEnd =
                   IndexByte(aTargetTo, pSubset->GetObjectiveWrapper()->m_cUIntBytes * pSubset->GetCountSamples());
-            double initScore = 0.0;
             do {
                size_t iPartition = 0;
                do {
@@ -525,8 +525,12 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
 
                   size_t iScore = 0;
                   do {
+                     double initScore = 0.0;
+                     if(nullptr != aIntercept) {
+                        initScore = aIntercept[iScore];
+                     }
                      if(nullptr != pInitScoreFromOld) {
-                        initScore = pInitScoreFromOld[iScore];
+                        initScore += pInitScoreFromOld[iScore];
                      }
 
                      if(sizeof(FloatBig) == pSubset->GetObjectiveWrapper()->m_cFloatBytes) {
@@ -550,7 +554,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_cScores = cScores;
             data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-            data.m_bDisableApprox = IsDisableApprox();
+            data.m_bUseApprox = IsUseApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;
@@ -584,7 +588,8 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
          const BagEbm* pSampleReplication = aBag;
          const double* pInitScoreFrom = aInitScores;
          BagEbm replication = 0;
-         double initScore = 0.0;
+         double initScore;
+         const double intercept = nullptr == aIntercept ? 0.0 : *aIntercept;
          FloatShared target;
 
          DataSubsetInteraction* pSubset = GetDataSetInteraction()->GetSubsets();
@@ -611,9 +616,10 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
                      --pTargetFrom;
                   }
 
+                  initScore = intercept;
                   if(nullptr != pInitScoreFrom) {
                      pInitScoreFrom += cAdvance;
-                     initScore = pInitScoreFrom[-1];
+                     initScore += pInitScoreFrom[-1];
                   }
 
                   target = *pTargetFrom;
@@ -640,7 +646,7 @@ ErrorEbm InteractionCore::InitializeInteractionGradientsAndHessians(const unsign
             data.m_cScores = 1;
             data.m_cPack = k_cItemsPerBitPackUndefined;
             data.m_bHessianNeeded = IsHessian() ? EBM_TRUE : EBM_FALSE;
-            data.m_bDisableApprox = IsDisableApprox();
+            data.m_bUseApprox = IsUseApprox();
             data.m_bValidation = EBM_FALSE;
             data.m_cSamples = pSubset->GetCountSamples();
             data.m_aPacked = nullptr;

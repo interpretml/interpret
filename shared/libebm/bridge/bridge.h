@@ -52,7 +52,7 @@ struct ApplyUpdateBridge {
    BoolEbm m_bHessianNeeded;
 
    BoolEbm m_bValidation;
-   BoolEbm m_bDisableApprox;
+   BoolEbm m_bUseApprox;
    void* m_aMulticlassMidwayTemp; // float or double
    const void* m_aUpdateTensorScores; // float or double
    size_t m_cSamples;
@@ -132,6 +132,7 @@ struct ObjectiveWrapper {
 
    BoolEbm m_bMaximizeMetric;
 
+   ObjectiveEbm m_objective;
    LinkEbm m_linkFunction;
    double m_linkParam;
 
@@ -144,7 +145,6 @@ struct ObjectiveWrapper {
    double m_gradientConstant;
    double m_hessianConstant;
    BoolEbm m_bObjectiveHasHessian;
-   BoolEbm m_bRmse;
 
    size_t m_cSIMDPack;
 
@@ -160,7 +160,8 @@ struct ObjectiveWrapper {
 inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const pObjectiveWrapper) {
    pObjectiveWrapper->m_pObjective = NULL;
    pObjectiveWrapper->m_bMaximizeMetric = EBM_FALSE;
-   pObjectiveWrapper->m_linkFunction = Link_ERROR;
+   pObjectiveWrapper->m_objective = Objective_Other;
+   pObjectiveWrapper->m_linkFunction = Link_Unknown;
    pObjectiveWrapper->m_linkParam = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentDifferentialPrivacy = 0.0;
    pObjectiveWrapper->m_learningRateAdjustmentGradientBoosting = 0.0;
@@ -170,7 +171,6 @@ inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const p
    pObjectiveWrapper->m_gradientConstant = 0.0;
    pObjectiveWrapper->m_hessianConstant = 0.0;
    pObjectiveWrapper->m_bObjectiveHasHessian = EBM_FALSE;
-   pObjectiveWrapper->m_bRmse = EBM_FALSE;
    pObjectiveWrapper->m_cSIMDPack = 0;
    pObjectiveWrapper->m_cFloatBytes = 0;
    pObjectiveWrapper->m_cUIntBytes = 0;

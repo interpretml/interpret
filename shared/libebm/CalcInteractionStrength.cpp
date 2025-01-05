@@ -20,6 +20,8 @@
 #include "ebm_internal.hpp" // k_cDimensionsMax
 #include "Feature.hpp"
 #include "DataSetInteraction.hpp"
+#include "Tensor.hpp"
+#include "TreeNodeMulti.hpp"
 #include "InteractionCore.hpp"
 #include "InteractionShell.hpp"
 
@@ -55,7 +57,7 @@ extern void TensorTotalsBuild(const bool bHessian,
 #endif // NDEBUG
 );
 
-extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInteractionCore,
+extern double PartitionMultiDimensionalStraight(InteractionCore* const pInteractionCore,
       const size_t cRealDimensions,
       const size_t* const acBins,
       const CalcInteractionFlags flags,
@@ -66,6 +68,34 @@ extern double PartitionTwoDimensionalInteraction(InteractionCore* const pInterac
       const FloatCalc deltaStepMax,
       BinBase* aAuxiliaryBinsBase,
       BinBase* const aBinsBase
+#ifndef NDEBUG
+      ,
+      const BinBase* const aDebugCopyBinsBase,
+      const BinBase* const pBinsEndDebug
+#endif // NDEBUG
+);
+
+extern ErrorEbm PartitionMultiDimensionalTree(const bool bHessian,
+      const size_t cRuntimeScores,
+      const size_t cDimensions,
+      const size_t cRealDimensions,
+      const TermBoostFlags flags,
+      const size_t cSamplesLeafMin,
+      const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
+      const BinBase* const aBinsBase,
+      BinBase* const aAuxiliaryBinsBase,
+      Tensor* const pInnerTermUpdate,
+      void* const pRootTreeNodeBase,
+      const size_t* const acBins,
+      double* const aTensorWeights,
+      double* const aTensorGrad,
+      double* const aTensorHess,
+      double* const pTotalGain,
+      const size_t cPossibleSplits,
+      void* const pTemp1
 #ifndef NDEBUG
       ,
       const BinBase* const aDebugCopyBinsBase,
@@ -148,8 +178,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       LOG_0(Trace_Warning, "WARNING CalcInteractionStrength maxCardinality can't be less than 0. Turning off.");
    }
 
-   size_t cSamplesLeafMin = size_t{0}; // this is the min value
-   if(IntEbm{0} <= minSamplesLeaf) {
+   size_t cSamplesLeafMin = size_t{1}; // this is the min value
+   if(IntEbm{1} <= minSamplesLeaf) {
       cSamplesLeafMin = static_cast<size_t>(minSamplesLeaf);
       if(IsConvertError<size_t>(minSamplesLeaf)) {
          // we can never exceed a size_t number of samples, so let's just set it to the maximum if we were going to
@@ -157,7 +187,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          cSamplesLeafMin = std::numeric_limits<size_t>::max();
       }
    } else {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 0. Adjusting to 0.");
+      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength minSamplesLeaf can't be less than 1. Adjusting to 1.");
    }
 
    FloatCalc hessianMin = static_cast<FloatCalc>(minHessian);
@@ -234,10 +264,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
       }
       return Error_None;
    }
-
-   // TODO : we NEVER use the hessian term (currently) in GradientPair when calculating interaction scores, but we're
-   // spending time calculating it, and it's taking up precious memory.  We should eliminate the hessian term HERE in
-   // our datastructures OR we should think whether we can use the hessian as part of the gain function!!!
 
    BinSumsInteractionBridge binSums;
 
@@ -463,10 +489,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
 #endif // NDEBUG
    );
 
+   double bestGain;
    if(2 == cDimensions) {
       LOG_0(Trace_Verbose, "CalcInteractionStrength Starting bin sweep loop");
 
-      double bestGain = PartitionTwoDimensionalInteraction(pInteractionCore,
+      bestGain = PartitionMultiDimensionalStraight(pInteractionCore,
             cDimensions,
             binSums.m_acBins,
             flags,
@@ -483,67 +510,222 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             pDebugMainBinsEnd
 #endif // NDEBUG
       );
-
-      // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
-      const double totalWeight = pDataSet->GetWeightTotal();
-      EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
-      bestGain /= totalWeight;
-      if(CalcInteractionFlags_DisableNewton & flags) {
-         bestGain *= pInteractionCore->GainAdjustmentGradientBoosting();
-      } else {
-         bestGain /= pInteractionCore->HessianConstant();
-         bestGain *= pInteractionCore->GainAdjustmentHessianBoosting();
-      }
-      const double gradientConstant = pInteractionCore->GradientConstant();
-      bestGain *= gradientConstant;
-      bestGain *= gradientConstant;
-
-      if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
-         // We simplify our caller's handling by returning -lowest as our error indicator. -lowest will sort to being
-         // the least important item, which is good, but it also signals an overflow without the weirness of NaNs.
-         EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
-         bestGain = k_illegalGainDouble;
-      } else if(UNLIKELY(bestGain < 0.0)) {
-         // gain can't mathematically be legally negative, but it can be here in the following situations:
-         //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
-         //      noise that makes this slightly negative
-         //   2) for impure interaction gain we subtract the parent partial gain, but if there were no legal cuts
-         //      then the partial gain before subtracting the parent partial gain was zero and we then get a
-         //      substantially negative value.  In this case we should not have subtracted the parent partial gain
-         //      since we had never even calculated the 4 quadrant partial gain, but we handle this scenario
-         //      here instead of inside the templated function.
-
-         EBM_ASSERT(!std::isnan(bestGain));
-         // make bestGain k_illegalGainDouble if it's -infinity, otherwise make it zero
-         bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
-      } else {
-         EBM_ASSERT(!std::isnan(bestGain));
-         EBM_ASSERT(!std::isinf(bestGain));
-      }
-
-      if(nullptr != avgInteractionStrengthOut) {
-         *avgInteractionStrengthOut = bestGain;
-      }
-
-      EBM_ASSERT(k_illegalGainDouble == bestGain || 0.0 <= bestGain);
-      LOG_COUNTED_N(pInteractionShell->GetPointerCountLogExitMessages(),
-            Trace_Info,
-            Trace_Verbose,
-            "Exited CalcInteractionStrength: "
-            "bestGain=%le",
-            bestGain);
    } else {
-      LOG_0(Trace_Warning, "WARNING CalcInteractionStrength We only support pairs for interaction detection currently");
+      size_t cPossibleSplits;
+      if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores)) {
+         // TODO: move this to init
+         return Error_OutOfMemory;
+      }
 
-      // TODO: handle interaction detection for higher dimensions
+      if(IsOverflowTreeNodeMultiSize(bHessian, cScores)) {
+         // TODO: move this to init
+         return Error_OutOfMemory;
+      }
 
-      // for now, just return any interactions that have other than 2 dimensions as k_illegalGainDouble,
-      // which means they won't be considered but indicates they were not handled
+      cPossibleSplits = 0;
+
+      size_t cBytes = 1;
+
+      size_t* pcBins = binSums.m_acBins;
+      size_t* pcBinsEnd = binSums.m_acBins + cDimensions;
+      do {
+         const size_t cBins = *pcBins;
+         EBM_ASSERT(size_t{2} <= cBins);
+         const size_t cSplits = cBins - 1;
+         if(IsAddError(cPossibleSplits, cSplits)) {
+            return Error_OutOfMemory;
+         }
+         cPossibleSplits += cSplits;
+         if(IsMultiplyError(cBins, cBytes)) {
+            return Error_OutOfMemory;
+         }
+         cBytes *= cBins;
+         ++pcBins;
+      } while(pcBinsEnd != pcBins);
+
+      // For pairs, this calculates the exact max number of splits. For higher dimensions
+      // the max number of splits will be less, but it should be close enough.
+      // Each bin gets a tree node to record the gradient totals, and each split gets a TreeNode
+      // during construction. Each split contains a minimum of 1 bin on each side, so we have
+      // cBins - 1 potential splits.
+
+      if(IsAddError(cBytes, cBytes - 1)) {
+         return Error_OutOfMemory;
+      }
+      cBytes = cBytes + cBytes - 1;
+
+      const size_t cBytesTreeNodeMulti = GetTreeNodeMultiSize(bHessian, cScores);
+
+      if(IsMultiplyError(cBytesTreeNodeMulti, cBytes)) {
+         return Error_OutOfMemory;
+      }
+      cBytes *= cBytesTreeNodeMulti;
+
+      const size_t cBytesBest = cBytesTreeNodeMulti * (size_t{1} + (cDimensions << 1));
+      EBM_ASSERT(cBytesBest <= cBytes);
+
+      // double it because we during the multi-dimensional sweep we need the best and we need the current
+      if(IsAddError(cBytesBest, cBytesBest)) {
+         return Error_OutOfMemory;
+      }
+      const size_t cBytesSweep = cBytesBest + cBytesBest;
+
+      cBytes = EbmMax(cBytes, cBytesSweep);
+
+      double* aWeights = nullptr;
+      double* pGradient = nullptr;
+      double* pHessian = nullptr;
+      void* pTreeNodesTemp = nullptr;
+      void* pTemp1 = nullptr;
+
+      if(0 != (CalcInteractionFlags_Purify & flags)) {
+         // allocate the biggest tensor that is possible to split into
+
+         // TODO: cache this memory allocation so that we don't do it each time
+
+         if(IsAddError(size_t{1}, cScores)) {
+            return Error_OutOfMemory;
+         }
+         size_t cItems = 1 + cScores;
+         const bool bUseLogitBoost = bHessian && !(CalcInteractionFlags_DisableNewton & flags);
+         if(bUseLogitBoost) {
+            if(IsAddError(cScores, cItems)) {
+               return Error_OutOfMemory;
+            }
+            cItems += cScores;
+         }
+         if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
+            return Error_OutOfMemory;
+         }
+         aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
+         if(nullptr == aWeights) {
+            return Error_OutOfMemory;
+         }
+         pGradient = aWeights + cTensorBins;
+         if(bUseLogitBoost) {
+            pHessian = pGradient + cTensorBins * cScores;
+         }
+      }
+
+      pTreeNodesTemp = malloc(cBytes);
+      if(nullptr == pTreeNodesTemp) {
+         free(aWeights);
+         return Error_OutOfMemory;
+      }
+
+      pTemp1 = malloc(cPossibleSplits * sizeof(unsigned char));
+      if(nullptr == pTemp1) {
+         free(pTreeNodesTemp);
+         free(aWeights);
+         return Error_OutOfMemory;
+      }
+
+      Tensor* const pInnerTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
+      if(nullptr == pInnerTermUpdate) {
+         free(pTemp1);
+         free(pTreeNodesTemp);
+         free(aWeights);
+         return Error_OutOfMemory;
+      }
+
+      error = PartitionMultiDimensionalTree(bHessian,
+            cScores,
+            cDimensions,
+            cDimensions,
+            flags,
+            cSamplesLeafMin,
+            hessianMin,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
+            aMainBins,
+            aAuxiliaryBins,
+            pInnerTermUpdate,
+            pTreeNodesTemp,
+            binSums.m_acBins,
+            aWeights,
+            pGradient,
+            pHessian,
+            &bestGain,
+            cPossibleSplits,
+            pTemp1
+#ifndef NDEBUG
+            ,
+            aDebugCopyBins,
+            pDebugMainBinsEnd
+#endif // NDEBUG
+      );
+
+      Tensor::Free(pInnerTermUpdate);
+      free(pTemp1);
+      free(pTreeNodesTemp);
+      free(aWeights);
+
+      if(Error_None != error) {
+#ifndef NDEBUG
+         free(aDebugCopyBins);
+#endif // NDEBUG
+
+         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
+
+         return error;
+      }
+      EBM_ASSERT(!std::isnan(bestGain));
+      EBM_ASSERT(0 == bestGain || std::numeric_limits<FloatCalc>::min() <= bestGain);
    }
 
 #ifndef NDEBUG
    free(aDebugCopyBins);
 #endif // NDEBUG
+
+   // if totalWeight < 1 then bestGain could overflow to +inf, so do the division first
+   const double totalWeight = pDataSet->GetWeightTotal();
+   EBM_ASSERT(0 < totalWeight); // if all are zeros we assume there are no weights and use the count
+   bestGain /= totalWeight;
+   if(CalcInteractionFlags_DisableNewton & flags) {
+      bestGain *= pInteractionCore->GainAdjustmentGradientBoosting();
+   } else {
+      bestGain /= pInteractionCore->HessianConstant();
+      bestGain *= pInteractionCore->GainAdjustmentHessianBoosting();
+   }
+   const double gradientConstant = pInteractionCore->GradientConstant();
+   bestGain *= gradientConstant;
+   bestGain *= gradientConstant;
+
+   if(UNLIKELY(/* NaN */ !LIKELY(bestGain <= std::numeric_limits<double>::max()))) {
+      // We simplify our caller's handling by returning -lowest as our overflow indicator. -lowest will sort to being
+      // the least important item, which is good, but it also signals an overflow without the weirness of NaNs.
+      EBM_ASSERT(std::isnan(bestGain) || std::numeric_limits<double>::infinity() == bestGain);
+      bestGain = k_illegalGainDouble;
+   } else if(UNLIKELY(bestGain < std::numeric_limits<FloatCalc>::min())) {
+      // gain can't mathematically be legally negative, but it can be here in the following situations:
+      //   1) for impure interaction gain we subtract the parent partial gain, and there can be floating point
+      //      noise that makes this slightly negative
+      //   2) for impure interaction gain we subtract the parent partial gain, but if there were no legal cuts
+      //      then the partial gain before subtracting the parent partial gain was zero and we then get a
+      //      substantially negative value.  In this case we should not have subtracted the parent partial gain
+      //      since we had never even calculated the 4 quadrant partial gain, but we handle this scenario
+      //      here instead of inside the templated function.
+
+      EBM_ASSERT(!std::isnan(bestGain));
+      // make bestGain k_illegalGainDouble if it's -infinity, otherwise make it zero
+      bestGain = std::numeric_limits<double>::lowest() <= bestGain ? 0.0 : k_illegalGainDouble;
+   }
+
+   EBM_ASSERT(!std::isnan(bestGain));
+   EBM_ASSERT(!std::isinf(bestGain));
+   EBM_ASSERT(k_illegalGainDouble == bestGain || 0.0 == bestGain || std::numeric_limits<FloatCalc>::min() <= bestGain);
+
+   if(nullptr != avgInteractionStrengthOut) {
+      *avgInteractionStrengthOut = bestGain;
+   }
+
+   LOG_COUNTED_N(pInteractionShell->GetPointerCountLogExitMessages(),
+         Trace_Info,
+         Trace_Verbose,
+         "Exited CalcInteractionStrength: "
+         "bestGain=%le",
+         bestGain);
 
    return Error_None;
 }

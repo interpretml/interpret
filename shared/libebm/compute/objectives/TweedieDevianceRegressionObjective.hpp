@@ -7,11 +7,11 @@
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat> struct TweedieDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Link_log, true)
+   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
 
    TFloat m_variancePowerParamSub1;
    TFloat m_variancePowerParamSub2;
-   TFloat m_inverseVariancePowerParamSub1;
+   TFloat m_negInverseVariancePowerParamSub1;
    TFloat m_inverseVariancePowerParamSub2;
 
    // The constructor parameters following config must match the RegisterObjective parameters in
@@ -40,7 +40,7 @@ template<typename TFloat> struct TweedieDevianceRegressionObjective : Regression
 
       m_variancePowerParamSub1 = variancePowerParamSub1;
       m_variancePowerParamSub2 = variancePowerParamSub2;
-      m_inverseVariancePowerParamSub1 = 1.0 / variancePowerParamSub1;
+      m_negInverseVariancePowerParamSub1 = (-1.0) / variancePowerParamSub1;
       m_inverseVariancePowerParamSub2 = 1.0 / variancePowerParamSub2;
    }
 
@@ -79,8 +79,8 @@ template<typename TFloat> struct TweedieDevianceRegressionObjective : Regression
    GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
-      const TFloat metric = FusedNegateMultiplyAdd(
-            target * m_inverseVariancePowerParamSub1, exp1Score, exp2Score * m_inverseVariancePowerParamSub2);
+      const TFloat metric = FusedMultiplyAdd(
+            target * m_negInverseVariancePowerParamSub1, exp1Score, exp2Score * m_inverseVariancePowerParamSub2);
       return metric;
    }
 

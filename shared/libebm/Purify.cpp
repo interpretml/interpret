@@ -228,7 +228,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
       double* const pIntercept) {
    EBM_ASSERT(!std::isnan(tolerance));
    EBM_ASSERT(!std::isinf(tolerance));
-   EBM_ASSERT(0.0 <= tolerance);
+   EBM_ASSERT(0.0 == tolerance || std::numeric_limits<double>::min() <= tolerance);
    EBM_ASSERT(1 <= cScores);
    EBM_ASSERT(1 <= cTensorBins);
    EBM_ASSERT(nullptr != pRng || aRandomize == nullptr);
@@ -259,10 +259,14 @@ extern ErrorEbm PurifyInternal(const double tolerance,
    size_t iScorePre = 0;
    const double* pWeightPre = aWeights;
    do {
-      const double weight = *pWeightPre;
-      if(!(0.0 <= weight)) {
-         LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
-         return Error_IllegalParamVal;
+      double weight = *pWeightPre;
+      if(!(std::numeric_limits<double>::min() <= weight)) {
+         if(!(0.0 <= weight)) {
+            LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
+            return Error_IllegalParamVal;
+         }
+         // eliminate denormals
+         weight = 0.0;
       }
       EBM_ASSERT(!std::isnan(weight)); // !(0.0 <= weight) above checks for NaN
       if(std::numeric_limits<double>::infinity() == weight) {
@@ -279,17 +283,31 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             impurityTotalPre = 0.0;
             cInfWeights = 0;
             do {
-               const double weightInterior = *pWeightInterior;
-               if(!(0.0 <= weightInterior)) {
-                  LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
-                  return Error_IllegalParamVal;
+               double weightInterior = *pWeightInterior;
+               if(!(std::numeric_limits<double>::min() <= weightInterior)) {
+                  if(!(0.0 <= weightInterior)) {
+                     LOG_0(Trace_Error, "ERROR PurifyInternal weight cannot be negative or NaN");
+                     return Error_IllegalParamVal;
+                  }
+                  // eliminate denormals
+                  weightInterior = 0.0;
                }
                EBM_ASSERT(!std::isnan(weightInterior)); // !(0.0 <= weightInterior) above checks for NaN
                if(std::numeric_limits<double>::infinity() == weightInterior) {
                   const double scoreInterior = *IndexByte(pScores, iScoreInterior);
                   if(!std::isnan(scoreInterior) && !std::isinf(scoreInterior)) {
                      ++cInfWeights;
-                     impurityTotalPre += factorPre * scoreInterior;
+                     double change = factorPre * scoreInterior;
+                     if(-std::numeric_limits<double>::min() < change && change < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        change = 0.0;
+                     }
+                     impurityTotalPre += change;
+                     if(-std::numeric_limits<double>::min() < impurityTotalPre &&
+                           impurityTotalPre < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        impurityTotalPre = 0.0;
+                     }
 
                      // impurityTotalPre can reach -+inf, but once it gets there it cannot
                      // escape that value because everything we add subsequently is non-inf.
@@ -306,25 +324,38 @@ extern ErrorEbm PurifyInternal(const double tolerance,
          // cInfWeights can be zero if all the +inf weights are +-inf or NaN scores, so goto a check for this
          goto pre_intercept;
       }
-      const double score = *IndexByte(pScores, iScorePre);
+      double score = *IndexByte(pScores, iScorePre);
       if(!std::isnan(score) && !std::isinf(score)) {
+         if(-std::numeric_limits<double>::min() < score && score < std::numeric_limits<double>::min()) {
+            // eliminate denormals
+            score = 0.0;
+         }
          weightTotalPre += weight;
-         const double impurity = weight * score;
+         double impurity = weight * score;
+         if(-std::numeric_limits<double>::min() < impurity && impurity < std::numeric_limits<double>::min()) {
+            // eliminate denormals
+            impurity = 0.0;
+         }
          impurityTotalPre += impurity;
+         if(-std::numeric_limits<double>::min() < impurityTotalPre &&
+               impurityTotalPre < std::numeric_limits<double>::min()) {
+            // eliminate denormals
+            impurityTotalPre = 0.0;
+         }
          impurityMax += std::abs(impurity);
       }
       iScorePre += cBytesScoreClasses;
       ++pWeightPre;
    } while(pWeightsEnd != pWeightPre);
    EBM_ASSERT(!std::isnan(weightTotalPre));
-   EBM_ASSERT(0.0 <= weightTotalPre);
+   EBM_ASSERT(0.0 == weightTotalPre || std::numeric_limits<double>::min() <= weightTotalPre);
 
    // even if score and weight are never NaN or infinity, the product of both can be +-inf and if +inf is added
    // to -inf it will be NaN, so impurityTotalPre can be NaN even if weight and score are well formed
    // impurityMax cannot be NaN though here since abs(impurity) cannot be -inf. If score was zero and weight
    // was +inf then impurityMax could be NaN, but we've excluded it at this point through bInfWeight.
    EBM_ASSERT(!std::isnan(impurityMax));
-   EBM_ASSERT(0.0 <= impurityMax);
+   EBM_ASSERT(0.0 == impurityMax || std::numeric_limits<double>::min() <= impurityMax);
 
    if(std::numeric_limits<double>::min() <= impurityMax) {
       // impurityMax could be zero because the scores are zero or the weights are zero.
@@ -346,17 +377,36 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             EBM_ASSERT(!std::isnan(weight) && 0.0 <= weight && weight != std::numeric_limits<double>::infinity());
             const double score = *IndexByte(pScores, iScoreRetry);
             if(!std::isnan(score) && !std::isinf(score)) {
-               const double weightTimesFactor = factorPre * weight;
+               double weightTimesFactor = factorPre * weight;
+               if(weightTimesFactor < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  weightTimesFactor = 0.0;
+               }
                weightTotalPre += weightTimesFactor;
-               const double scoreTimesFactor = factorPre * score;
-               impurityTotalPre += scoreTimesFactor * weightTimesFactor;
+               double scoreTimesFactor = factorPre * score;
+               if(-std::numeric_limits<double>::min() < scoreTimesFactor &&
+                     scoreTimesFactor < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  scoreTimesFactor = 0.0;
+               }
+               double prod = scoreTimesFactor * weightTimesFactor;
+               if(-std::numeric_limits<double>::min() < prod && prod < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  prod = 0.0;
+               }
+               impurityTotalPre += prod;
+               if(-std::numeric_limits<double>::min() < impurityTotalPre &&
+                     impurityTotalPre < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  impurityTotalPre = 0.0;
+               }
             }
             iScoreRetry += cBytesScoreClasses;
             ++pWeightRetry;
          } while(pWeightsEnd != pWeightRetry);
       }
       EBM_ASSERT(!std::isnan(weightTotalPre));
-      EBM_ASSERT(0.0 <= weightTotalPre);
+      EBM_ASSERT(0.0 == weightTotalPre || std::numeric_limits<double>::min() <= weightTotalPre);
 
    pre_intercept:;
       if(std::numeric_limits<double>::min() <= weightTotalPre) {
@@ -364,7 +414,24 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             // handle this by just turning off early exit and let the algorithm exit when it cannot improve
             impurityMax = 0.0;
          } else {
-            impurityMax = impurityMax * tolerance * factorPre / weightTotalPre;
+            impurityMax *= tolerance;
+            if(impurityMax < std::numeric_limits<double>::min()) {
+               // eliminate denormals
+               impurityMax = 0.0;
+            }
+
+            impurityMax *= factorPre;
+            if(impurityMax < std::numeric_limits<double>::min()) {
+               // eliminate denormals
+               impurityMax = 0.0;
+            }
+
+            impurityMax /= weightTotalPre;
+            if(impurityMax < std::numeric_limits<double>::min()) {
+               // eliminate denormals
+               impurityMax = 0.0;
+            }
+
             // at this location:
             //   0.0 < impurityMax < +inf
             //   0.0 <= tolerance < +inf
@@ -381,7 +448,17 @@ extern ErrorEbm PurifyInternal(const double tolerance,
 
          if(nullptr != pIntercept) {
             // pull out the intercept early since this will make purification easier
-            double intercept = impurityTotalPre / weightTotalPre / factorPre;
+            double intercept = impurityTotalPre / weightTotalPre;
+            if(-std::numeric_limits<double>::min() < intercept && intercept < std::numeric_limits<double>::min()) {
+               // eliminate denormals
+               intercept = 0.0;
+            }
+            intercept /= factorPre;
+            if(-std::numeric_limits<double>::min() < intercept && intercept < std::numeric_limits<double>::min()) {
+               // eliminate denormals
+               intercept = 0.0;
+            }
+
             EBM_ASSERT(!std::isnan(intercept));
             if(std::isinf(intercept)) {
                // the intercept is the weighted average of numbers, so it cannot mathematically
@@ -404,9 +481,17 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             do {
                // this can create new +-inf values, but not NaN since we limited intercept to non-NaN, non-inf
                double* const pScoreUpdate = IndexByte(pScores, iScoreUpdate);
-               const double scoreOld = *pScoreUpdate;
-               const double scoreNew = scoreOld + interceptNeg;
+               double scoreOld = *pScoreUpdate;
+               if(-std::numeric_limits<double>::min() < scoreOld && scoreOld < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  scoreOld = 0.0;
+               }
+               double scoreNew = scoreOld + interceptNeg;
                EBM_ASSERT(std::isnan(scoreOld) || !std::isnan(scoreNew));
+               if(-std::numeric_limits<double>::min() < scoreNew && scoreNew < std::numeric_limits<double>::min()) {
+                  // eliminate denormals
+                  scoreNew = 0.0;
+               }
                *pScoreUpdate = scoreNew;
                iScoreUpdate += cBytesScoreClasses;
             } while(iScoresEnd != iScoreUpdate);
@@ -419,6 +504,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             // so as long as we multiply by 1/number_of_terms_summed we can guarantee the sum will not overflow
             // start from 0.5 instead of 1.0 to allow for floating point error.
             const double impuritySumOverflowPreventer = 0.5 / static_cast<double>(cSurfaceBins);
+            EBM_ASSERT(std::numeric_limits<double>::min() <= impuritySumOverflowPreventer);
             double impurityPrev;
             double impurityCur = std::numeric_limits<double>::infinity();
             bool bRetry;
@@ -515,7 +601,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                      size_t iTensorWeightCur = iTensorWeight;
                      size_t iTensorScoreCur = iTensorScore;
                      do {
-                        const double weight = *IndexByte(aWeights, iTensorWeightCur);
+                        double weight = *IndexByte(aWeights, iTensorWeightCur);
                         EBM_ASSERT(!std::isnan(weight) && 0.0 <= weight);
                         if(std::numeric_limits<double>::infinity() == weight) {
                            size_t cInfWeights;
@@ -536,7 +622,18 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                                     const double scoreInterior = *IndexByte(pScores, iTensorScoreCurInterior);
                                     if(!std::isnan(scoreInterior) && !std::isinf(scoreInterior)) {
                                        ++cInfWeights;
-                                       impurity += factor * scoreInterior;
+                                       double prod = factor * scoreInterior;
+                                       if(-std::numeric_limits<double>::min() < prod &&
+                                             prod < std::numeric_limits<double>::min()) {
+                                          // eliminate denormals
+                                          prod = 0.0;
+                                       }
+                                       impurity += prod;
+                                       if(-std::numeric_limits<double>::min() < impurity &&
+                                             impurity < std::numeric_limits<double>::min()) {
+                                          // eliminate denormals
+                                          impurity = 0.0;
+                                       }
 
                                        // impurity can reach -+inf, but once it gets there it cannot
                                        // escape that value because everything we add subsequently is non-inf.
@@ -552,10 +649,29 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                            // check for this
                            goto do_impurity;
                         }
-                        const double score = *IndexByte(pScores, iTensorScoreCur);
+                        double score = *IndexByte(pScores, iTensorScoreCur);
                         if(!std::isnan(score) && !std::isinf(score)) {
+                           if(weight < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              weight = 0.0;
+                           }
+                           if(-std::numeric_limits<double>::min() < score &&
+                                 score < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              score = 0.0;
+                           }
                            weightTotal += weight;
-                           impurity += weight * score;
+                           double prod = weight * score;
+                           if(-std::numeric_limits<double>::min() < prod && prod < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              prod = 0.0;
+                           }
+                           impurity += prod;
+                           if(-std::numeric_limits<double>::min() < impurity &&
+                                 impurity < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              impurity = 0.0;
+                           }
                         }
                         iTensorWeightCur += cTensorWeightIncrement;
                         iTensorScoreCur += cTensorScoreIncrement;
@@ -580,10 +696,30 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                                  weight != std::numeric_limits<double>::infinity());
                            const double score = *IndexByte(pScores, iTensorScoreCur);
                            if(!std::isnan(score) && !std::isinf(score)) {
-                              const double weightTimesFactor = factor * weight;
+                              double weightTimesFactor = factor * weight;
+                              if(weightTimesFactor < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 weightTimesFactor = 0.0;
+                              }
                               weightTotal += weightTimesFactor;
-                              const double scoreTimesFactor = factor * score;
-                              impurity += scoreTimesFactor * weightTimesFactor;
+                              double scoreTimesFactor = factor * score;
+                              if(-std::numeric_limits<double>::min() < scoreTimesFactor &&
+                                    scoreTimesFactor < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 scoreTimesFactor = 0.0;
+                              }
+                              double prod = scoreTimesFactor * weightTimesFactor;
+                              if(-std::numeric_limits<double>::min() < prod &&
+                                    prod < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 prod = 0.0;
+                              }
+                              impurity += prod;
+                              if(-std::numeric_limits<double>::min() < impurity &&
+                                    impurity < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 impurity = 0.0;
+                              }
                            }
                            iTensorWeightCur += cTensorWeightIncrement;
                            iTensorScoreCur += cTensorScoreIncrement;
@@ -593,7 +729,18 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                   do_impurity:;
 
                      if(std::numeric_limits<double>::min() <= weightTotal) {
-                        impurity = impurity / weightTotal / factor;
+                        impurity /= weightTotal;
+                        if(-std::numeric_limits<double>::min() < impurity &&
+                              impurity < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           impurity = 0.0;
+                        }
+                        impurity /= factor;
+                        if(-std::numeric_limits<double>::min() < impurity &&
+                              impurity < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           impurity = 0.0;
+                        }
                         EBM_ASSERT(!std::isnan(impurity));
                         if(std::isinf(impurity)) {
                            // impurity is the weighted average of numbers, so it cannot mathematically
@@ -612,11 +759,21 @@ extern ErrorEbm PurifyInternal(const double tolerance,
 
                         if(nullptr != pImpurities) {
                            double* const pImpurity = IndexByte(pImpurities, iSurfaceBin * cBytesScoreClasses);
-                           const double oldImpurity = *pImpurity;
+                           double oldImpurity = *pImpurity;
                            // we prevent impurities from reaching NaN or an infinity
                            EBM_ASSERT(!std::isnan(oldImpurity));
                            EBM_ASSERT(!std::isinf(oldImpurity));
+                           if(-std::numeric_limits<double>::min() < oldImpurity &&
+                                 oldImpurity < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              oldImpurity = 0.0;
+                           }
                            double newImpurity = oldImpurity + impurity;
+                           if(-std::numeric_limits<double>::min() < newImpurity &&
+                                 newImpurity < std::numeric_limits<double>::min()) {
+                              // eliminate denormals
+                              newImpurity = 0.0;
+                           }
                            if(std::isinf(newImpurity)) {
                               // There should be a solution that allows any tensor to be purified
                               // without overflowing any of the impurity cells, however due to the
@@ -627,11 +784,15 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                               if(std::numeric_limits<double>::infinity() == newImpurity) {
                                  EBM_ASSERT(0.0 < oldImpurity);
                                  impurity = std::numeric_limits<double>::max() - oldImpurity;
+                                 EBM_ASSERT(std::numeric_limits<double>::max() == oldImpurity ||
+                                       std::numeric_limits<double>::min() <= impurity);
                                  newImpurity = std::numeric_limits<double>::max();
                               } else {
                                  EBM_ASSERT(-std::numeric_limits<double>::infinity() == newImpurity);
                                  EBM_ASSERT(oldImpurity < 0.0);
                                  impurity = -std::numeric_limits<double>::max() - oldImpurity;
+                                 EBM_ASSERT(-std::numeric_limits<double>::max() == oldImpurity ||
+                                       impurity <= -std::numeric_limits<double>::min());
                                  newImpurity = -std::numeric_limits<double>::max();
                               }
                            }
@@ -639,9 +800,14 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                         }
 
                         const double absImpurity = std::abs(impurity);
+                        EBM_ASSERT(0.0 == absImpurity || std::numeric_limits<double>::min() <= absImpurity);
                         bRetry |= impurityMax < absImpurity;
-                        impurityCur += absImpurity * impuritySumOverflowPreventer;
-
+                        double prod = absImpurity * impuritySumOverflowPreventer;
+                        if(prod < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           prod = 0.0;
+                        }
+                        impurityCur += prod;
                         impurity = -impurity;
 
                         size_t iScoreUpdate = iTensorScore;
@@ -650,6 +816,11 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                            double* const pScoreUpdate = IndexByte(pScores, iScoreUpdate);
                            double score = *pScoreUpdate;
                            if(!std::isinf(score)) {
+                              if(-std::numeric_limits<double>::min() < score &&
+                                    score < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 score = 0.0;
+                              }
                               score += impurity;
                               if(std::isinf(score)) {
                                  // we transitioned a score to an infinity. This can dramatically increase the
@@ -657,6 +828,10 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                                  // value against an opposite sign big value and now with one of them as infinite
                                  // the other has no counterbalance, so we need to reset our impurity checker
                                  impurityCur = std::numeric_limits<double>::quiet_NaN();
+                              } else if(-std::numeric_limits<double>::min() < score &&
+                                    score < std::numeric_limits<double>::min()) {
+                                 // eliminate denormals
+                                 score = 0.0;
                               }
                               *pScoreUpdate = score;
                            }
@@ -678,7 +853,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                double impurityTotalPost = 0.0;
                double weightTotalPost = 0.0;
                do {
-                  const double weight = *pWeightPost;
+                  double weight = *pWeightPost;
                   EBM_ASSERT(!std::isnan(weight) && 0.0 <= weight);
                   if(std::numeric_limits<double>::infinity() == weight) {
                      size_t cInfWeights;
@@ -697,10 +872,21 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                            const double weightInterior = *pWeightInterior;
                            EBM_ASSERT(!std::isnan(weightInterior) && 0.0 <= weightInterior);
                            if(std::numeric_limits<double>::infinity() == weightInterior) {
-                              const double scoreInterior = *IndexByte(pScores, iScoreInterior);
+                              double scoreInterior = *IndexByte(pScores, iScoreInterior);
                               if(!std::isnan(scoreInterior) && !std::isinf(scoreInterior)) {
                                  ++cInfWeights;
-                                 impurityTotalPost += factorPost * scoreInterior;
+                                 double prod = factorPost * scoreInterior;
+                                 if(-std::numeric_limits<double>::min() < prod &&
+                                       prod < std::numeric_limits<double>::min()) {
+                                    // eliminate denormals
+                                    prod = 0.0;
+                                 }
+                                 impurityTotalPost += prod;
+                                 if(-std::numeric_limits<double>::min() < impurityTotalPost &&
+                                       impurityTotalPost < std::numeric_limits<double>::min()) {
+                                    // eliminate denormals
+                                    impurityTotalPost = 0.0;
+                                 }
 
                                  // impurityTotalPost can reach -+inf, but once it gets there it cannot
                                  // escape that value because everything we add subsequently is non-inf.
@@ -716,17 +902,35 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                      // this
                      goto post_intercept;
                   }
-                  const double score = *IndexByte(pScores, iScorePost);
+                  double score = *IndexByte(pScores, iScorePost);
                   if(!std::isnan(score) && !std::isinf(score)) {
+                     if(weight < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        weight = 0.0;
+                     }
                      weightTotalPost += weight;
-                     const double impurity = weight * score;
+                     if(-std::numeric_limits<double>::min() < score && score < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        score = 0.0;
+                     }
+                     double impurity = weight * score;
+                     if(-std::numeric_limits<double>::min() < impurity &&
+                           impurity < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        impurity = 0.0;
+                     }
                      impurityTotalPost += impurity;
+                     if(-std::numeric_limits<double>::min() < impurityTotalPost &&
+                           impurityTotalPost < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        impurityTotalPost = 0.0;
+                     }
                   }
                   iScorePost += cBytesScoreClasses;
                   ++pWeightPost;
                } while(pWeightsEnd != pWeightPost);
                EBM_ASSERT(!std::isnan(weightTotalPost));
-               EBM_ASSERT(0.0 <= weightTotalPost);
+               EBM_ASSERT(0.0 == weightTotalPost || std::numeric_limits<double>::min() <= weightTotalPost);
 
                while(std::isnan(impurityTotalPost) || std::isinf(impurityTotalPost) || std::isinf(weightTotalPost)) {
                   // If impurity is NaN, it means that score * weight overflowed to +inf once and -inf another time
@@ -745,22 +949,53 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                            !std::isnan(weight) && 0.0 <= weight && weight != std::numeric_limits<double>::infinity());
                      const double score = *IndexByte(pScores, iScoreRetry);
                      if(!std::isnan(score) && !std::isinf(score)) {
-                        const double weightTimesFactor = factorPost * weight;
+                        double weightTimesFactor = factorPost * weight;
+                        if(weightTimesFactor < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           weightTimesFactor = 0.0;
+                        }
                         weightTotalPost += weightTimesFactor;
-                        const double scoreTimesFactor = factorPost * score;
-                        impurityTotalPost += scoreTimesFactor * weightTimesFactor;
+                        double scoreTimesFactor = factorPost * score;
+                        if(-std::numeric_limits<double>::min() < scoreTimesFactor &&
+                              scoreTimesFactor < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           scoreTimesFactor = 0.0;
+                        }
+                        double prod = scoreTimesFactor * weightTimesFactor;
+                        if(-std::numeric_limits<double>::min() < prod && prod < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           prod = 0.0;
+                        }
+                        impurityTotalPost += prod;
+                        if(-std::numeric_limits<double>::min() < impurityTotalPost &&
+                              impurityTotalPost < std::numeric_limits<double>::min()) {
+                           // eliminate denormals
+                           impurityTotalPost = 0.0;
+                        }
                      }
                      iScoreRetry += cBytesScoreClasses;
                      ++pWeightRetry;
                   } while(pWeightsEnd != pWeightRetry);
                }
                EBM_ASSERT(!std::isnan(weightTotalPost));
-               EBM_ASSERT(0.0 <= weightTotalPost);
+               EBM_ASSERT(0.0 == weightTotalPost || std::numeric_limits<double>::min() <= weightTotalPost);
 
             post_intercept:;
                if(std::numeric_limits<double>::min() <= weightTotalPost) {
                   // pull out the intercept early since this will make purification easier
-                  double interceptChange = impurityTotalPost / weightTotalPost / factorPost;
+                  double interceptChange = impurityTotalPost / weightTotalPost;
+                  if(-std::numeric_limits<double>::min() < interceptChange &&
+                        interceptChange < std::numeric_limits<double>::min()) {
+                     // eliminate denormals
+                     interceptChange = 0.0;
+                  }
+                  interceptChange /= factorPost;
+                  if(-std::numeric_limits<double>::min() < interceptChange &&
+                        interceptChange < std::numeric_limits<double>::min()) {
+                     // eliminate denormals
+                     interceptChange = 0.0;
+                  }
+
                   EBM_ASSERT(!std::isnan(interceptChange));
                   if(std::isinf(interceptChange)) {
                      // the intercept is the weighted average of numbers, so it cannot mathematically
@@ -777,7 +1012,20 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                      }
                   }
 
-                  double newIntercept = *pIntercept + interceptChange;
+                  double newIntercept = *pIntercept;
+                  EBM_ASSERT(!std::isnan(newIntercept)); // we never write NaN
+                  EBM_ASSERT(!std::isinf(newIntercept)); // we never write inf
+
+                  // *pIntercept started off as zero and we haven't written a denormal
+                  EBM_ASSERT(0.0 == newIntercept || newIntercept <= -std::numeric_limits<double>::min() ||
+                        std::numeric_limits<double>::min() <= newIntercept);
+                  newIntercept += interceptChange;
+                  EBM_ASSERT(!std::isnan(newIntercept));
+                  if(-std::numeric_limits<double>::min() < newIntercept &&
+                        newIntercept < std::numeric_limits<double>::min()) {
+                     // eliminate denormals
+                     newIntercept = 0.0;
+                  }
                   if(std::isinf(newIntercept)) {
                      // It should be pretty difficult, or perhaps even impossible, for the impurity,
                      // which starts from 0.0 to reach +-infinity since it comes from the weighted averaged
@@ -800,8 +1048,18 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                   do {
                      // this can create new +-inf values, but not NaN since we limited intercept to non-NaN, non-inf
                      double* const pScoreUpdate = IndexByte(pScores, iScoreUpdate);
-                     const double scoreOld = *pScoreUpdate;
-                     const double scoreNew = scoreOld + interceptChangeNeg;
+                     double scoreOld = *pScoreUpdate;
+                     if(-std::numeric_limits<double>::min() < scoreOld &&
+                           scoreOld < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        scoreOld = 0.0;
+                     }
+                     double scoreNew = scoreOld + interceptChangeNeg;
+                     if(-std::numeric_limits<double>::min() < scoreNew &&
+                           scoreNew < std::numeric_limits<double>::min()) {
+                        // eliminate denormals
+                        scoreNew = 0.0;
+                     }
                      EBM_ASSERT(std::isnan(scoreOld) || !std::isnan(scoreNew));
                      *pScoreUpdate = scoreNew;
                      iScoreUpdate += cBytesScoreClasses;
@@ -1074,6 +1332,8 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
    EBM_ASSERT(nullptr != aDimensionLengths);
    EBM_ASSERT(nullptr != aWeights);
    EBM_ASSERT(nullptr != aScoresInOut);
+
+   // TODO: add zeroing of subnormal numbers here to match PurifyInternal. ARM does not handle subnormals reliably.
 
    const size_t cBytesScoreClasses = sizeof(double) * cScores;
 
@@ -1801,6 +2061,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    if(std::isnan(tolerance) || std::isinf(tolerance) || tolerance < 0.0) {
       LOG_0(Trace_Error, "ERROR Purify std::isnan(tolerance) || std::isinf(tolerance) || tolerance < 0.0)");
       return Error_IllegalParamVal;
+   }
+   if(tolerance < std::numeric_limits<double>::min()) {
+      // zero any denormals
+      tolerance = 0.0;
    }
 
    size_t cSurfaceBins = 0;

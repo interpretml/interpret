@@ -8,6 +8,8 @@ from itertools import count
 import numpy as np
 from numpy import ma
 
+from ._misc import safe_isinstance
+
 _log = logging.getLogger(__name__)
 
 try:
@@ -16,14 +18,6 @@ try:
     _pandas_installed = True
 except ImportError:
     _pandas_installed = False
-
-try:
-    import scipy as sp
-
-    _scipy_installed = True
-except ImportError:
-    _scipy_installed = False
-
 
 # BIG TODO LIST:
 # - review this entire bin.py file
@@ -91,7 +85,7 @@ except ImportError:
 #   comparisons without examining all the internal dictionary definitions, and we can minimize
 #   work done by having a single object with a single id(..) pointer that is shared between prior_categories objects
 #   if they are identical at model load time.
-# - if we recieve an unknown float64 value in a 'nominal' or 'ordinal', then check if all the categorical
+# - if we recieve an unseen float64 value in a 'nominal' or 'ordinal', then check if all the categorical
 #   value strings are convertible to float64.  If that's the case then find the mid-point between the categories
 #   after they are converted to strings and create a pseudo-continuous value of the feature and figure out where
 #   the previously unseen float64 should go.  WE do need to sort the category strings by float64, but we don't
@@ -560,8 +554,8 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
             encoded = encoded_tmp
         else:
             bad = np.full(len(encoded), None, dtype=np.object_)
-            unknowns = encoded < 0
-            np.place(bad, unknowns, uniques[indexes[unknowns]])
+            unseens = encoded < 0
+            np.place(bad, unseens, uniques[indexes[unseens]])
     else:
         bad = None
         if nonmissings is not None:
@@ -663,23 +657,23 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     else:
         mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
         if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
-            unknowns = len(categories) <= X_col
+            unseens = len(categories) <= X_col
             bad = np.full(len(X_col), None, dtype=np.object_)
-            bad[unknowns] = pd_categories[X_col[unknowns]]
+            bad[unseens] = pd_categories[X_col[unseens]]
             # avoid overflows for np.int8
             X_col = X_col.astype(dtype=np.int64, copy=False)
             X_col = X_col + 1
-            X_col[unknowns] = -1
+            X_col[unseens] = -1
             return X_col, bad
 
     mapping = np.insert(mapping, 0, 0)
     encoded = mapping[X_col + 1]
 
     bad = None
-    unknowns = encoded < 0
-    if unknowns.any():
+    unseens = encoded < 0
+    if unseens.any():
         bad = np.full(len(X_col), None, dtype=np.object_)
-        bad[unknowns] = pd_categories[X_col[unknowns]]
+        bad[unseens] = pd_categories[X_col[unseens]]
 
     return encoded, bad
 
@@ -863,7 +857,7 @@ def _reshape_1D_if_possible(col):
                     _log.error(msg)
                     raise ValueError(msg)
                 is_found = True
-        col = col.reshape(-1)
+        col = col.ravel()
     return col
 
 
@@ -969,8 +963,8 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
     raise TypeError(msg)
 
 
-def _process_scipy_column(X_col, categories, feature_type, min_unique_continuous):
-    X_col = X_col.toarray().reshape(-1)
+def _process_sparse_column(X_col, categories, feature_type, min_unique_continuous):
+    X_col = X_col.toarray().ravel()
 
     nonmissings = None
     if X_col.dtype.type is np.object_:
@@ -1006,16 +1000,18 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
                 X_col, categories, feature_type, min_unique_continuous
             )
         if X_col.shape[0] == 1:
-            X_col = X_col.astype(np.object_, copy=False).values.reshape(-1)
+            X_col = X_col.astype(np.object_, copy=False).values.ravel()
         elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
             X_col = np.empty(0, np.object_)
         else:
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
             raise ValueError(msg)
-    elif _scipy_installed and sp.sparse.issparse(X_col):
+    elif safe_isinstance(X_col, "scipy.sparse.spmatrix") or safe_isinstance(
+        X_col, "scipy.sparse.sparray"
+    ):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
-            return _process_scipy_column(
+            return _process_sparse_column(
                 X_col, categories, feature_type, min_unique_continuous
             )
         if X_col.shape[1] == 0 or X_col.shape[0] == 0:
@@ -1182,7 +1178,14 @@ def unify_columns(
                 X_col, categories, feature_type, min_unique_continuous
             )
             yield feature_type_in, X_col, categories, bad
-    elif _scipy_installed and sp.sparse.issparse(X):
+    elif safe_isinstance(X, "scipy.sparse.sparray"):
+        if (
+            safe_isinstance(X, "scipy.sparse.dia_array")
+            or safe_isinstance(X, "scipy.sparse.bsr_array")
+            or safe_isinstance(X, "scipy.sparse.coo_array")
+        ):
+            X = X.tocsc(copy=False)
+
         n_cols = X.shape[1]
 
         col_map = None
@@ -1202,14 +1205,39 @@ def unify_columns(
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
-        if not sp.sparse.isspmatrix_csc(X):
-            X = sp.sparse.csc_matrix(X, copy=False)
+        for feature_idx, categories in requests:
+            col_idx = feature_idx if col_map is None else col_map[feature_idx]
+            X_col = X[:, [col_idx]]  # returns an (m x 1) sparray
+            feature_type = None if feature_types is None else feature_types[feature_idx]
+            feature_type_in, X_col, categories, bad = _process_sparse_column(
+                X_col, categories, feature_type, min_unique_continuous
+            )
+            yield feature_type_in, X_col, categories, bad
+    elif safe_isinstance(X, "scipy.sparse.spmatrix"):
+        n_cols = X.shape[1]
+
+        col_map = None
+        if n_cols != len(feature_names_in):
+            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
+            # to check for legality on the dimensions of X
+            keep_cols = np.fromiter(
+                (val != "ignore" for val in feature_types),
+                np.bool_,
+                count=len(feature_types),
+            )
+            if n_cols != keep_cols.sum():
+                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+                _log.error(msg)
+                raise ValueError(msg)
+            col_map = np.empty(len(feature_types), np.int64)
+            np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
         for feature_idx, categories in requests:
             col_idx = feature_idx if col_map is None else col_map[feature_idx]
-            X_col = X[:, col_idx]
+            X_col = X.getcol(col_idx)  # returns an (m x 1) spmatrix
             feature_type = None if feature_types is None else feature_types[feature_idx]
-            feature_type_in, X_col, categories, bad = _process_scipy_column(
+            feature_type_in, X_col, categories, bad = _process_sparse_column(
                 X_col, categories, feature_type, min_unique_continuous
             )
             yield feature_type_in, X_col, categories, bad
@@ -1262,7 +1290,9 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     elif _pandas_installed and isinstance(X, pd.Series):
         X_names = None
         n_cols = 1
-    elif _scipy_installed and sp.sparse.issparse(X):
+    elif safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
+        X, "scipy.sparse.sparray"
+    ):
         X_names = None
         n_cols = X.shape[1]
     elif isinstance(X, dict):
@@ -1436,17 +1466,19 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, X.shape[0]
-    if _pandas_installed and isinstance(X, pd.Series):
-        if min_cols is not None and min_cols != 1:
-            msg = "X cannot be a pandas.Series unless there is only 1 feature"
-            _log.error(msg)
-            raise ValueError(msg)
+    if safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
+        X, "scipy.sparse.sparray"
+    ):
         if n_samples is not None and n_samples != X.shape[0]:
             msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
             _log.error(msg)
             raise ValueError(msg)
         return X, X.shape[0]
-    if _scipy_installed and sp.sparse.issparse(X):
+    if _pandas_installed and isinstance(X, pd.Series):
+        if min_cols is not None and min_cols != 1:
+            msg = "X cannot be a pandas.Series unless there is only 1 feature"
+            _log.error(msg)
+            raise ValueError(msg)
         if n_samples is not None and n_samples != X.shape[0]:
             msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
             _log.error(msg)
@@ -1534,7 +1566,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = sample.astype(np.object_, copy=False).values.reshape(-1)
+                X[idx] = sample.astype(np.object_, copy=False).values.ravel()
             elif sample.shape[1] == 0 or sample.shape[0] == 0:
                 if not is_copied:
                     is_copied = True
@@ -1544,12 +1576,14 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
                 raise ValueError(msg)
-        elif _scipy_installed and sp.sparse.issparse(sample):
+        elif safe_isinstance(sample, "scipy.sparse.spmatrix") or safe_isinstance(
+            sample, "scipy.sparse.sparray"
+        ):
             if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = sample.toarray().reshape(-1)
+                X[idx] = sample.toarray().ravel()
             elif sample.shape[1] == 0 or sample.shape[0] == 0:
                 if not is_copied:
                     is_copied = True

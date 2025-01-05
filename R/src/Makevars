@@ -21,6 +21,7 @@ OBJECTS = \
    $(NATIVEDIR)/CutWinsorized.o \
    $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
+   $(NATIVEDIR)/DataSetInnerBag.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/DetermineLinkFunction.o \
    $(NATIVEDIR)/debug_ebm.o \
@@ -33,13 +34,13 @@ OBJECTS = \
    $(NATIVEDIR)/interpretable_numerics.o \
    $(NATIVEDIR)/PartitionOneDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalTree.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalStraight.o \
    $(NATIVEDIR)/Purify.o \
    $(NATIVEDIR)/RandomDeterministic.o \
    $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
-   $(NATIVEDIR)/InnerBag.o \
+   $(NATIVEDIR)/SubsetInnerBag.o \
    $(NATIVEDIR)/Tensor.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
    $(NATIVEDIR)/TermInnerBag.o \

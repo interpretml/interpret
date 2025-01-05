@@ -66,7 +66,7 @@ class Task:
 
         x, y = self.store.get_assets(self.id)
         x = BytesParser.deserialize(MIMETYPE_DF, x)
-        y = np.array(BytesParser.deserialize(MIMETYPE_SERIES, y))
+        y = BytesParser.deserialize(MIMETYPE_SERIES, y)
 
         return (x, y)
 

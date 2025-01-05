@@ -5,7 +5,7 @@ import logging
 import warnings
 from collections import defaultdict
 from itertools import islice
-from math import ceil, exp, isfinite, isinf, log
+from math import floor, exp, isfinite, isinf, log
 
 import numpy as np
 
@@ -74,7 +74,7 @@ def convert_categorical_to_continuous(categories):
 
     # there's a super fringe case where two category strings map to the same bin, but
     # one of them is a float and the other is a non-float.  Normally, we'd include the
-    # non-float categorical in the unknowns, but in this case we'd need to include
+    # non-float categorical in the unseens, but in this case we'd need to include
     # a part of a bin.  Handling this just adds too much complexity for the benefit
     # and you could argue that the evidence from the other models is indicating that
     # the string should be closer to zero of the weight from the floating point bin
@@ -149,7 +149,7 @@ def _create_proportional_tensor(axis_weights):
 
 def process_bag_terms(intercept, term_scores, bin_weights):
     for scores, weights in zip(term_scores, bin_weights):
-        if develop._purify_result:
+        if develop.get_option("purify_result"):
             new_scores, add_impurities, add_intercept = purify(scores, weights)
             # TODO: benchmark if it is better to add new_impurities to the existing model scores,
             #       or better to discard them.  Discarding might be better if we assume the
@@ -157,8 +157,8 @@ def process_bag_terms(intercept, term_scores, bin_weights):
             scores[:] = new_scores
             intercept += add_intercept
         elif scores.ndim == weights.ndim:
-            temp_scores = scores.flatten().copy()
-            temp_weights = weights.flatten().copy()
+            temp_scores = scores.flatten()  # ndarray.flatten() makes a copy
+            temp_weights = weights.flatten()  # ndarray.flatten() makes a copy
 
             ignored = ~np.isfinite(temp_scores)
             temp_scores[ignored] = 0.0
@@ -170,8 +170,8 @@ def process_bag_terms(intercept, term_scores, bin_weights):
                 scores -= mean
         else:
             for i in range(scores.shape[-1]):
-                temp_scores = scores[..., i].flatten().copy()
-                temp_weights = weights.flatten().copy()
+                temp_scores = scores[..., i].flatten()  # ndarray.flatten() makes a copy
+                temp_weights = weights.flatten()  # ndarray.flatten() makes a copy
 
                 ignored = ~np.isfinite(temp_scores)
                 temp_scores[ignored] = 0.0
@@ -190,7 +190,7 @@ def process_bag_terms(intercept, term_scores, bin_weights):
         # importance values, so if we use Xuezhou's algorithm then apply it when generating an explanation
         # instead of here which will make calculating importances faster.
 
-        # if the missing/unknown bin has zero weight then whatever number was generated via boosting is
+        # if the missing/unseen bin has zero weight then whatever number was generated via boosting is
         # effectively meaningless and can be ignored. Set the value to zero for interpretability reasons
 
         restore_missing_value_zeros(scores, weights)
@@ -348,7 +348,7 @@ def convert_to_cuts(intervals):  # pragma: no cover
     return cuts
 
 
-def make_bag(y, test_size, rng, is_stratified):
+def make_bag(y, n_classes, test_size, rng, is_stratified):
     # all test/train splits should be done with this function to ensure that
     # if we re-generate the train/test splits that they are generated exactly
     # the same as before
@@ -356,33 +356,32 @@ def make_bag(y, test_size, rng, is_stratified):
     if test_size < 0:  # pragma: no cover
         msg = "test_size must be a positive numeric value."
         raise Exception(msg)
-    if test_size == 0:
-        return None
     n_samples = len(y)
-    n_test_samples = 0
 
-    if test_size >= 1:
+    if 1 <= test_size:
         if test_size % 1:
             msg = "If test_size >= 1, test_size should be a whole number."
             raise Exception(msg)
-        n_test_samples = test_size
+        test_size = int(test_size)
     else:
-        n_test_samples = ceil(n_samples * test_size)
+        # prefer training samples
+        test_size = floor(n_samples * test_size)
 
-    n_train_samples = n_samples - n_test_samples
+    if test_size == 0:
+        return None
+
+    if n_samples <= test_size:
+        msg = "The entire dataset cannot exclusively be validation. There must be some training data."
+        raise Exception(msg)
+
+    n_train_samples = n_samples - test_size
     native = Native.get_native_singleton()
 
-    # Adapt test size if too small relative to number of classes
     if is_stratified:
-        n_classes = len(set(y))
-        if n_test_samples < n_classes:  # pragma: no cover
-            warnings.warn(
-                "Too few samples per class, adapting test size to guarantee 1 sample per class."
-            )
-            n_test_samples = n_classes
-            n_train_samples = n_samples - n_test_samples
-
-        return native.sample_without_replacement_stratified(
-            rng, n_classes, n_train_samples, n_test_samples, y
+        bag = native.sample_without_replacement_stratified(
+            rng, n_classes, n_train_samples, test_size, y
         )
-    return native.sample_without_replacement(rng, n_train_samples, n_test_samples)
+    else:
+        bag = native.sample_without_replacement(rng, n_train_samples, test_size)
+
+    return bag

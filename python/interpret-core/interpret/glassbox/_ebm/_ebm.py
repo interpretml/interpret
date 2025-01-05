@@ -11,6 +11,7 @@ from itertools import combinations, count
 from math import ceil, isnan
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 from warnings import warn
+from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.base import (
@@ -276,7 +277,58 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
-class EBMModel(BaseEstimator):
+@dataclass
+class EbmInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = True
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class EbmTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class EbmClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class EbmRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class EbmTags:
+    estimator_type: Optional[str] = None
+    target_tags: EbmTargetTags = field(default_factory=EbmTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[EbmClassifierTags] = None
+    regressor_tags: Optional[EbmRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: EbmInputTags = field(default_factory=EbmInputTags)
+
+
+class EBMModel(ExplainerMixin, BaseEstimator):
     """Base class for all EBMs."""
 
     def __init__(
@@ -309,6 +361,10 @@ class EBMModel(BaseEstimator):
         reg_alpha,
         reg_lambda,
         max_delta_step,
+        gain_scale,
+        min_cat_samples,
+        cat_smooth,
+        missing,
         max_leaves,
         monotone_constraints,
         objective,
@@ -356,6 +412,10 @@ class EBMModel(BaseEstimator):
             self.reg_alpha = reg_alpha
             self.reg_lambda = reg_lambda
             self.max_delta_step = max_delta_step
+            self.gain_scale = gain_scale
+            self.min_cat_samples = min_cat_samples
+            self.cat_smooth = cat_smooth
+            self.missing = missing
 
         self.max_leaves = max_leaves
         if not is_private(self):
@@ -396,12 +456,14 @@ class EBMModel(BaseEstimator):
         # with 64 bytes per tensor cell, a 2^20 tensor would be 1/16 gigabyte.
         max_cardinality = 1048576
         nominal_smoothing = True
-        # In the future we might replace min_samples_leaf=2 with min_samples_bin=3 so
+        # In the future we might replace min_samples_leaf=4 with min_samples_bin=4 so
         # that we don't need to have the count when boosting or for interaction
         # detection. Benchmarking indicates switching these would decrease the accuracy
         # slightly, but it might be worth the speedup. Unfortunately, with outer bags
         # sometimes there will be 1 or 0 samples in some bags, so it isn't as good as
-        # a boosting restriction.
+        # a boosting restriction. Another option would be to add tail restrictions
+        # like min_samples_tail since when max_leaves is 2 the restriction only applies
+        # to the tails anyways.
         min_samples_bin = 1
 
         if not isinstance(self.outer_bags, int) and not self.outer_bags.is_integer():
@@ -632,7 +694,9 @@ class EBMModel(BaseEstimator):
             if is_differential_privacy
             else Native.LinkFlags_Default
         )
-        link, link_param = native.determine_link(flags, objective, n_classes)
+        objective_code, link, link_param = native.determine_link(
+            flags, objective, n_classes
+        )
 
         init_score, X, n_samples = clean_init_score_and_X(
             link,
@@ -656,7 +720,7 @@ class EBMModel(BaseEstimator):
 
             validate_eps_delta(self.epsilon, self.delta)
 
-            if n_classes < 0:
+            if n_classes < Native.Task_GeneralClassification:
                 is_privacy_warning = False
                 is_clipping = False
 
@@ -686,7 +750,7 @@ class EBMModel(BaseEstimator):
 
                 if is_clipping:
                     y = np.clip(y, min_target, max_target)
-            elif n_classes > 2:  # pragma: no cover
+            elif n_classes >= Native.Task_MulticlassPlus:  # pragma: no cover
                 msg = "Multiclass not supported for Differentially Private EBMs."
                 raise ValueError(msg)
 
@@ -788,9 +852,11 @@ class EBMModel(BaseEstimator):
             if bags is None:
                 bag = make_bag(
                     y,
+                    n_classes,
                     self.validation_size,
                     bagged_rng,
-                    n_classes >= 0 and not is_differential_privacy,
+                    n_classes >= Native.Task_GeneralClassification
+                    and not is_differential_privacy,
                 )
             else:
                 bag = bags[idx]
@@ -831,7 +897,11 @@ class EBMModel(BaseEstimator):
 
         if is_differential_privacy:
             # [DP] Calculate how much noise will be applied to each iteration of the algorithm
-            domain_size = 1 if n_classes >= 0 else max_target - min_target
+            domain_size = (
+                1
+                if n_classes >= Native.Task_GeneralClassification
+                else max_target - min_target
+            )
             max_weight = 1 if sample_weight is None else np.max(sample_weight)
             training_eps = self.epsilon - bin_eps
             training_delta = self.delta - bin_delta
@@ -874,13 +944,18 @@ class EBMModel(BaseEstimator):
             reg_alpha = 0.0
             reg_lambda = 0.0
             max_delta_step = 0.0
+            gain_scale = 1.0
+            min_cat_samples = 0
+            cat_smooth = 0.0
+            missing = "low"
             interactions = 0
             monotone_constraints = None
+            n_intercept_rounds = 0
         else:
             noise_scale_boosting = None
             bin_data_weights = None
             term_boost_flags = Native.TermBoostFlags_Default
-            if develop._purify_boosting:
+            if develop.get_option("purify_boosting"):
                 term_boost_flags |= Native.TermBoostFlags_PurifyUpdate
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
@@ -893,8 +968,13 @@ class EBMModel(BaseEstimator):
             reg_alpha = self.reg_alpha
             reg_lambda = self.reg_lambda
             max_delta_step = self.max_delta_step
+            gain_scale = self.gain_scale
+            min_cat_samples = self.min_cat_samples
+            cat_smooth = self.cat_smooth
+            missing = self.missing
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
+            n_intercept_rounds = develop.get_option("n_intercept_rounds_initial")
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -906,6 +986,60 @@ class EBMModel(BaseEstimator):
             exclude_features = {i for i, v in enumerate(monotone_constraints) if v != 0}
 
         provider = JobLibProvider(n_jobs=self.n_jobs)
+
+        bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
+        if not is_differential_privacy:
+            if objective_code == Native.Objective_MonoClassification:
+                n_intercept_rounds = 0
+            elif objective_code == Native.Objective_Rmse:
+                # RMSE is very special and we can do closed form even with init_scores
+                y_shifted = y if init_score is None else y - init_score
+                n_intercept_rounds = 0
+
+                for idx in range(self.outer_bags):
+                    bag = internal_bags[idx]
+                    sample_weight_local = sample_weight
+                    y_local = y_shifted
+                    if bag is not None:
+                        include_samples = 0 < bag
+                        y_local = y_local[include_samples]
+                        if sample_weight_local is None:
+                            sample_weight_local = bag[include_samples]
+                        else:
+                            sample_weight_local = (
+                                sample_weight_local[include_samples]
+                                * bag[include_samples]
+                            )
+
+                    bagged_intercept[idx, :] = np.average(
+                        y_local, weights=sample_weight_local
+                    )
+            elif init_score is None:
+                if (
+                    objective_code == Native.Objective_LogLossBinary
+                    or objective_code == Native.Objective_LogLossMulticlass
+                ):
+                    n_intercept_rounds = 0
+                    for idx in range(self.outer_bags):
+                        bag = internal_bags[idx]
+                        sample_weight_local = sample_weight
+                        y_local = y
+                        if bag is not None:
+                            include_samples = 0 < bag
+                            y_local = y_local[include_samples]
+                            if sample_weight_local is None:
+                                sample_weight_local = bag[include_samples]
+                            else:
+                                sample_weight_local = (
+                                    sample_weight_local[include_samples]
+                                    * bag[include_samples]
+                                )
+
+                        probs = np.bincount(y_local, weights=sample_weight_local)
+                        total = probs.sum()
+                        probs = probs.astype(np.float64, copy=False)
+                        probs /= total
+                        bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
         dataset = bin_native_by_dimension(
             n_classes,
@@ -940,6 +1074,9 @@ class EBMModel(BaseEstimator):
             parallel_args.append(
                 (
                     dataset,
+                    n_intercept_rounds,
+                    develop.get_option("intercept_learning_rate"),
+                    bagged_intercept[idx],
                     bag,
                     init_score_local,
                     term_features,
@@ -951,6 +1088,10 @@ class EBMModel(BaseEstimator):
                     reg_alpha,
                     reg_lambda,
                     max_delta_step,
+                    gain_scale,
+                    min_cat_samples,
+                    cat_smooth,
+                    missing,
                     self.max_leaves,
                     monotone_constraints,
                     greedy_ratio,
@@ -969,24 +1110,31 @@ class EBMModel(BaseEstimator):
                         else Native.CreateBoosterFlags_Default
                     ),
                     objective,
+                    develop.get_option("acceleration"),
                     None,
+                    develop._develop_options,
                 )
             )
 
         results = provider.parallel(boost, parallel_args)
 
         # let python reclaim the dataset memory via reference counting
-        del (
-            parallel_args
-        )  # parallel_args holds references to dataset, so must be deleted
-        del dataset
+        # parallel_args holds references to dataset, so must be deleted
+        del parallel_args
 
         best_iteration = [[]]
         models = []
         rngs = []
-        for exception, model, bag_best_iteration, bagged_rng in results:
+        for idx in range(self.outer_bags):
+            exception = results[idx][0]
+            intercept_update = results[idx][1]
+            model = results[idx][2]
+            bag_best_iteration = results[idx][3]
+            bagged_rng = results[idx][4]
+
             if exception is not None:
                 raise exception
+            bagged_intercept[idx, :] = intercept_update
             best_iteration[-1].append(bag_best_iteration)
             models.append(model)
             # retrieve our rng state since this was used outside of our process
@@ -1013,7 +1161,7 @@ class EBMModel(BaseEstimator):
                         raise ValueError(msg)
                     interactions = int(interactions)
 
-                if n_classes > 2:
+                if n_classes >= Native.Task_MulticlassPlus:
                     warn(
                         "Detected multiclass problem. Forcing interactions to 0. "
                         "Multiclass interactions only have local explanations. "
@@ -1030,6 +1178,10 @@ class EBMModel(BaseEstimator):
             elif len(interactions) == 0:
                 break
 
+            # at this point we know we will be making a new one, so delete it now
+            del dataset
+
+            # we pass the bagged intercept into the rank_interactions and boost functions below, so do not include twice
             initial_intercept = np.zeros(n_scores, np.float64)
             scores_bags = []
             for model, bag in zip(models, internal_bags):
@@ -1060,9 +1212,6 @@ class EBMModel(BaseEstimator):
                 feature_names_in,
                 feature_types_in,
             )
-            del (
-                y
-            )  # we no longer need this, so allow the garbage collector to reclaim it
 
             if isinstance(interactions, int):
                 _log.info("Estimating with FAST")
@@ -1073,6 +1222,7 @@ class EBMModel(BaseEstimator):
                     parallel_args.append(
                         (
                             dataset,
+                            bagged_intercept[idx],
                             internal_bags[idx],
                             scores_bags[idx],
                             combinations(range(n_features_in), 2),
@@ -1091,7 +1241,10 @@ class EBMModel(BaseEstimator):
                                 else Native.CreateInteractionFlags_Default
                             ),
                             objective,
+                            develop.get_option("acceleration"),
                             None,
+                            0,
+                            develop._develop_options,
                         )
                     )
 
@@ -1197,6 +1350,9 @@ class EBMModel(BaseEstimator):
                 parallel_args.append(
                     (
                         dataset,
+                        0,  # intercept should already be close for pairs
+                        0.0,  # intercept should already be close for pairs
+                        bagged_intercept[idx],
                         internal_bags[idx],
                         scores_bags[idx],
                         boost_groups,
@@ -1208,6 +1364,10 @@ class EBMModel(BaseEstimator):
                         reg_alpha,
                         reg_lambda,
                         max_delta_step,
+                        gain_scale,
+                        min_cat_samples,
+                        cat_smooth,
+                        missing,
                         self.max_leaves,
                         monotone_constraints,
                         greedy_ratio,
@@ -1226,7 +1386,9 @@ class EBMModel(BaseEstimator):
                             else Native.CreateBoosterFlags_Default
                         ),
                         objective,
+                        develop.get_option("acceleration"),
                         None,
+                        develop._develop_options,
                     )
                 )
 
@@ -1234,16 +1396,23 @@ class EBMModel(BaseEstimator):
 
             # allow python to reclaim these big memory items via reference counting
             del parallel_args  # this holds references to dataset, scores_bags, and bags
-            del dataset
             del scores_bags
 
             best_iteration.append([])
+
             for idx in range(self.outer_bags):
-                if results[idx][0] is not None:
-                    raise results[idx][0]
-                best_iteration[-1].append(results[idx][2])
-                models[idx].extend(results[idx][1])
-                rngs[idx] = results[idx][3]
+                exception = results[idx][0]
+                intercept_update = results[idx][1]
+                model = results[idx][2]
+                bag_best_iteration = results[idx][3]
+                bagged_rng = results[idx][4]
+
+                if exception is not None:
+                    raise exception
+                bagged_intercept[idx, :] = intercept_update
+                best_iteration[-1].append(bag_best_iteration)
+                models[idx].extend(model)
+                rngs[idx] = bagged_rng
 
             term_features.extend(boost_groups)
 
@@ -1280,21 +1449,95 @@ class EBMModel(BaseEstimator):
                 term_features,
             )
 
-        if n_classes == 1:
-            bagged_intercept = np.full(self.outer_bags, -np.inf, np.float64)
-        elif n_scores == 1:
-            bagged_intercept = np.zeros(self.outer_bags, np.float64)
-        else:
-            bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
+        if bagged_intercept.shape[1] == 1:
+            bagged_intercept = bagged_intercept.ravel()
 
         intercept, term_scores, standard_deviations = process_terms(
             bagged_intercept, bagged_scores, bin_weights, bag_weights
         )
 
-        if n_classes < 0:
+        if not is_differential_privacy:
+            scores = ebm_predict_scores(
+                X,
+                n_samples,
+                feature_names_in,
+                feature_types_in,
+                bins,
+                intercept,
+                term_scores,
+                term_features,
+                init_score,
+            )
+
+            if objective_code == Native.Objective_MonoClassification:
+                pass
+            elif objective_code == Native.Objective_Rmse:
+                correction = np.average(y - scores, weights=sample_weight)
+                intercept += correction
+                bagged_intercept += correction
+            else:
+                exception, intercept_change, _, _, rng = boost(
+                    dataset,
+                    develop.get_option("n_intercept_rounds_final"),
+                    develop.get_option("intercept_learning_rate"),
+                    np.zeros(n_scores, np.float64),
+                    None,
+                    scores,
+                    [],
+                    0,
+                    term_boost_flags,
+                    self.learning_rate,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    min_cat_samples,
+                    cat_smooth,
+                    missing,
+                    1,
+                    None,
+                    greedy_ratio,
+                    cyclic_progress,
+                    0,
+                    nominal_smoothing,
+                    0,
+                    0,
+                    early_stopping_tolerance,
+                    noise_scale_boosting,
+                    bin_data_weights,
+                    rng,
+                    (
+                        Native.CreateBoosterFlags_DifferentialPrivacy
+                        if is_differential_privacy
+                        else Native.CreateBoosterFlags_Default
+                    ),
+                    objective,
+                    Native.AccelerationFlags_NONE,
+                    None,
+                    develop._develop_options,
+                )
+                if exception is not None:
+                    raise exception
+
+                bagged_intercept += intercept_change
+                intercept += intercept_change
+
+                if bagged_intercept.ndim == 2:
+                    # multiclass
+                    # pick the class that we're going to zero
+                    zero_index = np.argmax(intercept)
+                    intercept -= intercept[zero_index]
+                    bagged_intercept -= np.expand_dims(
+                        bagged_intercept[..., zero_index], -1
+                    )
+        del dataset
+
+        if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy
             intercept = float(intercept[0])
-        elif n_classes <= 1:
+        elif n_classes == Native.Task_MonoClassification:
             # for monoclassification, cells are either NaN or -inf
             intercept[~np.isnan(intercept)] = -np.inf
             bagged_intercept[~np.isnan(bagged_intercept)] = -np.inf
@@ -1326,7 +1569,7 @@ class EBMModel(BaseEstimator):
             self.histogram_weights_ = histogram_weights
             self.unique_val_counts_ = unique_val_counts
 
-        if n_classes >= 0:
+        if n_classes >= Native.Task_GeneralClassification:
             self.classes_ = classes  # required by scikit-learn
         else:
             # we do not use these currently, but they indicate the domain for DP and
@@ -2025,14 +2268,14 @@ class EBMModel(BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        # the missing and unknown bins are not part of the continuous range
+        # the missing and unseen bins are not part of the continuous range
         y = self.term_scores_[term][1:-1]
         x = np.arange(len(y), dtype=np.int64)
 
         all_weights = self.bin_weights_[term]
         weights = all_weights[1:-1]
 
-        # this should normally be zero, except if there are missing or unknown values
+        # this should normally be zero, except if there are missing or unseen values
         original_mean = np.average(y, weights=weights)
 
         # Fit isotonic regression weighted by training data bin counts
@@ -2249,6 +2492,53 @@ class EBMModel(BaseEstimator):
 
         return self
 
+    def predict_with_uncertainty(self, X, init_score=None):
+        """Gets raw scores and uncertainties from the bagged base models.
+        Generates predictions by averaging outputs across all bagged models, and estimates
+        uncertainty using the standard deviation of predictions across bags.
+
+        Args:
+            X: ndarray of shape (n_samples, n_features)
+                The input samples to predict on.
+            init_score: Optional. Either a model that can generate scores or per-sample initialization score.
+                If samples scores it should be the same length as X.
+
+        Returns:
+            ndarray of shape (n_samples, 2)
+                First column contains mean predictions
+                Second column contains uncertainties
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        init_score, X, n_samples = clean_init_score_and_X(
+            self.link_,
+            self.link_param_,
+            init_score,
+            X,
+            self.feature_names_in_,
+            self.feature_types_in_,
+        )
+
+        preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
+        # Get predictions from each bagged model
+        for bag_index in range(len(self.bagged_intercept_)):
+            # Use slices from bagged parameters for this specific model
+            scores = ebm_predict_scores(
+                X=X,
+                n_samples=n_samples,
+                feature_names_in=self.feature_names_in_,
+                feature_types_in=self.feature_types_in_,
+                bins=self.bins_,
+                intercept=self.bagged_intercept_[bag_index],
+                term_scores=[scores[bag_index] for scores in self.bagged_scores_],
+                term_features=self.term_features_,
+                init_score=init_score,
+            )
+            preds_per_bag[:, bag_index] = scores
+
+        # Calculate mean predictions and uncertainties
+        return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
+
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")
 
@@ -2270,7 +2560,7 @@ class EBMModel(BaseEstimator):
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
         for scores, w in zip(self.term_scores_, self.bin_weights_):
-            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.ravel())
             intercept_binary += mean
             terms.append(scores - mean)
 
@@ -2281,7 +2571,7 @@ class EBMModel(BaseEstimator):
         for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_binary, self.link_, self.link_param_)
             term = link_func(prob, multi_link, multi_param) - intercept_multi
-            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.ravel())
             shift += mean
             terms[i] = term - mean
 
@@ -2320,7 +2610,7 @@ class EBMModel(BaseEstimator):
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
         for scores, w in zip(self.term_scores_, self.bin_weights_):
-            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.flatten())
+            mean = np.average(scores.reshape(-1, scores.shape[-1]), 0, w.ravel())
             intercept_multi += mean
             terms.append(scores - mean)
 
@@ -2331,7 +2621,7 @@ class EBMModel(BaseEstimator):
         for i, w in enumerate(self.bin_weights_):
             prob = inv_link(terms[i] + intercept_multi, self.link_, self.link_param_)
             term = link_func(prob, binary_link, binary_param) - intercept_binary
-            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.flatten())
+            mean = np.average(term.reshape(-1, term.shape[-1]), 0, w.ravel())
             shift += mean
             terms[i] = term - mean
 
@@ -2401,8 +2691,11 @@ class EBMModel(BaseEstimator):
             ],
         }
 
+    def __sklearn_tags__(self):
+        return EbmTags()
 
-class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+
+class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     r"""An Explainable Boosting Classifier.
 
     Parameters
@@ -2424,7 +2717,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
-    max_interaction_bins : int, default=32
+    max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
     interactions : int, float, or list of tuples of feature indices, default=0.9
 
@@ -2432,7 +2725,11 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
-            - List of tuples: The tuples contain the indices of the features within the additive term
+            - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
+              the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
+              the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
+              as interactions, the exclude parameter should be set to 'mains' and currently max_bins needs to be equal to
+              max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
@@ -2442,16 +2739,16 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=14
+    outer_bags : int, default=16
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.01
+    learning_rate : float, default=0.015
         Learning rate for boosting.
-    greedy_ratio : float, default=1.5
+    greedy_ratio : float, default=10.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool or float, default=True
+    cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
         as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
@@ -2460,13 +2757,13 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=75
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=75
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=50
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2485,7 +2782,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    min_samples_leaf : int, default=2
+    min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
         Minimum hessian required to consider a potential split valid.
@@ -2495,6 +2792,29 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
+    gain_scale : float, default=5.0
+        Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
+        algorithm focus more on the nominal categoricals.
+    min_cat_samples : int, default=10
+        Minimum number of samples in order to treat a category separately. If lower than this threshold
+        the category is combined with other categories that have low numbers of samples.
+    cat_smooth : float, default=10.0
+        Used for the categorical features. This can reduce the effect of noises in categorical features,
+        especially for categories with limited data.
+    missing: str, default="separate"
+
+        Method for handling missing values during boosting. The placement of the missing value bin can influence
+        the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
+        affect lower bins, and vice versa. This parameter does not affect the final placement
+        of the missing bin in the model (the missing bin will remain at index 0 in the term_scores\_ attribute).
+        Possible values for missing are:
+
+            - `'low'`: Place the missing bin on the left side of the graphs.
+            - `'high'`: Place the missing bin on the right side of the graphs.
+            - `'separate'`: Place the missing bin in its own leaf during each boosting step,
+              effectively making it location-agnostic. This can lead to overfitting, especially
+              when the proportion of missing values is small.
+            - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
@@ -2518,7 +2838,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
     objective : str, default="log_loss"
         The objective to optimize.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=42
@@ -2629,7 +2949,7 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         ] = None,
         # Preprocessor
         max_bins: int = 1024,
-        max_interaction_bins: int = 32,
+        max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
@@ -2637,28 +2957,32 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
+        outer_bags: int = 16,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.01,
-        greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        learning_rate: float = 0.015,
+        greedy_ratio: Optional[float] = 10.0,
+        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
+        smoothing_rounds: Optional[int] = 75,
+        interaction_smoothing_rounds: Optional[int] = 75,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
+        min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 1e-4,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
+        gain_scale: Optional[float] = 5.0,
+        min_cat_samples: Optional[int] = 10,
+        cat_smooth: Optional[float] = 10.0,
+        missing: str = "separate",
         max_leaves: int = 3,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = 42,
     ):
         super().__init__(
@@ -2684,6 +3008,10 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            gain_scale=gain_scale,
+            min_cat_samples=min_cat_samples,
+            cat_smooth=cat_smooth,
+            missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -2747,8 +3075,14 @@ class ExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = EbmClassifierTags()
+        return tags
 
-class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+
+class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
     r"""An Explainable Boosting Regressor.
 
     Parameters
@@ -2770,7 +3104,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - `'nominal'`: Categorical where the order has no meaning. Eg: country names
     max_bins : int, default=1024
         Max number of bins per feature for the main effects stage.
-    max_interaction_bins : int, default=32
+    max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
     interactions : int, float, or list of tuples of feature indices, default=0.9
 
@@ -2778,7 +3112,11 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
-            - List of tuples: The tuples contain the indices of the features within the additive term
+            - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
+              the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
+              the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
+              as interactions, the exclude parameter should be set to 'mains' and currently max_bins needs to be equal to
+              max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
     validation_size : int or float, default=0.15
@@ -2788,16 +3126,16 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             - Integer (1 <= validation_size): Count of samples to put in the validation sets
             - Percentage (validation_size < 1.0): Percentage of the data to put in the validation sets
             - 0: Turns off early stopping. Outer bags have no utility. Error bounds will be eliminated
-    outer_bags : int, default=14
+    outer_bags : int, default=16
         Number of outer bags. Outer bags are used to generate error bounds and help with smoothing the graphs.
     inner_bags : int, default=0
         Number of inner bags. 0 turns off inner bagging.
-    learning_rate : float, default=0.01
+    learning_rate : float, default=0.04
         Learning rate for boosting.
-    greedy_ratio : float, default=1.5
+    greedy_ratio : float, default=10.0
         The proportion of greedy boosting steps relative to cyclic boosting steps.
         A value of 0 disables greedy boosting, effectively turning it off.
-    cyclic_progress : bool or float, default=True
+    cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
         as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
@@ -2806,13 +3144,13 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=200
+    smoothing_rounds : int, default=500
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+    interaction_smoothing_rounds : int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
     max_rounds : int, default=25000
         Total number of boosting rounds with n_terms boosting steps per round.
-    early_stopping_rounds : int, default=50
+    early_stopping_rounds : int, default=100
         Number of rounds with no improvement to trigger early stopping. 0 turns off
         early stopping and boosting will occur for exactly max_rounds.
     early_stopping_tolerance : float, default=1e-5
@@ -2831,9 +3169,9 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    min_samples_leaf : int, default=2
+    min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
-    min_hessian : float, default=1e-4
+    min_hessian : float, default=0.0
         Minimum hessian required to consider a potential split valid.
     reg_alpha : float, default=0.0
         L1 regularization.
@@ -2841,7 +3179,30 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    max_leaves : int, default=3
+    gain_scale : float, default=5.0
+        Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
+        algorithm focus more on the nominal categoricals.
+    min_cat_samples : int, default=10
+        Minimum number of samples in order to treat a category separately. If lower than this threshold
+        the category is combined with other categories that have low numbers of samples.
+    cat_smooth : float, default=10.0
+        Used for the categorical features. This can reduce the effect of noises in categorical features,
+        especially for categories with limited data.
+    missing: str, default="separate"
+
+        Method for handling missing values during boosting. The placement of the missing value bin can influence
+        the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
+        affect lower bins, and vice versa. This parameter does not affect the final placement
+        of the missing bin in the model (the missing bin will remain at index 0 in the term_scores\_ attribute).
+        Possible values for missing are:
+
+            - `'low'`: Place the missing bin on the left side of the graphs.
+            - `'high'`: Place the missing bin on the right side of the graphs.
+            - `'separate'`: Place the missing bin in its own leaf during each boosting step,
+              effectively making it location-agnostic. This can lead to overfitting, especially
+              when the proportion of missing values is small.
+            - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
+    max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
@@ -2866,7 +3227,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         The objective to optimize. Options include: "rmse",
         "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
         "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=42
@@ -2975,7 +3336,7 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         ] = None,
         # Preprocessor
         max_bins: int = 1024,
-        max_interaction_bins: int = 32,
+        max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
             Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
@@ -2983,28 +3344,32 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
-        outer_bags: int = 14,
+        outer_bags: int = 16,
         inner_bags: Optional[int] = 0,
         # Boosting
-        learning_rate: float = 0.01,
-        greedy_ratio: Optional[float] = 1.5,
-        cyclic_progress: Union[bool, float, int] = True,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 200,
-        interaction_smoothing_rounds: Optional[int] = 50,
+        learning_rate: float = 0.04,
+        greedy_ratio: Optional[float] = 10.0,
+        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
+        smoothing_rounds: Optional[int] = 500,
+        interaction_smoothing_rounds: Optional[int] = 100,
         max_rounds: Optional[int] = 25000,
-        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
         # Trees
-        min_samples_leaf: Optional[int] = 2,
-        min_hessian: Optional[float] = 1e-4,
+        min_samples_leaf: Optional[int] = 4,
+        min_hessian: Optional[float] = 0.0,
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        max_leaves: int = 3,
+        gain_scale: Optional[float] = 5.0,
+        min_cat_samples: Optional[int] = 10,
+        cat_smooth: Optional[float] = 10.0,
+        missing: str = "separate",
+        max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "rmse",
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = 42,
     ):
         super().__init__(
@@ -3030,6 +3395,10 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             reg_alpha=reg_alpha,
             reg_lambda=reg_lambda,
             max_delta_step=max_delta_step,
+            gain_scale=gain_scale,
+            min_cat_samples=min_cat_samples,
+            cat_smooth=cat_smooth,
+            missing=missing,
             max_leaves=max_leaves,
             monotone_constraints=monotone_constraints,
             objective=objective,
@@ -3059,8 +3428,14 @@ class ExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = EbmRegressorTags()
+        return tags
 
-class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin):
+
+class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Classifier.
 
     Note that many arguments are defaulted differently than regular EBMs.
@@ -3099,7 +3474,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=None
@@ -3223,7 +3598,7 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
@@ -3257,6 +3632,10 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            gain_scale=1.0,
+            min_cat_samples=0,
+            cat_smooth=0.0,
+            missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="log_loss",
@@ -3320,8 +3699,14 @@ class DPExplainableBoostingClassifier(EBMModel, ClassifierMixin, ExplainerMixin)
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = EbmClassifierTags()
+        return tags
 
-class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
+
+class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Regressor.
 
     Note that many arguments are defaulted differently than regular EBMs.
@@ -3360,7 +3745,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         Total number of boosting rounds with n_terms boosting steps per round.
     max_leaves : int, default=3
         Maximum number of leaves allowed in each tree.
-    n_jobs : int, default=-2
+    n_jobs : int, default=-1
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.
     random_state : int or None, default=None
@@ -3493,7 +3878,7 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
+        n_jobs: Optional[int] = -1,
         random_state: Optional[int] = None,
         # Differential Privacy
         epsilon: float = 1.0,
@@ -3529,6 +3914,10 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
             reg_alpha=0.0,
             reg_lambda=0.0,
             max_delta_step=0.0,
+            gain_scale=1.0,
+            min_cat_samples=0,
+            cat_smooth=0.0,
+            missing=None,
             max_leaves=max_leaves,
             monotone_constraints=None,
             objective="rmse",
@@ -3557,3 +3946,9 @@ class DPExplainableBoostingRegressor(EBMModel, RegressorMixin, ExplainerMixin):
         """
         scores = self._predict_score(X, init_score)
         return inv_link(scores, self.link_, self.link_param_)
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = EbmRegressorTags()
+        return tags

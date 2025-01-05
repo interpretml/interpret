@@ -51,10 +51,10 @@ inline Cpu_64_Float Log(const Cpu_64_Float& val) noexcept;
 
 struct Cpu_64_Int final {
    friend Cpu_64_Float;
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int& cmp1,
-         const Cpu_64_Int& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept;
+   friend inline Cpu_64_Float IfThenElse(
+         const Cpu_64_Int& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept;
+   friend inline Cpu_64_Float IfAdd(
+         const Cpu_64_Int& cmp, const Cpu_64_Float& base, const Cpu_64_Float& addend) noexcept;
 
    using T = uint64_t;
    using TPack = uint64_t;
@@ -85,6 +85,12 @@ struct Cpu_64_Int final {
 
    inline static Cpu_64_Int MakeIndexes() noexcept { return Cpu_64_Int(0); }
 
+   inline Cpu_64_Int operator~() const noexcept { return Cpu_64_Int(~m_data); }
+
+   friend inline Cpu_64_Int operator==(const Cpu_64_Int& left, const Cpu_64_Int& right) noexcept {
+      return left.m_data == right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
+
    inline Cpu_64_Int operator+(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data + other.m_data); }
 
    inline Cpu_64_Int operator-(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data - other.m_data); }
@@ -99,8 +105,13 @@ struct Cpu_64_Int final {
 
    inline Cpu_64_Int operator|(const Cpu_64_Int& other) const noexcept { return Cpu_64_Int(m_data | other.m_data); }
 
-   friend inline Cpu_64_Int IfThenElse(const int cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
-      return cmp ? trueVal : falseVal;
+   friend inline Cpu_64_Int IfThenElse(
+         const Cpu_64_Int& cmp, const Cpu_64_Int& trueVal, const Cpu_64_Int& falseVal) noexcept {
+      return cmp.m_data ? trueVal : falseVal;
+   }
+
+   friend inline Cpu_64_Int IfAdd(const Cpu_64_Int& cmp, const Cpu_64_Int& base, const Cpu_64_Int& addend) noexcept {
+      return cmp.m_data ? base + addend : base;
    }
 
  private:
@@ -211,8 +222,16 @@ struct Cpu_64_Float final {
       return Cpu_64_Float(val) / other;
    }
 
-   friend inline int operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
-      return left.m_data <= right.m_data ? -1 : 0; // use all bits so that we can negate it ~
+   friend inline Cpu_64_Int operator==(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data == right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
+
+   friend inline Cpu_64_Int operator<(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data < right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
+   }
+
+   friend inline Cpu_64_Int operator<=(const Cpu_64_Float& left, const Cpu_64_Float& right) noexcept {
+      return left.m_data <= right.m_data ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
    }
 
    inline static Cpu_64_Float Load(const T* const a) noexcept { return Cpu_64_Float(*a); }
@@ -236,38 +255,19 @@ struct Cpu_64_Float final {
       func(0, (args.m_data)...);
    }
 
-   friend inline Cpu_64_Float IfLess(const Cpu_64_Float& cmp1,
-         const Cpu_64_Float& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data < cmp2.m_data ? trueVal : falseVal;
-   }
-
    friend inline Cpu_64_Float IfThenElse(
-         const int cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
-      return cmp ? trueVal : falseVal;
+         const Cpu_64_Int& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
+      return cmp.m_data ? trueVal : falseVal;
    }
 
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Float& cmp1,
-         const Cpu_64_Float& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
+   friend inline Cpu_64_Float IfAdd(
+         const Cpu_64_Int& cmp, const Cpu_64_Float& base, const Cpu_64_Float& addend) noexcept {
+      return cmp.m_data ? base + addend : base;
    }
 
-   friend inline Cpu_64_Float IfNaN(
-         const Cpu_64_Float& cmp, const Cpu_64_Float& trueVal, const Cpu_64_Float& falseVal) noexcept {
-      return std::isnan(cmp.m_data) ? trueVal : falseVal;
+   friend inline Cpu_64_Int IsNaN(const Cpu_64_Float& cmp) noexcept {
+      return std::isnan(cmp.m_data) ? Cpu_64_Int{static_cast<uint64_t>(int64_t{-1})} : Cpu_64_Int{0};
    }
-
-   friend inline Cpu_64_Float IfEqual(const Cpu_64_Int& cmp1,
-         const Cpu_64_Int& cmp2,
-         const Cpu_64_Float& trueVal,
-         const Cpu_64_Float& falseVal) noexcept {
-      return cmp1.m_data == cmp2.m_data ? trueVal : falseVal;
-   }
-
-   static inline bool ReinterpretInt(const bool val) noexcept { return val; }
 
    static inline Cpu_64_Int ReinterpretInt(const Cpu_64_Float& val) noexcept {
       typename Cpu_64_Int::T mem;
@@ -303,28 +303,33 @@ struct Cpu_64_Float final {
       return add - mul1 * mul2;
    }
 
+   friend inline Cpu_64_Float FusedMultiplySubtract(
+         const Cpu_64_Float& mul1, const Cpu_64_Float& mul2, const Cpu_64_Float& subtract) noexcept {
+      return mul1 * mul2 - subtract;
+   }
+
    friend inline Cpu_64_Float Sqrt(const Cpu_64_Float& val) noexcept { return Cpu_64_Float(std::sqrt(val.m_data)); }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxExp(const Cpu_64_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       UNUSED(addExpSchraudolphTerm);
       return Exp<bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxExp(const Cpu_64_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       // TODO: we might want different constants for binary classification and multiclass. See notes in
@@ -334,7 +339,7 @@ struct Cpu_64_Float final {
                   val.m_data, addExpSchraudolphTerm));
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -343,14 +348,14 @@ struct Cpu_64_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxLog(
          const Cpu_64_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       UNUSED(addLogSchraudolphTerm);
       return Log<bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -359,7 +364,7 @@ struct Cpu_64_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Cpu_64_Float ApproxLog(
          const Cpu_64_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       return Cpu_64_Float(LogApproxSchraudolph<bNegateOutput,
@@ -376,11 +381,11 @@ struct Cpu_64_Float final {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }

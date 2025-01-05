@@ -2,19 +2,42 @@
 # Distributed under the MIT software license
 
 import sys
+import math
+
+from .utils._native import Native
 
 _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
 
 # Global options
-_purify_boosting = False
-_purify_result = False
-_randomize_initial_feature_order = True
-# TODO: investigate if _randomize_feature_order actually decreases accuracy
-# https://github.com/interpretml/interpret/issues/563#issuecomment-2240820952
-# this seems to decrease accuracy slightly, but helps with collinearity
-_randomize_greedy_feature_order = True  # randomize feature order only if greedy enabled
-_randomize_feature_order = False  # randomize feature order always
+_develop_options = {
+    "n_intercept_rounds_initial": 25,
+    "n_intercept_rounds_final": 100,
+    "intercept_learning_rate": 0.25,
+    "cat_l2": 0.0,
+    "min_samples_leaf_nominal": None,
+    "learning_rate_scale": 1.0,
+    "max_cat_threshold": 9223372036854775807,
+    "cat_include": 1.0,
+    "purify_boosting": False,
+    "purify_result": False,
+    "randomize_initial_feature_order": True,
+    "randomize_greedy_feature_order": True,  # Randomize feature order if greedy.
+    "randomize_feature_order": False,  # Randomize feature order. No cost to results.
+    "acceleration": Native.AccelerationFlags_ALL,
+}
+
+
+def get_option(name):
+    return _develop_options[name]
+
+
+def set_option(name, value):
+    if name not in _develop_options:
+        msg = f"Unrecognized development option {name}."
+        raise Exception(msg)
+
+    _develop_options[name] = value
 
 
 def print_debug_info(file=None):
@@ -134,14 +157,13 @@ def _sizeof_fmt(num, suffix="B"):
     return "{:.1f}{}{}".format(num, "Yi", suffix)  # pragma: no cover
 
 
-def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd=True):
+def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     """Sets package into debug mode.
 
     Args:
         log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
         log_level: Logging level. For example, "DEBUG".
         native_debug: Load debug versions of native libraries if True.
-        simd: Turns on or off the use of SIMD on systems that support it.
 
     Returns:
         Logging handler.
@@ -167,7 +189,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
     root.info(debug_str)
 
     # Load native libraries in debug mode if needed
-    native = Native.get_native_singleton(is_debug=native_debug, simd=simd)
+    native = Native.get_native_singleton(is_debug=native_debug)
     native.set_logging(log_level)
 
     return handler

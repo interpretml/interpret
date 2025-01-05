@@ -176,12 +176,14 @@ class FeatureTest final {
  public:
    const IntEbm m_countBins;
    const bool m_bMissing;
-   const bool m_bUnknown;
+   const bool m_bUnseen;
    const bool m_bNominal;
 
+   inline IntEbm CountRealBins() const { return m_countBins - (m_bMissing ? 0 : 1) - (m_bUnseen ? 0 : 1); }
+
    inline FeatureTest(
-         const IntEbm countBins, const bool bMissing = true, const bool bUnknown = true, const bool bNominal = false) :
-         m_countBins(countBins), m_bMissing(bMissing), m_bUnknown(bUnknown), m_bNominal(bNominal) {}
+         const IntEbm countBins, const bool bMissing = true, const bool bUnseen = true, const bool bNominal = false) :
+         m_countBins(countBins), m_bMissing(bMissing), m_bUnseen(bUnseen), m_bNominal(bNominal) {}
 };
 
 class TestSample final {
@@ -292,6 +294,10 @@ static constexpr double k_minHessianDefault = 1e-3;
 static constexpr double k_regAlphaDefault = 0.0;
 static constexpr double k_regLambdaDefault = 0.0;
 static constexpr double k_maxDeltaStepDefault = 0.0;
+static constexpr IntEbm k_minCategorySamplesDefault = 0;
+static constexpr double k_categoricalSmoothingDefault = 10.0;
+static constexpr IntEbm k_maxCategoricalThresholdDefault = IntEbm{32};
+static constexpr double k_categoricalInclusionPercentDefault = 1.0;
 
 #ifdef EXPAND_BINARY_LOGITS
 static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_BinaryAsMulticlass;
@@ -484,6 +490,10 @@ class TestBoost {
          const double regAlpha = k_regAlphaDefault,
          const double regLambda = k_regLambdaDefault,
          const double maxDeltaStep = k_maxDeltaStepDefault,
+         IntEbm minCategorySamplesDefault = k_minCategorySamplesDefault,
+         const double categoricalSmoothing = k_categoricalSmoothingDefault,
+         const IntEbm maxCategoricalThreshold = k_maxCategoricalThresholdDefault,
+         const double categoricalInclusionPercent = k_categoricalInclusionPercentDefault,
          const std::vector<IntEbm> leavesMax = k_leavesMaxDefault,
          const std::vector<MonotoneDirection> monotonicity = k_monotonicityDefault);
 
@@ -529,5 +539,34 @@ void DisplayCuts(IntEbm countSamples,
       IntEbm isMissingPresent,
       double minFeatureVal,
       double maxFeatureVal);
+
+std::vector<TestSample> MakeRandomDataset(std::vector<unsigned char>& rng,
+      const IntEbm cClasses,
+      const size_t cSamples,
+      const std::vector<FeatureTest>& features);
+
+std::vector<std::vector<IntEbm>> MakeMains(const std::vector<FeatureTest>& features);
+
+IntEbm ChooseAny(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options);
+IntEbm ChooseFrom(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options);
+
+inline static std::vector<unsigned char> MakeRng(const SeedEbm seed) {
+   std::vector<unsigned char> rng(static_cast<size_t>(MeasureRNG()));
+   InitRNG(seed, &rng[0]);
+   return rng;
+}
+
+inline IntEbm TestRand(std::vector<unsigned char>& rng, const IntEbm count) {
+   // this isn't balanced, but good enough for tests
+   SeedEbm randomNum;
+   GenerateSeed(&rng[0], &randomNum);
+   return static_cast<IntEbm>(static_cast<USeedEbm>(randomNum) % static_cast<USeedEbm>(count));
+}
+
+inline double TestRand(std::vector<unsigned char>& rng) {
+   double ret;
+   GenerateGaussianRandom(&rng[0], 100.0, 1, &ret);
+   return ret;
+}
 
 #endif // LIBEBM_TEST_HPP

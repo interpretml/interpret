@@ -55,10 +55,6 @@ inline Avx2_32_Float Log(const Avx2_32_Float& val) noexcept;
 
 struct alignas(k_cAlignment) Avx2_32_Int final {
    friend Avx2_32_Float;
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Int& cmp1,
-         const Avx2_32_Int& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept;
 
    using T = uint32_t;
    using TPack = __m256i;
@@ -103,6 +99,14 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
 
    inline static Avx2_32_Int MakeIndexes() noexcept { return Avx2_32_Int(_mm256_set_epi32(7, 6, 5, 4, 3, 2, 1, 0)); }
 
+   inline Avx2_32_Int operator~() const noexcept {
+      return Avx2_32_Int(_mm256_xor_si256(m_data, _mm256_set1_epi32(-1)));
+   }
+
+   friend inline Avx2_32_Int operator==(const Avx2_32_Int& left, const Avx2_32_Int& right) noexcept {
+      return Avx2_32_Int(_mm256_cmpeq_epi32(left.m_data, right.m_data));
+   }
+
    inline Avx2_32_Int operator+(const Avx2_32_Int& other) const noexcept {
       return Avx2_32_Int(_mm256_add_epi32(m_data, other.m_data));
    }
@@ -130,6 +134,11 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
    friend inline Avx2_32_Int IfThenElse(
          const Avx2_32_Int& cmp, const Avx2_32_Int& trueVal, const Avx2_32_Int& falseVal) noexcept {
       return Avx2_32_Int(_mm256_blendv_epi8(falseVal.m_data, trueVal.m_data, cmp.m_data));
+   }
+
+   friend inline Avx2_32_Int IfAdd(
+         const Avx2_32_Int& cmp, const Avx2_32_Int& base, const Avx2_32_Int& addend) noexcept {
+      return base + (cmp & addend);
    }
 
    friend inline Avx2_32_Int PermuteForInterleaf(const Avx2_32_Int& val) noexcept {
@@ -184,10 +193,6 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
    inline Avx2_32_Float operator-() const noexcept {
       return Avx2_32_Float(
             _mm256_castsi256_ps(_mm256_xor_si256(_mm256_castps_si256(m_data), _mm256_set1_epi32(0x80000000))));
-   }
-
-   inline Avx2_32_Float operator~() const noexcept {
-      return Avx2_32_Float(_mm256_xor_ps(m_data, _mm256_castsi256_ps(_mm256_set1_epi32(-1))));
    }
 
    inline Avx2_32_Float operator+(const Avx2_32_Float& other) const noexcept {
@@ -258,8 +263,16 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       return Avx2_32_Float(val) / other;
    }
 
-   friend inline Avx2_32_Float operator<=(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
-      return Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LE_OQ));
+   friend inline Avx2_32_Int operator==(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_EQ_OQ)));
+   }
+
+   friend inline Avx2_32_Int operator<(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LT_OQ)));
+   }
+
+   friend inline Avx2_32_Int operator<=(const Avx2_32_Float& left, const Avx2_32_Float& right) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(left.m_data, right.m_data, _CMP_LE_OQ)));
    }
 
    inline static Avx2_32_Float Load(const T* const a) noexcept { return Avx2_32_Float(_mm256_load_ps(a)); }
@@ -520,44 +533,18 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       func(7, a0[7], a1[7], a2[7], a3[7], a4[7]);
    }
 
-   friend inline Avx2_32_Float IfLess(const Avx2_32_Float& cmp1,
-         const Avx2_32_Float& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_LT_OQ);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
-   }
-
    friend inline Avx2_32_Float IfThenElse(
-         const Avx2_32_Float& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, cmp.m_data));
+         const Avx2_32_Int& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
+      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, ReinterpretFloat(cmp).m_data));
    }
 
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Float& cmp1,
-         const Avx2_32_Float& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256 mask = _mm256_cmp_ps(cmp1.m_data, cmp2.m_data, _CMP_EQ_OQ);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, mask));
+   friend inline Avx2_32_Float IfAdd(
+         const Avx2_32_Int& cmp, const Avx2_32_Float& base, const Avx2_32_Float& addend) noexcept {
+      return base + ReinterpretFloat(cmp & ReinterpretInt(addend));
    }
 
-   friend inline Avx2_32_Float IfNaN(
-         const Avx2_32_Float& cmp, const Avx2_32_Float& trueVal, const Avx2_32_Float& falseVal) noexcept {
-      // rely on the fact that a == a can only be false if a is a NaN
-      //
-      // TODO: _mm256_cmp_ps has a latency of 4 and a throughput of 0.5.  It might be faster to convert to integers,
-      //       use an AND with _mm256_and_si256 to select just the NaN bits, then compare to zero with
-      //       _mm256_cmpeq_epi32, but that has an overall latency of 2 and a throughput of 0.83333, which is lower
-      //       throughput, so experiment with this
-      return IfEqual(cmp, cmp, falseVal, trueVal);
-   }
-
-   friend inline Avx2_32_Float IfEqual(const Avx2_32_Int& cmp1,
-         const Avx2_32_Int& cmp2,
-         const Avx2_32_Float& trueVal,
-         const Avx2_32_Float& falseVal) noexcept {
-      const __m256i mask = _mm256_cmpeq_epi32(cmp1.m_data, cmp2.m_data);
-      return Avx2_32_Float(_mm256_blendv_ps(falseVal.m_data, trueVal.m_data, _mm256_castsi256_ps(mask)));
+   friend inline Avx2_32_Int IsNaN(const Avx2_32_Float& cmp) noexcept {
+      return ReinterpretInt(Avx2_32_Float(_mm256_cmp_ps(cmp.m_data, cmp.m_data, _CMP_UNORD_Q)));
    }
 
    static inline Avx2_32_Int ReinterpretInt(const Avx2_32_Float& val) noexcept {
@@ -594,46 +581,46 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 
    friend inline Avx2_32_Float FusedMultiplyAdd(
          const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& add) noexcept {
-      // For AVX, Intel initially built FMA3, and AMD built FMA4, but AMD later depricated FMA4 and supported
-      // FMA3 by the time AVX2 rolled out.  We only support AVX2 and above (not AVX) since we benefit from the
-      // integer parts of AVX2. Just to be sure though we also check the cpuid for FMA3 during init
+      // equivalent to: mul1 * mul2 + add
       return Avx2_32_Float(_mm256_fmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
    }
 
    friend inline Avx2_32_Float FusedNegateMultiplyAdd(
          const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& add) noexcept {
-      // For AVX, Intel initially built FMA3, and AMD built FMA4, but AMD later depricated FMA4 and supported
-      // FMA3 by the time AVX2 rolled out.  We only support AVX2 and above (not AVX) since we benefit from the
-      // integer parts of AVX2. Just to be sure though we also check the cpuid for FMA3 during init
-
       // equivalent to: -(mul1 * mul2) + add
       return Avx2_32_Float(_mm256_fnmadd_ps(mul1.m_data, mul2.m_data, add.m_data));
+   }
+
+   friend inline Avx2_32_Float FusedMultiplySubtract(
+         const Avx2_32_Float& mul1, const Avx2_32_Float& mul2, const Avx2_32_Float& subtract) noexcept {
+      // equivalent to: mul1 * mul2 - subtract
+      return Avx2_32_Float(_mm256_fmsub_ps(mul1.m_data, mul2.m_data, subtract.m_data));
    }
 
    friend inline Avx2_32_Float Sqrt(const Avx2_32_Float& val) noexcept {
       return Avx2_32_Float(_mm256_sqrt_ps(val.m_data));
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Avx2_32_Float ApproxExp(const Avx2_32_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       UNUSED(addExpSchraudolphTerm);
       return Exp<bNegateInput, bNaNPossible, bUnderflowPossible, bOverflowPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateInput = false,
          bool bNaNPossible = true,
          bool bUnderflowPossible = true,
          bool bOverflowPossible = true,
          bool bSpecialCaseZero = false,
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Avx2_32_Float ApproxExp(const Avx2_32_Float& val,
          const int32_t addExpSchraudolphTerm = k_expTermZeroMeanErrorForSoftmaxWithZeroedLogit) noexcept {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
@@ -649,29 +636,29 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
 #endif // EXP_INT_SIMD
       Avx2_32_Float result = Avx2_32_Float(_mm256_castsi256_ps(retInt));
       if(bSpecialCaseZero) {
-         result = IfEqual(0.0, val, 1.0, result);
+         result = IfThenElse(0.0 == val, 1.0, result);
       }
       if(bOverflowPossible) {
          if(bNegateInput) {
-            result = IfLess(val, static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(val < static_cast<T>(-k_expOverflowPoint), std::numeric_limits<T>::infinity(), result);
          } else {
-            result = IfLess(static_cast<T>(k_expOverflowPoint), val, std::numeric_limits<T>::infinity(), result);
+            result = IfThenElse(static_cast<T>(k_expOverflowPoint) < val, std::numeric_limits<T>::infinity(), result);
          }
       }
       if(bUnderflowPossible) {
          if(bNegateInput) {
-            result = IfLess(static_cast<T>(-k_expUnderflowPoint), val, 0.0, result);
+            result = IfThenElse(static_cast<T>(-k_expUnderflowPoint) < val, 0.0, result);
          } else {
-            result = IfLess(val, static_cast<T>(k_expUnderflowPoint), 0.0, result);
+            result = IfThenElse(val < static_cast<T>(k_expUnderflowPoint), 0.0, result);
          }
       }
       if(bNaNPossible) {
-         result = IfNaN(val, val, result);
+         result = IfThenElse(IsNaN(val), val, result);
       }
       return result;
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -680,14 +667,14 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<bDisableApprox, int>::type = 0>
+         typename std::enable_if<!bUseApprox, int>::type = 0>
    static inline Avx2_32_Float ApproxLog(
          const Avx2_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       UNUSED(addLogSchraudolphTerm);
       return Log<bNegateOutput, bNaNPossible, bNegativePossible, bZeroPossible, bPositiveInfinityPossible>(val);
    }
 
-   template<bool bDisableApprox,
+   template<bool bUseApprox,
          bool bNegateOutput = false,
          bool bNaNPossible = true,
          bool bNegativePossible = true,
@@ -696,7 +683,7 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          bool bPositiveInfinityPossible = true, // if false, +inf returns a big positive number.  If val can be a
                                                 // double that is above the largest representable float, then setting
                                                 // this is necessary to avoid undefined behavior
-         typename std::enable_if<!bDisableApprox, int>::type = 0>
+         typename std::enable_if<bUseApprox, int>::type = 0>
    static inline Avx2_32_Float ApproxLog(
          const Avx2_32_Float& val, const float addLogSchraudolphTerm = k_logTermLowerBoundInputCloseToOne) noexcept {
       // This code will make no sense until you read the Nicol N. Schraudolph paper:
@@ -704,29 +691,29 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
       // and also see approximate_math.hpp
       const __m256i retInt = _mm256_castps_si256(val.m_data);
       Avx2_32_Float result = Avx2_32_Float(_mm256_cvtepi32_ps(retInt));
+      if(bNaNPossible) {
+         if(bPositiveInfinityPossible) {
+            result = IfThenElse(val < std::numeric_limits<T>::infinity(), result, val);
+         } else {
+            result = IfThenElse(IsNaN(val), val, result);
+         }
+      } else {
+         if(bPositiveInfinityPossible) {
+            result = IfThenElse(std::numeric_limits<T>::infinity() == val, val, result);
+         }
+      }
       if(bNegateOutput) {
          result = FusedMultiplyAdd(result, -k_logMultiple, -addLogSchraudolphTerm);
       } else {
          result = FusedMultiplyAdd(result, k_logMultiple, addLogSchraudolphTerm);
       }
-      // TODO: combine this with the NaN (we simply pass it through if it's +inf (with negation if required)
-      if(bPositiveInfinityPossible) {
-         result = IfEqual(std::numeric_limits<T>::infinity(),
-               val,
-               bNegateOutput ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::infinity(),
-               result);
-      }
       if(bZeroPossible) {
-         result = IfLess(val,
-               std::numeric_limits<T>::min(),
+         result = IfThenElse(val < std::numeric_limits<T>::min(),
                bNegateOutput ? std::numeric_limits<T>::infinity() : -std::numeric_limits<T>::infinity(),
                result);
       }
       if(bNegativePossible) {
-         result = IfLess(val, T{0}, std::numeric_limits<T>::quiet_NaN(), result);
-      }
-      if(bNaNPossible) {
-         result = IfNaN(val, val, result);
+         result = IfThenElse(val < T{0}, std::numeric_limits<T>::quiet_NaN(), result);
       }
       return result;
    }
@@ -745,11 +732,11 @@ struct alignas(k_cAlignment) Avx2_32_Float final {
          bool bValidation,
          bool bWeight,
          bool bHessian,
-         bool bDisableApprox,
+         bool bUseApprox,
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
-      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bDisableApprox, cCompilerScores>(
+      RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
             pObjective, pData);
       return Error_None;
    }

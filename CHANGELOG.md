@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.8] - 2024-12-09
+### Fixed
+- resolved new scikit-learn requirement for having \_\_sklearn\_tags\_\_
+- changed position of ClassifierMixin and RegressorMixin inheritance to satisfy scikit-learn check
+- reliable handling of sparse arrays (previously only sparse matrices worked)
+
+## [v0.6.7] - 2024-11-27
+### Changed
+- minimum python version increased to 3.9
+- minimum numpy version increased to 1.25
+### Fixed
+- removed scipy dependency to resolve Issue #588
+
+## [v0.6.6] - 2024-11-20
+### Changed
+- added predict_with_uncertainty function by @degenfabian in PR #584
+- handle mono-classification in SHAP by @degenfabian in PR #582
+- improvements to tree building in C++
+### Fixed
+- issue that develop/debug options were not being honored in Windows when 1<n_jobs in joblib
+- fix several bugs in C++ from negative hessians or negative gain values caused by floating point noise
+
+## [v0.6.5] - 2024-10-23
+### Changed
+- default EBM parameters changed to improve model performance
+- switch to using exact versions of exp/log instead of the previously used approximate versions
+### Fixed
+- fix issue where very large feature values fail in the UI PR #581 by @degenfabian
+
 ## [v0.6.4] - 2024-09-28
 ### Added
 - support for regularization parameters reg_alpha, and reg_lambda in EBMs

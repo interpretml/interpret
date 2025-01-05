@@ -12,8 +12,6 @@
     <ClCompile Include="PartitionRandomBoosting.cpp" />
     <ClCompile Include="debug_ebm.cpp" />
     <ClCompile Include="Term.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalBoosting.cpp" />
-    <ClCompile Include="PartitionTwoDimensionalInteraction.cpp" />
     <ClCompile Include="GenerateTermUpdate.cpp" />
     <ClCompile Include="PartitionOneDimensionalBoosting.cpp" />
     <ClCompile Include="InitializeGradientsAndHessians.cpp" />
@@ -26,7 +24,7 @@
     <ClCompile Include="Discretize.cpp" />
     <ClCompile Include="InteractionCore.cpp" />
     <ClCompile Include="RandomDeterministic.cpp" />
-    <ClCompile Include="InnerBag.cpp" />
+    <ClCompile Include="SubsetInnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
     <ClCompile Include="special\linux_wrap_functions.cpp">
       <Filter>special</Filter>
@@ -49,6 +47,9 @@
     <ClCompile Include="compute_accessors.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="Purify.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
+    <ClCompile Include="DataSetInnerBag.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
@@ -61,7 +62,6 @@
     <ClInclude Include="DataSetBoosting.hpp" />
     <ClInclude Include="ebm_internal.hpp" />
     <ClInclude Include="RandomDeterministic.hpp" />
-    <ClInclude Include="InnerBag.hpp" />
     <ClInclude Include="Tensor.hpp" />
     <ClInclude Include="TensorTotalsSum.hpp" />
     <ClInclude Include="TreeNode.hpp" />
@@ -100,6 +100,9 @@
     <ClInclude Include="ebm_stats.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="TermInnerBag.hpp" />
+    <ClInclude Include="TreeNodeMulti.hpp" />
+    <ClInclude Include="SubsetInnerBag.hpp" />
+    <ClInclude Include="DataSetInnerBag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />

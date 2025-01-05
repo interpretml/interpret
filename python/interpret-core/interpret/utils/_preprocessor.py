@@ -5,6 +5,8 @@ import logging
 import math
 from itertools import count, groupby, repeat
 from warnings import warn
+from typing import Optional
+from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.base import (
@@ -44,16 +46,16 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
         processing = binning
 
     if processing == "quantile":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 3)
     elif processing == "rounded_quantile":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 3)
     elif processing == "uniform":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_uniform(X_col, max_bins - 3)
     elif processing == "winsorized":
-        # one bin for missing, one bin for unknown, and # of cuts is one less again
+        # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_winsorized(X_col, max_bins - 3)
     elif isinstance(processing, np.ndarray):
         cuts = processing.astype(dtype=np.float64, copy=False)
@@ -67,7 +69,53 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     return cuts
 
 
-class EBMPreprocessor(BaseEstimator, TransformerMixin):
+@dataclass
+class PreprocessorInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = True
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class PreprocessorTargetTags:
+    required: bool = False
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class PreprocessorTransformerTags:
+    preserves_dtype: list[str] = field(default_factory=lambda: ["float64"])
+
+
+@dataclass
+class PreprocessorTags:
+    estimator_type: Optional[str] = "transformer"
+    target_tags: PreprocessorTargetTags = field(default_factory=PreprocessorTargetTags)
+    transformer_tags: PreprocessorTransformerTags = field(
+        default_factory=PreprocessorTransformerTags
+    )
+    classifier_tags: None = None
+    regressor_tags: None = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: PreprocessorInputTags = field(default_factory=PreprocessorInputTags)
+
+
+class EBMPreprocessor(TransformerMixin, BaseEstimator):
     """Transformer that preprocesses data to be ready before EBM."""
 
     def __init__(
@@ -236,7 +284,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
             max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
             if max_bins < 3:
-                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unknown, and one or more bins for the non-missing values."
+                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
                 raise ValueError(msg)
 
             if not X_col.flags.c_contiguous:
@@ -372,9 +420,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
                     keep_bins, old_feature_bin_weights = private_categorical_binning(
                         X_col, sample_weight, noise_scale, max_bins - 1, rng
                     )
-                    unknown_weight = 0
+                    unseen_weight = 0
                     if keep_bins[-1] == "DPOther":
-                        unknown_weight = old_feature_bin_weights[-1]
+                        unseen_weight = old_feature_bin_weights[-1]
                         keep_bins = keep_bins[:-1]
                         old_feature_bin_weights = old_feature_bin_weights[:-1]
 
@@ -383,7 +431,7 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
 
                     feature_bin_weights = np.empty(len(keep_bins) + 2, np.float64)
                     feature_bin_weights[0] = 0
-                    feature_bin_weights[-1] = unknown_weight
+                    feature_bin_weights[-1] = unseen_weight
 
                     categories = list(map(tuple, map(reversed, categories.items())))
                     categories.sort()  # groupby requires sorted data
@@ -532,6 +580,9 @@ class EBMPreprocessor(BaseEstimator, TransformerMixin):
         X, _ = preclean_X(X, self.feature_names, self.feature_types, n_samples)
         return self.fit(X, y, sample_weight).transform(X)
 
+    def __sklearn_tags__(self):
+        return PreprocessorTags()
+
 
 def construct_bins(
     X,
@@ -550,6 +601,7 @@ def construct_bins(
     privacy_bounds=None,
 ):
     is_mains = True
+
     for max_bins in max_bins_leveled:
         preprocessor = EBMPreprocessor(
             feature_names_given,
@@ -566,7 +618,6 @@ def construct_bins(
         )
 
         seed = increment_seed(seed)
-
         preprocessor.fit(X, y, sample_weight)
         if is_mains:
             is_mains = False
@@ -582,6 +633,7 @@ def construct_bins(
             missing_val_counts = preprocessor.missing_val_counts_
             unique_val_counts = preprocessor.unique_val_counts_
             noise_scale = preprocessor.noise_scale_
+
         else:
             if feature_names_in != preprocessor.feature_names_in_:
                 msg = "Mismatched feature_names"

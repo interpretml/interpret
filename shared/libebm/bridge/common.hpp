@@ -107,6 +107,15 @@ template<typename T> GPU_BOTH inline static const T* IndexByte(const T* const p,
    return reinterpret_cast<const T*>(reinterpret_cast<const char*>(p) + iByte);
 }
 
+template<typename T> GPU_BOTH inline static T* IndexByte(T* const p, const ptrdiff_t iByte) noexcept {
+   EBM_ASSERT(nullptr != p);
+   return reinterpret_cast<T*>(reinterpret_cast<char*>(p) + iByte);
+}
+template<typename T> GPU_BOTH inline static const T* IndexByte(const T* const p, const ptrdiff_t iByte) noexcept {
+   EBM_ASSERT(nullptr != p);
+   return reinterpret_cast<const T*>(reinterpret_cast<const char*>(p) + iByte);
+}
+
 template<typename T> GPU_BOTH inline static T* NegativeIndexByte(T* const p, const size_t iByte) noexcept {
    EBM_ASSERT(nullptr != p);
    return reinterpret_cast<T*>(reinterpret_cast<char*>(p) - iByte);
@@ -121,6 +130,13 @@ template<typename T> inline static size_t CountBytes(const T* const pHigh, const
    EBM_ASSERT(nullptr != pLow);
    EBM_ASSERT(pLow <= pHigh);
    return reinterpret_cast<const char*>(pHigh) - reinterpret_cast<const char*>(pLow);
+}
+
+template<typename T>
+inline static size_t CountItems(const T* const pHigh, const T* const pLow, const size_t cbPerItem) noexcept {
+   const size_t cBytes = CountBytes(pHigh, pLow);
+   EBM_ASSERT(0 == cBytes % cbPerItem);
+   return cBytes / cbPerItem;
 }
 
 template<typename T> inline constexpr static T EbmIsNaN(T v) noexcept { return v != v; }

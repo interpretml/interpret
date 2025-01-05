@@ -3,6 +3,7 @@
 # Author: Paul Koch <code@koch.ninja>
 
 import numpy as np
+from ._misc import safe_isinstance
 
 try:
     import pandas as pd
@@ -10,13 +11,6 @@ try:
     _pandas_installed = True
 except ImportError:
     _pandas_installed = False
-
-try:
-    import scipy as sp
-
-    _scipy_installed = True
-except ImportError:
-    _scipy_installed = False
 
 
 def make_synthetic(
@@ -296,14 +290,28 @@ def _make_synthetic_features(
             features[i] = col
 
         X = pd.concat(features, axis=1)
-    elif output_type == "scipy":
-        if not _scipy_installed:
-            msg = "scipy was requested, but is not installed."
-            raise ValueError(msg)
+    elif output_type == "csc_matrix":
+        try:
+            from scipy.sparse import csc_matrix
+        except ImportError:
+            raise ImportError(
+                'Please install the scipy package using `pip install scipy` in order to call make_synthetic with output_type set to "scipy"!'
+            )
         X = np.array(features, np.float64)
         if mask is not None:
             X[mask] = np.nan
-        X = sp.sparse.csc_matrix(X.T)
+        X = csc_matrix(X.T)
+    elif output_type == "csc_array":
+        try:
+            from scipy.sparse import csc_array
+        except ImportError:
+            raise ImportError(
+                'Please install the scipy package using `pip install scipy` in order to call make_synthetic with output_type set to "scipy"!'
+            )
+        X = np.array(features, np.float64)
+        if mask is not None:
+            X[mask] = np.nan
+        X = csc_array(X.T)
     else:
         msg = f"unknown output_type={output_type}"
         raise ValueError(msg)
@@ -388,8 +396,10 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
     for i in range(X.shape[1]):
         if _pandas_installed and isinstance(X, pd.DataFrame):
             col = X.iloc[:, i]
-        elif _scipy_installed and isinstance(X, sp.sparse.spmatrix):
-            col = X[:, i].toarray().flatten()
+        elif safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
+            X, "scipy.sparse.sparray"
+        ):
+            col = X[:, [i]].toarray().ravel()
         else:
             col = X[:, i]
 

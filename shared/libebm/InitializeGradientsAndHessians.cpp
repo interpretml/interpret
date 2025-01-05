@@ -28,6 +28,7 @@ namespace DEFINED_ZONE_NAME {
 WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* const pDataSetShared,
+      const double intercept,
       const BagEbm direction,
       const BagEbm* const aBag,
       const double* const aInitScores,
@@ -54,13 +55,11 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
       EBM_ASSERT(nullptr != aBag ||
             !isLoopValidation); // if pSampleReplication is nullptr then we have no validation samples
 
-      EBM_ASSERT(1 <= pDataSet->GetCountSamples());
       EBM_ASSERT(1 <= pDataSet->GetCountSubsets());
       DataSubsetBoosting* pSubset = pDataSet->GetSubsets();
       EBM_ASSERT(nullptr != pSubset);
       const DataSubsetBoosting* const pSubsetsEnd = pSubset + pDataSet->GetCountSubsets();
 
-      double initScore = 0;
       BagEbm replication = 0;
       double gradient;
       do {
@@ -91,9 +90,10 @@ extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* cons
                const FloatShared data = *pTargetData;
                ++pTargetData;
 
+               double initScore = intercept;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = pInitScore[-1];
+                  initScore += pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which
@@ -137,6 +137,7 @@ WARNING_PUSH
 WARNING_DISABLE_UNINITIALIZED_LOCAL_VARIABLE
 extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* const pDataSetShared,
       const size_t cWeights,
+      const double intercept,
       const BagEbm* const aBag,
       const double* const aInitScores,
       DataSetInteraction* const pDataSet) {
@@ -169,7 +170,6 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
       const BagEbm* pSampleReplication = aBag;
       const double* pInitScore = aInitScores;
 
-      double initScore = 0;
       BagEbm replication = 0;
       double gradient;
       do {
@@ -201,9 +201,10 @@ extern void InitializeRmseGradientsAndHessiansInteraction(const unsigned char* c
                pTargetData += cSharedAdvances;
                const FloatShared data = pTargetData[-1];
 
+               double initScore = intercept;
                if(nullptr != pInitScore) {
                   pInitScore += cInitAdvances;
-                  initScore = pInitScore[-1];
+                  initScore += pInitScore[-1];
                }
 
                // TODO : our caller should handle NaN *pTargetData values, which means that the target is missing, which

@@ -329,6 +329,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/CutWinsorized.cpp" -o "$tmp_path/CutWinsorized.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/dataset_shared.cpp" -o "$tmp_path/dataset_shared.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetBoosting.cpp" -o "$tmp_path/DataSetBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInnerBag.cpp" -o "$tmp_path/DataSetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInteraction.cpp" -o "$tmp_path/DataSetInteraction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DetermineLinkFunction.cpp" -o "$tmp_path/DetermineLinkFunction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/debug_ebm.cpp" -o "$tmp_path/debug_ebm.o"
@@ -341,13 +342,13 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/interpretable_numerics.cpp" -o "$tmp_path/interpretable_numerics.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionOneDimensionalBoosting.cpp" -o "$tmp_path/PartitionOneDimensionalBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionRandomBoosting.cpp" -o "$tmp_path/PartitionRandomBoosting.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalBoosting.cpp" -o "$tmp_path/PartitionTwoDimensionalBoosting.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalInteraction.cpp" -o "$tmp_path/PartitionTwoDimensionalInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalTree.cpp" -o "$tmp_path/PartitionMultiDimensionalTree.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalStraight.cpp" -o "$tmp_path/PartitionMultiDimensionalStraight.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Purify.cpp" -o "$tmp_path/Purify.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/RandomDeterministic.cpp" -o "$tmp_path/RandomDeterministic.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/random.cpp" -o "$tmp_path/random.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/sampling.cpp" -o "$tmp_path/sampling.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/SubsetInnerBag.cpp" -o "$tmp_path/SubsetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TermInnerBag.cpp" -o "$tmp_path/TermInnerBag.o"
@@ -367,6 +368,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/CutWinsorized.o" \
    "$tmp_path/dataset_shared.o" \
    "$tmp_path/DataSetBoosting.o" \
+   "$tmp_path/DataSetInnerBag.o" \
    "$tmp_path/DataSetInteraction.o" \
    "$tmp_path/DetermineLinkFunction.o" \
    "$tmp_path/debug_ebm.o" \
@@ -379,13 +381,13 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/interpretable_numerics.o" \
    "$tmp_path/PartitionOneDimensionalBoosting.o" \
    "$tmp_path/PartitionRandomBoosting.o" \
-   "$tmp_path/PartitionTwoDimensionalBoosting.o" \
-   "$tmp_path/PartitionTwoDimensionalInteraction.o" \
+   "$tmp_path/PartitionMultiDimensionalTree.o" \
+   "$tmp_path/PartitionMultiDimensionalStraight.o" \
    "$tmp_path/Purify.o" \
    "$tmp_path/RandomDeterministic.o" \
    "$tmp_path/random.o" \
    "$tmp_path/sampling.o" \
-   "$tmp_path/InnerBag.o" \
+   "$tmp_path/SubsetInnerBag.o" \
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
    "$tmp_path/TermInnerBag.o" \

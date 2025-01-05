@@ -13,7 +13,6 @@ import pandas as pd
 from powerlift.bench.experiment import Experiment
 from powerlift.bench.store import Store
 from powerlift.db import schema as db
-from powerlift.executors import LocalMachine
 from powerlift.executors.base import Executor
 
 
@@ -58,7 +57,7 @@ class Benchmark:
             os.path.dirname(os.path.abspath(__file__)), "..", "run", "__main__.py"
         )
         with open(script_file) as file:
-            script_contents = file.read()
+            script_contents = file.read().replace("\r\n", "\n")
 
         shell_install = None
         if hasattr(executor, "_shell_install"):
@@ -73,14 +72,15 @@ class Benchmark:
             pip_install = ""
 
         wheels = []
-        wheel_filepaths = executor._wheel_filepaths
-        if wheel_filepaths is not None:
-            for wheel_filepath in wheel_filepaths:
-                with open(wheel_filepath, "rb") as f:
-                    content = f.read()
-                name = pathlib.Path(wheel_filepath).name
-                wheel = db.Wheel(name=name, embedded=content)
-                wheels.append(wheel)
+        if hasattr(executor, "_wheel_filepaths"):
+            wheel_filepaths = executor._wheel_filepaths
+            if wheel_filepaths is not None:
+                for wheel_filepath in wheel_filepaths:
+                    with open(wheel_filepath, "rb") as f:
+                        content = f.read()
+                    name = pathlib.Path(wheel_filepath).name
+                    wheel = db.Wheel(name=name, embedded=content)
+                    wheels.append(wheel)
 
         trial_fn = inspect.getsource(trial_run_fn)
 
@@ -151,6 +151,8 @@ class Benchmark:
 
         # Run trials
         if executor is None:
+            from powerlift.executors import LocalMachine
+
             executor = LocalMachine(self._store)
         self._executors.add(executor)
         executor.submit(experiment_id, timeout=timeout)

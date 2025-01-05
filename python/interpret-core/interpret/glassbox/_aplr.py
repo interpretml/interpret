@@ -2,6 +2,8 @@
 # Distributed under the MIT software license
 from typing import Dict, List, Optional, Tuple
 from warnings import warn
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -21,6 +23,57 @@ FloatVector = np.ndarray
 FloatMatrix = np.ndarray
 IntVector = np.ndarray
 IntMatrix = np.ndarray
+
+
+@dataclass
+class APLRInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = False
+    categorical: bool = False
+    string: bool = False
+    dict: bool = False
+    positive_only: bool = False
+    allow_nan: bool = False
+    pairwise: bool = False
+
+
+@dataclass
+class APLRTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class APLRClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class APLRRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class APLRTags:
+    estimator_type: Optional[str] = None
+    target_tags: APLRTargetTags = field(default_factory=APLRTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[APLRClassifierTags] = None
+    regressor_tags: Optional[APLRRegressorTags] = None
+    array_api_support: bool = False
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: APLRInputTags = field(default_factory=APLRInputTags)
 
 
 class APLRRegressor(RegressorMixin, ExplainerMixin):
@@ -408,6 +461,12 @@ class APLRRegressor(RegressorMixin, ExplainerMixin):
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
+
+    def __sklearn_tags__(self):
+        tags = APLRTags()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = APLRRegressorTags()
+        return tags
 
 
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
@@ -815,6 +874,12 @@ class APLRClassifier(ClassifierMixin, ExplainerMixin):
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
+
+    def __sklearn_tags__(self):
+        tags = APLRTags()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = APLRClassifierTags()
+        return tags
 
 
 class APLRExplanation(FeatureValueExplanation):
