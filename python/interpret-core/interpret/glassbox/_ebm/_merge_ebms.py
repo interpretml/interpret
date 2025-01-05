@@ -340,8 +340,9 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
     new_bins = []
     for feature_idx in range(n_features):
         bin_types = {type(model.bins_[feature_idx][0]) for model in models}
+        is_categorical = len(bin_types) == 1 and next(iter(bin_types)) is dict
 
-        if len(bin_types) == 1 and next(iter(bin_types)) is dict:
+        if is_categorical:
             # categorical
             new_feature_type = None
             for model in models:
@@ -354,8 +355,7 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
                         new_feature_type = "ordinal"
             if new_feature_type is None:
                 new_feature_type = "nominal"
-        else:
-            # continuous
+        else:  # continuous
             if any(bin_type not in {dict, np.ndarray} for bin_type in bin_types):
                 msg = "Invalid bin type."
                 raise Exception(msg)
@@ -374,8 +374,7 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
                 old_mapping[model_idx][feature_idx].append(None)
                 old_bins[model_idx][feature_idx].append(bin_level)
 
-            if len(bin_types) == 1 and next(iter(bin_types)) is dict:
-                # categorical
+            if is_categorical:
                 merged_keys = sorted(
                     set(chain.from_iterable(bin.keys() for bin in model_bins))
                 )
@@ -388,9 +387,7 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
                 # and if we can't get a unique guaranteed sorted order that way then examine all the
                 # different known sort order and figure out if any of the possible orderings match
                 merged_bins = dict(zip(merged_keys, count(1)))
-            else:
-                # continuous
-
+            else:  # continuous
                 if len(bin_types) != 1:
                     # We have both categorical and continuous.  We can't convert continuous
                     # to categorical since we lack the original labels, but we can convert
