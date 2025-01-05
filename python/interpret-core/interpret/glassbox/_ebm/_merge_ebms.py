@@ -4,6 +4,7 @@
 import logging
 import warnings
 from collections.abc import Sequence
+from functools import reduce
 from itertools import chain, count
 from math import isnan, prod
 from typing import List, Type
@@ -417,9 +418,7 @@ def _get_new_bins(models: List[EBMModel], *, old_mapping, old_bins, old_bounds):
                             old_bins[model_idx][feature_idx][level_idx] = converted_bins
                             old_mapping[model_idx][feature_idx][level_idx] = mapping
 
-                merged_bins = np.array(
-                    sorted(set(chain.from_iterable(model_bins))), np.float64
-                )
+                merged_bins = reduce(np.union1d, model_bins)
             new_leveled_bins.append(merged_bins)
         new_bins.append(new_leveled_bins)
     return new_bins, new_feature_types
