@@ -125,7 +125,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    EBM_ASSERT(nullptr != apBins);
    EBM_ASSERT(nullptr != apBinsEnd);
    EBM_ASSERT(apBins < apBinsEnd); // if zero bins then we should have handled elsewhere
-   EBM_ASSERT(1 <= cSlices);
+   EBM_ASSERT(2 <= cSlices); // if there were no cuts then we wouldn't satisfy the minimum gain
    EBM_ASSERT(2 <= cBins);
    EBM_ASSERT(cSlices <= cBins);
    EBM_ASSERT(!bNominal || cSlices == cBins);
@@ -133,8 +133,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    ErrorEbm error;
 
 #ifndef NDEBUG
-   auto* const pRootTreeNodeDebug = pBoosterShell->GetTreeNodesTemp<bHessian>();
-   size_t cSamplesExpectedDebug = static_cast<size_t>(pRootTreeNodeDebug->GetBin()->GetCountSamples());
    size_t cSamplesTotalDebug = 0;
 #endif // NDEBUG
 
@@ -165,16 +163,10 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pMissingBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pDregsBin = nullptr;
-   const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur = nullptr;
-   if(bNominal) {
-      UIntSplit iSplit = 1;
-      while(cSlices != iSplit) {
-         pSplit[iSplit - 1] = iSplit;
-         ++iSplit;
-      }
-      ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
-   } else {
+   const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur;
+   if(!bNominal) {
       pUpdateScore = aUpdateScore;
+      ppBinCur = nullptr;
 
       if(bMissing) {
          EBM_ASSERT(2 <= cSlices); // no cuts if there was only missing bin
@@ -187,9 +179,16 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          *pSplit = 1;
          ++pSplit;
 
-         // pUpdateScore is overwritten later if bNominal
          pUpdateScore += cScores;
       }
+   } else {
+      UIntSplit iSplit = 1;
+      EBM_ASSERT(2 <= cSlices); // no cuts if there was only missing bin
+      do {
+         pSplit[iSplit - 1] = iSplit;
+         ++iSplit;
+      } while(cSlices != iSplit);
+      ppBinCur = reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
    }
 
    const size_t cBytesPerBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
@@ -256,12 +255,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          }
 
          EBM_ASSERT(apBins <= ppBinLast);
-         EBM_ASSERT(ppBinLast < apBins +
-                     (cBins -
-                           (nullptr != pMissingValueTreeNode ||
-                                             bMissing && !bNominal && (TermBoostFlags_MissingSeparate & flags) ?
-                                       size_t{1} :
-                                       size_t{0})));
+         EBM_ASSERT(ppBinLast < apBinsEnd);
 
 #ifndef NDEBUG
          cSamplesTotalDebug += static_cast<size_t>(pTreeNode->GetBin()->GetCountSamples());
@@ -291,6 +285,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                } else {
                   ++iEdge; // missing is at index 0 in the model, so we are offset by one
                   if(TermBoostFlags_MissingHigh & flags) {
+                     // This might not be the missing bin, but if we keep assigning it, the last time will be missing.
                      pMissingBin = pTreeNode->GetBin();
                      EBM_ASSERT(iEdge <= cBins + 1);
                      if(bDone) {
@@ -386,7 +381,9 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
 done:;
 
 #ifndef NDEBUG
-   EBM_ASSERT(cSamplesTotalDebug == cSamplesExpectedDebug);
+   const size_t cSamplesDebug =
+         static_cast<size_t>(pBoosterShell->GetTreeNodesTemp<bHessian>()->GetBin()->GetCountSamples());
+   EBM_ASSERT(cSamplesTotalDebug == cSamplesDebug);
    EBM_ASSERT(bNominal || pUpdateScore == aUpdateScore + cScores * cSlices);
    EBM_ASSERT(bNominal || pSplit == cSlices - 1 + pInnerTermUpdate->GetSplitPointer(iDimension));
 
@@ -401,14 +398,15 @@ done:;
 
    if(nullptr != pDregsBin) {
       EBM_ASSERT(bNominal);
+      EBM_ASSERT(nullptr != pDregsTreeNode);
 
       std::sort(apBins, apBinsEnd);
 
       const auto* const* ppBinSweep =
             reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>* const*>(apBins);
 
-      // for nominal, we would only skip the 0th missing bin if missing was assigned based on gain
-      size_t iBin = nullptr == pMissingValueTreeNode ? size_t{0} : size_t{1};
+      EBM_ASSERT(nullptr == pMissingValueTreeNode);
+      size_t iBin = size_t{0};
       do {
          const auto* const pBin = IndexBin(aBins, cBytesPerBin * iBin);
          if(apBinsEnd != ppBinSweep && *ppBinSweep == pBin) {
@@ -436,6 +434,8 @@ done:;
          }
          ++iBin;
       } while(cBins != iBin);
+   } else {
+      EBM_ASSERT(nullptr == pDregsTreeNode);
    }
 
    if(nullptr != pMissingBin) {
@@ -459,6 +459,7 @@ done:;
       } while(pGradientPairEnd != pGradientPair);
    } else {
       EBM_ASSERT(!bMissing || bNominal);
+      EBM_ASSERT(nullptr == pMissingValueTreeNode);
    }
 
    LOG_0(Trace_Verbose, "Exited Flatten");
