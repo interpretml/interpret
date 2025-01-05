@@ -230,6 +230,7 @@ def test_merge_ebms_multiclass():
     smoke_test_explanations(global_exp, local_exp, 6000)
 
 
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
 def test_unfitted():
     """To merge EBMs, all have to be fitted."""
     X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
@@ -247,6 +248,7 @@ def test_unfitted():
         merge_ebms([ebm1, ebm2])
 
 
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
 def test_merge_monotone():
     """Check merging of features with `monotone_constraints`."""
     X, y, names, _ = make_synthetic(classes=None, missing=True, output_type="str")
@@ -271,6 +273,7 @@ def test_merge_monotone():
     assert merged_ebm.monotone_constraints is None
 
 
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
 def test_merge_exclude():
     """Check merging of features with `exclude`."""
     X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
