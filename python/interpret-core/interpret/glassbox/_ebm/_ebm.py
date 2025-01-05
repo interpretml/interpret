@@ -2792,7 +2792,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    gain_scale : float, default=1.0
+    gain_scale : float, default=5.0
         Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
         algorithm focus more on the nominal categoricals.
     min_cat_samples : int, default=10
@@ -2974,7 +2974,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        gain_scale: Optional[float] = 1.0,
+        gain_scale: Optional[float] = 5.0,
         min_cat_samples: Optional[int] = 10,
         cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
@@ -3179,7 +3179,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         L2 regularization.
     max_delta_step : float, default=0.0
         Used to limit the max output of tree leaves. <=0.0 means no constraint.
-    gain_scale : float, default=1.0
+    gain_scale : float, default=5.0
         Scale factor to apply to nominal categoricals. A scale factor above 1.0 will cause the
         algorithm focus more on the nominal categoricals.
     min_cat_samples : int, default=10
@@ -3361,7 +3361,7 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         reg_alpha: Optional[float] = 0.0,
         reg_lambda: Optional[float] = 0.0,
         max_delta_step: Optional[float] = 0.0,
-        gain_scale: Optional[float] = 1.0,
+        gain_scale: Optional[float] = 5.0,
         min_cat_samples: Optional[int] = 10,
         cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
