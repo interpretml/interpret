@@ -6,7 +6,11 @@ from functools import partial
 
 import numpy as np
 import pytest
-from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
+from interpret.glassbox import (
+    ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
+    merge_ebms,
+)
 from interpret.utils import make_synthetic
 from sklearn.model_selection import train_test_split
 
@@ -243,22 +247,24 @@ def test_unfitted():
         merge_ebms([ebm1, ebm2])
 
 
-@pytest.mark.skip(reason="Extremely slow")
 def test_merge_monotone():
     """Check merging of features with `monotone_constraints`."""
-    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    X, y, names, _ = make_synthetic(classes=None, missing=True, output_type="str")
     TestEBM = partial(
-        ExplainableBoostingClassifier,
+        ExplainableBoostingRegressor,
         feature_names=names,
         random_state=42,
         **_fast_kwds,
     )
-    ebm1 = TestEBM(monotone_constraints=[+0, +0, +0, +1, +1, -1, 0, 0, 0, 0])
+    # feature 3, 6 are truly monotonous increasing, 7 has no impact
+    ebm1 = TestEBM(monotone_constraints=[0, 0, 0, +1, 0, 0, +1, +1, 0, 0])
     ebm1.fit(X, y)
-    ebm2 = TestEBM(monotone_constraints=[+0, +1, -1, +1, -1, -1, 0, 0, 0, 0])
+    ebm2 = TestEBM(monotone_constraints=[0, 0, 0, +1, 0, 0, +0, -1, 0, 0])
     ebm2.fit(X, y)
     merged_ebm = merge_ebms([ebm1, ebm2])
-    assert merged_ebm.monotone_constraints == [+0, +0, +0, +1, 0, -1, 0, 0, 0, 0]
+    assert merged_ebm.monotone_constraints == [0, 0, 0, +1, 0, 0, +0, +0, 0, 0]
+    merged_ebm = merge_ebms([ebm2, ebm2])
+    assert merged_ebm.monotone_constraints == [0, 0, 0, +1, 0, 0, +0, -1, 0, 0]
     ebm3 = TestEBM(monotone_constraints=None)
     ebm3.fit(X, y)
     merged_ebm = merge_ebms([ebm1, ebm2, ebm3])
