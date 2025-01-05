@@ -823,20 +823,26 @@ ErrorEbm BoosterCore::Create(void* const rng,
          }
 
          const size_t cBytesPerMainBin = GetBinSize<FloatMain, UIntMain>(true, true, bHessian, cScores);
-
-         if(IsAddError(cBytesPerMainBin, sizeof(void*))) {
-            LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesPerMainBin, sizeof(void*))");
-            return Error_OutOfMemory;
-         }
-         const size_t cBytesMainBinPlusPointer = cBytesPerMainBin + sizeof(void*);
-         if(IsMultiplyError(cBytesMainBinPlusPointer, cMainBinsMax)) {
+         if(IsMultiplyError(cBytesPerMainBin, cMainBinsMax)) {
             LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsMultiplyError(cBytesPerMainBin, cMainBinsMax)");
             return Error_OutOfMemory;
          }
-         // we also allocate enough space to create an additional array of pointers
-         pBoosterCore->m_cBytesMainBins = cBytesMainBinPlusPointer * cMainBinsMax;
+         size_t cBytesMainBins = cBytesPerMainBin * cMainBinsMax;
 
          if(0 != cSingleDimensionBinsMax) {
+            if(IsAddError(cBytesPerMainBin, sizeof(void*))) {
+               LOG_0(Trace_Warning, "WARNING BoosterCore::Create IsAddError(cBytesPerMainBin, sizeof(void*))");
+               return Error_OutOfMemory;
+            }
+            const size_t cBytesMainBinPlusPointer = cBytesPerMainBin + sizeof(void*);
+            if(IsMultiplyError(cBytesMainBinPlusPointer, cSingleDimensionBinsMax)) {
+               LOG_0(Trace_Warning,
+                     "WARNING BoosterCore::Create IsMultiplyError(cBytesMainBinPlusPointer, cSingleDimensionBinsMax)");
+               return Error_OutOfMemory;
+            }
+            // we also allocate enough space to create an additional array of pointers
+            cBytesMainBins = EbmMax(cBytesMainBins, cBytesMainBinPlusPointer * cSingleDimensionBinsMax);
+
             if(IsOverflowTreeNodeSize(bHessian, cScores) || IsOverflowSplitPositionSize(bHessian, cScores)) {
                LOG_0(Trace_Warning, "WARNING BoosterCore::Create bin tracking size overflow");
                return Error_OutOfMemory;
@@ -881,6 +887,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
             EBM_ASSERT(0 == pBoosterCore->m_cBytesSplitPositions);
             EBM_ASSERT(0 == pBoosterCore->m_cBytesTreeNodes);
          }
+         pBoosterCore->m_cBytesMainBins = cBytesMainBins;
       }
       if(0 != cTerms) {
          error = InitializeTensors(cTerms, pBoosterCore->m_apTerms, cScores, &pBoosterCore->m_apCurrentTermTensors);

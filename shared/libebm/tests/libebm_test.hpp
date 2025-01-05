@@ -297,7 +297,7 @@ static constexpr double k_maxDeltaStepDefault = 0.0;
 static constexpr IntEbm k_minCategorySamplesDefault = 0;
 static constexpr double k_categoricalSmoothingDefault = 10.0;
 static constexpr IntEbm k_maxCategoricalThresholdDefault = IntEbm{32};
-static constexpr double k_categoricalInclusionPercentDefault = 0.75;
+static constexpr double k_categoricalInclusionPercentDefault = 1.0;
 
 #ifdef EXPAND_BINARY_LOGITS
 static constexpr CreateBoosterFlags k_testCreateBoosterFlags_Default = CreateBoosterFlags_BinaryAsMulticlass;

@@ -112,8 +112,8 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const size_t iDimension,
-      const Bin<FloatMain, UIntMain, true, true, bHessian>** const apBins,
-      const Bin<FloatMain, UIntMain, true, true, bHessian>** const apBinsEnd,
+      Bin<FloatMain, UIntMain, true, true, bHessian>** const apBins,
+      Bin<FloatMain, UIntMain, true, true, bHessian>** const apBinsEnd,
       const TreeNode<bHessian>* pMissingValueTreeNode,
       const TreeNode<bHessian>* pDregsTreeNode,
       const size_t cSlices,
@@ -276,7 +276,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          }
          EBM_ASSERT(!bNominal);
 
-         iEdge = ppBinLast - apBins + 1;
+         iEdge = reinterpret_cast<const void* const*>(ppBinLast) - reinterpret_cast<const void* const*>(apBins) + 1;
 
          while(true) { // not a real loop
             if(bMissing) {
@@ -484,7 +484,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
       const FloatCalc regLambda,
       const FloatCalc deltaStepMax,
       const MonotoneDirection monotoneDirection,
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* const pMissingBin,
       bool* pbMissingIsolated,
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppMissingValueTreeNode,
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>** const ppDregsTreeNode,
@@ -503,7 +502,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          "regLambda=%le, "
          "deltaStepMax=%le, "
          "monotoneDirection=%" MonotoneDirectionPrintf ", "
-         "pMissingBin=%p, "
          "pbMissingIsolated=%p, "
          "ppMissingValueTreeNode=%p, "
          "ppDregsTreeNode=%p, "
@@ -519,12 +517,15 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
          static_cast<double>(regLambda),
          static_cast<double>(deltaStepMax),
          monotoneDirection,
-         static_cast<const void*>(pMissingBin),
          static_cast<const void*>(pbMissingIsolated),
          static_cast<const void*>(ppMissingValueTreeNode),
          static_cast<const void*>(ppDregsTreeNode),
          static_cast<const void*>(pDregSumBin));
 
+   EBM_ASSERT(nullptr != pBoosterShell);
+   EBM_ASSERT(nullptr != pTreeNode);
+   EBM_ASSERT(nullptr != pTreeNodeScratchSpace);
+   EBM_ASSERT(nullptr != pbMissingIsolated);
    EBM_ASSERT(nullptr != ppMissingValueTreeNode);
    EBM_ASSERT(nullptr != ppDregsTreeNode);
    EBM_ASSERT(nullptr == *ppDregsTreeNode && nullptr == pDregSumBin ||
@@ -533,18 +534,18 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
    const auto* const* ppBinCur = pTreeNode->BEFORE_GetBinFirst();
    const auto* const* ppBinLast = pTreeNode->BEFORE_GetBinLast();
 
+   const auto* const aBins =
+         pBoosterShell->GetBoostingMainBins()
+               ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
+
    if(ppBinCur == ppBinLast) {
       // There is just one bin and therefore no splits
       pTreeNode->AFTER_RejectSplit();
-      if(pMissingBin == *ppBinCur) {
+      if(aBins == *ppBinCur) {
          *pbMissingIsolated = true;
       }
       return 1;
    }
-
-   const auto* const aBins =
-         pBoosterShell->GetBoostingMainBins()
-               ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
 
    BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    const size_t cScores = GET_COUNT_SCORES(cCompilerScores, pBoosterCore->GetCountScores());
@@ -695,6 +696,7 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             const FloatMain gradIncOrig = aIncGradHess[iScore].m_sumGradients + aBinGradHess[iScore].m_sumGradients;
             aIncGradHess[iScore].m_sumGradients = gradIncOrig;
             const FloatCalc gradDec = static_cast<FloatCalc>(aParentGradHess[iScore].m_sumGradients - gradIncOrig);
+            const FloatCalc gradInc = static_cast<FloatCalc>(gradIncOrig);
 
             if(bHessian) {
                const FloatMain newHessIncOrig = aIncGradHess[iScore].GetHess() + aBinGradHess[iScore].GetHess();
@@ -717,8 +719,6 @@ static int FindBestSplitGain(RandomDeterministic* const pRng,
             if(UNLIKELY(hessInc < hessianMin)) {
                bLegal = false;
             }
-
-            const FloatCalc gradInc = static_cast<FloatCalc>(gradIncOrig);
 
             if(MONOTONE_NONE != monotoneAdjusted) {
                const FloatCalc negUpdateDec =
@@ -913,14 +913,14 @@ template<bool bHessian, size_t cCompilerScores> class CompareBin final {
       m_categoricalSmoothing = categoricalSmoothing;
    }
 
-   INLINE_ALWAYS bool operator()(
-         const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& lhs,
-         const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& rhs) const noexcept {
+   INLINE_ALWAYS bool operator()(Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& lhs,
+         Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>*& rhs) const noexcept {
       // NEVER check for exact equality (as a precondition is ok), since then we'd violate the weak ordering rule
       // https://medium.com/@shiansu/strict-weak-ordering-and-the-c-stl-f7dcfa4d4e07
 
       EBM_ASSERT(!std::isnan(m_categoricalSmoothing));
 
+      // this only works for bins with 1 score since with multiple what would the sort index be?
       FloatCalc val1 = static_cast<FloatCalc>(lhs->GetGradientPairs()[0].m_sumGradients);
       FloatCalc val2 = static_cast<FloatCalc>(rhs->GetGradientPairs()[0].m_sumGradients);
       if(!std::isinf(m_categoricalSmoothing)) {
@@ -939,6 +939,7 @@ template<bool bHessian, size_t cCompilerScores> class CompareBin final {
       }
 
       if(val1 == val2) {
+         // As the tie breaker to make the sort values unique, use the pointer itself.
          return lhs < rhs;
       }
       return val1 < val2;
@@ -971,7 +972,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          size_t cSamplesTotal,
          FloatMain weightTotal,
          double* const pTotalGain) {
+      EBM_ASSERT(nullptr != pBoosterShell);
       EBM_ASSERT(2 <= cBins); // filter these out at the start where we can handle this case easily
+      EBM_ASSERT(1 <= cSamplesLeafMin);
+      EBM_ASSERT(std::numeric_limits<FloatMain>::min() <= hessianMin);
+      EBM_ASSERT(1 <= cCategorySamplesMin);
+      EBM_ASSERT(0 <= categoricalSmoothing);
+      EBM_ASSERT(2 <= categoricalThresholdMax);
+      EBM_ASSERT(0.0 <= categoricalInclusionPercent);
+      EBM_ASSERT(categoricalInclusionPercent <= 1.0);
       EBM_ASSERT(1 <= cSplitsMax); // filter these out at the start where we can handle this case easily
       EBM_ASSERT(nullptr != pTotalGain);
       EBM_ASSERT(!bNominal || MONOTONE_NONE == monotoneDirection);
@@ -990,7 +999,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
       auto* const pRootTreeNode = pBoosterShell->GetTreeNodesTemp<bHessian, GetArrayScores(cCompilerScores)>();
       pRootTreeNode->Init();
 
-      // we can only sort if there's a single sortable index, so 1 score value
       bNominal = bNominal && (0 == (TermBoostFlags_DisableCategorical & flags));
 
       auto* const aBins =
@@ -998,49 +1006,42 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                   ->Specialize<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>();
       auto* pBinsEnd = IndexBin(aBins, cBytesPerBin * cBins);
 
-      const auto** const apBins =
-            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
+      auto** const apBins =
+            reinterpret_cast<Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>**>(
                   pBinsEnd);
 
-      const auto** ppBin = apBins;
+      auto** ppBin = apBins;
       auto* pBin = aBins;
 
-      const Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pMissingBin = nullptr;
+      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
       bool bMissingIsolated = false;
 
-      const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pMissingValueTreeNode = nullptr;
+      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pDregSumBin = nullptr;
       const TreeNode<bHessian, GetArrayScores(cCompilerScores)>* pDregsTreeNode = nullptr;
 
-      Bin<FloatMain, UIntMain, true, true, bHessian, GetArrayScores(cCompilerScores)>* pDregSumBin = nullptr;
-
       const auto* aSumBins = aBins;
-      if(bMissing) {
-         if(!bNominal) {
-            // For nominal, missing is just a category.
+      if(bMissing && !bNominal) {
+         // For nominal, missing is just a category.
 
-            if(TermBoostFlags_MissingLow & flags) {
-               pMissingBin = pBin;
-            } else if(TermBoostFlags_MissingHigh & flags) {
-               pMissingBin = pBin;
-               pBin = IndexBin(pBin, cBytesPerBin);
-            } else if(TermBoostFlags_MissingSeparate & flags) {
-               cSamplesTotal -= static_cast<size_t>(aSumBins->GetCountSamples());
-               weightTotal -= aSumBins->GetWeight();
-               aSumBins = IndexBin(aSumBins, cBytesPerBin);
+         if(TermBoostFlags_MissingLow & flags) {
+         } else if(TermBoostFlags_MissingHigh & flags) {
+            pBin = IndexBin(pBin, cBytesPerBin);
+         } else if(TermBoostFlags_MissingSeparate & flags) {
+            cSamplesTotal -= static_cast<size_t>(aBins->GetCountSamples());
+            weightTotal -= aBins->GetWeight();
+            aSumBins = IndexBin(aBins, cBytesPerBin);
 
-               pBin = IndexBin(pBin, cBytesPerBin);
+            pBin = IndexBin(pBin, cBytesPerBin);
+         } else {
+            if(2 == cBins) {
+               // as a special case, if there are only 2 bins, then treat it like TermBoostFlags_MissingLow
+               // because merging the missing bin into the only non-missing bin is not going to be useful.
+               flags |= TermBoostFlags_MissingLow;
             } else {
-               if(2 == cBins) {
-                  // as a special case, if there are only 2 bins, then treat it like TermBoostFlags_MissingLow
-                  // because merging the missing bin into the only category will generate no gain
-                  flags |= TermBoostFlags_MissingLow;
-                  pMissingBin = pBin;
-               } else {
-                  pMissingValueTreeNode = pRootTreeNode;
-                  // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
-                  // region.
-                  pBin = IndexBin(pBin, cBytesPerBin);
-               }
+               pMissingValueTreeNode = pRootTreeNode;
+               // Skip the missing bin in the pointer to pointer mapping since it will not be part of the continuous
+               // region.
+               pBin = IndexBin(pBin, cBytesPerBin);
             }
          }
       }
@@ -1124,12 +1125,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                return error;
             }
 
-            error = pInnerTermUpdate->EnsureTensorScoreCapacity(cScores);
-            if(UNLIKELY(Error_None != error)) {
-               // already logged
-               return error;
-            }
-
             FloatScore* pUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
             FloatScore hess = static_cast<FloatCalc>(pRootTreeNode->GetBin()->GetWeight());
             const auto* pGradientPair = pRootTreeNode->GetBin()->GetGradientPairs();
@@ -1148,32 +1143,35 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             } while(pGradientPairEnd != pGradientPair);
 
             *pTotalGain = 0;
-            return error;
+            return Error_None;
          }
 
          size_t cKeep = static_cast<size_t>(std::round(categoricalInclusionPercent * cRemaining));
          if(cRemaining <= cKeep && categoricalInclusionPercent < 1.0) {
+            // If categoricalInclusionPercent is anything other than 1.0 then drop one category at least.
             cKeep = cRemaining - 1;
          }
          if(categoricalThresholdMax < cKeep) {
             cKeep = categoricalThresholdMax;
          }
          if(cKeep <= 1) {
+            // 1 category means we will have no splits, so disallow that even if it means rounding up.
             cKeep = 2;
          }
          if(cRemaining < cKeep) {
             cKeep = cRemaining;
          }
-         EBM_ASSERT(2 <= cKeep);
 
          const bool bShuffle = 1 != cCompilerScores || std::isnan(categoricalSmoothing) || cKeep != cRemaining;
+         // there isn't a single key to sort on with multiple grad/hess pairs, so use random ordering otherwise.
          const bool bSort = 1 == cCompilerScores && !std::isnan(categoricalSmoothing);
 
          EBM_ASSERT(bShuffle || bSort);
 
+         EBM_ASSERT(2 <= cKeep);
          if(bShuffle) {
-            const auto** ppBinShuffle = apBins;
-            const auto* const* const ppBinShuffleEnd = apBins + cKeep;
+            auto** ppBinShuffle = apBins;
+            auto** const ppBinShuffleEnd = apBins + cKeep;
             do {
                EBM_ASSERT(1 <= cRemaining);
                const size_t iSwap = pRng->NextFast(cRemaining);
@@ -1186,7 +1184,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
          }
 
          if(bSort) {
-            // there isn't a single key to sort on with multiple grad/hess pairs, so use random ordering otherwise.
             std::sort(apBins,
                   ppBin,
                   CompareBin<bHessian, cCompilerScores>(
@@ -1197,6 +1194,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             *ppBin = aBins;
             ++ppBin;
          }
+         EBM_ASSERT(2 <= ppBin - apBins);
       }
 
       pRootTreeNode->BEFORE_SetBinFirst(apBins);
@@ -1219,7 +1217,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             regLambda,
             deltaStepMax,
             monotoneDirection,
-            pMissingBin,
             &bMissingIsolated,
             &pMissingValueTreeNode,
             &pDregsTreeNode,
@@ -1295,7 +1292,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      regLambda,
                      deltaStepMax,
                      monotoneDirection,
-                     pMissingBin,
                      &bMissingIsolated,
                      &pMissingValueTreeNode,
                      &pDregsTreeNode,
@@ -1323,7 +1319,6 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
                      regLambda,
                      deltaStepMax,
                      monotoneDirection,
-                     pMissingBin,
                      &bMissingIsolated,
                      &pMissingValueTreeNode,
                      &pDregsTreeNode,
@@ -1368,18 +1363,25 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
 
       *pTotalGain = static_cast<double>(totalGain);
 
-      size_t cSlices = cSplitsMax - cSplitsRemaining + 1;
-      if(nullptr != pMissingValueTreeNode) {
-         EBM_ASSERT(nullptr == pMissingBin);
-         ++cSlices;
-      } else if(!bNominal && bMissing && (TermBoostFlags_MissingSeparate & flags)) {
-         ++cSlices; // missing is at index 0 but was unavailable to tree boosting, so add space for it
-      } else if(nullptr != pMissingBin && !bMissingIsolated) {
-         ++cSlices;
-      }
+      size_t cSlices;
       if(bNominal) {
          cSlices = cBins;
+      } else {
+         cSlices = cSplitsMax - cSplitsRemaining + 1;
+         if(bMissing) {
+            if(nullptr != pMissingValueTreeNode) {
+               ++cSlices;
+            } else if(TermBoostFlags_MissingSeparate & flags) {
+               ++cSlices; // missing is at index 0 but was unavailable to tree boosting, so add space for it
+            } else {
+               EBM_ASSERT((TermBoostFlags_MissingLow | TermBoostFlags_MissingHigh) & flags);
+               if(!bMissingIsolated) {
+                  ++cSlices;
+               }
+            }
+         }
       }
+
       error = Flatten<bHessian>(pBoosterShell,
             bMissing,
             bNominal,
@@ -1388,8 +1390,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             regLambda,
             deltaStepMax,
             iDimension,
-            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>**>(apBins),
-            reinterpret_cast<const Bin<FloatMain, UIntMain, true, true, bHessian>**>(ppBin),
+            reinterpret_cast<Bin<FloatMain, UIntMain, true, true, bHessian>**>(apBins),
+            reinterpret_cast<Bin<FloatMain, UIntMain, true, true, bHessian>**>(ppBin),
             nullptr != pMissingValueTreeNode ? pMissingValueTreeNode->Downgrade() : nullptr,
             nullptr != pDregsTreeNode ? pDregsTreeNode->Downgrade() : nullptr,
             cSlices,
