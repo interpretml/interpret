@@ -12,7 +12,7 @@ from setuptools.command.install import install
 from setuptools.command.sdist import sdist
 
 # NOTE: Version is replaced by a regex script.
-version = "0.6.8"
+version = "0.6.9"
 
 
 def _copy_native_code_to_setup():

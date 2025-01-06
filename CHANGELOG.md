@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.9] - 2025-01-06
+### Added
+- refitting of the intercept term after fitting the rest of the model to improve the intercept value
+- new options for handling missing values: "low", "high", "separate", and "gain"
+- use Fischer (1958) for handling categorical values. This is the same method employed by LightGBM.
+- added new parameters to control overfitting of nominal categoricals: gain\_scale, min\_cat\_samples, cat\_smooth
+### Changed
+- enable AVX-512 by default
+- modified default EBM parameters: outer\_bags=16, n\_jobs=-1
+### Fixed
+- fixed memory leak in the purification function
+
 ## [v0.6.8] - 2024-12-09
 ### Fixed
 - resolved new scikit-learn requirement for having \_\_sklearn\_tags\_\_
