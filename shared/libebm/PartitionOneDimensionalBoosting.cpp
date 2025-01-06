@@ -1175,14 +1175,15 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             auto** const ppBinShuffleEnd = apBins + cKeep;
             do {
                EBM_ASSERT(1 <= cRemaining);
-               if(1 == cRemaining) {
-                  break; // it will always be zero
+               if(1 != cRemaining) {
+                  const size_t iSwap = pRng->NextFast(cRemaining);
+                  auto* const pTemp = ppBinShuffle[iSwap];
+                  --cRemaining;
+                  ppBinShuffle[iSwap] = *ppBinShuffle;
+                  *ppBinShuffle = pTemp;
+               } else {
+                  EBM_ASSERT(ppBinShuffleEnd == ppBinShuffle + 1);
                }
-               const size_t iSwap = pRng->NextFast(cRemaining);
-               auto* const pTemp = ppBinShuffle[iSwap];
-               --cRemaining;
-               ppBinShuffle[iSwap] = *ppBinShuffle;
-               *ppBinShuffle = pTemp;
                ++ppBinShuffle;
             } while(ppBinShuffleEnd != ppBinShuffle);
 
