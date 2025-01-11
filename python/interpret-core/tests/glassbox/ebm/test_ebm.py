@@ -1216,3 +1216,64 @@ def test_ebm_uncertainty():
     assert not np.all(
         uncertainties == uncertainties[0]
     ), "Different samples should have different uncertainties"
+
+
+def test_replicatability_classification():
+    for seed in range(3):
+        X, y, names, types = make_synthetic(
+            seed=seed, classes=2, output_type="float", n_samples=250
+        )
+
+        ebm1 = ExplainableBoostingClassifier(
+            names, types, random_state=seed, max_rounds=10
+        )
+        ebm1.fit(X, y)
+
+        pred1 = ebm1.eval_terms(X)
+        total1 = np.sum(pred1)
+
+        ebm2 = ExplainableBoostingClassifier(
+            names, types, random_state=seed, max_rounds=10
+        )
+        ebm2.fit(X, y)
+
+        pred2 = ebm2.eval_terms(X)
+        total2 = np.sum(pred2)
+
+        if total1 != total2:
+            assert total1 == total2
+            break
+
+
+@pytest.mark.skip(
+    reason="Fails on mac. Need to work on getting cross platform identical results."
+)
+def test_identical_classification():
+    from interpret.develop import get_option, set_option
+
+    original = get_option("acceleration")
+    set_option("acceleration", 0)
+
+    for iteration in range(3):
+        total = 0.0
+        seed = 0
+        for i in range(10):
+            X, y, names, types = make_synthetic(
+                seed=seed, classes=2, output_type="float", n_samples=250
+            )
+            seed += 1
+
+            ebm = ExplainableBoostingClassifier(
+                names, types, random_state=seed, max_rounds=10
+            )
+            ebm.fit(X, y)
+
+            pred = ebm.eval_terms(X)
+            total += np.sum(pred)
+
+        expected = 2.220446049250313e-15
+        if total != expected:
+            assert total == expected
+            break
+
+    set_option("acceleration", original)

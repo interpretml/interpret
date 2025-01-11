@@ -610,6 +610,7 @@ We also build on top of many great packages. Please check them out!
 - [Performance And Explainability With EBM](https://blog.oakbits.com/ebm-algorithm.html)
 - [InterpretML: Another Way to Explain Your Model](https://towardsdatascience.com/interpretml-another-way-to-explain-your-model-b7faf0a384f8)
 - [A gentle introduction to GA2Ms, a white box model](https://www.fiddler.ai/blog/a-gentle-introduction-to-ga2ms-a-white-box-model)
+- [Explaining Non-Parametric Additive Models](https://gablabc.github.io/posts/2025/01/NonParametricAdditive/)
 - [Model Interpretation with Microsoft’s Interpret ML](https://medium.com/@sand.mayur/model-interpretation-with-microsofts-interpret-ml-85aa0ad697ae)
 - [Explaining Model Pipelines With InterpretML](https://medium.com/@mariusvadeika/explaining-model-pipelines-with-interpretml-a9214f75400b)
 - [Explain Your Model with Microsoft’s InterpretML](https://medium.com/@Dataman.ai/explain-your-model-with-microsofts-interpretml-5daab1d693b4)
