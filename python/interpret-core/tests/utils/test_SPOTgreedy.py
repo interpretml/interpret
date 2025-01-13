@@ -16,13 +16,13 @@ targetmarginal = np.ones(C.shape[1]) / C.shape[1]
 
 prototypeIndices, prototypeWeights = SPOT_GreedySubsetSelection(C, targetmarginal, k)
 
-assert (
-    prototypeIndices.shape[0] == k
-), "The number of prototypes chosen is different from argument provided"
-assert (
-    prototypeIndices.shape[0] == prototypeWeights.shape[0]
-), "The prototypes and weights vectors are of different size"
+assert prototypeIndices.shape[0] == k, (
+    "The number of prototypes chosen is different from argument provided"
+)
+assert prototypeIndices.shape[0] == prototypeWeights.shape[0], (
+    "The prototypes and weights vectors are of different size"
+)
 
-assert (
-    np.abs(np.sum(prototypeWeights) - 1) < 1e-10
-), "There is an issue with prototypes weights"
+assert np.abs(np.sum(prototypeWeights) - 1) < 1e-10, (
+    "There is an issue with prototypes weights"
+)

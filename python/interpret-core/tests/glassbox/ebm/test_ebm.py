@@ -1213,9 +1213,9 @@ def test_ebm_uncertainty():
 
     uncertainties = result[:, 1]
     assert np.all(uncertainties >= 0), "Uncertainties should be non-negative"
-    assert not np.all(
-        uncertainties == uncertainties[0]
-    ), "Different samples should have different uncertainties"
+    assert not np.all(uncertainties == uncertainties[0]), (
+        "Different samples should have different uncertainties"
+    )
 
 
 def test_replicatability_classification():

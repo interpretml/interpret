@@ -498,7 +498,7 @@ def calculate_unique_values(X: FloatMatrix) -> List[int]:
 
 def define_feature_names(X_names: List[str], X: FloatMatrix) -> List[str]:
     if len(X_names) == 0:
-        return [f"X{i+1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
+        return [f"X{i + 1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
     return list(X_names)
 
 
