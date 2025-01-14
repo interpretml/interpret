@@ -2815,7 +2815,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
               effectively making it location-agnostic. This can lead to overfitting, especially
               when the proportion of missing values is small.
             - `'gain'`: Choose the best leaf for the missing value contribution at each boosting step, based on gain.
-    max_leaves : int, default=3
+    max_leaves : int, default=2
         Maximum number of leaves allowed in each tree.
     monotone_constraints: list of int, default=None
 
@@ -2978,7 +2978,7 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         min_cat_samples: Optional[int] = 10,
         cat_smooth: Optional[float] = 10.0,
         missing: str = "separate",
-        max_leaves: int = 3,
+        max_leaves: int = 2,
         monotone_constraints: Optional[Sequence[int]] = None,
         objective: str = "log_loss",
         # Overall
