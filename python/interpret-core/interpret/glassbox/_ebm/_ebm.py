@@ -1011,8 +1011,11 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 * bag[include_samples]
                             )
 
-                    bagged_intercept[idx, :] = np.average(
-                        y_local, weights=sample_weight_local
+                    bagged_intercept[idx, :] = native.flat_mean(
+                        y_local,
+                        None
+                        if sample_weight_local is None
+                        else np.asarray(sample_weight_local, np.float64),
                     )
             elif init_score is None:
                 if (
@@ -1472,7 +1475,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             if objective_code == Native.Objective_MonoClassification:
                 pass
             elif objective_code == Native.Objective_Rmse:
-                correction = np.average(y - scores, weights=sample_weight)
+                correction = native.flat_mean(y - scores, sample_weight)
                 intercept += correction
                 bagged_intercept += correction
             else:

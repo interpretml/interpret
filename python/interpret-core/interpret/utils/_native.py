@@ -8,6 +8,7 @@ import os
 import platform
 import struct
 import sys
+import math
 from contextlib import AbstractContextManager
 
 import numpy as np
@@ -235,6 +236,28 @@ class Native:
             len(val_array), Native._make_pointer(val_array, np.float64)
         )
         return val_array[0]
+
+    def flat_mean(self, vals, weights=None):
+        if weights is not None:
+            if vals.shape != weights.shape:
+                msg = "vals and weights must have the same shape to call flat_mean."
+                raise Exception(msg)
+
+        n_tensor_bins = math.prod(vals.shape)
+
+        mean_result = ct.c_double(np.nan)
+
+        return_code = self._unsafe.SafeMean(
+            n_tensor_bins,
+            1,
+            Native._make_pointer(vals, np.float64, None),
+            Native._make_pointer(weights, np.float64, None, True),
+            ct.byref(mean_result),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeMean")
+
+        return mean_result
 
     def safe_mean(self, tensor, weights=None):
         n_bags = tensor.shape[0]

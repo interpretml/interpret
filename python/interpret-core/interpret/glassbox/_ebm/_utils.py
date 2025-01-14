@@ -148,6 +148,7 @@ def _create_proportional_tensor(axis_weights):
 
 
 def process_bag_terms(intercept, term_scores, bin_weights):
+    native = Native.get_native_singleton()
     for scores, weights in zip(term_scores, bin_weights):
         if develop.get_option("purify_result"):
             new_scores, add_impurities, add_intercept = purify(scores, weights)
@@ -165,7 +166,7 @@ def process_bag_terms(intercept, term_scores, bin_weights):
             temp_weights[ignored] = 0.0
 
             if temp_weights.sum() != 0:
-                mean = np.average(temp_scores, 0, temp_weights)
+                mean = native.flat_mean(temp_scores, temp_weights)
                 intercept += mean
                 scores -= mean
         else:
@@ -178,7 +179,7 @@ def process_bag_terms(intercept, term_scores, bin_weights):
                 temp_weights[ignored] = 0.0
 
                 if temp_weights.sum() != 0:
-                    mean = np.average(temp_scores, 0, temp_weights)
+                    mean = native.flat_mean(temp_scores, temp_weights)
                     intercept[i] += mean
                     scores[..., i] -= mean
 

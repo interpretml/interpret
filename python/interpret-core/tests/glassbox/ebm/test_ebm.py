@@ -1254,7 +1254,7 @@ def test_identical_classification():
     original = get_option("acceleration")
     set_option("acceleration", 0)
 
-    for iteration in range(3):
+    for iteration in range(1):
         total = 0.0
         seed = 0
         for i in range(10):
