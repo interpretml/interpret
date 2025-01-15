@@ -1245,9 +1245,6 @@ def test_replicatability_classification():
             break
 
 
-@pytest.mark.skip(
-    reason="Fails on mac. Need to work on getting cross platform identical results."
-)
 def test_identical_classification():
     from interpret.develop import get_option, set_option
 
@@ -1271,7 +1268,7 @@ def test_identical_classification():
             pred = ebm.eval_terms(X)
             total += np.sum(pred)
 
-        expected = 2.220446049250313e-15
+        expected = -3.941291737419306e-15
         if total != expected:
             assert total == expected
             break

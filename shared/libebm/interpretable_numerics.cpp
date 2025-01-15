@@ -1379,6 +1379,9 @@ static double Mean(const size_t cSamples,
    // https://stackoverflow.com/questions/895929/how-do-i-determine-the-standard-deviation-stddev-of-a-set-of-values
    // https://www.johndcook.com/blog/standard_deviation/
 
+   // do not put multiple floating point operations in the same statement since that can be optimized
+   // https://clang.llvm.org/docs/UsersManual.html
+
    double factor = 1.0;
    double mean;
    size_t cNaN;
@@ -1440,7 +1443,8 @@ static double Mean(const size_t cSamples,
                // if all the weights are zero, then weigh them all equally
                ratio = double{1} / static_cast<double>(cNormal);
             }
-            mean += numerator * ratio;
+            const double multiple = numerator * ratio;
+            mean += multiple;
          }
          if(nullptr != pWeight) {
             ++pWeight;

@@ -413,7 +413,7 @@ all_args="$all_args -Wformat=2"
 all_args="$all_args -Wno-format-nonliteral"
 all_args="$all_args -Wno-parentheses"
 all_args="$all_args -fvisibility=hidden -fvisibility-inlines-hidden"
-all_args="$all_args -fno-math-errno -fno-trapping-math"
+all_args="$all_args -fno-math-errno -fno-trapping-math -fno-fast-math -ffp-contract=off"
 # TODO: once we have highly efficient tightly looped code, try no -fpic and see if that makes better code.  The compiler can save a register in this case. See https://akkadia.org/drepper/dsohowto.pdf
 # TODO: check no-plt compiler option
 all_args="$all_args -fpic"
