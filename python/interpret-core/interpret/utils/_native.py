@@ -41,6 +41,7 @@ class Native:
     TermBoostFlags_MissingLow = 0x00000080
     TermBoostFlags_MissingHigh = 0x00000100
     TermBoostFlags_MissingSeparate = 0x00000200
+    TermBoostFlags_Corners = 0x00000400
 
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000

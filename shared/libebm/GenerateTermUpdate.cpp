@@ -126,6 +126,27 @@ extern ErrorEbm PartitionMultiDimensionalTree(const bool bHessian,
 #endif // NDEBUG
 );
 
+extern ErrorEbm PartitionMultiDimensionalCorner(const bool bHessian,
+      const size_t cRuntimeScores,
+      const size_t cRealDimensions,
+      const TermBoostFlags flags,
+      const size_t cSamplesLeafMin,
+      const FloatCalc hessianMin,
+      const FloatCalc regAlpha,
+      const FloatCalc regLambda,
+      const FloatCalc deltaStepMax,
+      const BinBase* const aBinsBase,
+      BinBase* const aAuxiliaryBinsBase,
+      Tensor* const pInnerTermUpdate,
+      const size_t* const acBins,
+      double* const pTotalGain
+#ifndef NDEBUG
+      ,
+      const BinBase* const aDebugCopyBinsBase,
+      const BinBase* const pBinsEndDebug
+#endif // NDEBUG
+);
+
 extern ErrorEbm PartitionRandomBoosting(RandomDeterministic* const pRng,
       BoosterShell* const pBoosterShell,
       const Term* const pTerm,
@@ -349,46 +370,57 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
    const bool bHessian = pBoosterCore->IsHessian();
 
-   double* aWeights = nullptr;
-   double* pGradient = nullptr;
-   double* pHessian = nullptr;
-   if(0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags)) {
-      // allocate the biggest tensor that is possible to split into
-
-      // TODO: cache this memory allocation so that we don't do it each time
-
-      if(IsAddError(size_t{1}, cScores)) {
-         return Error_OutOfMemory;
-      }
-      size_t cItems = 1 + cScores;
-      const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
-      if(bUseLogitBoost) {
-         if(IsAddError(cScores, cItems)) {
-            return Error_OutOfMemory;
-         }
-         cItems += cScores;
-      }
-      if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
-         return Error_OutOfMemory;
-      }
-      aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
-      if(nullptr == aWeights) {
-         return Error_OutOfMemory;
-      }
-      pGradient = aWeights + cTensorBins;
-      if(bUseLogitBoost) {
-         pHessian = pGradient + cTensorBins * cScores;
-      }
-   }
-
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
    const size_t cRealDimensions = pTerm->GetCountRealDimensions();
-   size_t cPossibleSplits;
    size_t acBins2[k_cDimensionsMax];
-   {
-      if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cRuntimeScores)) {
-         // TODO: move this to init
-         return Error_OutOfMemory;
+   if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cRuntimeScores)) {
+      // TODO: move this to init
+      return Error_OutOfMemory;
+   }
+
+   size_t* pcBins2 = acBins2;
+
+   pTermFeature = pTerm->GetTermFeatures();
+   do {
+      const FeatureBoosting* pFeature = pTermFeature->m_pFeature;
+      const size_t cBins = pFeature->GetCountBins();
+      EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
+      *pcBins2 = cBins;
+      ++pcBins2;
+      ++pTermFeature;
+   } while(pTermFeaturesEnd != pTermFeature);
+
+   if(!(flags & TermBoostFlags_Corners)) {
+      double* aWeights = nullptr;
+      double* pGradient = nullptr;
+      double* pHessian = nullptr;
+      if(0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags)) {
+         // allocate the biggest tensor that is possible to split into
+
+         // TODO: cache this memory allocation so that we don't do it each time
+
+         if(IsAddError(size_t{1}, cScores)) {
+            return Error_OutOfMemory;
+         }
+         size_t cItems = 1 + cScores;
+         const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+         if(bUseLogitBoost) {
+            if(IsAddError(cScores, cItems)) {
+               return Error_OutOfMemory;
+            }
+            cItems += cScores;
+         }
+         if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
+            return Error_OutOfMemory;
+         }
+         aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
+         if(nullptr == aWeights) {
+            return Error_OutOfMemory;
+         }
+         pGradient = aWeights + cTensorBins;
+         if(bUseLogitBoost) {
+            pHessian = pGradient + cTensorBins * cScores;
+         }
       }
 
       if(IsOverflowTreeNodeMultiSize(bHessian, cRuntimeScores)) {
@@ -396,18 +428,14 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
          return Error_OutOfMemory;
       }
 
-      cPossibleSplits = 0;
-
+      size_t cPossibleSplits = 0;
       size_t cBytes = 1;
-
-      size_t* pcBins2 = acBins2;
 
       pTermFeature = pTerm->GetTermFeatures();
       do {
          const FeatureBoosting* pFeature = pTermFeature->m_pFeature;
          const size_t cBins = pFeature->GetCountBins();
          EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
-         *pcBins2 = cBins;
          const size_t cSplits = cBins - 1;
          if(IsAddError(cPossibleSplits, cSplits)) {
             return Error_OutOfMemory;
@@ -417,7 +445,6 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
             return Error_OutOfMemory;
          }
          cBytes *= cBins;
-         ++pcBins2;
          ++pTermFeature;
       } while(pTermFeaturesEnd != pTermFeature);
 
@@ -459,138 +486,174 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       if(Error_None != error) {
          return error;
       }
-   }
 
-   error = PartitionMultiDimensionalTree(bHessian,
-         cRuntimeScores,
-         pTerm->GetCountDimensions(),
-         cRealDimensions,
-         flags,
-         cSamplesLeafMin,
-         hessianMin,
-         regAlpha,
-         regLambda,
-         deltaStepMax,
-         pBoosterShell->GetBoostingMainBins(),
-         aAuxiliaryBins,
-         pBoosterShell->GetInnerTermUpdate(),
-         pBoosterShell->GetTreeNodeMultiTemp(),
-         acBins2,
-         aWeights,
-         pGradient,
-         pHessian,
-         pTotalGain,
-         cPossibleSplits,
-         pBoosterShell->GetTemp1()
+      error = PartitionMultiDimensionalTree(bHessian,
+            cRuntimeScores,
+            pTerm->GetCountDimensions(),
+            cRealDimensions,
+            flags,
+            cSamplesLeafMin,
+            hessianMin,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
+            pBoosterShell->GetBoostingMainBins(),
+            aAuxiliaryBins,
+            pBoosterShell->GetInnerTermUpdate(),
+            pBoosterShell->GetTreeNodeMultiTemp(),
+            acBins2,
+            aWeights,
+            pGradient,
+            pHessian,
+            pTotalGain,
+            cPossibleSplits,
+            pBoosterShell->GetTemp1()
 #ifndef NDEBUG
-               ,
-         aDebugCopyBins,
-         pBoosterShell->GetDebugMainBinsEnd()
+                  ,
+            aDebugCopyBins,
+            pBoosterShell->GetDebugMainBinsEnd()
 #endif // NDEBUG
-   );
-   if(Error_None != error) {
-      free(aWeights);
+      );
+
+      if(Error_None != error) {
+         free(aWeights);
 #ifndef NDEBUG
-      free(aDebugCopyBins);
+         free(aDebugCopyBins);
 #endif // NDEBUG
 
-      LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
+         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
 
-      return error;
-   }
-   EBM_ASSERT(!std::isnan(*pTotalGain));
-   EBM_ASSERT(0 <= *pTotalGain);
-
-   if(0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
-      Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
-
-      size_t cDimensions = pTerm->GetCountDimensions();
-      size_t cTensorBinsPurify = 1;
-      size_t iDimension = 0;
-      do {
-         const size_t cBins = pTensor->GetCountSlices(iDimension);
-         cTensorBinsPurify *= cBins;
-         ++iDimension;
-      } while(cDimensions != iDimension);
-
-      size_t acPurifyBins[k_cDimensionsMax];
-      size_t* pcPurifyBins = acPurifyBins;
-      size_t cSurfaceBinsTotal = 0;
-      iDimension = 0;
-      do {
-         const size_t cBins = pTensor->GetCountSlices(iDimension);
-         if(size_t{1} < cBins) {
-            *pcPurifyBins = cBins;
-            EBM_ASSERT(0 == cTensorBinsPurify % cBins);
-            const size_t cExcludeSurfaceBins = cTensorBinsPurify / cBins;
-            cSurfaceBinsTotal += cExcludeSurfaceBins;
-            ++pcPurifyBins;
-         }
-         ++iDimension;
-      } while(pTerm->GetCountDimensions() != iDimension);
-
-      constexpr double tolerance = 0.0; // TODO: for now purify to the max, but test tolerances and profile them
-
-      // TODO: in the future try randomizing the purification order.  It probably doesn't make much difference
-      //       though if we're purifying to the 0.0 tolerance, and it might make things slower, although we
-      //       could see a speed increase if it allows us to use bigger tolerance values.
-
-      double* pScores = pTensor->GetTensorScoresPointer();
-      const double* const pScoreMulticlassEnd = &pScores[cScores];
-      do {
-         // ignore the return from PurifyInternal since we should check for NaN in the weights
-         // earlier and the checks in PurifyInternal are only for the stand-alone purification API
-         PurifyInternal(tolerance,
-               cScores,
-               cTensorBinsPurify,
-               cSurfaceBinsTotal,
-               nullptr,
-               nullptr,
-               acPurifyBins,
-               aWeights,
-               pScores,
-               nullptr,
-               nullptr);
-         ++pScores;
-      } while(pScoreMulticlassEnd != pScores);
-
-      // When calculating purified gain, we do not subtract
-      // the parent since the pure partial gain is always zero.
-      double gain = 0.0;
-      double* pScore = pTensor->GetTensorScoresPointer();
-      EBM_ASSERT(!IsMultiplyError(cTensorBinsPurify, cScores)); // we have allocated it
-      double* pScoreEnd = pScore + cTensorBinsPurify * cScores;
-      double* pWeight = aWeights;
-      do {
-         double hess = *pWeight;
-         for(size_t iScore = 0; iScore < cScores; ++iScore) {
-            double grad = *pGradient;
-            if(nullptr != pHessian) {
-               hess = *pHessian;
-               ++pHessian;
-            }
-            double update = *pScore;
-            gain += CalcPartialGainFromUpdate<true>(grad, hess, -update, regAlpha, regLambda);
-            ++pGradient;
-            ++pScore;
-         }
-         ++pWeight;
-      } while(pScoreEnd != pScore);
-
-      if(/* NaN */ !(std::numeric_limits<double>::min() <= gain)) {
-         // Purification can push the updates to a point where they are detrimental to the purified gain
-         // in which case gain can end up slightly negative. If this happens, disallow the cuts so that we
-         // never have negative gain. For purified updates, if we make no cuts, then the update is zero
-         // so we don't have to call CalcNegUpdate.
-
-         pTensor->Reset();
-         gain = std::isnan(gain) ? gain : double{0};
+         return error;
       }
 
-      *pTotalGain = gain;
+      EBM_ASSERT(!std::isnan(*pTotalGain));
+      EBM_ASSERT(0 <= *pTotalGain);
+
+      if(0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
+         Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
+
+         size_t cDimensions = pTerm->GetCountDimensions();
+         size_t cTensorBinsPurify = 1;
+         size_t iDimension = 0;
+         do {
+            const size_t cBins = pTensor->GetCountSlices(iDimension);
+            cTensorBinsPurify *= cBins;
+            ++iDimension;
+         } while(cDimensions != iDimension);
+
+         size_t acPurifyBins[k_cDimensionsMax];
+         size_t* pcPurifyBins = acPurifyBins;
+         size_t cSurfaceBinsTotal = 0;
+         iDimension = 0;
+         do {
+            const size_t cBins = pTensor->GetCountSlices(iDimension);
+            if(size_t{1} < cBins) {
+               *pcPurifyBins = cBins;
+               EBM_ASSERT(0 == cTensorBinsPurify % cBins);
+               const size_t cExcludeSurfaceBins = cTensorBinsPurify / cBins;
+               cSurfaceBinsTotal += cExcludeSurfaceBins;
+               ++pcPurifyBins;
+            }
+            ++iDimension;
+         } while(pTerm->GetCountDimensions() != iDimension);
+
+         constexpr double tolerance = 0.0; // TODO: for now purify to the max, but test tolerances and profile them
+
+         // TODO: in the future try randomizing the purification order.  It probably doesn't make much difference
+         //       though if we're purifying to the 0.0 tolerance, and it might make things slower, although we
+         //       could see a speed increase if it allows us to use bigger tolerance values.
+
+         double* pScores = pTensor->GetTensorScoresPointer();
+         const double* const pScoreMulticlassEnd = &pScores[cScores];
+         do {
+            // ignore the return from PurifyInternal since we should check for NaN in the weights
+            // earlier and the checks in PurifyInternal are only for the stand-alone purification API
+            PurifyInternal(tolerance,
+                  cScores,
+                  cTensorBinsPurify,
+                  cSurfaceBinsTotal,
+                  nullptr,
+                  nullptr,
+                  acPurifyBins,
+                  aWeights,
+                  pScores,
+                  nullptr,
+                  nullptr);
+            ++pScores;
+         } while(pScoreMulticlassEnd != pScores);
+
+         // When calculating purified gain, we do not subtract
+         // the parent since the pure partial gain is always zero.
+         double gain = 0.0;
+         double* pScore = pTensor->GetTensorScoresPointer();
+         EBM_ASSERT(!IsMultiplyError(cTensorBinsPurify, cScores)); // we have allocated it
+         double* pScoreEnd = pScore + cTensorBinsPurify * cScores;
+         double* pWeight = aWeights;
+         do {
+            double hess = *pWeight;
+            for(size_t iScore = 0; iScore < cScores; ++iScore) {
+               double grad = *pGradient;
+               if(nullptr != pHessian) {
+                  hess = *pHessian;
+                  ++pHessian;
+               }
+               double update = *pScore;
+               gain += CalcPartialGainFromUpdate<true>(grad, hess, -update, regAlpha, regLambda);
+               ++pGradient;
+               ++pScore;
+            }
+            ++pWeight;
+         } while(pScoreEnd != pScore);
+
+         if(/* NaN */ !(std::numeric_limits<double>::min() <= gain)) {
+            // Purification can push the updates to a point where they are detrimental to the purified gain
+            // in which case gain can end up slightly negative. If this happens, disallow the cuts so that we
+            // never have negative gain. For purified updates, if we make no cuts, then the update is zero
+            // so we don't have to call CalcNegUpdate.
+
+            pTensor->Reset();
+            gain = std::isnan(gain) ? gain : double{0};
+         }
+
+         *pTotalGain = gain;
+      }
+
+      free(aWeights);
+   } else {
+      error = PartitionMultiDimensionalCorner(bHessian,
+            cRuntimeScores,
+            cRealDimensions,
+            flags,
+            cSamplesLeafMin,
+            hessianMin,
+            regAlpha,
+            regLambda,
+            deltaStepMax,
+            pBoosterShell->GetBoostingMainBins(),
+            aAuxiliaryBins,
+            pBoosterShell->GetInnerTermUpdate(),
+            acBins2,
+            pTotalGain
+#ifndef NDEBUG
+            ,
+            aDebugCopyBins,
+            pBoosterShell->GetDebugMainBinsEnd()
+#endif // NDEBUG
+      );
+
+      if(Error_None != error) {
+#ifndef NDEBUG
+         free(aDebugCopyBins);
+#endif // NDEBUG
+
+         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
+
+         return error;
+      }
    }
 
-   free(aWeights);
+   EBM_ASSERT(!std::isnan(*pTotalGain));
+   EBM_ASSERT(0 <= *pTotalGain);
 
 #ifndef NDEBUG
    free(aDebugCopyBins);
@@ -754,8 +817,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GenerateTermUpdate(void* rng,
    if(flags &
          ~(TermBoostFlags_PurifyGain | TermBoostFlags_DisableNewtonGain | TermBoostFlags_DisableCategorical |
                TermBoostFlags_PurifyUpdate | TermBoostFlags_DisableNewtonUpdate | TermBoostFlags_GradientSums |
-               TermBoostFlags_RandomSplits | TermBoostFlags_MissingLow | TermBoostFlags_MissingHigh |
-               TermBoostFlags_MissingSeparate)) {
+               TermBoostFlags_RandomSplits | TermBoostFlags_Corners | TermBoostFlags_MissingLow |
+               TermBoostFlags_MissingHigh | TermBoostFlags_MissingSeparate)) {
       LOG_0(Trace_Error, "ERROR GenerateTermUpdate flags contains unknown flags. Ignoring extras.");
    }
 

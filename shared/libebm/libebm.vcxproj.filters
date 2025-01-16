@@ -50,6 +50,7 @@
     <ClCompile Include="PartitionMultiDimensionalTree.cpp" />
     <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
     <ClCompile Include="DataSetInnerBag.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalCorner.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />

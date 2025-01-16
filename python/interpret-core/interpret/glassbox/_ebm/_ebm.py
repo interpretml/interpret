@@ -957,6 +957,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             term_boost_flags = Native.TermBoostFlags_Default
             if develop.get_option("purify_boosting"):
                 term_boost_flags |= Native.TermBoostFlags_PurifyUpdate
+            if develop.get_option("boost_corners"):
+                term_boost_flags |= Native.TermBoostFlags_Corners
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
             smoothing_rounds = self.smoothing_rounds
