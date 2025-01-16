@@ -117,6 +117,7 @@
     <Compile Include="tests\glassbox\ebm\research\__init__.py" />
     <Compile Include="tests\glassbox\ebm\test_bin.py" />
     <Compile Include="tests\glassbox\ebm\test_ebm.py" />
+    <Compile Include="tests\glassbox\ebm\test_ebm_exact.py" />
     <Compile Include="tests\glassbox\ebm\test_ebm_utils.py" />
     <Compile Include="tests\glassbox\ebm\test_merge_ebms.py" />
     <Compile Include="tests\glassbox\ebm\test_multiclass.py" />

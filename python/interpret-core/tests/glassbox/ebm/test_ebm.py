@@ -1243,34 +1243,3 @@ def test_replicatability_classification():
         if total1 != total2:
             assert total1 == total2
             break
-
-
-def test_identical_classification():
-    from interpret.develop import get_option, set_option
-
-    original = get_option("acceleration")
-    set_option("acceleration", 0)
-
-    for iteration in range(1):
-        total = 0.0
-        seed = 0
-        for i in range(10):
-            X, y, names, types = make_synthetic(
-                seed=seed, classes=2, output_type="float", n_samples=250
-            )
-            seed += 1
-
-            ebm = ExplainableBoostingClassifier(
-                names, types, random_state=seed, max_rounds=10
-            )
-            ebm.fit(X, y)
-
-            pred = ebm.eval_terms(X)
-            total += np.sum(pred)
-
-        expected = -3.941291737419306e-15
-        if total != expected:
-            assert total == expected
-            break
-
-    set_option("acceleration", original)
