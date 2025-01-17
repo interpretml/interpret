@@ -240,7 +240,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalC
          } while(cRealDimensions != iDimInit);
       }
 
-      const size_t cTotalSamples = pTotal->GetCountSamples();
+      const size_t cTotalSamples = static_cast<size_t>(pTotal->GetCountSamples());
 
       TensorSumDimension
             aDimensions[k_dynamicDimensions == cCompilerDimensions ? k_cDimensionsMax : cCompilerDimensions];
@@ -286,8 +286,8 @@ template<bool bHessian, size_t cCompilerScores> class PartitionMultiDimensionalC
 #endif // NDEBUG
             );
 
-            if(cSamplesLeafMin <= pTempBin->GetCountSamples()) {
-               const size_t cSamplesOther = cTotalSamples - pTempBin->GetCountSamples();
+            if(cSamplesLeafMin <= static_cast<size_t>(pTempBin->GetCountSamples())) {
+               const size_t cSamplesOther = cTotalSamples - static_cast<size_t>(pTempBin->GetCountSamples());
                if(cSamplesLeafMin <= cSamplesOther) {
                   EBM_ASSERT(1 <= cScores);
                   size_t iScore = 0;

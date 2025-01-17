@@ -2289,7 +2289,8 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
          TermBoostFlags_PurifyUpdate,
          // TermBoostFlags_GradientSums, // does not return a metric
          TermBoostFlags_DisableNewtonUpdate,
-         TermBoostFlags_RandomSplits};
+         TermBoostFlags_RandomSplits,
+         TermBoostFlags_Corners};
    std::vector<IntEbm> boostFlagsChoose{
          TermBoostFlags_Default, TermBoostFlags_MissingLow, TermBoostFlags_MissingHigh, TermBoostFlags_MissingSeparate};
 
@@ -2367,7 +2368,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 12298977636064.098;
+   const double expected = 14219338182453.824;
 
    double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
    CHECK(validationMetricExact == expected);
