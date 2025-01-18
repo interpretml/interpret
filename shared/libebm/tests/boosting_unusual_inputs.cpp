@@ -2314,8 +2314,9 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
          double validationMetricIteration = 0.0;
          for(size_t iRound = 0; iRound < cRounds; ++iRound) {
             for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
-               const IntEbm cRealBins = features[terms[iTerm][0]].CountRealBins();
-               const IntEbm cDimensions = terms[iTerm].size();
+               const IntEbm cRealBins =
+                     features[static_cast<size_t>(terms[static_cast<size_t>(iTerm)][0])].CountRealBins();
+               const IntEbm cDimensions = terms[static_cast<size_t>(iTerm)].size();
 
                const TermBoostFlags boostFlags =
                      static_cast<TermBoostFlags>(ChooseAny(rng, boostFlagsAny) | ChooseFrom(rng, boostFlagsChoose));
@@ -2333,10 +2334,10 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 
                // we allow 1 cut more than the number of bins to test excessive leaves.
                const IntEbm cLeaves = 1 + TestRand(rng, cRealBins + 1);
-               const std::vector<IntEbm> leaves(cDimensions, cLeaves);
+               const std::vector<IntEbm> leaves(static_cast<size_t>(cDimensions), cLeaves);
                const MonotoneDirection direction =
                      0 == TestRand(rng, 5) ? static_cast<MonotoneDirection>(TestRand(rng, 2) * 2 - 1) : 0;
-               const std::vector<MonotoneDirection> monotonicity(cDimensions, direction);
+               const std::vector<MonotoneDirection> monotonicity(static_cast<size_t>(cDimensions), direction);
 
                validationMetricIteration = test.Boost(iTerm,
                                                      boostFlags,

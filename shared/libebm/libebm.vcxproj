@@ -57,6 +57,7 @@
     <ClCompile Include="ApplyTermUpdate.cpp" />
     <ClCompile Include="DataSetInnerBag.cpp" />
     <ClCompile Include="PartitionMultiDimensionalCorner.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalFull.cpp" />
     <ClCompile Include="Purify.cpp" />
     <ClCompile Include="TermInnerBag.cpp" />
     <ClCompile Include="unzoned\logging.cpp">

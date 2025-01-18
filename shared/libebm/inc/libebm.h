@@ -238,6 +238,7 @@ typedef struct _InteractionHandle {
 #define CalcInteractionFlags_Default       (CALC_INTERACTION_FLAGS_CAST(0x00000000))
 #define CalcInteractionFlags_Purify        (CALC_INTERACTION_FLAGS_CAST(0x00000001))
 #define CalcInteractionFlags_DisableNewton (CALC_INTERACTION_FLAGS_CAST(0x00000002))
+#define CalcInteractionFlags_Full          (CALC_INTERACTION_FLAGS_CAST(0x00000004))
 
 #define AccelerationFlags_NONE      (ACCELERATION_CAST(0x00000000))
 #define AccelerationFlags_Nvidia    (ACCELERATION_CAST(0x00000001))

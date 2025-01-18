@@ -1025,7 +1025,7 @@ extern IntEbm ChooseAny(std::vector<unsigned char>& rng, const std::vector<IntEb
 }
 
 extern IntEbm ChooseFrom(std::vector<unsigned char>& rng, const std::vector<IntEbm>& options) {
-   return options[TestRand(rng, options.size())];
+   return options[static_cast<size_t>(TestRand(rng, options.size()))];
 }
 
 extern std::vector<TestSample> MakeRandomDataset(std::vector<unsigned char>& rng,

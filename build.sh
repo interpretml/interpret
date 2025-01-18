@@ -343,6 +343,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionOneDimensionalBoosting.cpp" -o "$tmp_path/PartitionOneDimensionalBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionRandomBoosting.cpp" -o "$tmp_path/PartitionRandomBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalCorner.cpp" -o "$tmp_path/PartitionMultiDimensionalCorner.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalFull.cpp" -o "$tmp_path/PartitionMultiDimensionalFull.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalTree.cpp" -o "$tmp_path/PartitionMultiDimensionalTree.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalStraight.cpp" -o "$tmp_path/PartitionMultiDimensionalStraight.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Purify.cpp" -o "$tmp_path/Purify.o"
@@ -383,6 +384,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/PartitionOneDimensionalBoosting.o" \
    "$tmp_path/PartitionRandomBoosting.o" \
    "$tmp_path/PartitionMultiDimensionalCorner.o" \
+   "$tmp_path/PartitionMultiDimensionalFull.o" \
    "$tmp_path/PartitionMultiDimensionalTree.o" \
    "$tmp_path/PartitionMultiDimensionalStraight.o" \
    "$tmp_path/Purify.o" \

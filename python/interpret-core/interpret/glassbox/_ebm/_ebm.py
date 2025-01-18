@@ -951,6 +951,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             interactions = 0
             monotone_constraints = None
             n_intercept_rounds = 0
+            interaction_flags = Native.CalcInteractionFlags_Default
         else:
             noise_scale_boosting = None
             bin_data_weights = None
@@ -977,6 +978,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             interactions = self.interactions
             monotone_constraints = self.monotone_constraints
             n_intercept_rounds = develop.get_option("n_intercept_rounds_initial")
+            interaction_flags = Native.CalcInteractionFlags_Default
+            if develop.get_option("full_interaction"):
+                interaction_flags |= Native.CalcInteractionFlags_Full
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -1233,7 +1237,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             combinations(range(n_features_in), 2),
                             exclude,
                             exclude_features,
-                            Native.CalcInteractionFlags_Default,
+                            interaction_flags,
                             max_cardinality,
                             min_samples_leaf,
                             min_hessian,

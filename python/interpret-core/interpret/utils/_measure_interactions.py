@@ -250,6 +250,10 @@ def measure_interactions(
         feature_types_in=feature_types_in,
     )
 
+    interaction_flags = Native.CalcInteractionFlags_Default
+    if develop.get_option("full_interaction"):
+        interaction_flags |= Native.CalcInteractionFlags_Full
+
     if isinstance(interactions, int):
         n_output_interactions = interactions
         iter_term_features = combinations(range(n_features_in), 2)
@@ -268,7 +272,7 @@ def measure_interactions(
         iter_term_features=iter_term_features,
         exclude=set(),
         exclude_features=set(),
-        calc_interaction_flags=Native.CalcInteractionFlags_Default,
+        calc_interaction_flags=interaction_flags,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
         min_hessian=min_hessian,

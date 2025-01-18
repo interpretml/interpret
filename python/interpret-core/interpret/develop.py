@@ -19,6 +19,7 @@ _develop_options = {
     "learning_rate_scale": 1.0,
     "max_cat_threshold": 9223372036854775807,
     "cat_include": 1.0,
+    "full_interaction": False,
     "boost_corners": False,
     "purify_boosting": False,
     "purify_result": False,

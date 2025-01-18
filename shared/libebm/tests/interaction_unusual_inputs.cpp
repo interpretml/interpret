@@ -543,3 +543,18 @@ TEST_CASE("tweedie, interaction") {
    double metricReturn = test.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_DisableNewton);
    CHECK_APPROX(metricReturn, 1.25);
 }
+
+TEST_CASE("Full tensor interaction strength, interaction, regression") {
+   TestInteraction test1 = TestInteraction(Task_Regression,
+         {FeatureTest(2), FeatureTest(2)},
+         {
+               TestSample({0, 0}, 2.0),
+               TestSample({0, 1}, 3.0),
+               TestSample({1, 0}, 5.0),
+               TestSample({1, 1}, 7.0),
+         });
+
+   double metricReturn = test1.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_Full);
+
+   CHECK(7.375 == metricReturn);
+}

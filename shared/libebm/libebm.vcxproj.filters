@@ -51,6 +51,7 @@
     <ClCompile Include="PartitionMultiDimensionalStraight.cpp" />
     <ClCompile Include="DataSetInnerBag.cpp" />
     <ClCompile Include="PartitionMultiDimensionalCorner.cpp" />
+    <ClCompile Include="PartitionMultiDimensionalFull.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InteractionShell.hpp" />
