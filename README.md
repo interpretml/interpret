@@ -597,6 +597,7 @@ We also build on top of many great packages. Please check them out!
 - [Machine Learning Model Interpretability using AzureML & InterpretML (Explainable Boosting Machine)](https://www.youtube.com/watch?v=0ocVtXU8o1I)
 - [A Case Study of Using Explainable Boosting Machines](https://uncch.hosted.panopto.com/Panopto/Pages/Embed.aspx?id=063d6839-e8db-40e0-8df4-b0fc012e709b&start=0)
 - [From SHAP to EBM: Explain your Gradient Boosting Models in Python](https://www.youtube.com/watch?v=hnZjw77-1rE)
+- [Rich Caruana – Friends Don’t Let Friends Deploy Black-Box Models](https://www.youtube.com/watch?v=2YKtNYBuojE)
 
 # External links
 
