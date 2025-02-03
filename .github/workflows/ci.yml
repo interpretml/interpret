@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       commit_id:
-        description: 'Commit ID (optional)'
+        description: 'Branch or Commit ID (optional)'
         required: false
+        type: string
   schedule:
     - cron: "0 12 * * *"
 
@@ -52,7 +53,7 @@ jobs:
             asm: ""
     runs-on: ${{ matrix.image }}
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -93,7 +94,7 @@ jobs:
   vis:
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -115,7 +116,7 @@ jobs:
     needs: [bdist]  # bdist is not needed but slow this step down
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -140,7 +141,7 @@ jobs:
     needs: [bdist]  # bdist is not needed but slow this step down
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -162,7 +163,7 @@ jobs:
   sdist:
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -189,7 +190,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -236,7 +237,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [bld, vis]
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -272,7 +273,7 @@ jobs:
     needs: [bdist]  # bdist is not needed but slow this step down
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -307,7 +308,7 @@ jobs:
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -414,7 +415,7 @@ jobs:
             scheduled: ""
     runs-on: ${{ matrix.image }}
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -494,7 +495,7 @@ jobs:
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -583,7 +584,7 @@ jobs:
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -665,7 +666,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -698,7 +699,7 @@ jobs:
     permissions:
       checks: write
     steps:
-      - name: Check out repo
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
