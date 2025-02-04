@@ -115,7 +115,7 @@ check_install() {
       printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
-         sudo apt --yes update
+         sudo apt-get --yes update
          l1_ret_code=$?
          if [ $l1_ret_code -ne 0 ]; then 
             exit $l1_ret_code
@@ -124,7 +124,7 @@ check_install() {
          g_is_updated=1
       fi
 
-      sudo apt --yes install "$l1_package"
+      sudo apt-get --yes install "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
          exit $l1_ret_code

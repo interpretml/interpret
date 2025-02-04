@@ -72,8 +72,8 @@ jobs:
       - name: Build on Linux
         if: startsWith(matrix.image, 'ubuntu')
         run: |
-          sudo apt --yes update
-          sudo apt --yes install nvidia-cuda-toolkit
+          sudo apt-get --yes update
+          sudo apt-get --yes install nvidia-cuda-toolkit
           /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
       - name: Build on macOS
         if: startsWith(matrix.image, 'macos')
@@ -148,8 +148,8 @@ jobs:
       - name: Build R package
         run: |
           cd R
-          sudo apt --yes update
-          sudo apt --yes install texlive-latex-base texlive-fonts-extra
+          sudo apt-get --yes update
+          sudo apt-get --yes install texlive-latex-base texlive-fonts-extra
           Rscript build.R
       - name: Display errors
         if: failure()
@@ -652,8 +652,8 @@ jobs:
         if: startsWith(matrix.image, 'ubuntu')
         continue-on-error: true
         run: |
-          sudo apt --yes update
-          sudo apt --yes install texlive-latex-base texlive-fonts-extra
+          sudo apt-get --yes update
+          sudo apt-get --yes install texlive-latex-base texlive-fonts-extra
           install_file=$(echo bld/R/interpret_*.tar.gz)
           install_file=$(basename "$install_file" .tar.gz)
           cd bld/R
@@ -676,8 +676,8 @@ jobs:
         run: |
           wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-jammy-16.list
-          sudo apt --yes update
-          sudo apt --yes install clang-format-16
+          sudo apt-get --yes update
+          sudo apt-get --yes install clang-format-16
           find shared/libebm \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" \) | xargs clang-format-16 -i -style=file
           git diff --exit-code
       - name: Mark step with a warning
