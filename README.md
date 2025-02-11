@@ -770,6 +770,7 @@ We also build on top of many great packages. Please check them out!
 
 # External tools
 
+- [R package for building EBMs through reticulate](https://github.com/bgreenwell/ebm)
 - [EBM to Onnx converter by SoftAtHome](https://github.com/interpretml/ebm2onnx)
 - [EBM to SQL converter - ML 2 SQL](https://github.com/kaspersgit/ml_2_sql)
 - [EBM to PMML converter - SkLearn2PMML](https://github.com/jpmml/sklearn2pmml)
