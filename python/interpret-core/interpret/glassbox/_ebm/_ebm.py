@@ -3084,6 +3084,63 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
+    def reorder_classes(self, classes):
+        """Re-order the class positions in a classification EBM.
+
+        Args:
+            classes: The new class order
+
+        Returns:
+            Itself.
+
+        """
+        check_is_fitted(self, "has_fitted_")
+
+        classes = np.asarray(classes, dtype=self.classes_.dtype)
+
+        if len(classes) != len(self.classes_):
+            raise ValueError(
+                "The EBM contains {len(self.classes_)} classes, but the 'classes' parameter contains {len(classes)} items."
+            )
+
+        mapping = dict(zip(self.classes_, count()))
+        try:
+            mapping = np.fromiter(
+                map(mapping.__getitem__, classes),
+                np.uint64,
+                count=len(mapping),
+            )
+        except KeyError as e:
+            raise ValueError(
+                f"The 'classes' parameter contains a class '{e.args[0]}' not present in the EBM."
+            ) from e
+
+        if len(mapping) != len(set(mapping)):
+            raise ValueError("The 'classes' parameter contains duplicates.")
+
+        self.classes_ = self.classes_[mapping]
+
+        if len(mapping) == 2:
+            if mapping[0] == 1:
+                np.negative(self.intercept_, out=self.intercept_)
+                np.negative(self.bagged_intercept_, out=self.bagged_intercept_)
+                for scores in self.bagged_scores_:
+                    np.negative(scores, out=scores)
+                for scores in self.term_scores_:
+                    np.negative(scores, out=scores)
+        elif 3 <= len(mapping):
+            self.intercept_ = self.intercept_[mapping]
+            self.bagged_intercept_ = self.bagged_intercept_[:, mapping]
+            self.bagged_scores_ = [
+                scores[..., mapping] for scores in self.bagged_scores_
+            ]
+            self.term_scores_ = [scores[..., mapping] for scores in self.term_scores_]
+            self.standard_deviations_ = [
+                scores[..., mapping] for scores in self.standard_deviations_
+            ]
+
+        return self
+
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
         tags.estimator_type = "classifier"

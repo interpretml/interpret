@@ -1243,3 +1243,62 @@ def test_replicatability_classification():
         if total1 != total2:
             assert total1 == total2
             break
+
+
+def test_reorder_classes_binary_nochange():
+    X, y, names, types = make_synthetic(classes=2, output_type="float", n_samples=250)
+
+    ebm = ExplainableBoostingClassifier(names, types, max_rounds=10)
+    ebm.fit(X, y)
+
+    pred = ebm.predict_proba(X)
+    ebm.reorder_classes([0, 1])
+
+    pred_reordered = ebm.predict_proba(X)
+
+    assert np.allclose(pred, pred_reordered)
+
+
+def test_reorder_classes_binary_flip():
+    X, y, names, types = make_synthetic(classes=2, output_type="float", n_samples=250)
+
+    ebm = ExplainableBoostingClassifier(names, types, max_rounds=10)
+    ebm.fit(X, y)
+
+    pred = ebm.predict_proba(X)
+    ebm.reorder_classes([1, 0])
+
+    pred_reordered = ebm.predict_proba(X)
+
+    assert np.allclose(pred[:, [1, 0]], pred_reordered)
+
+
+def test_reorder_classes_multiclass():
+    X, y, names, types = make_synthetic(classes=3, output_type="float", n_samples=250)
+
+    ebm = ExplainableBoostingClassifier(names, types, max_rounds=10)
+    ebm.fit(X, y)
+
+    pred = ebm.predict_proba(X)
+    ebm.reorder_classes([1, 2, 0])
+
+    pred_reordered = ebm.predict_proba(X)
+
+    assert np.allclose(pred[:, [1, 2, 0]], pred_reordered)
+
+
+def test_reorder_classes_strings():
+    X, y, names, types = make_synthetic(classes=3, output_type="float", n_samples=250)
+
+    mapping = {0: "cats", 1: "dogs", 2: "elephants"}
+    y = np.vectorize(lambda x: mapping[x])(y)
+
+    ebm = ExplainableBoostingClassifier(names, types, max_rounds=10)
+    ebm.fit(X, y)
+
+    pred = ebm.predict_proba(X)
+    ebm.reorder_classes(["dogs", "elephants", "cats"])
+
+    pred_reordered = ebm.predict_proba(X)
+
+    assert np.allclose(pred[:, [1, 2, 0]], pred_reordered)
