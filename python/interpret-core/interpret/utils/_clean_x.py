@@ -2,8 +2,10 @@
 # Distributed under the MIT software license
 
 import logging
+from warnings import warn
 from collections import Counter
-from itertools import count
+from itertools import count, repeat, compress
+import operator
 
 import numpy as np
 from numpy import ma
@@ -410,10 +412,10 @@ def _densify_object_ndarray(X_col):
 
         X_col = X_col.copy()
         places = np.fromiter(
-            (
-                val_type is float or issubclass(val_type, np.floating)
-                for val_type in map(type, X_col)
-            ),
+            map(isinstance, X_col, repeat(float)), np.bool_, count=len(X_col)
+        )
+        places |= np.fromiter(
+            map(issubclass, map(type, X_col), repeat(np.floating)),
             np.bool_,
             count=len(X_col),
         )
@@ -508,7 +510,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
     categories = dict(zip(categories, count(1)))
     mapping = np.fromiter(
-        (categories[val] for val in uniques), np.int64, count=len(uniques)
+        map(categories.__getitem__, uniques), np.int64, count=len(uniques)
     )
     encoded = mapping[indexes]
 
@@ -541,7 +543,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
     uniques = uniques.astype(np.str_, copy=False)
 
     mapping = np.fromiter(
-        (categories.get(val, -1) for val in uniques), np.int64, count=len(uniques)
+        map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
     )
     encoded = mapping[indexes]
 
@@ -642,7 +644,7 @@ def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
     # if we have just 1 sample, we can avoid making the mapping below
 
     mapping = np.fromiter(
-        (categories.get(val, -1) for val in pd_categories),
+        map(categories.get, pd_categories, repeat(-1)),
         np.int64,
         count=len(pd_categories),
     )
@@ -1048,10 +1050,19 @@ def unify_columns(
     X,
     requests,
     feature_names_in,
-    feature_types=None,
-    min_unique_continuous=0,
-    go_fast=False,
+    feature_types,
+    min_unique_continuous,
+    go_fast,
 ):
+    # preclean_X is always called on X prior to calling this function
+
+    # unify_feature_names is always called on feature_names_in prior to calling this function
+
+    # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
+
+    # feature_types can ONLY be None when called from unify_data OR when called from EBMPreprocessor.fit(...)
+    # on all subsequent calls we pass a cleaned up feature_types from the results of the first call to EBMPreprocessor.fit(...)
+
     # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
     # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being
     # yielded by using the id(categories) along with the feature_idx
@@ -1075,17 +1086,17 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                (val != "ignore" for val in feature_types),
+                map(operator.ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
             if n_cols != keep_cols.sum():
                 # called under: predict
-                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+                msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), np.int64)
-            np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
+            col_map = np.empty(len(keep_cols), np.int64)
+            np.place(col_map, keep_cols, np.arange(len(keep_cols), dtype=np.int64))
 
         # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
         # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
@@ -1126,44 +1137,62 @@ def unify_columns(
             # Pandas also allows duplicate labels by default:
             # https://pandas.pydata.org/docs/user_guide/duplicates.html#duplicates-disallow
             # we can tollerate duplicate labels here, provided none of them are being used by our model
-            for name, n_count in Counter(map(str, names_original)).items():
-                if n_count != 1:
-                    del names_dict[name]
+            counts = Counter(map(str, names_original))
+            sum(
+                map(
+                    operator.truth,
+                    map(
+                        operator.delitem,
+                        repeat(names_dict),
+                        compress(
+                            counts.keys(), map(operator.ne, repeat(1), counts.values())
+                        ),
+                    ),
+                )
+            )
 
         if feature_types is None:
-            for feature_name_in in feature_names_in:
-                if feature_name_in not in names_dict:
-                    names_dict = None
-                    break
-        else:
-            for feature_name_in, feature_type in zip(feature_names_in, feature_types):
-                if feature_type != "ignore" and feature_name_in not in names_dict:
-                    names_dict = None
-                    break
-
-        if names_dict is None:
-            if n_cols == len(feature_names_in):
-                names_dict = dict(zip(feature_names_in, count()))
-            else:
-                # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-                # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-                # to check for legality on the dimensions of X
-                names_dict = dict(
-                    zip(
-                        (
-                            feature_name_in
-                            for feature_name_in, feature_type in zip(
-                                feature_names_in, feature_types
-                            )
-                            if feature_type != "ignore"
-                        ),
-                        count(),
-                    )
-                )
-                if n_cols != len(names_dict):
-                    msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+            if not all(map(operator.contains, repeat(names_dict), feature_names_in)):
+                if n_cols != len(feature_names_in):
+                    msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
+
+                names_dict = dict(zip(feature_names_in, count()))
+                warn(
+                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                )
+        else:
+            if not all(
+                map(
+                    operator.contains,
+                    repeat(names_dict),
+                    compress(
+                        feature_names_in,
+                        map(operator.ne, repeat("ignore"), feature_types),
+                    ),
+                )
+            ):
+                if n_cols == len(feature_names_in):
+                    names_dict = dict(zip(feature_names_in, count()))
+                else:
+                    names_dict = dict(
+                        zip(
+                            compress(
+                                feature_names_in,
+                                map(operator.ne, repeat("ignore"), feature_types),
+                            ),
+                            count(),
+                        )
+                    )
+                    if n_cols != len(names_dict):
+                        msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                warn(
+                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                )
 
         # Pandas also sometimes uses a dense 2D ndarray instead of per column 1D ndarrays, which would benefit from
         # transposing, but accessing the BlockManager is currently unsupported behavior. They are also planning to eliminate
@@ -1194,7 +1223,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                (val != "ignore" for val in feature_types),
+                map(operator.ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1222,7 +1251,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                (val != "ignore" for val in feature_types),
+                map(operator.ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1263,7 +1292,7 @@ def unify_columns(
 def _determine_min_cols(feature_names=None, feature_types=None):
     if feature_types is None:
         return None if feature_names is None else len(feature_names)
-    n_ignored = sum(1 for feature_type in feature_types if feature_type == "ignore")
+    n_ignored = sum(map(operator.eq, repeat("ignore"), feature_types))
     if (
         feature_names is None
         or len(feature_names) == len(feature_types)
