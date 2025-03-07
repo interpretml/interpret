@@ -1102,7 +1102,7 @@ def unify_columns(
         #    X = np.asfortranarray(X)
 
         n_cols = X.shape[1]
-        if n_cols == len(feature_names_in):
+        if len(feature_names_in) == n_cols:
             if feature_types is None:
                 for feature_idx, categories in requests:
                     yield _process_numpy_column(
@@ -1125,7 +1125,7 @@ def unify_columns(
                 np.bool_,
                 count=len(feature_types),
             )
-            if n_cols != keep_cols.sum():
+            if keep_cols.sum() != n_cols:
                 # called under: predict
                 msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns"
                 _log.error(msg)
@@ -1154,11 +1154,14 @@ def unify_columns(
         mapping = dict(zip(map(str, cols), cols))
         n_cols = len(cols)
         if len(mapping) != n_cols:
-            # this can happen if for instance one column is "0" and annother is int(0)
-            # Pandas also allows duplicate labels by default:
-            # https://pandas.pydata.org/docs/user_guide/duplicates.html#duplicates-disallow
-            # we can tollerate duplicate labels here, provided none of them are being used by our model
+            warn(
+                "Columns with duplicate names detected. This can happen for example if there are columns '0' and 0."
+            )
+
+            # We can handle duplicate names if they are not being used by the model.
             counts = Counter(map(str, cols))
+
+            # sum is used to iterate outside the interpreter. The result is not used.
             sum(
                 map(
                     operator.truth,
@@ -1175,6 +1178,10 @@ def unify_columns(
         if feature_types is None:
             if all(map(operator.contains, repeat(mapping), feature_names_in)):
                 # we can index by name, which is a lot faster in pandas
+
+                if len(feature_names_in) != n_cols:
+                    warn("Extra columns present in X that are not used by the model.")
+
                 for feature_idx, categories in requests:
                     yield _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
@@ -1183,7 +1190,7 @@ def unify_columns(
                         min_unique_continuous,
                     )
             else:
-                if n_cols != len(feature_names_in):
+                if len(feature_names_in) != n_cols:
                     msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
@@ -1209,6 +1216,10 @@ def unify_columns(
                 )
             ):
                 # we can index by name, which is a lot faster in pandas
+
+                if len(feature_names_in) < n_cols:
+                    warn("Extra columns present in X that are not used by the model.")
+
                 for feature_idx, categories in requests:
                     yield _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
@@ -1218,7 +1229,7 @@ def unify_columns(
                     )
             else:
                 X = X.iloc
-                if n_cols == len(feature_names_in):
+                if len(feature_names_in) == n_cols:
                     warn(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
@@ -1235,9 +1246,9 @@ def unify_columns(
                         np.bool_,
                         count=len(feature_types),
                     )
-                    if n_cols != keep_cols.sum():
+                    if keep_cols.sum() != n_cols:
                         # called under: predict
-                        msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns"
+                        msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns."
                         _log.error(msg)
                         raise ValueError(msg)
                     col_map = np.empty(len(keep_cols), np.int64)
@@ -1266,7 +1277,7 @@ def unify_columns(
 
         n_cols = X.shape[1]
 
-        if n_cols == len(feature_names_in):
+        if len(feature_names_in) == n_cols:
             if feature_types is None:
                 for feature_idx, categories in requests:
                     yield _process_sparse_column(
@@ -1289,8 +1300,8 @@ def unify_columns(
                 np.bool_,
                 count=len(feature_types),
             )
-            if n_cols != keep_cols.sum():
-                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+            if keep_cols.sum() != n_cols:
+                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
@@ -1315,7 +1326,7 @@ def unify_columns(
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
         n_cols = X.shape[1]
 
-        if n_cols == len(feature_names_in):
+        if len(feature_names_in) == n_cols:
             if feature_types is None:
                 for feature_idx, categories in requests:
                     yield _process_sparse_column(
@@ -1338,8 +1349,8 @@ def unify_columns(
                 np.bool_,
                 count=len(feature_types),
             )
-            if n_cols != keep_cols.sum():
-                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns"
+            if keep_cols.sum() != n_cols:
+                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
