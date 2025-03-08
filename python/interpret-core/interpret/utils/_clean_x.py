@@ -1369,10 +1369,7 @@ def unify_columns(
                     _process_sparse_column,
                     map(
                         X.__getitem__,
-                        zip(
-                            repeat(slice(None)),
-                            map(list, zip(feature_idxs)),  # TODO can we use tuple
-                        ),
+                        zip(repeat(slice(None)), zip(feature_idxs)),
                     ),
                     categories,
                     repeat(None),
@@ -1384,10 +1381,7 @@ def unify_columns(
                     _process_sparse_column,
                     map(
                         X.__getitem__,
-                        zip(
-                            repeat(slice(None)),
-                            map(list, zip(feature_idxs)),  # TODO can we use tuple
-                        ),
+                        zip(repeat(slice(None)), zip(feature_idxs)),
                     ),
                     categories,
                     map(
@@ -1420,14 +1414,11 @@ def unify_columns(
                         X.__getitem__,
                         zip(
                             repeat(slice(None)),
-                            map(
-                                list,  # TODO can we use tuple
-                                zip(
-                                    map(
-                                        col_map.__getitem__,
-                                        feature_idxs,
-                                    )
-                                ),
+                            zip(
+                                map(
+                                    col_map.__getitem__,
+                                    feature_idxs,
+                                )
                             ),
                         ),
                     ),
@@ -1443,14 +1434,11 @@ def unify_columns(
                         X.__getitem__,
                         zip(
                             repeat(slice(None)),
-                            map(
-                                list,  # TODO can we use tuple
-                                zip(
-                                    map(
-                                        col_map.__getitem__,
-                                        feature_idxs,
-                                    )
-                                ),
+                            zip(
+                                map(
+                                    col_map.__getitem__,
+                                    feature_idxs,
+                                )
                             ),
                         ),
                     ),
