@@ -28,35 +28,45 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     _log.info("eval_terms")
 
-    requests = []
+    request_feature_idxs = []
+    request_categories = []
+
     waiting = {}
-    for term_idx, feature_idxs in enumerate(term_features):
-        # the first len(feature_idxs) items hold the binned data that we get back as it arrives
-        requirements = _none_list * (len(feature_idxs) + 1)
+    for term_idx, term_feature_idxs in enumerate(term_features):
+        # the first len(term_feature_idxs) items hold the binned data that we get back as it arrives
+        requirements = _none_list * (len(term_feature_idxs) + 1)
         requirements[-1] = term_idx
-        for feature_idx in feature_idxs:
+        for feature_idx in term_feature_idxs:
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
+            feature_bins = bin_levels[min(len(bin_levels), len(term_feature_idxs)) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
-                request = (feature_idx, feature_bins)
                 key = (feature_idx, id(feature_bins))
             else:
                 # continuous feature
-                request = (feature_idx, None)
+                feature_bins = None
                 key = feature_idx
             waiting_list = waiting.get(key)
             if waiting_list is None:
-                requests.append(request)
+                request_feature_idxs.append(feature_idx)
+                request_categories.append(feature_bins)
                 waiting[key] = [requirements]
             else:
                 waiting_list.append(requirements)
 
     native = Native.get_native_singleton()
 
-    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(
-        requests,
-        unify_columns(X, requests, feature_names_in, feature_types_in, None, True),
+    for column_feature_idx, (_, X_col, column_categories, bad) in zip(
+        request_feature_idxs,
+        unify_columns(
+            X,
+            request_feature_idxs,
+            request_categories,
+            feature_names_in,
+            feature_types_in,
+            None,
+            True,
+        ),
     ):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"

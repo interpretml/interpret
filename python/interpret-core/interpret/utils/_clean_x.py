@@ -1048,7 +1048,8 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
 
 def unify_columns(
     X,
-    requests,
+    feature_idxs,
+    categories,
     feature_names_in,
     feature_types,
     min_unique_continuous,
@@ -1063,7 +1064,7 @@ def unify_columns(
     # feature_types can ONLY be None when called from unify_data OR when called from EBMPreprocessor.fit(...)
     # on all subsequent calls we pass a cleaned up feature_types from the results of the first call to EBMPreprocessor.fit(...)
 
-    # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
+    # If the categories paramter contains a dictionary, then that same categories object is guaranteed to
     # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being
     # yielded by using the id(categories) along with the feature_idx
 
@@ -1108,9 +1109,9 @@ def unify_columns(
                     _process_numpy_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), map(operator.itemgetter(0), requests)),
+                        zip(repeat(slice(None)), feature_idxs),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1120,12 +1121,12 @@ def unify_columns(
                     _process_numpy_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), map(operator.itemgetter(0), requests)),
+                        zip(repeat(slice(None)), feature_idxs),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1156,11 +1157,11 @@ def unify_columns(
                             repeat(slice(None)),
                             map(
                                 col_map.__getitem__,
-                                map(operator.itemgetter(0), requests),
+                                feature_idxs,
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1174,14 +1175,14 @@ def unify_columns(
                             repeat(slice(None)),
                             map(
                                 col_map.__getitem__,
-                                map(operator.itemgetter(0), requests),
+                                feature_idxs,
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1224,11 +1225,11 @@ def unify_columns(
                             mapping.__getitem__,
                             map(
                                 feature_names_in.__getitem__,
-                                map(operator.itemgetter(0), requests),
+                                feature_idxs,
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1247,9 +1248,9 @@ def unify_columns(
                     _process_pandas_column,
                     map(
                         X.iloc.__getitem__,
-                        zip(repeat(slice(None)), map(operator.itemgetter(0), requests)),
+                        zip(repeat(slice(None)), feature_idxs),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1277,14 +1278,14 @@ def unify_columns(
                             mapping.__getitem__,
                             map(
                                 feature_names_in.__getitem__,
-                                map(operator.itemgetter(0), requests),
+                                feature_idxs,
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1301,13 +1302,13 @@ def unify_columns(
                             X.iloc.__getitem__,
                             zip(
                                 repeat(slice(None)),
-                                map(operator.itemgetter(0), requests),
+                                feature_idxs,
                             ),
                         ),
-                        map(operator.itemgetter(1), requests),
+                        categories,
                         map(
                             feature_types.__getitem__,
-                            map(operator.itemgetter(0), requests),
+                            feature_idxs,
                         ),
                         repeat(min_unique_continuous),
                     ):
@@ -1340,14 +1341,14 @@ def unify_columns(
                                 repeat(slice(None)),
                                 map(
                                     col_map.__getitem__,
-                                    map(operator.itemgetter(0), requests),
+                                    feature_idxs,
                                 ),
                             ),
                         ),
-                        map(operator.itemgetter(1), requests),
+                        categories,
                         map(
                             feature_types.__getitem__,
-                            map(operator.itemgetter(0), requests),
+                            feature_idxs,
                         ),
                         repeat(min_unique_continuous),
                     ):
@@ -1370,10 +1371,10 @@ def unify_columns(
                         X.__getitem__,
                         zip(
                             repeat(slice(None)),
-                            map(list, zip(map(operator.itemgetter(0), requests))),
+                            map(list, zip(feature_idxs)),  # TODO can we use tuple
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1385,13 +1386,13 @@ def unify_columns(
                         X.__getitem__,
                         zip(
                             repeat(slice(None)),
-                            map(list, zip(map(operator.itemgetter(0), requests))),
+                            map(list, zip(feature_idxs)),  # TODO can we use tuple
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1420,17 +1421,17 @@ def unify_columns(
                         zip(
                             repeat(slice(None)),
                             map(
-                                list,
+                                list,  # TODO can we use tuple
                                 zip(
                                     map(
                                         col_map.__getitem__,
-                                        map(operator.itemgetter(0), requests),
+                                        feature_idxs,
                                     )
                                 ),
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1443,20 +1444,20 @@ def unify_columns(
                         zip(
                             repeat(slice(None)),
                             map(
-                                list,
+                                list,  # TODO can we use tuple
                                 zip(
                                     map(
                                         col_map.__getitem__,
-                                        map(operator.itemgetter(0), requests),
+                                        feature_idxs,
                                     )
                                 ),
                             ),
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1468,8 +1469,8 @@ def unify_columns(
             if feature_types is None:
                 for result in map(
                     _process_sparse_column,
-                    map(X.getcol, map(operator.itemgetter(0), requests)),
-                    map(operator.itemgetter(1), requests),
+                    map(X.getcol, feature_idxs),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1477,11 +1478,11 @@ def unify_columns(
             else:
                 for result in map(
                     _process_sparse_column,
-                    map(X.getcol, map(operator.itemgetter(0), requests)),
-                    map(operator.itemgetter(1), requests),
+                    map(X.getcol, feature_idxs),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1509,10 +1510,10 @@ def unify_columns(
                         X.getcol,
                         map(
                             col_map.__getitem__,
-                            map(operator.itemgetter(0), requests),
+                            feature_idxs,
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     repeat(None),
                     repeat(min_unique_continuous),
                 ):
@@ -1524,13 +1525,13 @@ def unify_columns(
                         X.getcol,
                         map(
                             col_map.__getitem__,
-                            map(operator.itemgetter(0), requests),
+                            feature_idxs,
                         ),
                     ),
-                    map(operator.itemgetter(1), requests),
+                    categories,
                     map(
                         feature_types.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                     repeat(min_unique_continuous),
                 ):
@@ -1548,10 +1549,10 @@ def unify_columns(
                     X.__getitem__,
                     map(
                         feature_names_in.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                 ),
-                map(operator.itemgetter(1), requests),
+                categories,
                 repeat(None),
                 repeat(min_unique_continuous),
             ):
@@ -1563,13 +1564,13 @@ def unify_columns(
                     X.__getitem__,
                     map(
                         feature_names_in.__getitem__,
-                        map(operator.itemgetter(0), requests),
+                        feature_idxs,
                     ),
                 ),
-                map(operator.itemgetter(1), requests),
+                categories,
                 map(
                     feature_types.__getitem__,
-                    map(operator.itemgetter(0), requests),
+                    feature_idxs,
                 ),
                 repeat(min_unique_continuous),
             ):
