@@ -270,7 +270,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
             unify_columns(
                 X,
-                zip(range(n_features), repeat(None)),
+                list(zip(range(n_features), repeat(None))),
                 feature_names_in,
                 self.feature_types,
                 self.min_unique_continuous,
@@ -516,7 +516,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 category if isinstance(category, dict) else None
                 for category in self.bins_
             )
-            requests = zip(count(), category_iter)
+            requests = list(zip(count(), category_iter))
             cols = unify_columns(
                 X, requests, self.feature_names_in_, self.feature_types_in_, None, False
             )

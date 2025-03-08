@@ -405,7 +405,7 @@ def check_pandas_float(dtype, val1, val2):
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             0,
@@ -456,7 +456,7 @@ def check_numpy_throws(dtype_src, val1, val2):
         list(
             unify_columns(
                 X,
-                zip(range(len(feature_names_in)), repeat(None)),
+                list(zip(range(len(feature_names_in)), repeat(None))),
                 feature_names_in,
                 None,
                 3,
@@ -1257,7 +1257,7 @@ def test_unify_columns_numpy1():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1278,7 +1278,7 @@ def test_unify_columns_numpy2():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1306,7 +1306,7 @@ def test_unify_columns_numpy_ignore():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             feature_types_given,
             3,
@@ -1336,7 +1336,7 @@ def test_unify_columns_scipy():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1368,7 +1368,7 @@ def test_unify_columns_dict1():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1394,7 +1394,7 @@ def test_unify_columns_dict2():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1424,7 +1424,7 @@ def test_unify_columns_list1():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1475,7 +1475,7 @@ def test_unify_columns_list2():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1571,7 +1571,7 @@ def test_unify_columns_tuple1():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1608,7 +1608,7 @@ def test_unify_columns_tuple2():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1686,7 +1686,7 @@ def test_unify_columns_generator1():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1726,7 +1726,7 @@ def test_unify_columns_generator2():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -1927,7 +1927,7 @@ def test_unify_columns_str_throw():
         list(
             unify_columns(
                 X,
-                zip(range(len(feature_names_in)), repeat(None)),
+                list(zip(range(len(feature_names_in)), repeat(None))),
                 feature_names_in,
                 None,
                 3,
@@ -1956,7 +1956,7 @@ def test_unify_columns_int_throw():
         list(
             unify_columns(
                 X,
-                zip(range(len(feature_names_in)), repeat(None)),
+                list(zip(range(len(feature_names_in)), repeat(None))),
                 feature_names_in,
                 None,
                 3,
@@ -1983,7 +1983,7 @@ def test_unify_columns_duplicate_colnames_throw():
         list(
             unify_columns(
                 X,
-                zip(range(len(feature_names_in)), repeat(None)),
+                list(zip(range(len(feature_names_in)), repeat(None))),
                 feature_names_in,
                 None,
                 3,
@@ -2066,7 +2066,7 @@ def test_unify_columns_pandas_obj_to_float():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -2120,7 +2120,7 @@ def test_unify_columns_pandas_obj_to_str():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -2170,7 +2170,7 @@ def test_unify_columns_pandas_categorical():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,
@@ -2206,7 +2206,7 @@ def test_unify_columns_pandas_ordinal():
     X_cols = list(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             None,
             3,

@@ -43,7 +43,7 @@ def unify_data(
     for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            list(zip(range(len(feature_names_in)), repeat(None))),
             feature_names_in,
             feature_types,
             min_unique_continuous,
