@@ -4,6 +4,8 @@
 import logging
 
 import numpy as np
+from itertools import count
+import operator
 
 from ...utils._clean_x import unify_columns
 from ...utils._native import Native
@@ -32,10 +34,15 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     request_categories = []
 
     waiting = {}
-    for term_idx, term_feature_idxs in enumerate(term_features):
-        # the first len(term_feature_idxs) items hold the binned data that we get back as it arrives
-        requirements = _none_list * (len(term_feature_idxs) + 1)
-        requirements[-1] = term_idx
+    # the first len(term_feature_idxs) items hold the binned data that we get back as it arrives
+    for requirements, term_feature_idxs in zip(
+        map(
+            operator.add,
+            map(_none_list.__mul__, map(len, term_features)),
+            map(list, zip(count())),
+        ),
+        term_features,
+    ):
         for feature_idx in term_feature_idxs:
             bin_levels = bins[feature_idx]
             feature_bins = bin_levels[min(len(bin_levels), len(term_feature_idxs)) - 1]
