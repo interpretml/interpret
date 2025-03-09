@@ -4,7 +4,7 @@
 import logging
 
 import numpy as np
-from itertools import count
+from itertools import count, tee, repeat
 import operator
 
 from ...utils._clean_x import unify_columns
@@ -156,19 +156,44 @@ def ebm_predict_scores(
     term_features,
     init_score=None,
 ):
-    shape = n_samples
-    if not isinstance(intercept, float) and len(intercept) != 1:
-        shape = (n_samples, len(intercept))
-    sample_scores = np.full(shape, intercept, dtype=np.float64)
+    sample_scores = (
+        np.full(
+            n_samples
+            if isinstance(intercept, float) or len(intercept) == 1
+            else (n_samples, len(intercept)),
+            intercept,
+            dtype=np.float64,
+        )
+        if init_score is None
+        else init_score + intercept
+    )
 
     if n_samples > 0:
-        for term_idx, bin_indexes in eval_terms(
-            X, n_samples, feature_names_in, feature_types_in, bins, term_features
-        ):
-            sample_scores += term_scores[term_idx][tuple(bin_indexes)]
+        term_idxs, binned = tee(
+            eval_terms(
+                X, n_samples, feature_names_in, feature_types_in, bins, term_features
+            ),
+            2,
+        )
 
-    if init_score is not None:
-        sample_scores += init_score
+        # sum is used to iterate outside the interpreter. The result is not used.
+        sum(
+            map(
+                operator.is_,
+                map(
+                    sample_scores.__iadd__,
+                    map(
+                        operator.getitem,
+                        map(
+                            term_scores.__getitem__,
+                            map(operator.itemgetter(0), term_idxs),
+                        ),
+                        map(tuple, map(operator.itemgetter(1), binned)),
+                    ),
+                ),
+                repeat(None),
+            )
+        )
 
     return sample_scores
 
@@ -183,17 +208,42 @@ def ebm_eval_terms(
     term_scores,
     term_features,
 ):
-    if n_scores == 1:
-        shape = (n_samples, len(term_features))
-    else:
-        shape = (n_samples, len(term_features), n_scores)
-    explanations = np.empty(shape, dtype=np.float64)
+    explanations = np.empty(
+        (n_samples, len(term_features))
+        if n_scores == 1
+        else (n_samples, len(term_features), n_scores),
+        dtype=np.float64,
+    )
 
     if n_samples > 0:
-        for term_idx, bin_indexes in eval_terms(
-            X, n_samples, feature_names_in, feature_types_in, bins, term_features
-        ):
-            explanations[:, term_idx] = term_scores[term_idx][tuple(bin_indexes)]
+        term_idxs1, term_idxs2, binned = tee(
+            eval_terms(
+                X, n_samples, feature_names_in, feature_types_in, bins, term_features
+            ),
+            3,
+        )
+
+        # sum is used to iterate outside the interpreter. The result is not used.
+        sum(
+            map(
+                operator.truth,
+                map(
+                    explanations.__setitem__,
+                    zip(
+                        repeat(slice(None)),
+                        map(operator.itemgetter(0), term_idxs1),
+                    ),
+                    map(
+                        operator.getitem,
+                        map(
+                            term_scores.__getitem__,
+                            map(operator.itemgetter(0), term_idxs2),
+                        ),
+                        map(tuple, map(operator.itemgetter(1), binned)),
+                    ),
+                ),
+            )
+        )
 
     return explanations
 
