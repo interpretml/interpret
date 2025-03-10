@@ -4,7 +4,7 @@
 import logging
 
 import numpy as np
-from itertools import count, tee, repeat
+from itertools import count, tee, repeat, chain
 import operator
 
 from ...utils._clean_x import unify_columns
@@ -30,36 +30,87 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     _log.info("eval_terms")
 
-    request_feature_idxs = []
-    request_categories = []
+    all_requirements = list(
+        chain.from_iterable(
+            map(
+                operator.mul,
+                zip(
+                    map(
+                        operator.add,
+                        map(_none_list.__mul__, map(len, term_features)),
+                        map(list, zip(count())),
+                    )
+                ),
+                map(len, term_features),
+            )
+        ),
+    )
+
+    all_bin_levels1, all_bin_levels2 = tee(
+        map(bins.__getitem__, chain.from_iterable(term_features)), 2
+    )
+
+    feature_bins1, feature_bins2 = tee(
+        map(
+            operator.getitem,
+            all_bin_levels1,
+            map(
+                min,
+                zip(
+                    map((-1).__add__, map(len, all_bin_levels2)),
+                    map((-2).__add__, map(len, all_requirements)),
+                ),
+            ),
+        ),
+        2,
+    )
+
+    all_feature_bins = list(
+        map(
+            operator.getitem,
+            zip(repeat(None), feature_bins1),
+            map(isinstance, feature_bins2, repeat(dict)),
+        )
+    )
+
+    requests = dict(
+        zip(
+            zip(chain.from_iterable(term_features), map(id, all_feature_bins)),
+            zip(count(), all_feature_bins),
+        )
+    )
+
+    # order the requests by (feature_idx, feature_bin_original_order) which is implementation independent
+    requests = sorted(
+        zip(
+            map(operator.itemgetter(0), requests.keys()),
+            map(operator.itemgetter(0), requests.values()),
+            map(operator.itemgetter(1), requests.values()),
+        )
+    )
+
+    request_feature_idxs = list(map(operator.itemgetter(0), requests))
+
+    keys1, keys2 = tee(
+        zip(chain.from_iterable(term_features), map(id, all_feature_bins)), 2
+    )
 
     waiting = {}
-    # the first len(term_feature_idxs) items hold the binned data that we get back as it arrives
-    for requirements, term_feature_idxs in zip(
+    # sum is used to iterate outside the interpreter. The result is not used.
+    sum(
         map(
-            operator.add,
-            map(_none_list.__mul__, map(len, term_features)),
-            map(list, zip(count())),
-        ),
-        term_features,
-    ):
-        for feature_idx in term_feature_idxs:
-            bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), len(term_feature_idxs)) - 1]
-            if isinstance(feature_bins, dict):
-                # categorical feature
-                key = (feature_idx, id(feature_bins))
-            else:
-                # continuous feature
-                feature_bins = None
-                key = feature_idx
-            waiting_list = waiting.get(key)
-            if waiting_list is None:
-                request_feature_idxs.append(feature_idx)
-                request_categories.append(feature_bins)
-                waiting[key] = [requirements]
-            else:
-                waiting_list.append(requirements)
+            operator.truth,
+            map(
+                waiting.__setitem__,
+                keys1,
+                map(
+                    operator.add,
+                    map(waiting.get, keys2, map(list, repeat(tuple()))),
+                    map(list, zip(all_requirements)),
+                ),
+            ),
+        )
+    )
 
     native = Native.get_native_singleton()
 
@@ -68,7 +119,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         unify_columns(
             X,
             request_feature_idxs,
-            request_categories,
+            map(operator.itemgetter(2), requests),
             feature_names_in,
             feature_types_in,
             None,
@@ -95,7 +146,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
             binning_completed = _none_list * max_level
-            for requirements in waiting[column_feature_idx]:
+            for requirements in waiting[(column_feature_idx, id(None))]:
                 if len(requirements) != 0:
                     term_idx = requirements[-1]
                     feature_idxs = term_features[term_idx]
