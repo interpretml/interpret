@@ -116,8 +116,16 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     native = Native.get_native_singleton()
 
-    for column_feature_idx, (_, X_col, column_categories, bad) in zip(
+    for column_feature_idx, bin_levels, max_level, binning_completed, (
+        _,
+        X_col,
+        column_categories,
+        bad,
+    ) in zip(
         request_feature_idxs,
+        map(bins.__getitem__, request_feature_idxs),
+        map(len, map(bins.__getitem__, request_feature_idxs)),
+        map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
         unify_columns(
             X,
             request_feature_idxs,
@@ -145,9 +153,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
-            bin_levels = bins[column_feature_idx]
-            max_level = len(bin_levels)
-            binning_completed = _none_list * max_level
             for requirements in filter(
                 _non_empty_check, waiting[(column_feature_idx, id(None))]
             ):
