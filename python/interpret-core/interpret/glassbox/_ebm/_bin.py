@@ -15,6 +15,7 @@ _log = logging.getLogger(__name__)
 
 _none_list = [None]
 _none_ndarray = np.array(None)
+_non_empty_check = [].__ne__
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -147,26 +148,24 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
             binning_completed = _none_list * max_level
-            for requirements in waiting[(column_feature_idx, id(None))]:
-                if len(requirements) != 0:
-                    term_idx = requirements[-1]
-                    feature_idxs = term_features[term_idx]
-                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                        if term_feature_idx == column_feature_idx:
-                            level_idx = min(max_level, len(feature_idxs)) - 1
-                            bin_indexes = binning_completed[level_idx]
-                            if bin_indexes is None:
-                                cuts = bin_levels[level_idx]
-                                bin_indexes = native.discretize(X_col, cuts)
-                                if bad is not None:
-                                    bin_indexes[bad] = -1
-                                binning_completed[level_idx] = bin_indexes
-                            requirements[dimension_idx] = bin_indexes
+            for requirements in filter(
+                _non_empty_check, waiting[(column_feature_idx, id(None))]
+            ):
+                term_idx = requirements[-1]
+                feature_idxs = term_features[term_idx]
+                level_idx = min(max_level, len(feature_idxs)) - 1
+                bin_indexes = binning_completed[level_idx]
+                if bin_indexes is None:
+                    bin_indexes = native.discretize(X_col, bin_levels[level_idx])
+                    if bad is not None:
+                        bin_indexes[bad] = -1
+                    binning_completed[level_idx] = bin_indexes
+                requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
 
-                    if all(map(operator.is_not, requirements, repeat(None))):
-                        yield term_idx, requirements[:-1]
-                        # clear references so that the garbage collector can free them
-                        requirements.clear()
+                if all(map(operator.is_not, requirements, repeat(None))):
+                    yield term_idx, requirements[:-1]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
         else:
             # categorical feature
 
@@ -174,21 +173,16 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
                 pass  # TODO: improve this handling
 
-            for requirements in waiting[(column_feature_idx, id(column_categories))]:
-                if len(requirements) != 0:
-                    term_idx = requirements[-1]
-                    feature_idxs = term_features[term_idx]
-                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                        if term_feature_idx == column_feature_idx:
-                            # "term_categories is column_categories" since any term in the waiting_list must have
-                            # one of it's elements match this (feature_idx, categories) index, and all items in this
-                            # term need to have the same categories since they came from the same bin_level
-                            requirements[dimension_idx] = X_col
+            for requirements in filter(
+                _non_empty_check, waiting[(column_feature_idx, id(column_categories))]
+            ):
+                term_idx = requirements[-1]
+                requirements[term_features[term_idx].index(column_feature_idx)] = X_col
 
-                    if all(map(operator.is_not, requirements, repeat(None))):
-                        yield term_idx, requirements[:-1]
-                        # clear references so that the garbage collector can free them
-                        requirements.clear()
+                if all(map(operator.is_not, requirements, repeat(None))):
+                    yield term_idx, requirements[:-1]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
 
 
 def ebm_predict_scores(
