@@ -116,16 +116,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     native = Native.get_native_singleton()
 
-    for column_feature_idx, bin_levels, max_level, binning_completed, (
-        _,
-        X_col,
-        column_categories,
-        bad,
-    ) in zip(
-        request_feature_idxs,
-        map(bins.__getitem__, request_feature_idxs),
-        map(len, map(bins.__getitem__, request_feature_idxs)),
-        map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
+    col1, col2, col3, col4, col5 = tee(
         unify_columns(
             X,
             request_feature_idxs,
@@ -135,8 +126,44 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             None,
             True,
         ),
+        5,
+    )
+
+    for (
+        column_feature_idx,
+        bin_levels,
+        max_level,
+        binning_completed,
+        all_requirements,
+        is_mismatch,
+        is_bad,
+        is_non_contiguous,
+        (_, X_col, column_categories, bad),
+    ) in zip(
+        request_feature_idxs,
+        map(bins.__getitem__, request_feature_idxs),
+        map(len, map(bins.__getitem__, request_feature_idxs)),
+        map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
+        map(
+            filter,
+            repeat(_non_empty_check),
+            map(
+                waiting.__getitem__,
+                zip(request_feature_idxs, map(id, map(operator.itemgetter(2), col1))),
+            ),
+        ),
+        map(n_samples.__ne__, map(len, map(operator.itemgetter(1), col2))),
+        map(operator.is_not, map(operator.itemgetter(3), col3), repeat(None)),
+        map(
+            operator.not_,
+            map(
+                operator.attrgetter("c_contiguous"),
+                map(operator.attrgetter("flags"), map(operator.itemgetter(1), col4)),
+            ),
+        ),
+        col5,
     ):
-        if n_samples != len(X_col):
+        if is_mismatch:
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
@@ -144,25 +171,23 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         if column_categories is None:
             # continuous feature
 
-            if bad is not None:
+            if is_bad:
                 # TODO: we could pass out a bool array instead of objects for this function only
                 bad = bad != _none_ndarray
 
-            if not X_col.flags.c_contiguous:
+            if is_non_contiguous:
                 # we requrested this feature, so at some point we're going to call discretize,
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
-            for requirements in filter(
-                _non_empty_check, waiting[(column_feature_idx, id(None))]
-            ):
+            for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
                 level_idx = min(max_level, len(feature_idxs)) - 1
                 bin_indexes = binning_completed[level_idx]
                 if bin_indexes is None:
                     bin_indexes = native.discretize(X_col, bin_levels[level_idx])
-                    if bad is not None:
+                    if is_bad:
                         bin_indexes[bad] = -1
                     binning_completed[level_idx] = bin_indexes
                 requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
@@ -174,13 +199,11 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         else:
             # categorical feature
 
-            if bad is not None:
+            if is_bad:
                 # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
                 pass  # TODO: improve this handling
 
-            for requirements in filter(
-                _non_empty_check, waiting[(column_feature_idx, id(column_categories))]
-            ):
+            for requirements in all_requirements:
                 term_idx = requirements[-1]
                 requirements[term_features[term_idx].index(column_feature_idx)] = X_col
 
