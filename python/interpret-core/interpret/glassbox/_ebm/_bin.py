@@ -80,7 +80,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         )
     )
 
-    # order the requests by (feature_idx, feature_bin_original_order) which is implementation independent
+    # Order requests by (feature_idx, term order) for implementation independence.
+    # Since term_features is sorted by # dimensions, this also orders by # dimensions.
     requests = sorted(
         zip(
             map(operator.itemgetter(0), requests.keys()),
@@ -150,7 +151,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 if len(requirements) != 0:
                     term_idx = requirements[-1]
                     feature_idxs = term_features[term_idx]
-                    is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
                             level_idx = min(max_level, len(feature_idxs)) - 1
@@ -162,10 +162,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                                     bin_indexes[bad] = -1
                                 binning_completed[level_idx] = bin_indexes
                             requirements[dimension_idx] = bin_indexes
-                        elif requirements[dimension_idx] is None:
-                            is_done = False
 
-                    if is_done:
+                    if all(map(operator.is_not, requirements, repeat(None))):
                         yield term_idx, requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
@@ -180,17 +178,14 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 if len(requirements) != 0:
                     term_idx = requirements[-1]
                     feature_idxs = term_features[term_idx]
-                    is_done = True
                     for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                         if term_feature_idx == column_feature_idx:
                             # "term_categories is column_categories" since any term in the waiting_list must have
                             # one of it's elements match this (feature_idx, categories) index, and all items in this
                             # term need to have the same categories since they came from the same bin_level
                             requirements[dimension_idx] = X_col
-                        elif requirements[dimension_idx] is None:
-                            is_done = False
 
-                    if is_done:
+                    if all(map(operator.is_not, requirements, repeat(None))):
                         yield term_idx, requirements[:-1]
                         # clear references so that the garbage collector can free them
                         requirements.clear()
