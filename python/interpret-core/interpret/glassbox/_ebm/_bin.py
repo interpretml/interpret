@@ -163,7 +163,22 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             _log.error(msg)
             raise ValueError(msg)
 
-        if column_categories is None:
+        if column_categories:
+            # categorical feature
+
+            if is_bad:
+                # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
+                pass  # TODO: improve this handling
+
+            for requirements in all_requirements:
+                term_idx = requirements[-1]
+                requirements[term_features[term_idx].index(column_feature_idx)] = X_col
+
+                if all(map(operator.is_not, requirements, repeat(None))):
+                    yield term_idx, requirements[:-1]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
+        else:
             # continuous feature
 
             if is_bad:
@@ -186,21 +201,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         bin_indexes[bad] = -1
                     binning_completed[level_idx] = bin_indexes
                 requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
-
-                if all(map(operator.is_not, requirements, repeat(None))):
-                    yield term_idx, requirements[:-1]
-                    # clear references so that the garbage collector can free them
-                    requirements.clear()
-        else:
-            # categorical feature
-
-            if is_bad:
-                # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
-                pass  # TODO: improve this handling
-
-            for requirements in all_requirements:
-                term_idx = requirements[-1]
-                requirements[term_features[term_idx].index(column_feature_idx)] = X_col
 
                 if all(map(operator.is_not, requirements, repeat(None))):
                     yield term_idx, requirements[:-1]
