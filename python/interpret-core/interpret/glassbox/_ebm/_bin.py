@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 from itertools import count, tee, repeat, chain, compress
-import operator
+from operator import mul, itemgetter, getitem, truth, add, attrgetter, is_not, not_, is_
 
 from ...utils._clean_x import unify_columns
 from ...utils._native import Native
@@ -33,10 +33,10 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     all_requirements = list(
         chain.from_iterable(
             map(
-                operator.mul,
+                mul,
                 zip(
                     map(
-                        operator.add,
+                        add,
                         map(_none_list.__mul__, map(len, term_features)),
                         map(list, zip(count())),
                     )
@@ -52,7 +52,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     feature_bins1, feature_bins2 = tee(
         map(
-            operator.getitem,
+            getitem,
             all_bin_levels1,
             map(
                 min,
@@ -67,7 +67,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     all_feature_bins = list(
         map(
-            operator.getitem,
+            getitem,
             zip(repeat(None), feature_bins1),
             map(isinstance, feature_bins2, repeat(dict)),
         )
@@ -84,13 +84,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # Since term_features is sorted by # dimensions, this also orders by # dimensions.
     requests = sorted(
         zip(
-            map(operator.itemgetter(0), requests.keys()),
-            map(operator.itemgetter(0), requests.values()),
-            map(operator.itemgetter(1), requests.values()),
+            map(itemgetter(0), requests.keys()),
+            map(itemgetter(0), requests.values()),
+            map(itemgetter(1), requests.values()),
         )
     )
 
-    request_feature_idxs = list(map(operator.itemgetter(0), requests))
+    request_feature_idxs = list(map(itemgetter(0), requests))
 
     keys1, keys2 = tee(
         zip(chain.from_iterable(term_features), map(id, all_feature_bins)), 2
@@ -100,12 +100,12 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # sum is used to iterate outside the interpreter. The result is not used.
     sum(
         map(
-            operator.truth,
+            truth,
             map(
                 waiting.__setitem__,
                 keys1,
                 map(
-                    operator.add,
+                    add,
                     map(waiting.get, keys2, map(list, repeat(tuple()))),
                     map(list, zip(all_requirements)),
                 ),
@@ -119,7 +119,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         unify_columns(
             X,
             request_feature_idxs,
-            map(operator.itemgetter(2), requests),
+            map(itemgetter(2), requests),
             feature_names_in,
             feature_types_in,
             None,
@@ -141,21 +141,21 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         (_, X_col, column_categories, bad),
     ) in zip(
         request_feature_idxs,
-        map(operator.attrgetter("__eq__"), request_feature_idxs),
+        map(attrgetter("__eq__"), request_feature_idxs),
         map(bins.__getitem__, request_feature_idxs),
         map(len, map(bins.__getitem__, request_feature_idxs)),
         map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
         map(
             waiting.__getitem__,
-            zip(request_feature_idxs, map(id, map(operator.itemgetter(2), col1))),
+            zip(request_feature_idxs, map(id, map(itemgetter(2), col1))),
         ),
-        map(n_samples.__ne__, map(len, map(operator.itemgetter(1), col2))),
-        map(operator.is_not, map(operator.itemgetter(3), col3), repeat(None)),
+        map(n_samples.__ne__, map(len, map(itemgetter(1), col2))),
+        map(is_not, map(itemgetter(3), col3), repeat(None)),
         map(
-            operator.not_,
+            not_,
             map(
-                operator.attrgetter("c_contiguous"),
-                map(operator.attrgetter("flags"), map(operator.itemgetter(1), col4)),
+                attrgetter("c_contiguous"),
+                map(attrgetter("flags"), map(itemgetter(1), col4)),
             ),
         ),
         col5,
@@ -179,7 +179,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # requirements[term_features[term_idx].index(column_feature_idx)] = X_col
                 sum(
                     map(
-                        operator.truth,
+                        truth,
                         map(
                             requirements.__setitem__,
                             compress(
@@ -191,7 +191,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     )
                 )
 
-                if all(map(operator.is_not, requirements, repeat(None))):
+                if all(map(is_not, requirements, repeat(None))):
                     yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
@@ -222,7 +222,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
                 sum(
                     map(
-                        operator.truth,
+                        truth,
                         map(
                             requirements.__setitem__,
                             compress(count(), map(column_feature_idx_eq, feature_idxs)),
@@ -231,7 +231,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     )
                 )
 
-                if all(map(operator.is_not, requirements, repeat(None))):
+                if all(map(is_not, requirements, repeat(None))):
                     yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
@@ -271,16 +271,16 @@ def ebm_predict_scores(
         # sum is used to iterate outside the interpreter. The result is not used.
         sum(
             map(
-                operator.is_,
+                is_,
                 map(
                     sample_scores.__iadd__,
                     map(
-                        operator.getitem,
+                        getitem,
                         map(
                             term_scores.__getitem__,
-                            map(operator.itemgetter(0), term_idxs),
+                            map(itemgetter(0), term_idxs),
                         ),
-                        map(tuple, map(operator.itemgetter(1), binned)),
+                        map(tuple, map(itemgetter(1), binned)),
                     ),
                 ),
                 repeat(None),
@@ -318,20 +318,20 @@ def ebm_eval_terms(
         # sum is used to iterate outside the interpreter. The result is not used.
         sum(
             map(
-                operator.truth,
+                truth,
                 map(
                     explanations.__setitem__,
                     zip(
                         repeat(slice(None)),
-                        map(operator.itemgetter(0), term_idxs1),
+                        map(itemgetter(0), term_idxs1),
                     ),
                     map(
-                        operator.getitem,
+                        getitem,
                         map(
                             term_scores.__getitem__,
-                            map(operator.itemgetter(0), term_idxs2),
+                            map(itemgetter(0), term_idxs2),
                         ),
-                        map(tuple, map(operator.itemgetter(1), binned)),
+                        map(tuple, map(itemgetter(1), binned)),
                     ),
                 ),
             )

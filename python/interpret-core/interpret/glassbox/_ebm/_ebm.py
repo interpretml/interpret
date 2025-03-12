@@ -4,7 +4,7 @@
 import heapq
 import json
 import logging
-import operator
+from operator import itemgetter
 import os
 from copy import deepcopy
 from itertools import combinations, count
@@ -1274,7 +1274,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                     interaction_indices = list(
                         map(
-                            operator.itemgetter(1),
+                            itemgetter(1),
                             interaction_strengths_and_indices,
                         )
                     )

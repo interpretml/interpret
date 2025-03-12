@@ -5,7 +5,7 @@ import logging
 from warnings import warn
 from collections import Counter
 from itertools import count, repeat, compress
-import operator
+from operator import ne, truth, eq
 
 import numpy as np
 from numpy import ma
@@ -1136,7 +1136,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(operator.ne, repeat("ignore"), feature_types),
+                map(ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1202,7 +1202,7 @@ def unify_columns(
             # sum is used to iterate outside the interpreter. The result is not used.
             sum(
                 map(
-                    operator.truth,
+                    truth,
                     map(
                         mapping.__delitem__,
                         compress(counts.keys(), map((1).__ne__, counts.values())),
@@ -1261,7 +1261,7 @@ def unify_columns(
                     mapping.__contains__,
                     compress(
                         feature_names_in,
-                        map(operator.ne, repeat("ignore"), feature_types),
+                        map(ne, repeat("ignore"), feature_types),
                     ),
                 )
             ):
@@ -1315,7 +1315,7 @@ def unify_columns(
                         yield result
                 else:
                     keep_cols = np.fromiter(
-                        map(operator.ne, repeat("ignore"), feature_types),
+                        map(ne, repeat("ignore"), feature_types),
                         np.bool_,
                         count=len(feature_types),
                     )
@@ -1396,7 +1396,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(operator.ne, repeat("ignore"), feature_types),
+                map(ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1480,7 +1480,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(operator.ne, repeat("ignore"), feature_types),
+                map(ne, repeat("ignore"), feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1572,7 +1572,7 @@ def unify_columns(
 def _determine_min_cols(feature_names=None, feature_types=None):
     if feature_types is None:
         return None if feature_names is None else len(feature_names)
-    n_ignored = sum(map(operator.eq, repeat("ignore"), feature_types))
+    n_ignored = sum(map(eq, repeat("ignore"), feature_types))
     if (
         feature_names is None
         or len(feature_names) == len(feature_types)
