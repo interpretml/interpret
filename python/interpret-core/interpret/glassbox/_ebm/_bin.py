@@ -15,7 +15,6 @@ _log = logging.getLogger(__name__)
 
 _none_list = [None]
 _none_ndarray = np.array(None)
-_non_empty_check = [].__ne__
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -145,12 +144,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         map(len, map(bins.__getitem__, request_feature_idxs)),
         map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
         map(
-            filter,
-            repeat(_non_empty_check),
-            map(
-                waiting.__getitem__,
-                zip(request_feature_idxs, map(id, map(operator.itemgetter(2), col1))),
-            ),
+            waiting.__getitem__,
+            zip(request_feature_idxs, map(id, map(operator.itemgetter(2), col1))),
         ),
         map(n_samples.__ne__, map(len, map(operator.itemgetter(1), col2))),
         map(operator.is_not, map(operator.itemgetter(3), col3), repeat(None)),
