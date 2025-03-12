@@ -297,6 +297,10 @@ _disallowed_types = frozenset(
 )
 _none_list = [None]
 _none_ndarray = np.array(None)
+_repeat_none = repeat(None)
+_repeat_slice_none = repeat(slice(None))
+_repeat_ignore = repeat("ignore")
+_not_one = (1).__ne__
 
 
 def _densify_object_ndarray(X_col):
@@ -1108,10 +1112,10 @@ def unify_columns(
                     _process_numpy_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), feature_idxs),
+                        zip(_repeat_slice_none, feature_idxs),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1120,7 +1124,7 @@ def unify_columns(
                     _process_numpy_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), feature_idxs),
+                        zip(_repeat_slice_none, feature_idxs),
                     ),
                     categories,
                     map(
@@ -1135,7 +1139,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, repeat("ignore"), feature_types),
+                map(ne, _repeat_ignore, feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1153,7 +1157,7 @@ def unify_columns(
                     map(
                         X.__getitem__,
                         zip(
-                            repeat(slice(None)),
+                            _repeat_slice_none,
                             map(
                                 col_map.__getitem__,
                                 feature_idxs,
@@ -1161,7 +1165,7 @@ def unify_columns(
                         ),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1171,7 +1175,7 @@ def unify_columns(
                     map(
                         X.__getitem__,
                         zip(
-                            repeat(slice(None)),
+                            _repeat_slice_none,
                             map(
                                 col_map.__getitem__,
                                 feature_idxs,
@@ -1204,7 +1208,7 @@ def unify_columns(
                     truth,
                     map(
                         mapping.__delitem__,
-                        compress(counts.keys(), map((1).__ne__, counts.values())),
+                        compress(counts.keys(), map(_not_one, counts.values())),
                     ),
                 )
             )
@@ -1229,7 +1233,7 @@ def unify_columns(
                         ),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1247,10 +1251,10 @@ def unify_columns(
                     _process_pandas_column,
                     map(
                         X.iloc.__getitem__,
-                        zip(repeat(slice(None)), feature_idxs),
+                        zip(_repeat_slice_none, feature_idxs),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1260,7 +1264,7 @@ def unify_columns(
                     mapping.__contains__,
                     compress(
                         feature_names_in,
-                        map(ne, repeat("ignore"), feature_types),
+                        map(ne, _repeat_ignore, feature_types),
                     ),
                 )
             ):
@@ -1300,7 +1304,7 @@ def unify_columns(
                         map(
                             X.iloc.__getitem__,
                             zip(
-                                repeat(slice(None)),
+                                _repeat_slice_none,
                                 feature_idxs,
                             ),
                         ),
@@ -1314,7 +1318,7 @@ def unify_columns(
                         yield result
                 else:
                     keep_cols = np.fromiter(
-                        map(ne, repeat("ignore"), feature_types),
+                        map(ne, _repeat_ignore, feature_types),
                         np.bool_,
                         count=len(feature_types),
                     )
@@ -1337,7 +1341,7 @@ def unify_columns(
                         map(
                             X.iloc.__getitem__,
                             zip(
-                                repeat(slice(None)),
+                                _repeat_slice_none,
                                 map(
                                     col_map.__getitem__,
                                     feature_idxs,
@@ -1368,10 +1372,10 @@ def unify_columns(
                     _process_sparse_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), zip(feature_idxs)),
+                        zip(_repeat_slice_none, zip(feature_idxs)),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1380,7 +1384,7 @@ def unify_columns(
                     _process_sparse_column,
                     map(
                         X.__getitem__,
-                        zip(repeat(slice(None)), zip(feature_idxs)),
+                        zip(_repeat_slice_none, zip(feature_idxs)),
                     ),
                     categories,
                     map(
@@ -1395,7 +1399,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, repeat("ignore"), feature_types),
+                map(ne, _repeat_ignore, feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1412,7 +1416,7 @@ def unify_columns(
                     map(
                         X.__getitem__,
                         zip(
-                            repeat(slice(None)),
+                            _repeat_slice_none,
                             zip(
                                 map(
                                     col_map.__getitem__,
@@ -1422,7 +1426,7 @@ def unify_columns(
                         ),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1432,7 +1436,7 @@ def unify_columns(
                     map(
                         X.__getitem__,
                         zip(
-                            repeat(slice(None)),
+                            _repeat_slice_none,
                             zip(
                                 map(
                                     col_map.__getitem__,
@@ -1458,7 +1462,7 @@ def unify_columns(
                     _process_sparse_column,
                     map(X.getcol, feature_idxs),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1479,7 +1483,7 @@ def unify_columns(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, repeat("ignore"), feature_types),
+                map(ne, _repeat_ignore, feature_types),
                 np.bool_,
                 count=len(feature_types),
             )
@@ -1501,7 +1505,7 @@ def unify_columns(
                         ),
                     ),
                     categories,
-                    repeat(None),
+                    _repeat_none,
                     repeat(min_unique_continuous),
                 ):
                     yield result
@@ -1540,7 +1544,7 @@ def unify_columns(
                     ),
                 ),
                 categories,
-                repeat(None),
+                _repeat_none,
                 repeat(min_unique_continuous),
             ):
                 yield result
@@ -1571,7 +1575,7 @@ def unify_columns(
 def _determine_min_cols(feature_names=None, feature_types=None):
     if feature_types is None:
         return None if feature_names is None else len(feature_names)
-    n_ignored = sum(map(eq, repeat("ignore"), feature_types))
+    n_ignored = sum(map(eq, _repeat_ignore, feature_types))
     if (
         feature_names is None
         or len(feature_names) == len(feature_types)
