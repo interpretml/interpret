@@ -4,7 +4,7 @@
 import logging
 
 import numpy as np
-from itertools import count, tee, repeat, chain
+from itertools import count, tee, repeat, chain, compress
 import operator
 
 from ...utils._clean_x import unify_columns
@@ -130,6 +130,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     for (
         column_feature_idx,
+        column_feature_idx_eq,
         bin_levels,
         max_level,
         binning_completed,
@@ -140,6 +141,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         (_, X_col, column_categories, bad),
     ) in zip(
         request_feature_idxs,
+        map(operator.attrgetter("__eq__"), request_feature_idxs),
         map(bins.__getitem__, request_feature_idxs),
         map(len, map(bins.__getitem__, request_feature_idxs)),
         map(_none_list.__mul__, map(len, map(bins.__getitem__, request_feature_idxs))),
@@ -166,13 +168,28 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         if column_categories:
             # categorical feature
 
-            if is_bad:
-                # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
-                pass  # TODO: improve this handling
+            # if is_bad:
+            #     # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
+            #     pass  # TODO: improve this handling
 
             for requirements in all_requirements:
                 term_idx = requirements[-1]
-                requirements[term_features[term_idx].index(column_feature_idx)] = X_col
+
+                # if it was illegal to have duplicate features in a term we could do:
+                # requirements[term_features[term_idx].index(column_feature_idx)] = X_col
+                sum(
+                    map(
+                        operator.truth,
+                        map(
+                            requirements.__setitem__,
+                            compress(
+                                count(),
+                                map(column_feature_idx_eq, term_features[term_idx]),
+                            ),
+                            repeat(X_col),
+                        ),
+                    )
+                )
 
                 if all(map(operator.is_not, requirements, repeat(None))):
                     yield term_idx, requirements[:-1]
@@ -200,7 +217,19 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     if is_bad:
                         bin_indexes[bad] = -1
                     binning_completed[level_idx] = bin_indexes
-                requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
+
+                # if it was illegal to have duplicate features in a term we could do:
+                # requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
+                sum(
+                    map(
+                        operator.truth,
+                        map(
+                            requirements.__setitem__,
+                            compress(count(), map(column_feature_idx_eq, feature_idxs)),
+                            repeat(bin_indexes),
+                        ),
+                    )
+                )
 
                 if all(map(operator.is_not, requirements, repeat(None))):
                     yield term_idx, requirements[:-1]
