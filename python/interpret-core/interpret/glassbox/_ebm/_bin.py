@@ -15,6 +15,10 @@ _log = logging.getLogger(__name__)
 
 _none_list = [None]
 _none_ndarray = np.array(None)
+_repeat_none = repeat(None)
+_repeat_dict = repeat(dict)
+_repeat_tuple = repeat(tuple())
+_sub_one = (-1).__add__
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -68,8 +72,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     all_feature_bins = list(
         map(
             getitem,
-            zip(repeat(None), feature_bins1),
-            map(isinstance, feature_bins2, repeat(dict)),
+            zip(_repeat_none, feature_bins1),
+            map(isinstance, feature_bins2, _repeat_dict),
         )
     )
 
@@ -106,7 +110,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 keys1,
                 map(
                     add,
-                    map(waiting.get, keys2, map(list, repeat(tuple()))),
+                    map(waiting.get, keys2, map(list, _repeat_tuple)),
                     map(list, zip(all_requirements)),
                 ),
             ),
@@ -150,7 +154,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             zip(request_feature_idxs, map(id, map(itemgetter(2), col1))),
         ),
         map(n_samples.__ne__, map(len, map(itemgetter(1), col2))),
-        map(is_not, map(itemgetter(3), col3), repeat(None)),
+        map(is_not, map(itemgetter(3), col3), _repeat_none),
         map(
             not_,
             map(
@@ -191,7 +195,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     )
                 )
 
-                if all(map(is_not, requirements, repeat(None))):
+                if all(map(is_not, requirements, _repeat_none)):
                     yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
@@ -210,7 +214,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
-                level_idx = min(max_level, len(feature_idxs)) - 1
+                level_idx = _sub_one(min(max_level, len(feature_idxs)))
                 bin_indexes = binning_completed[level_idx]
                 if bin_indexes is None:
                     bin_indexes = native.discretize(X_col, bin_levels[level_idx])
@@ -231,7 +235,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     )
                 )
 
-                if all(map(is_not, requirements, repeat(None))):
+                if all(map(is_not, requirements, _repeat_none)):
                     yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()

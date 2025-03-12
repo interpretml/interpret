@@ -1102,8 +1102,7 @@ def unify_columns(
         #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
         #    X = np.asfortranarray(X)
 
-        n_cols = X.shape[1]
-        if len(feature_names_in) == n_cols:
+        if len(feature_names_in) == X.shape[1]:
             if feature_types is None:
                 for result in map(
                     _process_numpy_column,
@@ -1140,9 +1139,9 @@ def unify_columns(
                 np.bool_,
                 count=len(feature_types),
             )
-            if keep_cols.sum() != n_cols:
+            if keep_cols.sum() != X.shape[1]:
                 # called under: predict
-                msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns"
+                msg = f"The model has {len(keep_cols)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(keep_cols), np.int64)
