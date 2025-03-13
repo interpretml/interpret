@@ -11,11 +11,10 @@ import numpy as np
 from ...utils._native import Native
 from ._utils import (
     convert_categorical_to_continuous,
-    deduplicate_bins,
     generate_term_names,
     order_terms,
     process_terms,
-    remove_unused_higher_bins,
+    remove_extra_bins,
 )
 
 _log = logging.getLogger(__name__)
@@ -512,7 +511,6 @@ def merge_ebms(models):
             new_leveled_bins.append(merged_bins)
         new_bins.append(new_leveled_bins)
     ebm.feature_types_in_ = new_feature_types
-    deduplicate_bins(new_bins)
     ebm.bins_ = new_bins
 
     feature_names_merged = [None] * n_features
@@ -768,9 +766,7 @@ def merge_ebms(models):
         ]
 
     # TODO: we might be able to do these operations earlier
-    remove_unused_higher_bins(ebm.term_features_, ebm.bins_)
-    # removing the higher order terms might allow us to eliminate some extra bins now that couldn't before
-    deduplicate_bins(ebm.bins_)
+    remove_extra_bins(ebm.term_features_, ebm.bins_)
 
     # dependent attributes (can be re-derrived after serialization)
     ebm.n_features_in_ = len(ebm.bins_)  # scikit-learn specified name

@@ -63,13 +63,12 @@ from ._boost import boost
 from ._json import UNTESTED_from_jsonable, to_jsonable
 from ._tensor import remove_last, trim_tensor
 from ._utils import (
-    deduplicate_bins,
     generate_term_names,
     generate_term_types,
     make_bag,
     order_terms,
     process_terms,
-    remove_unused_higher_bins,
+    remove_extra_bins,
 )
 
 _log = logging.getLogger(__name__)
@@ -1429,8 +1428,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         best_iteration = np.array(best_iteration, np.int64)
 
-        remove_unused_higher_bins(term_features, bins)
-        deduplicate_bins(bins)
+        remove_extra_bins(term_features, bins)
 
         bagged_scores = (
             np.array([model[idx] for model in models], np.float64)
@@ -2445,8 +2443,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             raise ValueError(msg)
 
         if bins is True:
-            remove_unused_higher_bins(self.term_features_, self.bins_)
-            deduplicate_bins(self.bins_)
+            remove_extra_bins(self.term_features_, self.bins_)
         elif bins is not False:
             msg = "bins must be True or False"
             _log.error(msg)

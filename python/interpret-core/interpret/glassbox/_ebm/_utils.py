@@ -256,7 +256,7 @@ def order_terms(term_features, *args):
     return ret if len(ret) >= 2 else ret[0]
 
 
-def remove_unused_higher_bins(term_features, bins):
+def remove_extra_bins(term_features, bins):
     # many features are not used in pairs, so we can simplify the model
     # by removing the extra higher interaction level bins
 
@@ -267,33 +267,33 @@ def remove_unused_higher_bins(term_features, bins):
                 highest_levels[feature_idx], len(feature_idxs)
             )
 
-    for bin_levels, max_level in zip(bins, highest_levels):
-        del bin_levels[max_level:]
+    for bin_levels, i in zip(bins, highest_levels):
+        if i != 0:
+            if len(bin_levels) == 0:
+                raise Exception("Empty bin cannot be used in a term.")
 
+            i = min(i, len(bin_levels)) - 1
+            types = set(map(type, bin_levels))
 
-def deduplicate_bins(bins):
-    # calling this function before calling score_terms allows score_terms to operate more efficiently since it'll
-    # be able to avoid re-binning data for pairs that have already been processed in mains or other pairs since we
-    # use the id of the bins to identify feature data that was previously binned
+            if len(types) != 1:
+                raise Exception("Inconsistent bin types.")
 
-    uniques = {}
-    for bin_levels in bins:
-        highest_key = None
-        highest_idx = -1
-        for level_idx, feature_bins in enumerate(bin_levels):
-            if isinstance(feature_bins, dict):
-                key = frozenset(feature_bins.items())
+            if next(iter(types)) == dict:
+                key = frozenset(bin_levels[i].items())
+                i -= 1
+                while 0 <= i:
+                    if key != frozenset(bin_levels[i].items()):
+                        break
+                    i -= 1
             else:
-                key = tuple(feature_bins)
-            if key in uniques:
-                bin_levels[level_idx] = uniques[key]
-            else:
-                uniques[key] = feature_bins
-
-            if highest_key != key:
-                highest_key = key
-                highest_idx = level_idx
-        del bin_levels[highest_idx + 1 :]
+                key = tuple(bin_levels[i])
+                i -= 1
+                while 0 <= i:
+                    if key != tuple(bin_levels[i]):
+                        break
+                    i -= 1
+            i += 2
+        del bin_levels[i:]
 
 
 def convert_to_intervals(cuts):  # pragma: no cover

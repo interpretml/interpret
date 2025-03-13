@@ -5,32 +5,39 @@ from interpret.glassbox._ebm._utils import (
     convert_categorical_to_continuous,
     convert_to_cuts,
     convert_to_intervals,
-    deduplicate_bins,
+    remove_extra_bins,
     make_bag,
 )
 
 
-def test_deduplicate_bins():
+def test_remove_extra_bins():
     bins = [
         [{"a": 1, "b": 2}, {"a": 2, "b": 1}, {"b": 2, "a": 1}, {"b": 2, "a": 1}],
         [
-            np.array([1, 2, 3], dtype=np.float64),
             np.array([1, 3, 2], dtype=np.float64),
             np.array([1, 2, 3], dtype=np.float64),
+            np.array([1, 2, 3], dtype=np.float64),
         ],
+        [
+            np.array([9, 8, 7], dtype=np.float64),
+        ],
+        [{"m": 1, "q": 2}],
+        [{"r": 7, "t": 8}, {"r": 7, "t": 8}],
+        [{"one": 1, "two": 2}],
+        [{"never_used": 1, "never_ever": 2}],
+        [],
     ]
 
-    deduplicate_bins(bins)
+    remove_extra_bins([(0, 1, 2, 3, 4), (5,)], bins)
 
     assert len(bins[0]) == 3
-    assert id(bins[0][0]) != id(bins[0][1])
-    assert id(bins[0][0]) == id(bins[0][2])
-    assert id(bins[0][1]) != id(bins[0][2])
-
-    assert len(bins[1]) == 3
-    assert id(bins[1][0]) != id(bins[1][1])
-    assert id(bins[1][0]) == id(bins[1][2])
-    assert id(bins[1][1]) != id(bins[1][2])
+    assert len(bins[1]) == 2
+    assert len(bins[2]) == 1
+    assert len(bins[3]) == 1
+    assert len(bins[4]) == 1
+    assert len(bins[5]) == 1
+    assert len(bins[6]) == 0
+    assert len(bins[7]) == 0
 
 
 def test_conversion_cut_intervals():
