@@ -35,14 +35,19 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
 
-    # this generator function returns data in whatever order it thinks is most efficient.  Normally for
+    # This generator function returns data as the feature data within terms gets read.  Normally for
     # mains it returns them in order, but pairs will be returned as their data completes and they can
     # be mixed in with mains.  So, if we request data for [(0), (1), (2), (3), (4), (1, 3)] the return sequence
-    # could be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
+    # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
     _log.info("eval_terms")
 
+    # Flatten the term_features array to make one entry per feature within each term
+    # each item in the list contains placeholders for the binned array that we need
+    # to complete the term. We fill these with None initially.  At the end of the array
+    # is the term_idx. So it looks approximately like this:
+    # eg: [[None, 0], [None, 1], [None, 2], [None, None, 3], [None, None, None, 4]]
     all_requirements = list(
         chain.from_iterable(
             map(
@@ -59,25 +64,37 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         ),
     )
 
+    # get the per-feature (per-term) binning for all levels
+    # eg: [[{'a': 0, 'b': 1}], [[1, 2, 3, 4, 5], [1, 3, 5]]]
     all_bin_levels1, all_bin_levels2 = tee(
         map(bins.__getitem__, chain.from_iterable(term_features)), 2
     )
 
+    # get a per-feature per-term list of indexes that will be used into the bins list
+    # eg: [0, 1, 0, 0, 1, 2]
+    levels = list(
+        map(
+            min,
+            zip(
+                map((-1).__add__, map(len, all_bin_levels2)),
+                map((-2).__add__, map(len, all_requirements)),
+            ),
+        )
+    )
+
+    # index into the bins list per-feature per-terms to get the actual binning
+    # eg: [{'a': 0, 'b': 1}, [3.5, 6.5, 8.5], {'x': 0, 'y': 1}]
     feature_bins1, feature_bins2 = tee(
         map(
             getitem,
             all_bin_levels1,
-            map(
-                min,
-                zip(
-                    map((-1).__add__, map(len, all_bin_levels2)),
-                    map((-2).__add__, map(len, all_requirements)),
-                ),
-            ),
+            levels,
         ),
         2,
     )
 
+    # replace the continuous bins with None values
+    # eg: [{'a': 0, 'b': 1}, None, {'x': 0, 'y': 1}]
     all_feature_bins = list(
         map(
             getitem,
@@ -86,15 +103,18 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         )
     )
 
+    # generate the list of requests which consist of keys (feature_idx, id(categories))
+    # and values (bin_level_idx, categories)
+    # where categories is None for continous features
+    # eg: {(0, id({'a': 0, 'b': 1})): (1, {'a': 0, 'b': 1}), ...}
     requests = dict(
         zip(
             zip(chain.from_iterable(term_features), map(id, all_feature_bins)),
-            zip(count(), all_feature_bins),
+            zip(levels, all_feature_bins),
         )
     )
 
-    # Order requests by (feature_idx, term order) for implementation independence.
-    # Since term_features is sorted by # dimensions, this also orders by # dimensions.
+    # Order requests by (feature_idx, category_level) for implementation independence.
     requests = sorted(
         zip(
             map(_itemgetter0, requests.keys()),
@@ -105,12 +125,17 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     request_feature_idxs = list(map(_itemgetter0, requests))
 
+    # the request keys that we expect back
     keys1, keys2 = tee(
         zip(chain.from_iterable(term_features), map(id, all_feature_bins)), 2
     )
 
     waiting = {}
     # sum is used to iterate outside the interpreter. The result is not used.
+    # make a fast lookup so that we can determine which terms are affected
+    # by the completion of a feature. The value returned from the key
+    # has space to store the result to accumulate binned features for higher
+    # order interactions that require more than one feature.
     sum(
         map(
             truth,
