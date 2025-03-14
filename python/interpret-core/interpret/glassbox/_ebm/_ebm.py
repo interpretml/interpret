@@ -30,7 +30,7 @@ from ...api.templates import FeatureValueExplanation
 from ...provider import JobLibProvider
 from ...utils._clean_simple import (
     clean_dimensions,
-    clean_init_score_and_X,
+    clean_X_and_init_score,
     typify_classification,
 )
 from ...utils._clean_x import preclean_X
@@ -697,13 +697,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             flags, objective, n_classes
         )
 
-        init_score, X, n_samples = clean_init_score_and_X(
-            link,
-            link_param,
-            init_score,
+        X, n_samples, init_score = clean_X_and_init_score(
             X,
+            init_score,
             self.feature_names,
             self.feature_types,
+            link,
+            link_param,
             len(y),
         )
 
@@ -1198,13 +1198,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 scores = ebm_predict_scores(
                     X,
                     n_samples,
+                    init_score,
                     feature_names_in,
                     feature_types_in,
                     bins,
                     initial_intercept,
                     model,
                     term_features,
-                    init_score,
                 )
                 if bag is not None and np.count_nonzero(bag) != len(bag):
                     scores = scores[bag != 0]
@@ -1467,13 +1467,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             scores = ebm_predict_scores(
                 X,
                 n_samples,
+                init_score,
                 feature_names_in,
                 feature_types_in,
                 bins,
                 intercept,
                 term_scores,
                 term_features,
-                init_score,
             )
 
             if objective_code == Native.Objective_MonoClassification:
@@ -1698,25 +1698,21 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        init_score, X, n_samples = clean_init_score_and_X(
-            self.link_,
-            self.link_param_,
-            init_score,
-            X,
-            self.feature_names_in_,
-            self.feature_types_in_,
-        )
-
         return ebm_predict_scores(
-            X,
-            n_samples,
+            *clean_X_and_init_score(
+                X,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.link_,
+                self.link_param_,
+            ),
             self.feature_names_in_,
             self.feature_types_in_,
             self.bins_,
             self.intercept_,
             self.term_scores_,
             self.term_features_,
-            init_score,
         )
 
     def eval_terms(self, X):
@@ -1734,14 +1730,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
-
-        n_scores = 1 if isinstance(self.intercept_, float) else len(self.intercept_)
-
         return ebm_eval_terms(
-            X,
-            n_samples,
-            n_scores,
+            *preclean_X(X, self.feature_names_in_, self.feature_types_in_),
+            1 if isinstance(self.intercept_, float) else len(self.intercept_),
             self.feature_names_in_,
             self.feature_types_in_,
             self.bins_,
@@ -2063,13 +2054,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             else:
                 y = y.astype(np.float64, copy=False)
 
-        init_score, X, n_samples = clean_init_score_and_X(
-            self.link_,
-            self.link_param_,
-            init_score,
+        X, n_samples, init_score = clean_X_and_init_score(
             X,
+            init_score,
             self.feature_names_in_,
             self.feature_types_in_,
+            self.link_,
+            self.link_param_,
             n_samples,
         )
 
@@ -2516,31 +2507,30 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         """
         check_is_fitted(self, "has_fitted_")
 
-        init_score, X, n_samples = clean_init_score_and_X(
-            self.link_,
-            self.link_param_,
-            init_score,
+        X, n_samples, init_score = clean_X_and_init_score(
             X,
+            init_score,
             self.feature_names_in_,
             self.feature_types_in_,
+            self.link_,
+            self.link_param_,
         )
 
         preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
         # Get predictions from each bagged model
         for bag_index in range(len(self.bagged_intercept_)):
             # Use slices from bagged parameters for this specific model
-            scores = ebm_predict_scores(
+            preds_per_bag[:, bag_index] = ebm_predict_scores(
                 X=X,
                 n_samples=n_samples,
+                init_score=init_score,
                 feature_names_in=self.feature_names_in_,
                 feature_types_in=self.feature_types_in_,
                 bins=self.bins_,
                 intercept=self.bagged_intercept_[bag_index],
-                term_scores=[scores[bag_index] for scores in self.bagged_scores_],
+                term_scores=list(map(itemgetter(bag_index), self.bagged_scores_)),
                 term_features=self.term_features_,
-                init_score=init_score,
             )
-            preds_per_bag[:, bag_index] = scores
 
         # Calculate mean predictions and uncertainties
         return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
@@ -3044,8 +3034,29 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Probability estimate of sample for each class.
 
         """
-        scores = self._predict_score(X, init_score)
-        return inv_link(scores, self.link_, self.link_param_)
+
+        check_is_fitted(self, "has_fitted_")
+
+        return inv_link(
+            ebm_predict_scores(
+                *clean_X_and_init_score(
+                    X,
+                    init_score,
+                    self.feature_names_in_,
+                    self.feature_types_in_,
+                    self.link_,
+                    self.link_param_,
+                ),
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.intercept_,
+                self.term_scores_,
+                self.term_features_,
+            ),
+            self.link_,
+            self.link_param_,
+        )
 
     def decision_function(self, X, init_score=None):
         """Predict scores from model before calling the link function.
@@ -3059,7 +3070,24 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             The sum of the additive term contributions.
 
         """
-        return self._predict_score(X, init_score)
+        check_is_fitted(self, "has_fitted_")
+
+        return ebm_predict_scores(
+            *clean_X_and_init_score(
+                X,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.link_,
+                self.link_param_,
+            ),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
+        )
 
     def predict(self, X, init_score=None):
         """Predict on provided samples.
@@ -3073,7 +3101,25 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Predicted class label per sample.
 
         """
-        scores = self._predict_score(X, init_score)
+        check_is_fitted(self, "has_fitted_")
+
+        scores = ebm_predict_scores(
+            *clean_X_and_init_score(
+                X,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.link_,
+                self.link_param_,
+            ),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
+        )
+
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
@@ -3488,8 +3534,29 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             Predicted class label per sample.
 
         """
-        scores = self._predict_score(X, init_score)
-        return inv_link(scores, self.link_, self.link_param_)
+
+        check_is_fitted(self, "has_fitted_")
+
+        return inv_link(
+            ebm_predict_scores(
+                *clean_X_and_init_score(
+                    X,
+                    init_score,
+                    self.feature_names_in_,
+                    self.feature_types_in_,
+                    self.link_,
+                    self.link_param_,
+                ),
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.intercept_,
+                self.term_scores_,
+                self.term_features_,
+            ),
+            self.link_,
+            self.link_param_,
+        )
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
@@ -3725,8 +3792,29 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Probability estimate of sample for each class.
 
         """
-        scores = self._predict_score(X, init_score)
-        return inv_link(scores, self.link_, self.link_param_)
+
+        check_is_fitted(self, "has_fitted_")
+
+        return inv_link(
+            ebm_predict_scores(
+                *clean_X_and_init_score(
+                    X,
+                    init_score,
+                    self.feature_names_in_,
+                    self.feature_types_in_,
+                    self.link_,
+                    self.link_param_,
+                ),
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.intercept_,
+                self.term_scores_,
+                self.term_features_,
+            ),
+            self.link_,
+            self.link_param_,
+        )
 
     def decision_function(self, X, init_score=None):
         """Predict scores from model before calling the link function.
@@ -3740,7 +3828,25 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             The sum of the additive term contributions.
 
         """
-        return self._predict_score(X, init_score)
+
+        check_is_fitted(self, "has_fitted_")
+
+        return ebm_predict_scores(
+            *clean_X_and_init_score(
+                X,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.link_,
+                self.link_param_,
+            ),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
+        )
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
@@ -3754,7 +3860,26 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Predicted class label per sample.
 
         """
-        scores = self._predict_score(X, init_score)
+
+        check_is_fitted(self, "has_fitted_")
+
+        scores = ebm_predict_scores(
+            *clean_X_and_init_score(
+                X,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.link_,
+                self.link_param_,
+            ),
+            self.feature_names_in_,
+            self.feature_types_in_,
+            self.bins_,
+            self.intercept_,
+            self.term_scores_,
+            self.term_features_,
+        )
+
         if scores.ndim == 1:
             # binary classification.  scikit-learn uses greater than semantics,
             # so score <= 0 means class_0, and 0 < score means class_1
@@ -4007,8 +4132,29 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
             Predicted class label per sample.
 
         """
-        scores = self._predict_score(X, init_score)
-        return inv_link(scores, self.link_, self.link_param_)
+
+        check_is_fitted(self, "has_fitted_")
+
+        return inv_link(
+            ebm_predict_scores(
+                *clean_X_and_init_score(
+                    X,
+                    init_score,
+                    self.feature_names_in_,
+                    self.feature_types_in_,
+                    self.link_,
+                    self.link_param_,
+                ),
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.intercept_,
+                self.term_scores_,
+                self.term_features_,
+            ),
+            self.link_,
+            self.link_param_,
+        )
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()

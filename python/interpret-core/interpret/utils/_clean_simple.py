@@ -259,13 +259,13 @@ def typify_classification(vec):
     return vec.astype(dtype, copy=False)
 
 
-def clean_init_score_and_X(
-    link,
-    link_param,
-    init_score,
+def clean_X_and_init_score(
     X,
+    init_score,
     feature_names,
     feature_types,
+    link,
+    link_param,
     n_samples=None,
     sample_source="y",
 ):
@@ -273,7 +273,7 @@ def clean_init_score_and_X(
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source
         )
-        return None, X, n_samples
+        return X, n_samples, None
 
     if is_classifier(init_score):
         probs = clean_dimensions(init_score.predict_proba(X), "init_score")
@@ -288,12 +288,12 @@ def clean_init_score_and_X(
             if probs.shape[0] <= 1:  # 0 or 1 means 1 class
                 # only 1 class to predict means perfect prediction, and no scores for EBMs
                 # do not check if probs are all one in case there is floating point noise
-                return np.empty((1, 0), np.float64), X, n_samples
+                return X, n_samples, np.empty((1, 0), np.float64)
             probs = probs.reshape([1, *probs.shape])
         else:
             if probs.shape[0] == 0:
                 # having any dimension as zero length probably means 1 class, so treat it that way
-                return np.empty((n_samples, 0), np.float64), X, n_samples
+                return X, n_samples, np.empty((n_samples, 0), np.float64)
             if probs.shape[0] != n_samples:
                 msg = "init_score.predict_proba(X) returned inconsistent number of samples compared to X"
                 _log.error(msg)
@@ -301,10 +301,10 @@ def clean_init_score_and_X(
             if probs.ndim == 1:
                 # only 1 class to predict means perfect prediction, and no scores for EBMs
                 # do not check if probs are all one in case there is floating point noise
-                return np.empty((n_samples, 0), np.float64), X, n_samples
+                return X, n_samples, np.empty((n_samples, 0), np.float64)
         probs = probs.astype(np.float64, copy=False)
         init_score = link_func(probs, link, link_param)
-        return init_score, X, n_samples
+        return X, n_samples, init_score
     if is_regressor(init_score):
         predictions = clean_dimensions(init_score.predict(X), "init_score")
         X, n_samples = preclean_X(
@@ -320,7 +320,7 @@ def clean_init_score_and_X(
             raise ValueError(msg)
         predictions = predictions.astype(np.float64, copy=False)
         init_score = link_func(predictions, link, link_param)
-        return init_score, X, n_samples
+        return X, n_samples, init_score
 
     init_score = clean_dimensions(init_score, "init_score")
     X, n_samples = preclean_X(X, feature_names, feature_types, n_samples, sample_source)
@@ -334,10 +334,10 @@ def clean_init_score_and_X(
     else:
         if init_score.shape[0] == 0:
             # must be a 1 class problem. We use 1 score, but others might use 0.
-            return np.full(n_samples, -np.inf, np.float64), X, n_samples
+            return X, n_samples, np.full(n_samples, -np.inf, np.float64)
         if init_score.shape[0] != n_samples:
             msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)
-    return init_score, X, n_samples
+    return X, n_samples, init_score

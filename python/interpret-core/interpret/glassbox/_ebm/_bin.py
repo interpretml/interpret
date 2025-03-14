@@ -14,12 +14,13 @@ _log = logging.getLogger(__name__)
 
 
 _none_list = [None]
-_make_non_list = _none_list.__mul__
+_make_none_list = _none_list.__mul__
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
 _repeat_dict = repeat(dict)
 _make_new_lists = map(list, repeat(tuple()))
 _sub_one = (-1).__add__
+_sub_two = (-2).__add__
 _eq_getter = attrgetter("__eq__")
 _flags_getter = attrgetter("flags")
 _continuous_getter = attrgetter("c_contiguous")
@@ -41,8 +42,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
-    _log.info("eval_terms")
-
     # Flatten the term_features array to make one entry per feature within each term
     # each item in the list contains placeholders for the binned array that we need
     # to complete the term. We fill these with None initially.  At the end of the array
@@ -55,7 +54,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 zip(
                     map(
                         add,
-                        map(_make_non_list, map(len, term_features)),
+                        map(_make_none_list, map(len, term_features)),
                         map(list, zip(count())),
                     )
                 ),
@@ -76,8 +75,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         map(
             min,
             zip(
-                map((-1).__add__, map(len, all_bin_levels2)),
-                map((-2).__add__, map(len, all_requirements)),
+                map(_sub_one, map(len, all_bin_levels2)),
+                map(_sub_two, map(len, all_requirements)),
             ),
         )
     )
@@ -182,7 +181,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         map(_eq_getter, request_feature_idxs),
         map(bins.__getitem__, request_feature_idxs),
         map(len, map(bins.__getitem__, request_feature_idxs)),
-        map(_make_non_list, map(len, map(bins.__getitem__, request_feature_idxs))),
+        map(_make_none_list, map(len, map(bins.__getitem__, request_feature_idxs))),
         map(
             waiting.__getitem__,
             zip(request_feature_idxs, map(id, map(_itemgetter2, col1))),
@@ -278,13 +277,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 def ebm_predict_scores(
     X,
     n_samples,
+    init_score,
     feature_names_in,
     feature_types_in,
     bins,
     intercept,
     term_scores,
     term_features,
-    init_score=None,
 ):
     sample_scores = (
         np.full(

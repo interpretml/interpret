@@ -124,6 +124,7 @@ def test_eval_terms():
     scores = ebm_predict_scores(
         X,
         n_samples,
+        None,
         feature_names_in,
         feature_types_in,
         bins,

@@ -19,7 +19,7 @@ from sklearn.utils.multiclass import type_of_target
 
 from ._clean_simple import (
     clean_dimensions,
-    clean_init_score_and_X,
+    clean_X_and_init_score,
     typify_classification,
 )
 from ._compressed_dataset import bin_native_by_dimension
@@ -142,8 +142,8 @@ def measure_interactions(
         classes, y = np.unique(y, return_inverse=True)
         _, link, link_param = native.determine_link(flags, objective, len(classes))
 
-    init_score, X, n_samples = clean_init_score_and_X(
-        link, link_param, init_score, X, feature_names, feature_types, len(y)
+    X, n_samples, init_score = clean_X_and_init_score(
+        X, init_score, feature_names, feature_types, link, link_param, len(y)
     )
     if init_score is not None and init_score.ndim == 2:
         # it must be multiclass, or mono-classification

@@ -508,7 +508,7 @@ def test_ebm_synthetic_singleclass_classification():
     assert predicts.shape[0] == len(y)
     assert not np.any(predicts)
 
-    scores = clf._predict_score(X)
+    scores = clf.decision_function(X)
     assert scores.ndim == 1
     assert len(scores) == len(y)
 
@@ -631,7 +631,7 @@ def test_eval_terms_binary():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf._predict_score(X), scores)
+    assert np.allclose(clf.decision_function(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
     assert np.allclose(clf.predict_proba(X), probabilities)
@@ -648,7 +648,7 @@ def test_eval_terms_multiclass():
     explanations = clf.eval_terms(X)
 
     scores = explanations.sum(axis=1) + clf.intercept_
-    assert np.allclose(clf._predict_score(X), scores)
+    assert np.allclose(clf.decision_function(X), scores)
 
     probabilities = inv_link(scores, clf.link_, clf.link_param_)
     assert np.allclose(clf.predict_proba(X), probabilities)

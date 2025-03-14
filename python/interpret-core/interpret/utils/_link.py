@@ -45,6 +45,59 @@ def link_func(predictions, link, link_param=np.nan):
     # sample. We handle monoclassification and multiclass in the same way.
 
     predictions = np.asarray(predictions, np.float64)
+    if link == "identity":
+        return predictions.copy()
+    if link == "logit":
+        if predictions.ndim == 0:
+            val = predictions
+        elif predictions.shape[-1] == 1:
+            val = predictions.squeeze(-1)
+        elif predictions.shape[-1] == 2:
+            val = predictions[..., 1]
+            val /= predictions.sum(axis=-1)
+        else:
+            msg = f"predictions must have 1 or 2 elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        with np.errstate(divide="ignore"):
+            # val == 1.0 and val == 0.0 gives warning otherwise
+            val /= 1.0 - val
+            np.log(val, out=val)
+        if val.ndim == 0:
+            val = val.item()
+
+        return val
+    if link == "mlogit":
+        # accept multinominal with 2 classes, even though it's weird
+        if predictions.shape[-1] <= 1:
+            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        val = predictions / predictions.max(axis=-1, keepdims=True)
+        with np.errstate(divide="ignore"):
+            # log(0.0) gives warning otherwise
+            np.log(val, out=val)
+
+        return val
+    if link == "vlogit":
+        if predictions.shape[-1] <= 1:
+            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
+            _log.error(msg)
+            raise ValueError(msg)
+
+        val = 1.0 - predictions
+        with np.errstate(divide="ignore"):
+            # val == 0.0 and log(0.0) gives warning otherwise
+            np.divide(predictions, val, out=val)
+            np.log(val, out=val)
+
+        return val
+    if link == "log":
+        with np.errstate(divide="ignore"):
+            # log(0.0) gives warning otherwise
+            return np.log(predictions)
     if link == "monoclassification":
         if predictions.ndim == 0:
             if predictions == 1.0:
@@ -69,62 +122,9 @@ def link_func(predictions, link, link_param=np.nan):
             _log.error(msg)
             raise ValueError(msg)
         return scores
-    if link == "logit":
-        if predictions.ndim == 0:
-            val = predictions
-        elif predictions.shape[-1] == 1:
-            val = predictions.squeeze(-1)
-        elif predictions.shape[-1] == 2:
-            val = predictions[..., 1]
-            val /= predictions.sum(axis=-1)
-        else:
-            msg = f"predictions must have 1 or 2 elements in the last dimensions, but has {predictions.shape[-1]}."
-            _log.error(msg)
-            raise ValueError(msg)
 
-        with np.errstate(divide="ignore"):
-            # val == 1.0 and val == 0.0 gives warning otherwise
-            val /= 1.0 - val
-            np.log(val, out=val)
-        if val.ndim == 0:
-            val = val.item()
-
-        return val
-    if link == "vlogit":
-        if predictions.shape[-1] <= 1:
-            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
-            _log.error(msg)
-            raise ValueError(msg)
-
-        val = 1.0 - predictions
-        with np.errstate(divide="ignore"):
-            # val == 0.0 and log(0.0) gives warning otherwise
-            np.divide(predictions, val, out=val)
-            np.log(val, out=val)
-
-        return val
-    if link == "mlogit":
-        # accept multinominal with 2 classes, even though it's weird
-        if predictions.shape[-1] <= 1:
-            msg = f"predictions must have 2 or more elements in the last dimensions, but has {predictions.shape[-1]}."
-            _log.error(msg)
-            raise ValueError(msg)
-
-        val = predictions / predictions.max(axis=-1, keepdims=True)
-        with np.errstate(divide="ignore"):
-            # log(0.0) gives warning otherwise
-            np.log(val, out=val)
-
-        return val
-    if link == "identity":
-        return predictions.copy()
-    if link == "log":
-        with np.errstate(divide="ignore"):
-            # log(0.0) gives warning otherwise
-            return np.log(predictions)
-    else:
-        msg = f"Unsupported link function: {link}"
-        raise ValueError(msg)
+    msg = f"Unsupported link function: {link}"
+    raise ValueError(msg)
 
 
 def inv_link(scores, link, link_param=np.nan):
@@ -140,18 +140,8 @@ def inv_link(scores, link, link_param=np.nan):
     """
 
     scores = np.asarray(scores, np.float64)
-    if link == "monoclassification":
-        bools = np.isnan(scores)
-        preds = np.ones((*scores.shape, 1), np.float64)
-        preds[np.expand_dims(bools, axis=-1)] = np.nan
-
-        bools |= scores == -np.inf
-        if not bools.all():
-            msg = "monoclassification must have all -infs or NaN"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        return preds
+    if link == "identity":
+        return scores.copy()
     if link == "logit":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise from overflow
@@ -164,16 +154,6 @@ def inv_link(scores, link, link_param=np.nan):
         val[inf_bool] = 1.0
         np.subtract(1.0, val, out=tmp)
         return np.c_[tmp, val]
-    if link == "vlogit":
-        with np.errstate(over="ignore"):
-            # scores == 999 gives warning otherwise
-            val = np.exp(scores)
-        inf_bool = np.isposinf(val)
-        with np.errstate(invalid="ignore"):
-            # val == +inf gives warning otherwise
-            val /= val + 1.0
-        val[inf_bool] = 1.0
-        return val
     if link == "mlogit":
         # accept multinominal with 2 classes, even though it's weird
         if scores.shape[-1] <= 1:
@@ -198,12 +178,32 @@ def inv_link(scores, link, link_param=np.nan):
         np.sum(val, axis=-1, keepdims=True, out=reduced_float)
         val /= reduced_float
         return val
-    if link == "identity":
-        return scores.copy()
+    if link == "vlogit":
+        with np.errstate(over="ignore"):
+            # scores == 999 gives warning otherwise
+            val = np.exp(scores)
+        inf_bool = np.isposinf(val)
+        with np.errstate(invalid="ignore"):
+            # val == +inf gives warning otherwise
+            val /= val + 1.0
+        val[inf_bool] = 1.0
+        return val
     if link == "log":
         with np.errstate(over="ignore"):
             # scores == 999 gives warning otherwise
             return np.exp(scores)
-    else:
-        msg = f"Unsupported link function: {link}"
-        raise ValueError(msg)
+    if link == "monoclassification":
+        bools = np.isnan(scores)
+        preds = np.ones((*scores.shape, 1), np.float64)
+        preds[np.expand_dims(bools, axis=-1)] = np.nan
+
+        bools |= scores == -np.inf
+        if not bools.all():
+            msg = "monoclassification must have all -infs or NaN"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        return preds
+
+    msg = f"Unsupported link function: {link}"
+    raise ValueError(msg)
