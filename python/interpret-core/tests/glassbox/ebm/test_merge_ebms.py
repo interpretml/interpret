@@ -2,9 +2,15 @@
 # Distributed under the MIT software license
 
 import warnings
+from functools import partial
 
 import numpy as np
-from interpret.glassbox import ExplainableBoostingClassifier, merge_ebms
+import pytest
+from interpret.glassbox import (
+    ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
+    merge_ebms,
+)
 from interpret.utils import make_synthetic
 from sklearn.model_selection import train_test_split
 
@@ -13,8 +19,16 @@ from ...tutils import (
     smoke_test_explanations,
 )
 
+# arguments for faster fitting time to reduce test time
+# we want to test the interface, not get good results
+_fast_kwds = {
+    "outer_bags": 2,
+    "max_rounds": 100,
+}
+
 
 def valid_ebm(ebm):
+    assert repr(ebm), "Cannot represent EBM which is important for debugging"
     assert ebm.term_features_[0] == (0,)
 
     for term_scores in ebm.term_scores_:
@@ -23,12 +37,6 @@ def valid_ebm(ebm):
 
 
 def test_merge_ebms():
-    # TODO: improve this test by checking the merged ebms for validity.
-    #       Right now the merged ebms fail the check for valid_ebm.
-    #       The failure might be related to the warning we're getting
-    #       about the scalar divide in the merge_ebms line:
-    #       "percentage.append((new_high - new_low) / (old_high - old_low))"
-
     X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
 
     with warnings.catch_warnings():
@@ -57,6 +65,7 @@ def test_merge_ebms():
             max_bins=10,
             max_interaction_bins=5,
             interactions=[(8, 3, 0)],
+            **_fast_kwds,
         )
         ebm1.fit(X_train, y_train)
 
@@ -70,6 +79,7 @@ def test_merge_ebms():
             max_bins=11,
             max_interaction_bins=4,
             interactions=[(8, 2), (7, 3), (1, 2)],
+            **_fast_kwds,
         )
         ebm2.fit(X_train, y_train)
 
@@ -83,11 +93,12 @@ def test_merge_ebms():
             max_bins=12,
             max_interaction_bins=3,
             interactions=[(1, 2), (2, 8)],
+            **_fast_kwds,
         )
         ebm3.fit(X_train, y_train)
 
         merged_ebm1 = merge_ebms([ebm1, ebm2, ebm3])
-        # valid_ebm(merged_ebm1)
+        valid_ebm(merged_ebm1)
         global_exp = merged_ebm1.explain_global()
         local_exp = merged_ebm1.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -102,11 +113,12 @@ def test_merge_ebms():
             max_bins=13,
             max_interaction_bins=8,
             interactions=2,
+            **_fast_kwds,
         )
         ebm4.fit(X_train, y_train)
 
         merged_ebm2 = merge_ebms([merged_ebm1, ebm4])
-        # valid_ebm(merged_ebm2)
+        valid_ebm(merged_ebm2)
         global_exp = merged_ebm2.explain_global()
         local_exp = merged_ebm2.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -121,11 +133,12 @@ def test_merge_ebms():
             max_bins=14,
             max_interaction_bins=8,
             interactions=2,
+            **_fast_kwds,
         )
         ebm5.fit(X_train, y_train)
 
         merged_ebm3 = merge_ebms([ebm5, merged_ebm2])
-        # valid_ebm(merged_ebm3)
+        valid_ebm(merged_ebm3)
         global_exp = merged_ebm3.explain_global()
         local_exp = merged_ebm3.explain_local(X[:5, :], y[:5])
         smoke_test_explanations(global_exp, local_exp, 6000)
@@ -146,6 +159,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=10,
+        **_fast_kwds,
     )
     ebm1.fit(X_train, y_train)
 
@@ -157,6 +171,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=11,
+        **_fast_kwds,
     )
     ebm2.fit(X_train, y_train)
 
@@ -168,6 +183,7 @@ def test_merge_ebms_multiclass():
         random_state=random_state,
         interactions=0,
         max_bins=12,
+        **_fast_kwds,
     )
     ebm3.fit(X_train, y_train)
 
@@ -182,7 +198,10 @@ def test_merge_ebms_multiclass():
         X, y, test_size=0.10, random_state=random_state
     )
     ebm4 = ExplainableBoostingClassifier(
-        random_state=random_state, interactions=0, max_bins=13
+        random_state=random_state,
+        interactions=0,
+        max_bins=13,
+        # **_fast_kwds,
     )
     ebm4.fit(X_train, y_train)
 
@@ -197,7 +216,10 @@ def test_merge_ebms_multiclass():
         X, y, test_size=0.50, random_state=random_state
     )
     ebm5 = ExplainableBoostingClassifier(
-        random_state=random_state, interactions=0, max_bins=14
+        random_state=random_state,
+        interactions=0,
+        max_bins=14,
+        # **_fast_kwds,
     )
     ebm5.fit(X_train, y_train)
 
@@ -206,3 +228,76 @@ def test_merge_ebms_multiclass():
     global_exp = merged_ebm3.explain_global()
     local_exp = merged_ebm3.explain_local(X_te, y_te)
     smoke_test_explanations(global_exp, local_exp, 6000)
+
+
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
+def test_unfitted():
+    """To merge EBMs, all have to be fitted."""
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingClassifier,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    ebm1 = TestEBM()
+    ebm1.fit(X, y)
+    ebm2 = TestEBM()
+    # ebm2 is not fitted
+    with pytest.raises(Exception, match="All models must be fitted."):
+        merge_ebms([ebm1, ebm2])
+
+
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
+def test_merge_monotone():
+    """Check merging of features with `monotone_constraints`."""
+    X, y, names, _ = make_synthetic(classes=None, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingRegressor,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    # feature 3, 6 are truly monotonous increasing, 7 has no impact
+    ebm1 = TestEBM(monotone_constraints=[0, 0, 0, +1, 0, 0, +1, +1, 0, 0])
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(monotone_constraints=[0, 0, 0, +1, 0, 0, +0, -1, 0, 0])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.monotone_constraints == [0, 0, 0, +1, 0, 0, +0, +0, 0, 0]
+    merged_ebm = merge_ebms([ebm2, ebm2])
+    assert merged_ebm.monotone_constraints == [0, 0, 0, +1, 0, 0, +0, -1, 0, 0]
+    ebm3 = TestEBM(monotone_constraints=None)
+    ebm3.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2, ebm3])
+    assert merged_ebm.monotone_constraints is None
+
+
+@pytest.mark.filterwarnings("ignore:Missing values detected.:UserWarning")
+def test_merge_exclude():
+    """Check merging of features with `exclude`."""
+    X, y, names, _ = make_synthetic(classes=2, missing=True, output_type="str")
+    TestEBM = partial(
+        ExplainableBoostingClassifier,
+        feature_names=names,
+        random_state=42,
+        **_fast_kwds,
+    )
+    ebm1 = TestEBM(exclude=None)
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude is None
+    ebm1 = TestEBM(exclude=[0, 2])
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude == [(0,), (2,)]
+    ebm1 = TestEBM(exclude="mains")
+    ebm1.fit(X, y)
+    ebm2 = TestEBM(exclude=[0, 1, 2])
+    ebm2.fit(X, y)
+    merged_ebm = merge_ebms([ebm1, ebm2])
+    assert merged_ebm.exclude == [(0,), (1,), (2,)]
