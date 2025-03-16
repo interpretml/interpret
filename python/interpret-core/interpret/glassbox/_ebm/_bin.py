@@ -4,8 +4,8 @@
 import logging
 
 import numpy as np
-from itertools import count, tee, repeat, chain, compress
-from operator import mul, itemgetter, getitem, truth, add, attrgetter, is_not, not_, is_
+from itertools import tee, repeat
+from operator import itemgetter, getitem, truth, is_not, is_
 
 from ...utils._clean_x import unify_columns
 from ...utils._native import Native
@@ -13,22 +13,12 @@ from ...utils._native import Native
 _log = logging.getLogger(__name__)
 
 
-_none_list = [None]
-_make_none_list = _none_list.__mul__
+_make_none_list = [None].__mul__
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
-_repeat_dict = repeat(dict)
-_make_new_lists = map(list, repeat(tuple()))
-_sub_one = (-1).__add__
-_sub_two = (-2).__add__
-_eq_getter = attrgetter("__eq__")
-_flags_getter = attrgetter("flags")
-_continuous_getter = attrgetter("c_contiguous")
 _itemgetter0 = itemgetter(0)
 _itemgetter1 = itemgetter(1)
 _itemgetter2 = itemgetter(2)
-_itemgetter3 = itemgetter(3)
-_slice_remove_last = slice(None, -1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -47,232 +37,102 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # to complete the term. We fill these with None initially.  At the end of the array
     # is the term_idx. So it looks approximately like this:
     # eg: [[None, 0], [None, 1], [None, 2], [None, None, 3], [None, None, None, 4]]
-    all_requirements = list(
-        chain.from_iterable(
-            map(
-                mul,
-                zip(
-                    map(
-                        add,
-                        map(_make_none_list, map(len, term_features)),
-                        map(list, zip(count())),
-                    )
-                ),
-                map(len, term_features),
-            )
-        ),
-    )
 
-    # get the per-feature (per-term) binning for all levels
-    # eg: [[{'a': 0, 'b': 1}], [[1, 2, 3, 4, 5], [1, 3, 5]]]
-    all_bin_levels1, all_bin_levels2 = tee(
-        map(bins.__getitem__, chain.from_iterable(term_features)), 2
-    )
-
-    # get a per-feature per-term list of indexes that will be used into the bins list
-    # eg: [0, 1, 0, 0, 1, 2]
-    levels = list(
-        map(
-            min,
-            zip(
-                map(_sub_one, map(len, all_bin_levels2)),
-                map(_sub_two, map(len, all_requirements)),
-            ),
-        )
-    )
-
-    # index into the bins list per-feature per-terms to get the actual binning
-    # eg: [{'a': 0, 'b': 1}, [3.5, 6.5, 8.5], {'x': 0, 'y': 1}]
-    feature_bins1, feature_bins2 = tee(
-        map(
-            getitem,
-            all_bin_levels1,
-            levels,
-        ),
-        2,
-    )
-
-    # replace the continuous bins with None values
-    # eg: [{'a': 0, 'b': 1}, None, {'x': 0, 'y': 1}]
-    all_feature_bins = list(
-        map(
-            getitem,
-            zip(_repeat_none, feature_bins1),
-            map(isinstance, feature_bins2, _repeat_dict),
-        )
-    )
-
-    # generate the list of requests which consist of keys (feature_idx, id(categories))
-    # and values (bin_level_idx, categories)
-    # where categories is None for continous features
-    # eg: {(0, id({'a': 0, 'b': 1})): (1, {'a': 0, 'b': 1}), ...}
-    requests = dict(
-        zip(
-            zip(chain.from_iterable(term_features), map(id, all_feature_bins)),
-            zip(levels, all_feature_bins),
-        )
-    )
+    requests = []
+    waiting = {}
+    for term_idx, feature_idxs in enumerate(term_features):
+        # the first len(feature_idxs) items hold the binned data that we get back as it arrives
+        num_features = len(feature_idxs)
+        requirements = _make_none_list(num_features + 1)
+        requirements[-1] = term_idx
+        for feature_idx in feature_idxs:
+            bin_levels = bins[feature_idx]
+            level = min(len(bin_levels), num_features) - 1
+            feature_bins = bin_levels[level]
+            if isinstance(feature_bins, dict):
+                # categorical feature
+                request = (feature_idx, level, feature_bins)
+                key = (feature_idx, id(feature_bins))
+            else:
+                # continuous feature
+                request = (feature_idx, 0, None)
+                key = feature_idx
+            waiting_list = waiting.get(key)
+            if waiting_list is None:
+                waiting[key] = [requirements]
+                requests.append(request)
+            else:
+                waiting_list.append(requirements)
 
     # Order requests by (feature_idx, category_level) for implementation independence.
-    requests = sorted(
-        zip(
-            map(_itemgetter0, requests.keys()),
-            map(_itemgetter0, requests.values()),
-            map(_itemgetter1, requests.values()),
-        )
-    )
+    requests.sort()
 
     request_feature_idxs = list(map(_itemgetter0, requests))
 
-    # the request keys that we expect back
-    keys1, keys2 = tee(
-        zip(chain.from_iterable(term_features), map(id, all_feature_bins)), 2
-    )
-
-    waiting = {}
-    # sum is used to iterate outside the interpreter. The result is not used.
-    # make a fast lookup so that we can determine which terms are affected
-    # by the completion of a feature. The value returned from the key
-    # has space to store the result to accumulate binned features for higher
-    # order interactions that require more than one feature.
-    sum(
-        map(
-            truth,
-            map(
-                waiting.__setitem__,
-                keys1,
-                map(
-                    add,
-                    map(waiting.get, keys2, _make_new_lists),
-                    map(list, zip(all_requirements)),
-                ),
-            ),
-        )
-    )
-
     native = Native.get_native_singleton()
 
-    col1, col2, col3, col4, col5 = tee(
-        unify_columns(
-            X,
-            request_feature_idxs,
-            map(_itemgetter2, requests),
-            feature_names_in,
-            feature_types_in,
-            None,
-            True,
-        ),
-        5,
-    )
-
-    for (
-        column_feature_idx,
-        column_feature_idx_eq,
-        bin_levels,
-        max_level,
-        binning_completed,
-        all_requirements,
-        is_mismatch,
-        is_bad,
-        is_non_contiguous,
-        (_, X_col, column_categories, bad),
-    ) in zip(
+    for column_feature_idx, (_, X_col, column_categories, bad) in zip(
         request_feature_idxs,
-        map(_eq_getter, request_feature_idxs),
-        map(bins.__getitem__, request_feature_idxs),
-        map(len, map(bins.__getitem__, request_feature_idxs)),
-        map(_make_none_list, map(len, map(bins.__getitem__, request_feature_idxs))),
-        map(
-            waiting.__getitem__,
-            zip(request_feature_idxs, map(id, map(_itemgetter2, col1))),
-        ),
-        map(n_samples.__ne__, map(len, map(_itemgetter1, col2))),
-        map(is_not, map(_itemgetter3, col3), _repeat_none),
-        map(
-            not_,
-            map(
-                _continuous_getter,
-                map(_flags_getter, map(_itemgetter1, col4)),
-            ),
-        ),
-        col5,
+        unify_columns(X, request_feature_idxs, map(_itemgetter2, requests), feature_names_in, feature_types_in, None, True),
     ):
-        if is_mismatch:
+        if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
             _log.error(msg)
             raise ValueError(msg)
 
-        if column_categories:
-            # categorical feature
-
-            # if is_bad:
-            #     # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
-            #     pass  # TODO: improve this handling
-
-            for requirements in all_requirements:
-                term_idx = requirements[-1]
-
-                # if it was illegal to have duplicate features in a term we could do:
-                # requirements[term_features[term_idx].index(column_feature_idx)] = X_col
-                sum(
-                    map(
-                        truth,
-                        map(
-                            requirements.__setitem__,
-                            compress(
-                                count(),
-                                map(column_feature_idx_eq, term_features[term_idx]),
-                            ),
-                            repeat(X_col),
-                        ),
-                    )
-                )
-
-                if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[_slice_remove_last]
-                    # clear references so that the garbage collector can free them
-                    requirements.clear()
-        else:
+        if column_categories is None:
             # continuous feature
 
-            if is_bad:
+            if bad is not None:
                 # TODO: we could pass out a bool array instead of objects for this function only
                 bad = bad != _none_ndarray
 
-            if is_non_contiguous:
+            if not X_col.flags.c_contiguous:
                 # we requrested this feature, so at some point we're going to call discretize,
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
-            for requirements in all_requirements:
+            bin_levels = bins[column_feature_idx]
+            max_level = len(bin_levels)
+            binning_completed = _make_none_list(max_level)
+            for requirements in waiting[column_feature_idx]:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
-                level_idx = _sub_one(min(max_level, len(feature_idxs)))
+                level_idx = min(max_level, len(feature_idxs)) - 1
                 bin_indexes = binning_completed[level_idx]
                 if bin_indexes is None:
                     bin_indexes = native.discretize(X_col, bin_levels[level_idx])
-                    if is_bad:
+                    if bad is not None:
                         bin_indexes[bad] = -1
                     binning_completed[level_idx] = bin_indexes
-
-                # if it was illegal to have duplicate features in a term we could do:
-                # requirements[feature_idxs.index(column_feature_idx)] = bin_indexes
-                sum(
-                    map(
-                        truth,
-                        map(
-                            requirements.__setitem__,
-                            compress(count(), map(column_feature_idx_eq, feature_idxs)),
-                            repeat(bin_indexes),
-                        ),
-                    )
-                )
+                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
+                    if term_feature_idx == column_feature_idx:
+                        requirements[dimension_idx] = bin_indexes
 
                 if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[_slice_remove_last]
+                    yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
+        else:
+            # categorical feature
 
+            # if bad is not None:
+            #     # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
+            #     pass  # TODO: improve this handling
+
+            for requirements in waiting[(column_feature_idx, id(column_categories))]:
+                term_idx = requirements[-1]
+                for dimension_idx, term_feature_idx in enumerate(term_features[term_idx]):
+                    if term_feature_idx == column_feature_idx:
+                        # "term_categories is column_categories" since any term in the waiting_list must have
+                        # one of it's elements match this (feature_idx, categories) index, and all items in this
+                        # term need to have the same categories since they came from the same bin_level
+                        requirements[dimension_idx] = X_col
+
+                if all(map(is_not, requirements, _repeat_none)):
+                    yield term_idx, requirements[:-1]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
 
 def ebm_predict_scores(
     X,
@@ -380,7 +240,7 @@ def ebm_eval_terms(
 def make_bin_weights(
     X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features
 ):
-    bin_weights = _none_list * len(term_features)
+    bin_weights = _make_none_list(len(term_features))
     for term_idx, bin_indexes in eval_terms(
         X, n_samples, feature_names_in, feature_types_in, bins, term_features
     ):
