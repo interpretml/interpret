@@ -4,8 +4,8 @@
 import logging
 
 import numpy as np
-from itertools import tee, repeat
-from operator import itemgetter, getitem, truth, is_not, is_
+from itertools import repeat
+from operator import itemgetter, is_not
 
 from ...utils._clean_x import unify_columns
 from ...utils._native import Native
@@ -17,7 +17,6 @@ _make_none_list = [None].__mul__
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
 _itemgetter0 = itemgetter(0)
-_itemgetter1 = itemgetter(1)
 _itemgetter2 = itemgetter(2)
 
 
@@ -73,7 +72,15 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     for column_feature_idx, (_, X_col, column_categories, bad) in zip(
         request_feature_idxs,
-        unify_columns(X, request_feature_idxs, map(_itemgetter2, requests), feature_names_in, feature_types_in, None, True),
+        unify_columns(
+            X,
+            request_feature_idxs,
+            map(_itemgetter2, requests),
+            feature_names_in,
+            feature_types_in,
+            None,
+            True,
+        ),
     ):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
@@ -122,7 +129,9 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
             for requirements in waiting[(column_feature_idx, id(column_categories))]:
                 term_idx = requirements[-1]
-                for dimension_idx, term_feature_idx in enumerate(term_features[term_idx]):
+                for dimension_idx, term_feature_idx in enumerate(
+                    term_features[term_idx]
+                ):
                     if term_feature_idx == column_feature_idx:
                         # "term_categories is column_categories" since any term in the waiting_list must have
                         # one of it's elements match this (feature_idx, categories) index, and all items in this
@@ -133,6 +142,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     yield term_idx, requirements[:-1]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
+
 
 def ebm_predict_scores(
     X,
@@ -158,31 +168,10 @@ def ebm_predict_scores(
     )
 
     if n_samples > 0:
-        term_idxs, binned = tee(
-            eval_terms(
-                X, n_samples, feature_names_in, feature_types_in, bins, term_features
-            ),
-            2,
-        )
-
-        # sum is used to iterate outside the interpreter. The result is not used.
-        sum(
-            map(
-                is_,
-                map(
-                    sample_scores.__iadd__,
-                    map(
-                        getitem,
-                        map(
-                            term_scores.__getitem__,
-                            map(_itemgetter0, term_idxs),
-                        ),
-                        map(tuple, map(_itemgetter1, binned)),
-                    ),
-                ),
-                _repeat_none,
-            )
-        )
+        for term_idx, bin_indexes in eval_terms(
+            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        ):
+            sample_scores += term_scores[term_idx][tuple(bin_indexes)]
 
     return sample_scores
 
@@ -205,34 +194,10 @@ def ebm_eval_terms(
     )
 
     if n_samples > 0:
-        term_idxs1, term_idxs2, binned = tee(
-            eval_terms(
-                X, n_samples, feature_names_in, feature_types_in, bins, term_features
-            ),
-            3,
-        )
-
-        # sum is used to iterate outside the interpreter. The result is not used.
-        sum(
-            map(
-                truth,
-                map(
-                    explanations.__setitem__,
-                    zip(
-                        repeat(slice(None)),
-                        map(_itemgetter0, term_idxs1),
-                    ),
-                    map(
-                        getitem,
-                        map(
-                            term_scores.__getitem__,
-                            map(_itemgetter0, term_idxs2),
-                        ),
-                        map(tuple, map(_itemgetter1, binned)),
-                    ),
-                ),
-            )
-        )
+        for term_idx, bin_indexes in eval_terms(
+            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        ):
+            explanations[:, term_idx] = term_scores[term_idx][tuple(bin_indexes)]
 
     return explanations
 

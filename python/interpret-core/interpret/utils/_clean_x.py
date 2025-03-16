@@ -5,7 +5,7 @@ import logging
 from warnings import warn
 from collections import Counter
 from itertools import count, repeat, compress
-from operator import ne, truth, eq
+from operator import ne, eq
 
 import numpy as np
 from numpy import ma
@@ -295,12 +295,10 @@ _disallowed_types = frozenset(
         np.void,
     ]
 )
-_none_list = [None]
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
 _repeat_slice_none = repeat(slice(None))
 _repeat_ignore = repeat("ignore")
-_not_one = (1).__ne__
 
 
 def _densify_object_ndarray(X_col):
@@ -1202,16 +1200,9 @@ def unify_columns(
             # We can handle duplicate names if they are not being used by the model.
             counts = Counter(map(str, cols))
 
-            # sum is used to iterate outside the interpreter. The result is not used.
-            sum(
-                map(
-                    truth,
-                    map(
-                        mapping.__delitem__,
-                        compress(counts.keys(), map(_not_one, counts.values())),
-                    ),
-                )
-            )
+            for name, n_count in Counter(map(str, cols)).items():
+                if n_count != 1:
+                    del mapping[name]
 
         if feature_types is None:
             if all(map(mapping.__contains__, feature_names_in)):

@@ -22,7 +22,6 @@ try:
 except ImportError:
     _pandas_installed = False
 
-_none_list = [None]
 _none_ndarray = np.array(None)
 
 
