@@ -13,11 +13,12 @@ from ...utils._native import Native
 _log = logging.getLogger(__name__)
 
 
-_make_none_list = [None].__mul__
+_none_list = [None]
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
 _itemgetter0 = itemgetter(0)
-_itemgetter2 = itemgetter(2)
+_itemgetter1 = itemgetter(1)
+_slice_remove_last = slice(None, -1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -42,29 +43,24 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     for term_idx, feature_idxs in enumerate(term_features):
         # the first len(feature_idxs) items hold the binned data that we get back as it arrives
         num_features = len(feature_idxs)
-        requirements = _make_none_list(num_features + 1)
+        requirements = _none_list * (num_features + 1)
         requirements[-1] = term_idx
         for feature_idx in feature_idxs:
             bin_levels = bins[feature_idx]
-            level = min(len(bin_levels), num_features) - 1
-            feature_bins = bin_levels[level]
+            feature_bins = bin_levels[min(len(bin_levels), num_features) - 1]
             if isinstance(feature_bins, dict):
                 # categorical feature
-                request = (feature_idx, level, feature_bins)
                 key = (feature_idx, id(feature_bins))
             else:
                 # continuous feature
-                request = (feature_idx, 0, None)
+                feature_bins = None
                 key = feature_idx
             waiting_list = waiting.get(key)
             if waiting_list is None:
                 waiting[key] = [requirements]
-                requests.append(request)
+                requests.append((feature_idx, feature_bins))
             else:
                 waiting_list.append(requirements)
-
-    # Order requests by (feature_idx, category_level) for implementation independence.
-    requests.sort()
 
     request_feature_idxs = list(map(_itemgetter0, requests))
 
@@ -75,7 +71,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         unify_columns(
             X,
             request_feature_idxs,
-            map(_itemgetter2, requests),
+            map(_itemgetter1, requests),
             feature_names_in,
             feature_types_in,
             None,
@@ -101,7 +97,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
-            binning_completed = _make_none_list(max_level)
+            binning_completed = _none_list * max_level
             for requirements in waiting[column_feature_idx]:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
@@ -113,11 +109,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         bin_indexes[bad] = -1
                     binning_completed[level_idx] = bin_indexes
                 for dimension_idx, term_feature_idx in enumerate(feature_idxs):
+                    # TODO: consider making it illegal to duplicate features in terms
+                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
                     if term_feature_idx == column_feature_idx:
                         requirements[dimension_idx] = bin_indexes
 
                 if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[:-1]
+                    yield term_idx, requirements[_slice_remove_last]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
         else:
@@ -132,6 +130,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 for dimension_idx, term_feature_idx in enumerate(
                     term_features[term_idx]
                 ):
+                    # TODO: consider making it illegal to duplicate features in terms
+                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
                     if term_feature_idx == column_feature_idx:
                         # "term_categories is column_categories" since any term in the waiting_list must have
                         # one of it's elements match this (feature_idx, categories) index, and all items in this
@@ -139,7 +139,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         requirements[dimension_idx] = X_col
 
                 if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[:-1]
+                    yield term_idx, requirements[_slice_remove_last]
                     # clear references so that the garbage collector can free them
                     requirements.clear()
 
@@ -205,7 +205,7 @@ def ebm_eval_terms(
 def make_bin_weights(
     X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features
 ):
-    bin_weights = _make_none_list(len(term_features))
+    bin_weights = _none_list * len(term_features)
     for term_idx, bin_indexes in eval_terms(
         X, n_samples, feature_names_in, feature_types_in, bins, term_features
     ):

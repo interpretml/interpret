@@ -10,7 +10,7 @@ from ._clean_x import unify_columns, unify_feature_names
 
 _log = logging.getLogger(__name__)
 
-_make_none_list = [None].__mul__
+_none_list = [None]
 
 
 def unify_data(
@@ -33,7 +33,7 @@ def unify_data(
     # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
     # and unify_columns will return the identical names and types
     feature_names_in = unify_feature_names(X, feature_names, feature_types)
-    feature_types_in = _make_none_list(len(feature_names_in))
+    feature_types_in = _none_list * len(feature_names_in)
 
     # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
     # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object

@@ -28,7 +28,7 @@ from ._privacy import (
 from ._seed import increment_seed, normalize_seed
 
 _log = logging.getLogger(__name__)
-_make_none_list = [None].__mul__
+_none_list = [None]
 
 
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
@@ -255,11 +255,11 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 msg = f"Unknown composition method provided: {self.composition}. Please use 'gdp' or 'classic'."
                 raise NotImplementedError(msg)
 
-        feature_types_in = _make_none_list(n_features)
-        bins = _make_none_list(n_features)
-        bin_weights = _make_none_list(n_features)
+        feature_types_in = _none_list * n_features
+        bins = _none_list * n_features
+        bin_weights = _none_list * n_features
         feature_bounds = np.full((n_features, 2), np.nan, dtype=np.float64)
-        histogram_weights = _make_none_list(n_features)
+        histogram_weights = _none_list * n_features
         missing_val_counts = np.zeros(n_features, dtype=np.int64)
         unique_val_counts = np.zeros(n_features, dtype=np.int64)
 
