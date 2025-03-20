@@ -267,12 +267,10 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         rng = native.create_rng(normalize_seed(self.random_state))
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
-
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
             unify_columns(
                 X,
-                range(n_features),
-                repeat(None),
+                list(zip(range(n_features), repeat(None))),
                 feature_names_in,
                 self.feature_types,
                 self.min_unique_continuous,
@@ -514,18 +512,13 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            categories = [
+            category_iter = (
                 category if isinstance(category, dict) else None
                 for category in self.bins_
-            ]
+            )
+            requests = list(zip(count(), category_iter))
             cols = unify_columns(
-                X,
-                range(len(categories)),
-                categories,
-                self.feature_names_in_,
-                self.feature_types_in_,
-                None,
-                False,
+                X, requests, self.feature_names_in_, self.feature_types_in_, None, False
             )
             for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
                 if n_samples != len(X_col):

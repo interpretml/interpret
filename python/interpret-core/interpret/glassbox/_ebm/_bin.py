@@ -40,6 +40,9 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     requests = []
     waiting = {}
+    # term_features are guaranteed to be ordered by: num_features, [feature_idxes]
+    # Which typically means that the mains are processed in order first
+    # by feature_idx.
     for term_idx, feature_idxs in enumerate(term_features):
         # the first len(feature_idxs) items hold the binned data that we get back as it arrives
         num_features = len(feature_idxs)
@@ -62,21 +65,11 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             else:
                 waiting_list.append(requirements)
 
-    request_feature_idxs = list(map(_itemgetter0, requests))
-
     native = Native.get_native_singleton()
 
-    for column_feature_idx, (_, X_col, column_categories, bad) in zip(
-        request_feature_idxs,
-        unify_columns(
-            X,
-            request_feature_idxs,
-            map(_itemgetter1, requests),
-            feature_names_in,
-            feature_types_in,
-            None,
-            True,
-        ),
+    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(
+        requests,
+        unify_columns(X, requests, feature_names_in, feature_types_in, None, True),
     ):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"

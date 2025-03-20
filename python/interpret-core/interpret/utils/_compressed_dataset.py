@@ -40,11 +40,14 @@ def bin_native(
 
     native = Native.get_native_singleton()
 
-    # if continuous feature, don't include the continuous definition.
-    categories = [
-        feature_bins if isinstance(feature_bins, dict) else None
-        for feature_bins in bins_iter
-    ]
+    responses = []
+    requests = []
+    for request in zip(feature_idxs, bins_iter):
+        responses.append(request)
+        if not isinstance(request[1], dict):
+            # continuous feature.  Don't include the continuous definition
+            request = (request[0], None)
+        requests.append(request)
 
     n_weights = 0
     if sample_weight is not None:
@@ -57,13 +60,10 @@ def bin_native(
         # y could be a slice that has a stride.  We need contiguous for caling into C
         y = y.copy()
 
-    n_bytes = native.measure_dataset_header(len(feature_idxs), n_weights, 1)
-    for feature_idx, feature_bins, (_, X_col, _, bad) in zip(
-        feature_idxs,
-        bins_iter,
-        unify_columns(
-            X, feature_idxs, categories, feature_names_in, feature_types_in, None, False
-        ),
+    n_bytes = native.measure_dataset_header(len(requests), n_weights, 1)
+    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(
+        responses,
+        unify_columns(X, requests, feature_names_in, feature_types_in, None, False),
     ):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"
@@ -107,14 +107,11 @@ def bin_native(
 
     dataset = np.empty(n_bytes, np.ubyte)  # joblib loky doesn't support RawArray
 
-    native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
+    native.fill_dataset_header(len(requests), n_weights, 1, dataset)
 
-    for feature_idx, feature_bins, (_, X_col, _, bad) in zip(
-        feature_idxs,
-        bins_iter,
-        unify_columns(
-            X, feature_idxs, categories, feature_names_in, feature_types_in, None, False
-        ),
+    for (feature_idx, feature_bins), (_, X_col, _, bad) in zip(
+        responses,
+        unify_columns(X, requests, feature_names_in, feature_types_in, None, False),
     ):
         if n_samples != len(X_col):
             msg = "The columns of X are mismatched in the number of of samples"

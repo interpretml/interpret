@@ -1050,8 +1050,7 @@ def _process_dict_column(X_col, categories, feature_type, min_unique_continuous)
 
 def unify_columns(
     X,
-    feature_idxs,
-    categories_iter,
+    requests,
     feature_names_in,
     feature_types,
     min_unique_continuous,
@@ -1066,7 +1065,7 @@ def unify_columns(
     # feature_types can ONLY be None when called from unify_data OR when called from EBMPreprocessor.fit(...)
     # on all subsequent calls we pass a cleaned up feature_types from the results of the first call to EBMPreprocessor.fit(...)
 
-    # If the categories_iter paramter contains a dictionary, then that same dictionary object is guaranteed to
+    # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
     # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being
     # yielded by using the id(categories) along with the feature_idx
 
@@ -1106,12 +1105,12 @@ def unify_columns(
 
         if len(feature_names_in) == X.shape[1]:
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_numpy_column(
                         X[:, feature_idx], categories, None, min_unique_continuous
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_numpy_column(
                         X[:, feature_idx],
                         categories,
@@ -1136,7 +1135,7 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(keep_cols), dtype=np.int64))
 
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_numpy_column(
                         X[:, col_map[feature_idx]],
                         categories,
@@ -1144,7 +1143,7 @@ def unify_columns(
                         min_unique_continuous,
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_numpy_column(
                         X[:, col_map[feature_idx]],
                         categories,
@@ -1172,7 +1171,7 @@ def unify_columns(
                 if len(feature_names_in) != n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
                         categories,
@@ -1190,7 +1189,7 @@ def unify_columns(
                 )
 
                 X = X.iloc
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_pandas_column(
                         X[:, feature_idx], categories, None, min_unique_continuous
                     )
@@ -1209,7 +1208,7 @@ def unify_columns(
                 if len(feature_names_in) < n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
                         categories,
@@ -1223,7 +1222,7 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    for feature_idx, categories in zip(feature_idxs, categories_iter):
+                    for feature_idx, categories in requests:
                         yield _process_pandas_column(
                             X[:, feature_idx],
                             categories,
@@ -1250,7 +1249,7 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    for feature_idx, categories in zip(feature_idxs, categories_iter):
+                    for feature_idx, categories in requests:
                         yield _process_pandas_column(
                             X[:, col_map[feature_idx]],
                             categories,
@@ -1269,12 +1268,12 @@ def unify_columns(
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X[:, (feature_idx,)], categories, None, min_unique_continuous
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X[:, (feature_idx,)],
                         categories,
@@ -1298,7 +1297,7 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X[:, (col_map[feature_idx],)],
                         categories,
@@ -1306,7 +1305,7 @@ def unify_columns(
                         min_unique_continuous,
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X[:, (col_map[feature_idx],)],
                         categories,
@@ -1318,12 +1317,12 @@ def unify_columns(
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X.getcol(feature_idx), categories, None, min_unique_continuous
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X.getcol(feature_idx),
                         categories,
@@ -1347,7 +1346,7 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
             if feature_types is None:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X.getcol(col_map[feature_idx]),
                         categories,
@@ -1355,7 +1354,7 @@ def unify_columns(
                         min_unique_continuous,
                     )
             else:
-                for feature_idx, categories in zip(feature_idxs, categories_iter):
+                for feature_idx, categories in requests:
                     yield _process_sparse_column(
                         X.getcol(col_map[feature_idx]),
                         categories,
@@ -1369,7 +1368,7 @@ def unify_columns(
         raise ValueError(msg)
     elif isinstance(X, dict):
         if feature_types is None:
-            for feature_idx, categories in zip(feature_idxs, categories_iter):
+            for feature_idx, categories in requests:
                 yield _process_dict_column(
                     X[feature_names_in[feature_idx]],
                     categories,
@@ -1377,7 +1376,7 @@ def unify_columns(
                     min_unique_continuous,
                 )
         else:
-            for feature_idx, categories in zip(feature_idxs, categories_iter):
+            for feature_idx, categories in requests:
                 yield _process_dict_column(
                     X[feature_names_in[feature_idx]],
                     categories,
