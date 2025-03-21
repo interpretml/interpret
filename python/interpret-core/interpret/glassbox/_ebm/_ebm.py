@@ -2505,6 +2505,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 First column contains mean predictions
                 Second column contains uncertainties
         """
+
         check_is_fitted(self, "has_fitted_")
 
         X, n_samples, init_score = clean_X_and_init_score(
@@ -2516,24 +2517,25 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             self.link_param_,
         )
 
-        preds_per_bag = np.zeros((n_samples, len(self.bagged_intercept_)))
-        # Get predictions from each bagged model
+        preds_per_bag = np.empty((len(self.bagged_intercept_), n_samples), np.float64)
+
         for bag_index in range(len(self.bagged_intercept_)):
-            # Use slices from bagged parameters for this specific model
-            preds_per_bag[:, bag_index] = ebm_predict_scores(
-                X=X,
-                n_samples=n_samples,
-                init_score=init_score,
-                feature_names_in=self.feature_names_in_,
-                feature_types_in=self.feature_types_in_,
-                bins=self.bins_,
-                intercept=self.bagged_intercept_[bag_index],
-                term_scores=list(map(itemgetter(bag_index), self.bagged_scores_)),
-                term_features=self.term_features_,
+            preds_per_bag[bag_index, :] = ebm_predict_scores(
+                X,
+                n_samples,
+                init_score,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                self.bins_,
+                self.bagged_intercept_[bag_index],
+                list(map(itemgetter(bag_index), self.bagged_scores_)),
+                self.term_features_,
             )
 
+        # TODO: would transposing preds_per_bag here improve speed?
+
         # Calculate mean predictions and uncertainties
-        return np.c_[np.mean(preds_per_bag, axis=1), np.std(preds_per_bag, axis=1)]
+        return np.c_[np.mean(preds_per_bag, axis=0), np.std(preds_per_bag, axis=0)]
 
     def _multinomialize(self, passthrough=0.0):
         check_is_fitted(self, "has_fitted_")

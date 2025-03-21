@@ -11,6 +11,7 @@ from ._clean_x import unify_columns, unify_feature_names
 _log = logging.getLogger(__name__)
 
 _none_list = [None]
+_none_ndarray = np.array(None)
 
 
 def unify_data(
@@ -19,6 +20,7 @@ def unify_data(
     feature_names=None,
     feature_types=None,
     missing_data_allowed=False,
+    unseen_data_allowed=False,
     min_unique_continuous=0,
 ):
     _log.info("Unifying data")
@@ -38,12 +40,12 @@ def unify_data(
     # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
     # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
     # fragmentation for continuous values which generates a lot of garbage to collect later
-    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, order="F")
+    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
     for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
         unify_columns(
             X,
-            list(zip(range(len(feature_names_in)), repeat(None))),
+            zip(range(len(feature_names_in)), repeat(None)),
             feature_names_in,
             feature_types,
             min_unique_continuous,
@@ -58,24 +60,21 @@ def unify_data(
         feature_types_in[feature_idx] = feature_type_in
         if categories is None:
             # continuous feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                _log.error(msg)
-                raise ValueError(msg)
-
             if not missing_data_allowed and np.isnan(X_col).any():
                 msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 
+            if bad is not None:
+                if not unseen_data_allowed:
+                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                X_col[bad != _none_ndarray] = np.nan
+
             X_unified[:, feature_idx] = X_col
         else:
             # categorical feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                _log.error(msg)
-                raise ValueError(msg)
-
             if not missing_data_allowed and np.count_nonzero(X_col) != len(X_col):
                 msg = "X cannot contain missing values"
                 _log.error(msg)
@@ -85,6 +84,16 @@ def unify_data(
             mapping[0] = np.nan
             for category, idx in categories.items():
                 mapping[idx] = category
-            X_unified[:, feature_idx] = mapping[X_col]
+
+            X_col = mapping[X_col]
+
+            if bad is not None:
+                if not unseen_data_allowed:
+                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                X_col[bad != _none_ndarray] = bad
+
+            X_unified[:, feature_idx] = X_col
 
     return X_unified, feature_names_in, feature_types_in

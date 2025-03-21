@@ -29,6 +29,7 @@ from ._seed import increment_seed, normalize_seed
 
 _log = logging.getLogger(__name__)
 _none_list = [None]
+_none_ndarray = np.array(None)
 
 
 def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bin):
@@ -270,7 +271,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
             unify_columns(
                 X,
-                list(zip(range(n_features), repeat(None))),
+                zip(range(n_features), repeat(None)),
                 feature_names_in,
                 self.feature_types,
                 self.min_unique_continuous,
@@ -506,27 +507,40 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
-        X_binned = np.empty(
-            (n_samples, len(self.feature_names_in_)), np.int64, order="F"
-        )
+        X_binned = np.empty((n_samples, len(self.feature_names_in_)), np.int64, "F")
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            category_iter = (
-                category if isinstance(category, dict) else None
-                for category in self.bins_
-            )
-            requests = list(zip(count(), category_iter))
-            cols = unify_columns(
-                X, requests, self.feature_names_in_, self.feature_types_in_, None, False
-            )
-            for feature_idx, bins, (_, X_col, _, _) in zip(count(), self.bins_, cols):
+            for feature_idx, bins, (_, X_col, _, bad) in zip(
+                count(),
+                self.bins_,
+                unify_columns(
+                    X,
+                    zip(
+                        count(),
+                        (
+                            category if isinstance(category, dict) else None
+                            for category in self.bins_
+                        ),
+                    ),
+                    self.feature_names_in_,
+                    self.feature_types_in_,
+                    None,
+                    False,
+                ),
+            ):
                 if n_samples != len(X_col):
                     msg = "The columns of X are mismatched in the number of of samples"
                     _log.error(msg)
                     raise ValueError(msg)
 
-                if not isinstance(bins, dict):
+                if isinstance(bins, dict):
+                    # categorical feature
+                    if bad is not None:
+                        X_col[X_col == -1] = (
+                            1 if len(bins) == 0 else max(bins.values()) + 1
+                        )
+                else:
                     # continuous feature
 
                     if not X_col.flags.c_contiguous:
@@ -535,10 +549,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col = native.discretize(X_col, bins)
 
-                if np.count_nonzero(X_col) != len(X_col):
-                    msg = "missing values in X not supported in transform"
-                    _log.error(msg)
-                    raise ValueError(msg)
+                    if bad is not None:
+                        X_col[bad != _none_ndarray] = len(bins) + 1
 
                 X_binned[:, feature_idx] = X_col
 

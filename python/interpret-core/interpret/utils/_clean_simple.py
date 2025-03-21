@@ -240,14 +240,16 @@ def typify_classification(vec):
     elif issubclass(vec.dtype.type, np.object_):
         types = set(map(type, vec))
         if all(
-            one_type is int or issubclass(one_type, np.integer) for one_type in types
+            issubclass(one_type, int) or issubclass(one_type, np.integer)
+            for one_type in types
         ):
             # the vec.astype call below can fail if we're passed an unsigned np.uint64
             # array with big values, but we don't want to surprise anyone by converting to
             # strings in that special case, so throw if we're presented this unusual type
             dtype = np.int64
         elif all(
-            one_type is bool or issubclass(one_type, np.bool_) for one_type in types
+            issubclass(one_type, bool) or issubclass(one_type, np.bool_)
+            for one_type in types
         ):
             dtype = np.bool_
         else:

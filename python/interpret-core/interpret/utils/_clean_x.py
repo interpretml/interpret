@@ -316,31 +316,40 @@ def _densify_object_ndarray(X_col):
         if bool in types:
             return X_col.astype(np.bool_)
 
-    if all(one_type is int or issubclass(one_type, np.integer) for one_type in types):
+    if all(
+        issubclass(one_type, int) or issubclass(one_type, np.integer)
+        for one_type in types
+    ):
         if all(issubclass(one_type, np.unsignedinteger) for one_type in types):
-            if all(one_type is np.uint8 for one_type in types):
+            if all(issubclass(one_type, np.uint8) for one_type in types):
                 return X_col.astype(np.uint8)
             types.discard(np.uint8)
 
-            if all(one_type is np.uint16 for one_type in types):
+            if all(issubclass(one_type, np.uint16) for one_type in types):
                 return X_col.astype(np.uint16)
             types.discard(np.uint16)
 
-            if all(one_type is np.uint32 for one_type in types):
+            if all(issubclass(one_type, np.uint32) for one_type in types):
                 return X_col.astype(np.uint32)
 
             return X_col.astype(np.uint64)
 
-        if all(one_type is np.int8 for one_type in types):
+        if all(issubclass(one_type, np.int8) for one_type in types):
             return X_col.astype(np.int8)
         types.discard(np.int8)
 
-        if all(one_type is np.uint8 or one_type is np.int16 for one_type in types):
+        if all(
+            issubclass(one_type, np.uint8) or issubclass(one_type, np.int16)
+            for one_type in types
+        ):
             return X_col.astype(np.int16)
         types.discard(np.uint8)
         types.discard(np.int16)
 
-        if all(one_type is np.uint16 or one_type is np.int32 for one_type in types):
+        if all(
+            issubclass(one_type, np.uint16) or issubclass(one_type, np.int32)
+            for one_type in types
+        ):
             return X_col.astype(np.int32)
 
         try:
@@ -354,32 +363,32 @@ def _densify_object_ndarray(X_col):
             return X_col.astype(np.str_)
 
     if all(
-        one_type is float or issubclass(one_type, np.floating) for one_type in types
+        issubclass(one_type, float) or issubclass(one_type, np.floating)
+        for one_type in types
     ):
-        if all(one_type is np.float16 for one_type in types):
+        if all(issubclass(one_type, np.float16) for one_type in types):
             return X_col.astype(np.float16)
         types.discard(np.float16)
 
-        if all(one_type is np.float32 for one_type in types):
+        if all(issubclass(one_type, np.float32) for one_type in types):
             return X_col.astype(np.float32)
 
         return X_col.astype(np.float64)
 
     is_float_conversion = False
     for one_type in types:
-        if one_type is str:
+        if issubclass(one_type, str):
             pass  # str objects have __iter__, so special case this to allow
-        elif one_type is int:
+        elif issubclass(one_type, int):
             pass  # int objects use the default __str__ function, so special case this to allow
-        elif one_type is bool:
+        elif issubclass(one_type, bool):
             pass  # bool objects use the default __str__ function, so special case this to allow
         elif one_type is float:
-            is_float_conversion = (
-                True  # force to np.float64 to guarantee consistent string formatting
-            )
+            # force to np.float64 to guarantee consistent string formatting
+            is_float_conversion = True
         elif issubclass(one_type, np.generic):
             # numpy objects have __getitem__, so special case this to allow
-            if one_type is np.float64:
+            if issubclass(one_type, np.float64):
                 pass  # np.float64 is what we convert to for floats, so no need to convert this
             elif issubclass(one_type, np.floating):
                 is_float_conversion = True  # force to np.float64 to ensure consistent string formatting of floats
@@ -417,7 +426,7 @@ def _densify_object_ndarray(X_col):
             map(isinstance, X_col, repeat(float)), np.bool_, count=len(X_col)
         )
         places |= np.fromiter(
-            map(issubclass, map(type, X_col), repeat(np.floating)),
+            map(isinstance, X_col, repeat(np.floating)),
             np.bool_,
             count=len(X_col),
         )
@@ -688,7 +697,9 @@ def _process_continuous(X_col, nonmissings):
     if issubclass(X_col.dtype.type, np.floating):
         X_col = X_col.astype(dtype=np.float64, copy=False)
         return X_col, None
-    if issubclass(X_col.dtype.type, np.integer) or X_col.dtype.type is np.bool_:
+    if issubclass(X_col.dtype.type, np.integer) or issubclass(
+        X_col.dtype.type, np.bool_
+    ):
         X_col = X_col.astype(dtype=np.float64)
         if nonmissings is not None:
             X_col_tmp = np.full(len(nonmissings), np.nan, dtype=np.float64)
@@ -905,7 +916,7 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
         if (
             issubclass(X_col.dtype.type, np.floating)
             or issubclass(X_col.dtype.type, np.integer)
-            or X_col.dtype.type is np.bool_
+            or issubclass(X_col.dtype.type, np.bool_)
         ):
             X_col = X_col.values
             return _process_ndarray(
@@ -946,7 +957,9 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
             )
 
         return "ordinal" if is_ordered else "nominal", X_col, categories, bad
-    elif issubclass(X_col.dtype.type, np.integer) or X_col.dtype.type is np.bool_:
+    elif issubclass(X_col.dtype.type, np.integer) or issubclass(
+        X_col.dtype.type, np.bool_
+    ):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         nonmissings = None
         if X_col.hasnans:

@@ -22,8 +22,6 @@ _slice_remove_last = slice(None, -1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-    # called under: predict
-
     # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
 
     # This generator function returns data as the feature data within terms gets read.  Normally for
@@ -31,12 +29,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # be mixed in with mains.  So, if we request data for [(0), (1), (2), (3), (4), (1, 3)] the return sequence
     # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
-
-    # Flatten the term_features array to make one entry per feature within each term
-    # each item in the list contains placeholders for the binned array that we need
-    # to complete the term. We fill these with None initially.  At the end of the array
-    # is the term_idx. So it looks approximately like this:
-    # eg: [[None, 0], [None, 1], [None, 2], [None, None, 3], [None, None, None, 4]]
 
     requests = []
     waiting = {}
@@ -154,7 +146,7 @@ def ebm_predict_scores(
             if isinstance(intercept, float) or len(intercept) == 1
             else (n_samples, len(intercept)),
             intercept,
-            dtype=np.float64,
+            np.float64,
         )
         if init_score is None
         else init_score + intercept
@@ -183,7 +175,8 @@ def ebm_eval_terms(
         (n_samples, len(term_features))
         if n_scores == 1
         else (n_samples, len(term_features), n_scores),
-        dtype=np.float64,
+        np.float64,
+        "F",
     )
 
     if n_samples > 0:
