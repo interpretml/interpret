@@ -288,10 +288,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
                 raise ValueError(msg)
 
-            if not X_col.flags.c_contiguous:
-                # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                X_col = X_col.copy()
-
             feature_types_in[feature_idx] = feature_type_in
             feature_type_given = (
                 None if self.feature_types is None else self.feature_types[feature_idx]
@@ -302,6 +298,10 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                     _log.error(msg)
                     raise ValueError(msg)
+
+                if not X_col.flags.c_contiguous:
+                    # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                    X_col = X_col.copy()
 
                 if self.binning == "private":
                     if np.isnan(X_col).any():

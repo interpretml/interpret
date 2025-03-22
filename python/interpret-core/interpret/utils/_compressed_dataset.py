@@ -70,15 +70,16 @@ def bin_native(
             _log.error(msg)
             raise ValueError(msg)
 
-        if not X_col.flags.c_contiguous:
-            # X_col could be a slice that has a stride.  We need contiguous for caling into C
-            X_col = X_col.copy()
-
         if isinstance(feature_bins, dict):
             # categorical feature
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
+
+            if not X_col.flags.c_contiguous:
+                # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                X_col = X_col.copy()
+
             X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 3
 
@@ -118,15 +119,16 @@ def bin_native(
             _log.error(msg)
             raise ValueError(msg)
 
-        if not X_col.flags.c_contiguous:
-            # X_col could be a slice that has a stride.  We need contiguous for caling into C
-            X_col = X_col.copy()
-
         if isinstance(feature_bins, dict):
             # categorical feature
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
+
+            if not X_col.flags.c_contiguous:
+                # X_col could be a slice that has a stride.  We need contiguous for caling into C
+                X_col = X_col.copy()
+
             X_col = native.discretize(X_col, feature_bins)
             n_bins = len(feature_bins) + 3
 
