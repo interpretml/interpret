@@ -63,14 +63,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         requests,
         unify_columns(X, requests, feature_names_in, feature_types_in, None, True),
     ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
         if column_categories is None:
             # continuous feature
 
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
             if bad is not None:
                 # TODO: we could pass out a bool array instead of objects for this function only
                 bad = bad != _none_ndarray
@@ -105,6 +104,11 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     requirements.clear()
         else:
             # categorical feature
+
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
 
             # if bad is not None:
             #     # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible

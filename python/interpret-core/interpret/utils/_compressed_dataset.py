@@ -65,16 +65,22 @@ def bin_native(
         responses,
         unify_columns(X, requests, feature_names_in, feature_types_in, None, False),
     ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
         if isinstance(feature_bins, dict):
             # categorical feature
+
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
+
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
 
             if not X_col.flags.c_contiguous:
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
@@ -114,13 +120,9 @@ def bin_native(
         responses,
         unify_columns(X, requests, feature_names_in, feature_types_in, None, False),
     ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
         if isinstance(feature_bins, dict):
             # categorical feature
+
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature

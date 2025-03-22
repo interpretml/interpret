@@ -278,11 +278,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 False,
             )
         ):
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
-
             max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
             if max_bins < 3:
                 msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
@@ -294,6 +289,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             )
             if categories is None:
                 # continuous feature
+
+                if n_samples != len(X_col):
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
                 if bad is not None:
                     msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                     _log.error(msg)
@@ -399,6 +400,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 feature_bounds[(feature_idx, 1)] = max_feature_val
             else:
                 # categorical feature
+
+                if n_samples != len(X_col):
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
                 if bad is not None:
                     msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                     _log.error(msg)
@@ -529,19 +536,25 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     False,
                 ),
             ):
-                if n_samples != len(X_col):
-                    msg = "The columns of X are mismatched in the number of of samples"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
                 if isinstance(bins, dict):
                     # categorical feature
+
+                    if n_samples != len(X_col):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
                     if bad is not None:
                         X_col[X_col == -1] = (
                             1 if len(bins) == 0 else max(bins.values()) + 1
                         )
                 else:
                     # continuous feature
+
+                    if n_samples != len(X_col):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
 
                     if not X_col.flags.c_contiguous:
                         # X_col could be a slice that has a stride.  We need contiguous for caling into C

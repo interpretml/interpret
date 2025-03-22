@@ -52,14 +52,15 @@ def unify_data(
             False,
         )
     ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
-
         feature_types_in[feature_idx] = feature_type_in
         if categories is None:
             # continuous feature
+
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
             if not missing_data_allowed and np.isnan(X_col).any():
                 msg = "X cannot contain missing values"
                 _log.error(msg)
@@ -75,6 +76,12 @@ def unify_data(
             X_unified[:, feature_idx] = X_col
         else:
             # categorical feature
+
+            if n_samples != len(X_col):
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
             if not missing_data_allowed and np.count_nonzero(X_col) != len(X_col):
                 msg = "X cannot contain missing values"
                 _log.error(msg)
