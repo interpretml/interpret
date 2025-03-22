@@ -440,6 +440,68 @@ def _densify_object_ndarray(X_col):
     return X_col.astype(np.str_)
 
 
+def categorical_encode(uniques, indexes, nonmissings, categories):
+    if nonmissings is False:
+        mapping = np.fromiter(
+            map(categories.get, uniques, repeat(-1)),
+            np.int64,
+            count=len(uniques),
+        )
+
+        if len(mapping) <= len(categories):
+            mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
+            if np.array_equal(mapping, mapping_cmp):
+                # avoid overflows for np.int8
+                indexes = indexes.astype(dtype=np.int64, copy=False)
+                indexes = indexes + 1
+                return indexes, None
+        else:
+            mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
+            if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
+                unseens = len(categories) <= indexes
+                bad = np.full(len(indexes), None, dtype=np.object_)
+                bad[unseens] = uniques[indexes[unseens]]
+                # avoid overflows for np.int8
+                indexes = indexes.astype(dtype=np.int64, copy=False)
+                indexes = indexes + 1
+                indexes[unseens] = -1
+                return indexes, bad
+
+        mapping = np.insert(mapping, 0, 0)
+        encoded = mapping[indexes + 1]
+
+        bad = None
+        unseens = encoded < 0
+        if unseens.any():
+            bad = np.full(len(indexes), None, dtype=np.object_)
+            bad[unseens] = uniques[indexes[unseens]]
+    else:
+        mapping = np.fromiter(
+            map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
+        )
+        encoded = mapping[indexes]
+
+        if (mapping < 0).any():
+            if nonmissings is not None:
+                encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
+                np.place(encoded_tmp, nonmissings, encoded)
+                bad = np.full(len(nonmissings), None, dtype=np.object_)
+                np.place(bad, encoded_tmp < 0, uniques[indexes[encoded < 0]])
+                encoded = encoded_tmp
+            else:
+                bad = np.full(len(encoded), None, dtype=np.object_)
+                unseens = encoded < 0
+                np.place(bad, unseens, uniques[indexes[unseens]])
+        else:
+            bad = None
+            if nonmissings is not None:
+                encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
+                np.place(encoded_tmp, nonmissings, encoded)
+                encoded = encoded_tmp
+
+    return encoded, bad
+
+
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
     # called under: fit
 
@@ -520,16 +582,8 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
         categories.sort()
 
     categories = dict(zip(categories, count(1)))
-    mapping = np.fromiter(
-        map(categories.__getitem__, uniques), np.int64, count=len(uniques)
-    )
-    encoded = mapping[indexes]
 
-    if nonmissings is not None:
-        encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-        np.place(encoded_tmp, nonmissings, encoded)
-        encoded = encoded_tmp
-
+    encoded, _ = categorical_encode(uniques, indexes, nonmissings, categories)
     return encoded, categories
 
 
@@ -553,30 +607,7 @@ def _encode_categorical_existing(X_col, nonmissings, categories):
         uniques = uniques.astype(np.float64, copy=False)
     uniques = uniques.astype(np.str_, copy=False)
 
-    mapping = np.fromiter(
-        map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
-    )
-    encoded = mapping[indexes]
-
-    if (mapping < 0).any():
-        if nonmissings is not None:
-            encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-            np.place(encoded_tmp, nonmissings, encoded)
-            bad = np.full(len(nonmissings), None, dtype=np.object_)
-            np.place(bad, encoded_tmp < 0, uniques[indexes[encoded < 0]])
-            encoded = encoded_tmp
-        else:
-            bad = np.full(len(encoded), None, dtype=np.object_)
-            unseens = encoded < 0
-            np.place(bad, unseens, uniques[indexes[unseens]])
-    else:
-        bad = None
-        if nonmissings is not None:
-            encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-            np.place(encoded_tmp, nonmissings, encoded)
-            encoded = encoded_tmp
-
-    return encoded, bad
+    return categorical_encode(uniques, indexes, nonmissings, categories)
 
 
 def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, processing):
@@ -642,53 +673,9 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
         raise ValueError(msg)
 
     categories = dict(zip(pd_categories, count(1)))
-    # we'll need int64 for calling C++ anyways
-    X_col = X_col.astype(dtype=np.int64, copy=False)
-    X_col = X_col + 1
-    return X_col, categories
 
-
-def _encode_pandas_categorical_existing(X_col, pd_categories, categories):
-    # called under: predict
-
-    # TODO: add special case handling if there is only 1 sample to make that faster
-    # if we have just 1 sample, we can avoid making the mapping below
-
-    mapping = np.fromiter(
-        map(categories.get, pd_categories, repeat(-1)),
-        np.int64,
-        count=len(pd_categories),
-    )
-
-    if len(mapping) <= len(categories):
-        mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
-        if np.array_equal(mapping, mapping_cmp):
-            # avoid overflows for np.int8
-            X_col = X_col.astype(dtype=np.int64, copy=False)
-            X_col = X_col + 1
-            return X_col, None
-    else:
-        mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
-        if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
-            unseens = len(categories) <= X_col
-            bad = np.full(len(X_col), None, dtype=np.object_)
-            bad[unseens] = pd_categories[X_col[unseens]]
-            # avoid overflows for np.int8
-            X_col = X_col.astype(dtype=np.int64, copy=False)
-            X_col = X_col + 1
-            X_col[unseens] = -1
-            return X_col, bad
-
-    mapping = np.insert(mapping, 0, 0)
-    encoded = mapping[X_col + 1]
-
-    bad = None
-    unseens = encoded < 0
-    if unseens.any():
-        bad = np.full(len(X_col), None, dtype=np.object_)
-        bad[unseens] = pd_categories[X_col[unseens]]
-
-    return encoded, bad
+    encoded, _ = categorical_encode(pd_categories, X_col, False, categories)
+    return encoded, categories
 
 
 def _process_continuous(X_col, nonmissings):
@@ -952,9 +939,7 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
             bad = None
         else:
             # called under: predict
-            X_col, bad = _encode_pandas_categorical_existing(
-                X_col, pd_categories, categories
-            )
+            X_col, bad = categorical_encode(pd_categories, X_col, False, categories)
 
         return "ordinal" if is_ordered else "nominal", X_col, categories, bad
     elif issubclass(X_col.dtype.type, np.integer) or issubclass(
@@ -1069,6 +1054,11 @@ def unify_columns(
     min_unique_continuous,
     go_fast,
 ):
+    # TODO: instead of passing in the categories inside the requests parameter, perhaps we can return
+    # the array for the column with the mapping and the mapping itself, then the caller can do the last
+    # step of remapping it to their categories. Then the key can become just the feature_idx and
+    # we only need to extract the information once from X
+
     # preclean_X is always called on X prior to calling this function
 
     # unify_feature_names is always called on feature_names_in prior to calling this function
