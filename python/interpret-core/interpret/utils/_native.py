@@ -122,8 +122,8 @@ class Native:
             msg = "array should be an ndarray"
             raise ValueError(msg)
 
-        if array.dtype.type is not dtype:  # pragma: no cover
-            msg = f"array should be an ndarray of type {dtype}"
+        if array.dtype != dtype:  # pragma: no cover
+            msg = f"array should be an ndarray of type {dtype}, but is type {array.dtype.type}"
             raise ValueError(msg)
 
         # if the data is transposed, Fortran ordered, or has strides, we can't use it

@@ -287,7 +287,11 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             feature_type_given = (
                 None if self.feature_types is None else self.feature_types[feature_idx]
             )
-            if categories is None:
+            if X_col is None:
+                # feature_type is "ignore"
+
+                feature_bin_weights = None
+            elif categories is None:
                 # continuous feature
 
                 if n_samples != len(X_col):
@@ -536,7 +540,11 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     False,
                 ),
             ):
-                if isinstance(bins, dict):
+                if X_col is None:
+                    # feature_type is "ignore"
+
+                    X_col = np.zeros(n_samples, np.int64)
+                elif isinstance(bins, dict):
                     # categorical feature
 
                     if n_samples != len(X_col):

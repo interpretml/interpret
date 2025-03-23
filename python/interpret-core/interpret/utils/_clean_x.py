@@ -797,15 +797,6 @@ def _process_ndarray(X_col, nonmissings, categories, processing, min_unique_cont
             categories,
             None,
         )
-    if processing == "ignore":
-        # called under: fit or predict
-        X_col, categories = _process_column_initial(X_col, nonmissings, None, None)
-        mapping = np.empty(len(categories) + 1, np.object_)
-        mapping[0] = None
-        for category, idx in categories.items():
-            mapping[idx] = category
-        bad = mapping[X_col]
-        return "ignore", None, None, bad
     if isinstance(processing, str):
         # called under: fit
 
@@ -926,11 +917,6 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
         pd_categories = X_col.categories.values.astype(dtype=np.str_, copy=False)
         X_col = X_col.codes
 
-        if feature_type == "ignore":
-            pd_categories = pd_categories.astype(dtype=np.object_)
-            pd_categories = np.insert(pd_categories, 0, None)
-            bad = pd_categories[X_col + 1]
-            return None, None, bad, "ignore"
         if categories is None:
             # called under: fit
             X_col, categories = _encode_pandas_categorical_initial(
@@ -1114,13 +1100,23 @@ def unify_columns(
                     )
             else:
                 for feature_idx, categories in requests:
-                    yield _process_numpy_column(
-                        X[:, feature_idx],
-                        categories,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
+                    feature_type = feature_types[feature_idx]
+                    if feature_type == "ignore":
+                        yield "ignore", None, None, None
+                    else:
+                        yield _process_numpy_column(
+                            X[:, feature_idx],
+                            categories,
+                            feature_type,
+                            min_unique_continuous,
+                        )
         else:
+            if feature_types is None:
+                # called under: predict
+                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
+                _log.error(msg)
+                raise ValueError(msg)
+
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
@@ -1131,26 +1127,21 @@ def unify_columns(
             )
             if keep_cols.sum() != X.shape[1]:
                 # called under: predict
-                msg = f"The model has {len(keep_cols)} features, but X has {X.shape[1]} columns"
+                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(keep_cols), np.int64)
             np.place(col_map, keep_cols, np.arange(len(keep_cols), dtype=np.int64))
 
-            if feature_types is None:
-                for feature_idx, categories in requests:
+            for feature_idx, categories in requests:
+                feature_type = feature_types[feature_idx]
+                if feature_type == "ignore":
+                    yield "ignore", None, None, None
+                else:
                     yield _process_numpy_column(
                         X[:, col_map[feature_idx]],
                         categories,
-                        None,
-                        min_unique_continuous,
-                    )
-            else:
-                for feature_idx, categories in requests:
-                    yield _process_numpy_column(
-                        X[:, col_map[feature_idx]],
-                        categories,
-                        feature_types[feature_idx],
+                        feature_type,
                         min_unique_continuous,
                     )
     elif _pandas_installed and isinstance(X, pd.DataFrame):
@@ -1212,12 +1203,16 @@ def unify_columns(
                     warn("Extra columns present in X that are not used by the model.")
 
                 for feature_idx, categories in requests:
-                    yield _process_pandas_column(
-                        X[mapping[feature_names_in[feature_idx]]],
-                        categories,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
+                    feature_type = feature_types[feature_idx]
+                    if feature_type == "ignore":
+                        yield "ignore", None, None, None
+                    else:
+                        yield _process_pandas_column(
+                            X[mapping[feature_names_in[feature_idx]]],
+                            categories,
+                            feature_type,
+                            min_unique_continuous,
+                        )
             else:
                 X = X.iloc
                 if len(feature_names_in) == n_cols:
@@ -1226,12 +1221,16 @@ def unify_columns(
                     )
 
                     for feature_idx, categories in requests:
-                        yield _process_pandas_column(
-                            X[:, feature_idx],
-                            categories,
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
+                        feature_type = feature_types[feature_idx]
+                        if feature_type == "ignore":
+                            yield "ignore", None, None, None
+                        else:
+                            yield _process_pandas_column(
+                                X[:, feature_idx],
+                                categories,
+                                feature_type,
+                                min_unique_continuous,
+                            )
                 else:
                     keep_cols = np.fromiter(
                         map(ne, _repeat_ignore, feature_types),
@@ -1240,7 +1239,7 @@ def unify_columns(
                     )
                     if keep_cols.sum() != n_cols:
                         # called under: predict
-                        msg = f"The model has {len(keep_cols)} features, but X has {n_cols} columns."
+                        msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                         _log.error(msg)
                         raise ValueError(msg)
                     col_map = np.empty(len(keep_cols), np.int64)
@@ -1253,12 +1252,16 @@ def unify_columns(
                     )
 
                     for feature_idx, categories in requests:
-                        yield _process_pandas_column(
-                            X[:, col_map[feature_idx]],
-                            categories,
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
+                        feature_type = feature_types[feature_idx]
+                        if feature_type == "ignore":
+                            yield "ignore", None, None, None
+                        else:
+                            yield _process_pandas_column(
+                                X[:, col_map[feature_idx]],
+                                categories,
+                                feature_type,
+                                min_unique_continuous,
+                            )
     elif safe_isinstance(X, "scipy.sparse.sparray"):
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
@@ -1277,13 +1280,22 @@ def unify_columns(
                     )
             else:
                 for feature_idx, categories in requests:
-                    yield _process_sparse_column(
-                        X[:, (feature_idx,)],
-                        categories,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
+                    feature_type = feature_types[feature_idx]
+                    if feature_type == "ignore":
+                        yield "ignore", None, None, None
+                    else:
+                        yield _process_sparse_column(
+                            X[:, (feature_idx,)],
+                            categories,
+                            feature_type,
+                            min_unique_continuous,
+                        )
         else:
+            if feature_types is None:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
@@ -1293,26 +1305,21 @@ def unify_columns(
                 count=len(feature_types),
             )
             if keep_cols.sum() != n_cols:
-                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns."
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
-            if feature_types is None:
-                for feature_idx, categories in requests:
+            for feature_idx, categories in requests:
+                feature_type = feature_types[feature_idx]
+                if feature_type == "ignore":
+                    yield "ignore", None, None, None
+                else:
                     yield _process_sparse_column(
                         X[:, (col_map[feature_idx],)],
                         categories,
-                        None,
-                        min_unique_continuous,
-                    )
-            else:
-                for feature_idx, categories in requests:
-                    yield _process_sparse_column(
-                        X[:, (col_map[feature_idx],)],
-                        categories,
-                        feature_types[feature_idx],
+                        feature_type,
                         min_unique_continuous,
                     )
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
@@ -1326,13 +1333,22 @@ def unify_columns(
                     )
             else:
                 for feature_idx, categories in requests:
-                    yield _process_sparse_column(
-                        X.getcol(feature_idx),
-                        categories,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
+                    feature_type = feature_types[feature_idx]
+                    if feature_type == "ignore":
+                        yield "ignore", None, None, None
+                    else:
+                        yield _process_sparse_column(
+                            X.getcol(feature_idx),
+                            categories,
+                            feature_type,
+                            min_unique_continuous,
+                        )
         else:
+            if feature_types is None:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
@@ -1342,26 +1358,21 @@ def unify_columns(
                 count=len(feature_types),
             )
             if keep_cols.sum() != n_cols:
-                msg = f"The model has {len(feature_types)} features, but X has {n_cols} columns."
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
-            if feature_types is None:
-                for feature_idx, categories in requests:
+            for feature_idx, categories in requests:
+                feature_type = feature_types[feature_idx]
+                if feature_type == "ignore":
+                    yield "ignore", None, None, None
+                else:
                     yield _process_sparse_column(
                         X.getcol(col_map[feature_idx]),
                         categories,
-                        None,
-                        min_unique_continuous,
-                    )
-            else:
-                for feature_idx, categories in requests:
-                    yield _process_sparse_column(
-                        X.getcol(col_map[feature_idx]),
-                        categories,
-                        feature_types[feature_idx],
+                        feature_type,
                         min_unique_continuous,
                     )
     elif _pandas_installed and isinstance(X, pd.Series):
@@ -1380,12 +1391,16 @@ def unify_columns(
                 )
         else:
             for feature_idx, categories in requests:
-                yield _process_dict_column(
-                    X[feature_names_in[feature_idx]],
-                    categories,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
-                )
+                feature_type = feature_types[feature_idx]
+                if feature_type == "ignore":
+                    yield "ignore", None, None, None
+                else:
+                    yield _process_dict_column(
+                        X[feature_names_in[feature_idx]],
+                        categories,
+                        feature_type,
+                        min_unique_continuous,
+                    )
     else:
         msg = "internal error"
         _log.error(msg)

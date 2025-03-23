@@ -53,7 +53,16 @@ def unify_data(
         )
     ):
         feature_types_in[feature_idx] = feature_type_in
-        if categories is None:
+        if X_col is None:
+            # feature_type is "ignore"
+
+            if not missing_data_allowed:
+                msg = "X cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            X_unified[:, feature_idx] = np.nan
+        elif categories is None:
             # continuous feature
 
             if n_samples != len(X_col):

@@ -16,6 +16,43 @@ from interpret.utils._clean_x import (
 )
 from numpy import ma
 
+from interpret.utils import EBMPreprocessor
+from interpret.utils._unify_data import unify_data
+from interpret.utils._clean_x import preclean_X
+
+
+def compare_bins(bins, expected_bins):
+    assert len(bins) == len(expected_bins)
+    for a, b in zip(bins, expected_bins):
+        assert type(a) == type(b)
+        if a is None:
+            pass
+        elif isinstance(a, dict):
+            assert sorted(a.items()) == sorted(b.items())
+        else:
+            assert tuple(a) == tuple(b)
+
+
+def unify_test(
+    X,
+    feature_names=None,
+    feature_types=None,
+    min_unique_continuous=0,
+    missing_data_allowed=True,
+    unseen_data_allowed=True,
+    n_samples=None,
+):
+    X_check, feature_names_in, feature_types_in = unify_data(
+        *preclean_X(X, feature_names, feature_types, n_samples=n_samples),
+        feature_names,
+        feature_types,
+        missing_data_allowed=missing_data_allowed,
+        unseen_data_allowed=unseen_data_allowed,
+        min_unique_continuous=min_unique_continuous,
+    )
+    X_check[X_check != X_check] = None  # replace nan with None
+    return X_check, feature_names_in, feature_types_in
+
 
 class StringHolder:
     def __init__(self, internal_str):
@@ -1299,33 +1336,31 @@ def test_unify_columns_numpy2():
 
 def test_unify_columns_numpy_ignore():
     X = np.array([["abc", None, "def"], ["ghi", "jkl", None]])
-    feature_types_given = ["ignore", "ignore", "ignore"]
-    X, n_samples = preclean_X(X, None, None)
-    assert n_samples == 2
-    feature_names_in = unify_feature_names(X, feature_types_given=feature_types_given)
-    X_cols = list(
-        unify_columns(
-            X,
-            list(zip(range(len(feature_names_in)), repeat(None))),
-            feature_names_in,
-            feature_types_given,
-            3,
-            False,
-        )
+
+    feature_names = None
+    feature_types = ["ignore", "ignore", "ignore"]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
     )
-    assert len(X_cols) == 3
-    assert X_cols[0][0] == "ignore"
-    assert X_cols[0][2] is None
-    assert X_cols[0][1] is None
-    assert np.array_equal(X_cols[0][3], np.array(["abc", "ghi"], dtype=np.object_))
-    assert X_cols[1][0] == "ignore"
-    assert X_cols[1][2] is None
-    assert X_cols[1][1] is None
-    assert np.array_equal(X_cols[1][3], np.array([None, "jkl"], dtype=np.object_))
-    assert X_cols[2][0] == "ignore"
-    assert X_cols[2][2] is None
-    assert X_cols[2][1] is None
-    assert np.array_equal(X_cols[2][3], np.array(["def", None], dtype=np.object_))
+    assert feature_names_in == ["feature_0000", "feature_0001", "feature_0002"]
+    assert feature_types_in == ["ignore", "ignore", "ignore"]
+    assert np.array_equal(
+        X_check, np.array([[None, None, None], [None, None, None]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000", "feature_0001", "feature_0002"]
+    assert pre.feature_types_in_ == ["ignore", "ignore", "ignore"]
+    expected_bins = list(repeat(None, 3))
+    compare_bins(pre.bins_, expected_bins)
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0, 0, 0], [0, 0, 0]], np.int64))
 
 
 def test_unify_columns_scipy():
