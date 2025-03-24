@@ -6,7 +6,7 @@ from itertools import repeat
 
 import numpy as np
 
-from ._clean_x import unify_columns, unify_feature_names
+from ._clean_x import unify_columns, unify_feature_names, categorical_encode
 
 _log = logging.getLogger(__name__)
 
@@ -42,13 +42,21 @@ def unify_data(
     # fragmentation for continuous values which generates a lot of garbage to collect later
     X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
-    for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
+    for feature_idx, (
+        feature_type_in,
+        X_col,
+        categories,
+        bad,
+        uniques,
+        nonmissings,
+    ) in enumerate(
         unify_columns(
             X,
-            zip(range(len(feature_names_in)), repeat(None)),
+            range(len(feature_names_in)),
             feature_names_in,
             feature_types,
             min_unique_continuous,
+            True,
             False,
         )
     ):
@@ -85,6 +93,8 @@ def unify_data(
             X_unified[:, feature_idx] = X_col
         else:
             # categorical feature
+
+            X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
 
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"

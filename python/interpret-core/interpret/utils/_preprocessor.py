@@ -16,7 +16,7 @@ from sklearn.base import (
 from sklearn.utils.validation import check_is_fitted
 
 from ._clean_simple import clean_dimensions
-from ._clean_x import preclean_X, unify_columns, unify_feature_names
+from ._clean_x import preclean_X, unify_columns, unify_feature_names, categorical_encode
 from ._native import Native
 from ._privacy import (
     calc_classic_noise_multi,
@@ -268,13 +268,21 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         rng = native.create_rng(normalize_seed(self.random_state))
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
-        for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
+        for feature_idx, (
+            feature_type_in,
+            X_col,
+            categories,
+            bad,
+            uniques,
+            nonmissings,
+        ) in enumerate(
             unify_columns(
                 X,
-                zip(range(n_features), repeat(None)),
+                range(n_features),
                 feature_names_in,
                 self.feature_types,
                 self.min_unique_continuous,
+                True,
                 False,
             )
         ):
@@ -405,6 +413,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             else:
                 # categorical feature
 
+                X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
+
                 if n_samples != len(X_col):
                     msg = "The columns of X are mismatched in the number of of samples"
                     _log.error(msg)
@@ -522,21 +532,16 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            for feature_idx, bins, (_, X_col, _, bad) in zip(
+            for feature_idx, bins, (_, X_col, _, bad, uniques, nonmissings) in zip(
                 count(),
                 self.bins_,
                 unify_columns(
                     X,
-                    zip(
-                        count(),
-                        (
-                            category if isinstance(category, dict) else None
-                            for category in self.bins_
-                        ),
-                    ),
+                    range(len(self.bins_)),
                     self.feature_names_in_,
                     self.feature_types_in_,
                     None,
+                    False,
                     False,
                 ),
             ):
@@ -546,6 +551,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     X_col = np.zeros(n_samples, np.int64)
                 elif isinstance(bins, dict):
                     # categorical feature
+
+                    X_col, bad = categorical_encode(uniques, X_col, nonmissings, bins)
 
                     if n_samples != len(X_col):
                         msg = "The columns of X are mismatched in the number of of samples"

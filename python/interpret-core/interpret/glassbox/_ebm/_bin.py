@@ -7,7 +7,7 @@ import numpy as np
 from itertools import repeat
 from operator import itemgetter, is_not
 
-from ...utils._clean_x import unify_columns
+from ...utils._clean_x import unify_columns, categorical_encode
 from ...utils._native import Native
 
 _log = logging.getLogger(__name__)
@@ -16,8 +16,6 @@ _log = logging.getLogger(__name__)
 _none_list = [None]
 _none_ndarray = np.array(None)
 _repeat_none = repeat(None)
-_itemgetter0 = itemgetter(0)
-_itemgetter1 = itemgetter(1)
 _slice_remove_last = slice(None, -1)
 
 
@@ -30,7 +28,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
-    requests = []
     waiting = {}
     # term_features are guaranteed to be ordered by: num_features, [feature_idxes]
     # Which typically means that the mains are processed in order first
@@ -41,35 +38,36 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         requirements = _none_list * (num_features + 1)
         requirements[-1] = term_idx
         for feature_idx in feature_idxs:
-            bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), num_features) - 1]
-            if isinstance(feature_bins, dict):
-                # categorical feature
-                key = (feature_idx, id(feature_bins))
-            else:
-                # continuous feature
-                feature_bins = None
-                key = feature_idx
-            waiting_list = waiting.get(key)
+            waiting_list = waiting.get(feature_idx)
             if waiting_list is None:
-                waiting[key] = [requirements]
-                requests.append((feature_idx, feature_bins))
+                # rely on the guarantee that iterating over dict is by insertion order
+                waiting[feature_idx] = [requirements]
             else:
                 waiting_list.append(requirements)
 
     native = Native.get_native_singleton()
 
-    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(
-        requests,
-        unify_columns(X, requests, feature_names_in, feature_types_in, None, True),
+    for column_feature_idx, (
+        _,
+        X_col,
+        _,
+        bad,
+        uniques,
+        nonmissings,
+    ) in zip(
+        waiting.keys(),
+        unify_columns(
+            X, waiting.keys(), feature_names_in, feature_types_in, None, False, True
+        ),
     ):
-        if column_categories is None:
+        if uniques is None:
             # continuous feature
 
             if n_samples != len(X_col):
                 msg = "The columns of X are mismatched in the number of of samples"
                 _log.error(msg)
                 raise ValueError(msg)
+
             if bad is not None:
                 # TODO: we could pass out a bool array instead of objects for this function only
                 bad = bad != _none_ndarray
@@ -105,27 +103,35 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         else:
             # categorical feature
 
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
+            if nonmissings is None or nonmissings is False:
+                if n_samples != len(X_col):
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            else:
+                if n_samples != len(nonmissings):
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-            # if bad is not None:
-            #     # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
-            #     pass  # TODO: improve this handling
-
-            for requirements in waiting[(column_feature_idx, id(column_categories))]:
+            bin_levels = bins[column_feature_idx]
+            max_level = len(bin_levels)
+            binning_completed = _none_list * max_level
+            for requirements in waiting[column_feature_idx]:
                 term_idx = requirements[-1]
-                for dimension_idx, term_feature_idx in enumerate(
-                    term_features[term_idx]
-                ):
+                feature_idxs = term_features[term_idx]
+                level_idx = min(max_level, len(feature_idxs)) - 1
+                bin_indexes = binning_completed[level_idx]
+                if bin_indexes is None:
+                    bin_indexes, _ = categorical_encode(
+                        uniques, X_col, nonmissings, bin_levels[level_idx]
+                    )
+                    binning_completed[level_idx] = bin_indexes
+                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
                     # TODO: consider making it illegal to duplicate features in terms
                     # then use: dimension_idx = feature_idxs.index(column_feature_idx)
                     if term_feature_idx == column_feature_idx:
-                        # "term_categories is column_categories" since any term in the waiting_list must have
-                        # one of it's elements match this (feature_idx, categories) index, and all items in this
-                        # term need to have the same categories since they came from the same bin_level
-                        requirements[dimension_idx] = X_col
+                        requirements[dimension_idx] = bin_indexes
 
                 if all(map(is_not, requirements, _repeat_none)):
                     yield term_idx, requirements[_slice_remove_last]
