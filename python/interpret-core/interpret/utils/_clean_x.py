@@ -1045,6 +1045,12 @@ def unify_columns(
     # step of remapping it to their categories. Then the key can become just the feature_idx and
     # we only need to extract the information once from X
 
+    # TODO: modify our callers the EBMPreprocessor and unify_data and the ebm.fit and predict functions
+    # to never pass "ignore" feature_types into requests.  Then we can delete all the places
+    # that we have if feature_type == "ignore" below.  EBMPreprocessor and unify_data will simply drop
+    # any columns that are ignored so they'll return a modified shape.
+    # We can also get rid of the "if X_col is None" in our callers.
+
     # preclean_X is always called on X prior to calling this function
 
     # unify_feature_names is always called on feature_names_in prior to calling this function
