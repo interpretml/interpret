@@ -631,6 +631,12 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
         msg = f"{processing} type invalid for pandas.CategoricalDtype"
         _log.error(msg)
         raise ValueError(msg)
+    elif processing == "continuous":
+        # TODO: we could convert the categories to strings and then process them
+
+        msg = "continuous type invalid for pandas.CategoricalDtype"
+        _log.error(msg)
+        raise ValueError(msg)
     else:
         if isinstance(processing, str):
             # don't allow strings to get to the for loop below
@@ -654,10 +660,16 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
             raise ValueError(msg)
 
         if n_continuous == n_items:
+            # TODO: we could convert the categories to strings and then process them
+
             msg = "continuous type invalid for pandas.CategoricalDtype"
             _log.error(msg)
             raise ValueError(msg)
         if n_ordinals == n_items:
+            # TODO: currently we are using the CategoricalDtype order as the order,
+            # but if the user specified the categories like this then we should
+            # adopt that as our order.
+
             if not is_ordered:
                 msg = "ordinal type invalid for unordered pandas.CategoricalDtype"
                 _log.error(msg)
@@ -925,6 +937,13 @@ def _process_pandas_column(X_col, categories, feature_type, min_unique_continuou
             bad = None
         else:
             # called under: predict
+            if feature_type != "ordinal" and feature_type != "nominal":
+                # TODO: we could convert the categories to strings and then process them
+
+                msg = "continuous type invalid for pandas.CategoricalDtype"
+                _log.error(msg)
+                raise ValueError(msg)
+
             X_col, bad = categorical_encode(pd_categories, X_col, False, categories)
 
         return "ordinal" if is_ordered else "nominal", X_col, categories, bad
