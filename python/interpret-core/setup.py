@@ -258,7 +258,7 @@ https://github.com/interpretml/interpret
         # Dash
         "dash": [
             # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
-            "dash>=1.0.0",
+            "dash>=1.0.0,<3.0.0",
             "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
             "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
             "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
