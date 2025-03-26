@@ -37,17 +37,15 @@ def unify_data(
     feature_names_in = unify_feature_names(X, feature_names, feature_types)
     feature_types_in = _none_list * len(feature_names_in)
 
-    # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
-    # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
-    # fragmentation for continuous values which generates a lot of garbage to collect later
+    # fill with np.nan for missing values and None for unseen values
     X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
     for feature_idx, (
         feature_type_in,
+        nonmissings,
+        uniques,
         X_col,
         bad,
-        uniques,
-        nonmissings,
     ) in enumerate(
         unify_columns(
             X,
@@ -87,7 +85,7 @@ def unify_data(
                     msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                     _log.error(msg)
                     raise ValueError(msg)
-                X_col[bad != _none_ndarray] = np.nan
+                X_col[bad != _none_ndarray] = None
 
             X_unified[:, feature_idx] = X_col
         else:
@@ -102,7 +100,7 @@ def unify_data(
                 _log.error(msg)
                 raise ValueError(msg)
 
-            if not missing_data_allowed and np.count_nonzero(X_col) != len(X_col):
+            if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
                 msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -119,7 +117,7 @@ def unify_data(
                     msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                     _log.error(msg)
                     raise ValueError(msg)
-                X_col[bad != _none_ndarray] = bad
+                X_col[bad != _none_ndarray] = None
 
             X_unified[:, feature_idx] = X_col
 

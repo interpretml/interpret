@@ -270,10 +270,10 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         is_privacy_types_warning = False
         for feature_idx, (
             feature_type_in,
+            nonmissings,
+            uniques,
             X_col,
             bad,
-            uniques,
-            nonmissings,
         ) in enumerate(
             unify_columns(
                 X,
@@ -533,7 +533,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            for feature_idx, bins, (_, X_col, bad, uniques, nonmissings) in zip(
+            for feature_idx, bins, (_, nonmissings, uniques, X_col, bad) in zip(
                 count(),
                 self.bins_,
                 unify_columns(

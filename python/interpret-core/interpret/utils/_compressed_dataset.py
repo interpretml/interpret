@@ -52,7 +52,7 @@ def bin_native(
         y = y.copy()
 
     n_bytes = native.measure_dataset_header(len(feature_idxs), n_weights, 1)
-    for feature_idx, feature_bins, (_, X_col, bad, uniques, nonmissings) in zip(
+    for feature_idx, feature_bins, (_, nonmissings, uniques, X_col, bad) in zip(
         feature_idxs,
         bins_iter,
         unify_columns(
@@ -112,7 +112,7 @@ def bin_native(
 
     native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
 
-    for feature_idx, feature_bins, (_, X_col, bad, uniques, nonmissings) in zip(
+    for feature_idx, feature_bins, (_, nonmissings, uniques, X_col, bad) in zip(
         feature_idxs,
         bins_iter,
         unify_columns(

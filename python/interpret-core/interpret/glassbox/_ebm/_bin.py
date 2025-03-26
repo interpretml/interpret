@@ -49,10 +49,10 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     for column_feature_idx, (
         _,
+        nonmissings,
+        uniques,
         X_col,
         bad,
-        uniques,
-        nonmissings,
     ) in zip(
         waiting.keys(),
         unify_columns(

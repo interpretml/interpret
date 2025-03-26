@@ -534,7 +534,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
                 np.place(floats_tmp, nonmissings, floats)
                 floats = floats_tmp
 
-            return None, floats, None
+            return None, None, floats
 
     # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
     # np.unicode_ array here.  There are two issues with keeping it here
@@ -586,7 +586,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
     categories = dict(zip(categories, count(1)))
 
-    return uniques, indexes, nonmissings
+    return nonmissings, uniques, indexes
 
 
 def _encode_categorical_existing(X_col, nonmissings):
@@ -609,7 +609,7 @@ def _encode_categorical_existing(X_col, nonmissings):
         uniques = uniques.astype(np.float64, copy=False)
     uniques = uniques.astype(np.str_, copy=False)
 
-    return uniques, indexes, nonmissings
+    return nonmissings, uniques, indexes
 
 
 def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, processing):
@@ -756,63 +756,63 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
     if processing == "continuous":
         # called under: fit or predict
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, bad, None, None
+        return "continuous", None, None, X_col, bad
     if processing == "nominal":
         if is_initial:
             # called under: fit
-            uniques, indexes, nonmissings = _process_column_initial(
+            nonmissings, uniques, indexes = _process_column_initial(
                 X_col, nonmissings, None, None
             )
-            return "nominal", indexes, None, uniques, nonmissings
+            return "nominal", nonmissings, uniques, indexes, None
         # called under: predict
-        uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
-        return "nominal", indexes, None, uniques, nonmissings
+        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
+        return "nominal", nonmissings, uniques, indexes, None
     if processing == "ordinal":
         if is_initial:
             # called under: fit
             # if the caller passes "ordinal" during fit, the only order that makes sense is either
             # alphabetical or based on float values. Frequency doesn't make sense
             # if the caller would prefer an error, they can check feature_types themselves
-            uniques, indexes, nonmissings = _process_column_initial(
+            nonmissings, uniques, indexes = _process_column_initial(
                 X_col, nonmissings, None, None
             )
-            return "ordinal", indexes, None, uniques, nonmissings
+            return "ordinal", nonmissings, uniques, indexes, None
         # called under: predict
-        uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
-        return "ordinal", indexes, None, uniques, nonmissings
+        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
+        return "ordinal", nonmissings, uniques, indexes, None
     if processing is None or processing == "auto":
         # called under: fit
-        uniques, indexes, nonmissings = _process_column_initial(
+        nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, None, min_unique_continuous
         )
         return (
             "continuous" if uniques is None else "nominal",
+            nonmissings,
+            uniques,
             indexes,
             None,
-            uniques,
-            nonmissings,
         )
     if processing in ("nominal_prevalence", "nominal_alphabetical"):
         # called under: fit
-        uniques, indexes, nonmissings = _process_column_initial(
+        nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, processing, None
         )
-        return "nominal", indexes, None, uniques, nonmissings
+        return "nominal", nonmissings, uniques, indexes, None
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         # called under: fit
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, bad, None, None
+        return "continuous", None, None, X_col, bad
     if isinstance(processing, int):
         # called under: fit
-        uniques, indexes, nonmissings = _process_column_initial(
+        nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, None, processing
         )
         return (
             "continuous" if uniques is None else "nominal",
+            nonmissings,
+            uniques,
             indexes,
             None,
-            uniques,
-            nonmissings,
         )
     if isinstance(processing, str):
         # called under: fit
@@ -842,9 +842,9 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         # if n_items == 0 then it must be continuous since we
         # can have zero cut points, but not zero ordinal categories
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, bad, None, None
+        return "continuous", None, None, X_col, bad
     if n_ordinals == n_items:
-        uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
+        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
 
         try:
             mapping = np.fromiter(
@@ -864,7 +864,7 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         indexes = mapping[indexes]
         uniques = np.array(processing, np.str_)
 
-        return "ordinal", indexes, None, uniques, nonmissings
+        return "ordinal", nonmissings, uniques, indexes, None
     msg = f"{processing} type invalid"
     _log.error(msg)
     raise TypeError(msg)
@@ -970,10 +970,10 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
 
         return (
             "ordinal" if is_ordered else "nominal",
+            False,
+            uniques,
             X_col,
             None,
-            uniques,
-            False,
         )
     elif issubclass(X_col.dtype.type, np.integer) or issubclass(
         X_col.dtype.type, np.bool_
