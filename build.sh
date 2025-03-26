@@ -606,7 +606,7 @@ if [ "$os_type" = "Linux" ]; then
    if [ $release_arm -eq 1 ]; then
       ########################## Linux release|arm
 
-      cpp_compiler=g++-arm-linux-gnueabihf
+      cpp_compiler=arm-linux-gnueabihf-g++
 
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|arm"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/arm/libebm"
@@ -634,7 +634,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux debug|arm
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux debug|arm"
 
-      cpp_compiler=g++-arm-linux-gnueabihf
+      cpp_compiler=arm-linux-gnueabihf-g++
 
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/arm/libebm"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/arm/libebm"

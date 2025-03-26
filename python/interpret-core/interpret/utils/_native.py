@@ -929,6 +929,8 @@ class Native:
                     lib_file = None
                     if plat == "Linux" and machine == "x86_64" and is_64_bit:
                         lib_file = "libebm_linux_x64"
+                    elif plat == "Linux" and machine == "arm64":
+                        lib_file = "libebm_linux_arm"
                     elif plat == "Windows" and machine == "AMD64" and is_64_bit:
                         lib_file = "libebm_win_x64"
                     elif plat == "Darwin" and machine == "x86_64" and is_64_bit:
@@ -961,6 +963,8 @@ class Native:
                     lib_file = None
                     if plat == "Linux" and machine == "x86_64" and is_64_bit:
                         lib_file = "libebm_linux_x64"
+                    elif plat == "Linux" and machine == "arm64":
+                        lib_file = "libebm_linux_arm"
                     elif plat == "Windows" and machine == "AMD64" and is_64_bit:
                         lib_file = "libebm_win_x64"
                     elif plat == "Darwin" and machine == "x86_64" and is_64_bit:

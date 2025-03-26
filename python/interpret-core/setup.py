@@ -193,6 +193,8 @@ https://github.com/interpretml/interpret
             "root/bld/lib/libebm_win_x64_debug.pdb",
             "root/bld/lib/libebm_linux_x64.so",
             "root/bld/lib/libebm_linux_x64_debug.so",
+            "root/bld/lib/libebm_linux_arm.so",
+            "root/bld/lib/libebm_linux_arm_debug.so",
             "root/bld/lib/libebm_mac_x64.dylib",
             "root/bld/lib/libebm_mac_x64_debug.dylib",
             "root/bld/lib/libebm_mac_arm.dylib",
