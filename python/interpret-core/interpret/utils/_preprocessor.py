@@ -271,7 +271,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         for feature_idx, (
             feature_type_in,
             X_col,
-            categories,
             bad,
             uniques,
             nonmissings,
@@ -299,7 +298,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 # feature_type is "ignore"
 
                 feature_bin_weights = None
-            elif categories is None:
+            elif uniques is None:
                 # continuous feature
 
                 if n_samples != len(X_col):
@@ -412,6 +411,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 feature_bounds[(feature_idx, 1)] = max_feature_val
             else:
                 # categorical feature
+
+                categories = dict(zip(uniques, count(1)))
 
                 X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
 
@@ -532,7 +533,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            for feature_idx, bins, (_, X_col, _, bad, uniques, nonmissings) in zip(
+            for feature_idx, bins, (_, X_col, bad, uniques, nonmissings) in zip(
                 count(),
                 self.bins_,
                 unify_columns(

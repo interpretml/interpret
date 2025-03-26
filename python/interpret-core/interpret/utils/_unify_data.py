@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
-from itertools import repeat
+from itertools import repeat, count
 
 import numpy as np
 
@@ -45,7 +45,6 @@ def unify_data(
     for feature_idx, (
         feature_type_in,
         X_col,
-        categories,
         bad,
         uniques,
         nonmissings,
@@ -70,7 +69,7 @@ def unify_data(
                 raise ValueError(msg)
 
             X_unified[:, feature_idx] = np.nan
-        elif categories is None:
+        elif uniques is None:
             # continuous feature
 
             if n_samples != len(X_col):
@@ -93,6 +92,8 @@ def unify_data(
             X_unified[:, feature_idx] = X_col
         else:
             # categorical feature
+
+            categories = dict(zip(uniques, count(1)))
 
             X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
 

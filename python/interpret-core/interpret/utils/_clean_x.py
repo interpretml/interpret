@@ -441,13 +441,11 @@ def _densify_object_ndarray(X_col):
 
 
 def categorical_encode(uniques, indexes, nonmissings, categories):
-    if nonmissings is False:
-        mapping = np.fromiter(
-            map(categories.get, uniques, repeat(-1)),
-            np.int64,
-            count=len(uniques),
-        )
+    mapping = np.fromiter(
+        map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
+    )
 
+    if nonmissings is False:
         if len(mapping) <= len(categories):
             mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
             if np.array_equal(mapping, mapping_cmp):
@@ -476,9 +474,6 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             bad = np.full(len(indexes), None, dtype=np.object_)
             bad[unseens] = uniques[indexes[unseens]]
     else:
-        mapping = np.fromiter(
-            map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
-        )
         encoded = mapping[indexes]
 
         if (mapping < 0).any():
@@ -539,7 +534,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
                 np.place(floats_tmp, nonmissings, floats)
                 floats = floats_tmp
 
-            return None, floats, None, None
+            return None, floats, None
 
     # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
     # np.unicode_ array here.  There are two issues with keeping it here
@@ -581,9 +576,17 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
         categories = uniques.tolist()
         categories.sort()
 
+    mapping = np.fromiter(
+        map(dict(zip(categories, count())).__getitem__, uniques),
+        np.int64,
+        count=len(uniques),
+    )
+    indexes = mapping[indexes]
+    uniques = np.array(categories, np.str_)
+
     categories = dict(zip(categories, count(1)))
 
-    return uniques, indexes, nonmissings, categories
+    return uniques, indexes, nonmissings
 
 
 def _encode_categorical_existing(X_col, nonmissings):
@@ -683,9 +686,7 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
         _log.error(msg)
         raise ValueError(msg)
 
-    categories = dict(zip(pd_categories, count(1)))
-
-    return pd_categories, X_col, categories
+    return pd_categories, X_col
 
 
 def _process_continuous(X_col, nonmissings):
@@ -755,62 +756,60 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
     if processing == "continuous":
         # called under: fit or predict
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, None, bad, None, None
+        return "continuous", X_col, bad, None, None
     if processing == "nominal":
         if is_initial:
             # called under: fit
-            uniques, indexes, nonmissings, categories = _process_column_initial(
+            uniques, indexes, nonmissings = _process_column_initial(
                 X_col, nonmissings, None, None
             )
-            return "nominal", indexes, categories, None, uniques, nonmissings
+            return "nominal", indexes, None, uniques, nonmissings
         # called under: predict
         uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
-        return "nominal", indexes, None, None, uniques, nonmissings
+        return "nominal", indexes, None, uniques, nonmissings
     if processing == "ordinal":
         if is_initial:
             # called under: fit
             # if the caller passes "ordinal" during fit, the only order that makes sense is either
             # alphabetical or based on float values. Frequency doesn't make sense
             # if the caller would prefer an error, they can check feature_types themselves
-            uniques, indexes, nonmissings, categories = _process_column_initial(
+            uniques, indexes, nonmissings = _process_column_initial(
                 X_col, nonmissings, None, None
             )
-            return "ordinal", indexes, categories, None, uniques, nonmissings
+            return "ordinal", indexes, None, uniques, nonmissings
         # called under: predict
         uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
-        return "ordinal", indexes, None, None, uniques, nonmissings
+        return "ordinal", indexes, None, uniques, nonmissings
     if processing is None or processing == "auto":
         # called under: fit
-        uniques, indexes, nonmissings, categories = _process_column_initial(
+        uniques, indexes, nonmissings = _process_column_initial(
             X_col, nonmissings, None, min_unique_continuous
         )
         return (
-            "continuous" if categories is None else "nominal",
+            "continuous" if uniques is None else "nominal",
             indexes,
-            categories,
             None,
             uniques,
             nonmissings,
         )
     if processing in ("nominal_prevalence", "nominal_alphabetical"):
         # called under: fit
-        uniques, indexes, nonmissings, categories = _process_column_initial(
+        uniques, indexes, nonmissings = _process_column_initial(
             X_col, nonmissings, processing, None
         )
-        return "nominal", indexes, categories, None, uniques, nonmissings
+        return "nominal", indexes, None, uniques, nonmissings
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         # called under: fit
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, None, bad, None, None
+        return "continuous", X_col, bad, None, None
     if isinstance(processing, int):
         # called under: fit
-        uniques, indexes, nonmissings, categories = _process_column_initial(
+        uniques, indexes, nonmissings = _process_column_initial(
             X_col, nonmissings, None, processing
         )
         return (
-            "continuous" if categories is None else "nominal",
+            "continuous" if uniques is None else "nominal",
             indexes,
-            categories,
             None,
             uniques,
             nonmissings,
@@ -843,11 +842,29 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         # if n_items == 0 then it must be continuous since we
         # can have zero cut points, but not zero ordinal categories
         X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", X_col, None, bad, None, None
+        return "continuous", X_col, bad, None, None
     if n_ordinals == n_items:
-        categories = dict(zip(processing, count(1)))
         uniques, indexes, nonmissings = _encode_categorical_existing(X_col, nonmissings)
-        return "ordinal", indexes, categories, None, uniques, nonmissings
+
+        try:
+            mapping = np.fromiter(
+                map(dict(zip(processing, count())).__getitem__, uniques),
+                np.int64,
+                count=len(uniques),
+            )
+        except KeyError:
+            # TODO: we could instead capture the misbehaving
+            # strings and return them in the bad value array
+            # and then let the caller decide how to handle them.
+
+            msg = "X contains values outside of the ordinal set."
+            _log.error(msg)
+            raise Exception(msg)
+
+        indexes = mapping[indexes]
+        uniques = np.array(processing, np.str_)
+
+        return "ordinal", indexes, None, uniques, nonmissings
     msg = f"{processing} type invalid"
     _log.error(msg)
     raise TypeError(msg)
@@ -937,7 +954,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
 
         if is_initial:
             # called under: fit
-            uniques, X_col, categories = _encode_pandas_categorical_initial(
+            uniques, X_col = _encode_pandas_categorical_initial(
                 X_col, pd_categories, is_ordered, feature_type
             )
         else:
@@ -949,13 +966,11 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
                 _log.error(msg)
                 raise ValueError(msg)
 
-            categories = None
             uniques = pd_categories
 
         return (
             "ordinal" if is_ordered else "nominal",
             X_col,
-            categories,
             None,
             uniques,
             False,
@@ -1144,7 +1159,7 @@ def unify_columns(
                 for feature_idx in feature_idxs:
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None, None
+                        yield "ignore", None, None, None, None
                     else:
                         yield _process_numpy_column(
                             X[:, feature_idx],
@@ -1178,7 +1193,7 @@ def unify_columns(
             for feature_idx in feature_idxs:
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None, None
+                    yield "ignore", None, None, None, None
                 else:
                     yield _process_numpy_column(
                         X[:, col_map[feature_idx]],
@@ -1247,7 +1262,7 @@ def unify_columns(
                 for feature_idx in feature_idxs:
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None, None
+                        yield "ignore", None, None, None, None
                     else:
                         yield _process_pandas_column(
                             X[mapping[feature_names_in[feature_idx]]],
@@ -1265,7 +1280,7 @@ def unify_columns(
                     for feature_idx in feature_idxs:
                         feature_type = feature_types[feature_idx]
                         if feature_type == "ignore":
-                            yield "ignore", None, None, None, None, None
+                            yield "ignore", None, None, None, None
                         else:
                             yield _process_pandas_column(
                                 X[:, feature_idx],
@@ -1296,7 +1311,7 @@ def unify_columns(
                     for feature_idx in feature_idxs:
                         feature_type = feature_types[feature_idx]
                         if feature_type == "ignore":
-                            yield "ignore", None, None, None, None, None
+                            yield "ignore", None, None, None, None
                         else:
                             yield _process_pandas_column(
                                 X[:, col_map[feature_idx]],
@@ -1324,7 +1339,7 @@ def unify_columns(
                 for feature_idx in feature_idxs:
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None, None
+                        yield "ignore", None, None, None, None
                     else:
                         yield _process_sparse_column(
                             X[:, (feature_idx,)],
@@ -1356,7 +1371,7 @@ def unify_columns(
             for feature_idx in feature_idxs:
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None, None
+                    yield "ignore", None, None, None, None
                 else:
                     yield _process_sparse_column(
                         X[:, (col_map[feature_idx],)],
@@ -1377,7 +1392,7 @@ def unify_columns(
                 for feature_idx in feature_idxs:
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None, None
+                        yield "ignore", None, None, None, None
                     else:
                         yield _process_sparse_column(
                             X.getcol(feature_idx),
@@ -1409,7 +1424,7 @@ def unify_columns(
             for feature_idx in feature_idxs:
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None, None
+                    yield "ignore", None, None, None, None
             else:
                 yield _process_sparse_column(
                     X.getcol(col_map[feature_idx]),
@@ -1435,7 +1450,7 @@ def unify_columns(
             for feature_idx in feature_idxs:
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None, None
+                    yield "ignore", None, None, None, None
                 else:
                     yield _process_dict_column(
                         X[feature_names_in[feature_idx]],
