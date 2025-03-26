@@ -606,7 +606,7 @@ if [ "$os_type" = "Linux" ]; then
    if [ $release_arm -eq 1 ]; then
       ########################## Linux release|arm
 
-      cpp_compiler=arm-linux-gnueabihf-g++
+      cpp_compiler=aarch64-linux-gnu-g++
 
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|arm"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/arm/libebm"
@@ -619,7 +619,7 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "g++-arm-linux-gnueabihf"
+      check_install "$tmp_path_unsanitized" "g++-aarch64-linux-gnu"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
@@ -634,7 +634,7 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux debug|arm
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux debug|arm"
 
-      cpp_compiler=arm-linux-gnueabihf-g++
+      cpp_compiler=aarch64-linux-gnu-g++
 
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/arm/libebm"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/arm/libebm"
@@ -646,7 +646,7 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "g++-arm-linux-gnueabihf"
+      check_install "$tmp_path_unsanitized" "g++-aarch64-linux-gnu"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
