@@ -477,6 +477,18 @@ jobs:
           - name: linux_312_python
             python_ver: "3.12"
             image: ubuntu-latest
+          - name: linuxarm_39_python
+            python_ver: "3.9"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_310_python
+            python_ver: "3.10"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_311_python
+            python_ver: "3.11"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_312_python
+            python_ver: "3.12"
+            image: ubuntu-22.04-arm
           - name: mac_39_python
             python_ver: "3.9"
             image: macos-latest
@@ -566,6 +578,18 @@ jobs:
           - name: linux_312_python
             python_ver: "3.12"
             image: ubuntu-latest
+          - name: linuxarm_39_python
+            python_ver: "3.9"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_310_python
+            python_ver: "3.10"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_311_python
+            python_ver: "3.11"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_312_python
+            python_ver: "3.12"
+            image: ubuntu-24.04-arm
           - name: mac_39_python
             python_ver: "3.9"
             image: macos-latest
