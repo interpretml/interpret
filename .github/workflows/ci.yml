@@ -27,6 +27,14 @@ jobs:
             image: ubuntu-20.04
             options: "-debug_64"
             asm: ""
+          - name: linux_release_arm
+            image: ubuntu-20.04
+            options: "-release_arm"
+            asm: "-asm"
+          - name: linux_debug_arm
+            image: ubuntu-20.04
+            options: "-debug_arm"
+            asm: ""
           - name: mac_release_64
             image: macos-13  # macos-13 is an intel based mac
             options: "-release_64"

@@ -566,7 +566,6 @@ if [ "$os_type" = "Linux" ]; then
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0
@@ -593,11 +592,63 @@ if [ "$os_type" = "Linux" ]; then
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx512f" "$src_path_unsanitized/compute/avx512f_ebm" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
+      link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+   fi
+
+   if [ $release_arm -eq 1 ]; then
+      ########################## Linux release|arm
+
+      cpp_compiler=g++-arm-linux-gnueabihf
+
+      printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/arm/libebm"
+      bin_file="libebm_linux_arm.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_arm_build_log.txt"
+      specific_args="$all_args -DNDEBUG -O3"
+      
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
+      check_install "$tmp_path_unsanitized" "g++-arm-linux-gnueabihf"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "linux_arm_release" "$is_asm"
+   fi
+
+   if [ $debug_arm -eq 1 ]; then
+      ########################## Linux debug|arm
+      printf "%s\n" "Compiling libebm with $cpp_compiler for Linux debug|arm"
+
+      cpp_compiler=g++-arm-linux-gnueabihf
+
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/arm/libebm"
+      bin_file="libebm_linux_arm_debug.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_arm_build_log.txt"
+      specific_args="$all_args -O1"
+      
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
+      check_install "$tmp_path_unsanitized" "g++-arm-linux-gnueabihf"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"
