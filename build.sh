@@ -482,13 +482,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/default/libebm"
       bin_file="libebm.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_default_build_log.txt"
-      specific_args="$all_args -DNDEBUG -O3 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -DNDEBUG -O3"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"

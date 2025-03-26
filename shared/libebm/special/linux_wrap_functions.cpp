@@ -52,11 +52,4 @@ float __wrap_expf(float x) { return expf(x); }
 float __wrap_logf(float x) { return logf(x); }
 }
 
-#elif defined(__i386__)
-// 32 bit x86
-
-// no GLIBC substitutions
-
-#else
-#error unrecognized GCC architecture
 #endif
