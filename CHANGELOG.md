@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [v0.6.10] - 2025-03-26
+### Added
+- reorder_classes function which allows reordering of the classes after fitting
+- support for ARM based Linux
+### Changed
+- changed default to max_leaves=2 for classification
+- changed default to n_jobs=2
+- changed default to outer_bags=14
+### Fixed
+- restrict to dash 2.x since visualizations are not working on dash 3.x
+
 ## [v0.6.9] - 2025-01-06
 ### Added
 - refitting of the intercept term after fitting the rest of the model to improve the intercept value
