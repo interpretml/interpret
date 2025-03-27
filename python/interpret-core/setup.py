@@ -259,11 +259,7 @@ https://github.com/interpretml/interpret
         "aplr": ["aplr>=10.6.1"],
         # Dash
         "dash": [
-            # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
-            "dash>=1.0.0,<3.0.0",
-            "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
-            "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
-            "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
+            "dash>=2.0.0,<3.0.0",
             "dash-cytoscape>=0.1.1",
             "gevent>=1.3.6",
             "requests>=2.19.0",
