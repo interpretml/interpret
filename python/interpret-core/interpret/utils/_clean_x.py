@@ -1081,7 +1081,6 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
 
 def unify_columns(
     X,
-    feature_idxs,
     feature_names_in,
     feature_types,
     min_unique_continuous,
@@ -1151,22 +1150,28 @@ def unify_columns(
 
         if len(feature_names_in) == X.shape[1]:
             if feature_types is None:
-                for feature_idx in feature_idxs:
-                    yield _process_numpy_column(
+
+                def internal(feature_idx):
+                    return _process_numpy_column(
                         X[:, feature_idx], is_initial, None, min_unique_continuous
                     )
+
+                return internal
             else:
-                for feature_idx in feature_idxs:
+
+                def internal(feature_idx):
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None
+                        return "ignore", None, None, None, None
                     else:
-                        yield _process_numpy_column(
+                        return _process_numpy_column(
                             X[:, feature_idx],
                             is_initial,
                             feature_type,
                             min_unique_continuous,
                         )
+
+                return internal
         else:
             if feature_types is None:
                 # called under: predict
@@ -1190,17 +1195,19 @@ def unify_columns(
             col_map = np.empty(len(keep_cols), np.int64)
             np.place(col_map, keep_cols, np.arange(len(keep_cols), dtype=np.int64))
 
-            for feature_idx in feature_idxs:
+            def internal(feature_idx):
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None
+                    return "ignore", None, None, None, None
                 else:
-                    yield _process_numpy_column(
+                    return _process_numpy_column(
                         X[:, col_map[feature_idx]],
                         is_initial,
                         feature_type,
                         min_unique_continuous,
                     )
+
+            return internal
     elif _pandas_installed and isinstance(X, pd.DataFrame):
         cols = X.columns
         mapping = dict(zip(map(str, cols), cols))
@@ -1222,13 +1229,15 @@ def unify_columns(
                 if len(feature_names_in) != n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                for feature_idx in feature_idxs:
-                    yield _process_pandas_column(
+                def internal(feature_idx):
+                    return _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
                         is_initial,
                         None,
                         min_unique_continuous,
                     )
+
+                return internal
             else:
                 if len(feature_names_in) != n_cols:
                     msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
@@ -1240,10 +1249,13 @@ def unify_columns(
                 )
 
                 X = X.iloc
-                for feature_idx in feature_idxs:
-                    yield _process_pandas_column(
+
+                def internal(feature_idx):
+                    return _process_pandas_column(
                         X[:, feature_idx], is_initial, None, min_unique_continuous
                     )
+
+                return internal
         else:
             if all(
                 map(
@@ -1259,17 +1271,19 @@ def unify_columns(
                 if len(feature_names_in) < n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                for feature_idx in feature_idxs:
+                def internal(feature_idx):
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None
+                        return "ignore", None, None, None, None
                     else:
-                        yield _process_pandas_column(
+                        return _process_pandas_column(
                             X[mapping[feature_names_in[feature_idx]]],
                             is_initial,
                             feature_type,
                             min_unique_continuous,
                         )
+
+                return internal
             else:
                 X = X.iloc
                 if len(feature_names_in) == n_cols:
@@ -1277,17 +1291,19 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    for feature_idx in feature_idxs:
+                    def internal(feature_idx):
                         feature_type = feature_types[feature_idx]
                         if feature_type == "ignore":
-                            yield "ignore", None, None, None, None
+                            return "ignore", None, None, None, None
                         else:
-                            yield _process_pandas_column(
+                            return _process_pandas_column(
                                 X[:, feature_idx],
                                 is_initial,
                                 feature_type,
                                 min_unique_continuous,
                             )
+
+                    return internal
                 else:
                     keep_cols = np.fromiter(
                         map(ne, _repeat_ignore, feature_types),
@@ -1308,17 +1324,19 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    for feature_idx in feature_idxs:
+                    def internal(feature_idx):
                         feature_type = feature_types[feature_idx]
                         if feature_type == "ignore":
-                            yield "ignore", None, None, None, None
+                            return "ignore", None, None, None, None
                         else:
-                            yield _process_pandas_column(
+                            return _process_pandas_column(
                                 X[:, col_map[feature_idx]],
                                 is_initial,
                                 feature_type,
                                 min_unique_continuous,
                             )
+
+                    return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
@@ -1331,22 +1349,28 @@ def unify_columns(
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
-                for feature_idx in feature_idxs:
-                    yield _process_sparse_column(
+
+                def internal(feature_idx):
+                    return _process_sparse_column(
                         X[:, (feature_idx,)], is_initial, None, min_unique_continuous
                     )
+
+                return internal
             else:
-                for feature_idx in feature_idxs:
+
+                def internal(feature_idx):
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None
+                        return "ignore", None, None, None, None
                     else:
-                        yield _process_sparse_column(
+                        return _process_sparse_column(
                             X[:, (feature_idx,)],
                             is_initial,
                             feature_type,
                             min_unique_continuous,
                         )
+
+                return internal
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -1368,38 +1392,46 @@ def unify_columns(
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
-            for feature_idx in feature_idxs:
+            def internal(feature_idx):
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None
+                    return "ignore", None, None, None, None
                 else:
-                    yield _process_sparse_column(
+                    return _process_sparse_column(
                         X[:, (col_map[feature_idx],)],
                         is_initial,
                         feature_type,
                         min_unique_continuous,
                     )
+
+            return internal
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
         n_cols = X.shape[1]
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
-                for feature_idx in feature_idxs:
-                    yield _process_sparse_column(
+
+                def internal(feature_idx):
+                    return _process_sparse_column(
                         X.getcol(feature_idx), is_initial, None, min_unique_continuous
                     )
+
+                return internal
             else:
-                for feature_idx in feature_idxs:
+
+                def internal(feature_idx):
                     feature_type = feature_types[feature_idx]
                     if feature_type == "ignore":
-                        yield "ignore", None, None, None, None
+                        return "ignore", None, None, None, None
                     else:
-                        yield _process_sparse_column(
+                        return _process_sparse_column(
                             X.getcol(feature_idx),
                             is_initial,
                             feature_type,
                             min_unique_continuous,
                         )
+
+                return internal
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -1421,17 +1453,19 @@ def unify_columns(
             col_map = np.empty(len(feature_types), np.int64)
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
-            for feature_idx in feature_idxs:
+            def internal(feature_idx):
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None
-            else:
-                yield _process_sparse_column(
-                    X.getcol(col_map[feature_idx]),
-                    is_initial,
-                    feature_type,
-                    min_unique_continuous,
-                )
+                    return "ignore", None, None, None, None
+                else:
+                    return _process_sparse_column(
+                        X.getcol(col_map[feature_idx]),
+                        is_initial,
+                        feature_type,
+                        min_unique_continuous,
+                    )
+
+            return internal
     elif _pandas_installed and isinstance(X, pd.Series):
         # TODO: handle as a single feature model
         msg = "X as pandas.Series is unsupported"
@@ -1439,25 +1473,31 @@ def unify_columns(
         raise ValueError(msg)
     elif isinstance(X, dict):
         if feature_types is None:
-            for feature_idx in feature_idxs:
-                yield _process_dict_column(
+
+            def internal(feature_idx):
+                return _process_dict_column(
                     X[feature_names_in[feature_idx]],
                     is_initial,
                     None,
                     min_unique_continuous,
                 )
+
+            return internal
         else:
-            for feature_idx in feature_idxs:
+
+            def internal(feature_idx):
                 feature_type = feature_types[feature_idx]
                 if feature_type == "ignore":
-                    yield "ignore", None, None, None, None
+                    return "ignore", None, None, None, None
                 else:
-                    yield _process_dict_column(
+                    return _process_dict_column(
                         X[feature_names_in[feature_idx]],
                         is_initial,
                         feature_type,
                         min_unique_continuous,
                     )
+
+            return internal
     else:
         msg = "internal error"
         _log.error(msg)

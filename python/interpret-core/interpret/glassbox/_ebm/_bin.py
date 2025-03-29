@@ -47,18 +47,10 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     native = Native.get_native_singleton()
 
-    for column_feature_idx, (
-        _,
-        nonmissings,
-        uniques,
-        X_col,
-        bad,
-    ) in zip(
-        waiting.keys(),
-        unify_columns(
-            X, waiting.keys(), feature_names_in, feature_types_in, None, False, True
-        ),
-    ):
+    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, True)
+    for column_feature_idx, all_requirements in waiting.items():
+        _, nonmissings, uniques, X_col, bad = get_col(column_feature_idx)
+
         if uniques is None:
             # continuous feature
 
@@ -79,7 +71,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
             binning_completed = _none_list * max_level
-            for requirements in waiting[column_feature_idx]:
+            for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
                 level_idx = min(max_level, len(feature_idxs)) - 1
@@ -116,7 +108,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             bin_levels = bins[column_feature_idx]
             max_level = len(bin_levels)
             binning_completed = _none_list * max_level
-            for requirements in waiting[column_feature_idx]:
+            for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
                 level_idx = min(max_level, len(feature_idxs)) - 1

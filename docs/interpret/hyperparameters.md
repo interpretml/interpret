@@ -15,7 +15,7 @@ guidance: Datasets with categoricals or continuous features with many sharp tran
 ## smoothing_rounds
 default: 75 (classification) 500 (regression)
 
-hyperparameters: [0, 25, 50, 75, 100, 150, 200, 350, 500, 750, 1000, 1500, 2000, 4000]
+hyperparameters: [0, 25, 50, 75, 100, 150, 200, 350, 500, 750, 1000, 1500, 2000]
 
 guidance: Classification seems to prefer a dataset dependent smoothing_rounds value centered around 75. Regression seems to prefer more smoothing_rounds. The default smoothing_rounds for regression of 500 was chosen based on fitting time, however even higher values seem to improve model performance.
 
@@ -31,7 +31,7 @@ default: 0.9
 
 ideal: As many as possible within interpretability limits.
 
-hyperparameters: [0.0, 0.9, 0.95, 0.99, 100, 250, 1000]
+hyperparameters: [0.0, 0.9, 0.95, 0.99, 100, 250, 500]
 
 guidance: Generally, this parameter should be chosen based on interpretability considerations as having too many interactions makes the model less interpretable. A reasonable stragegy is to initially include more interactions than desired, then drop the less important interactions in post processing after fitting. See the [remove_terms](./python/api/ExplainableBoostingClassifier.ipynb) function. In terms of model performance, introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.7 will automatically detect and use 70 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50.
 
@@ -63,14 +63,14 @@ guidance: For RMSE regression, min_hessian below the min_samples_leaf value has 
 ## min_samples_leaf
 default: 4
 
-hyperparameters: [2, 3, 4, 5, 10, 20, 50]
+hyperparameters: [2, 3, 4, 5, 10, 20]
 
 guidance: The default value usually works well, however experimenting with slightly higher values could potentially enhance generalization on certain datasets. For smaller datasets, having a low value might be better. On larger datasets this parameter seems to have little effect.
 
 ## validation_size
 default: 0.15
 
-hyperparameters: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+hyperparameters: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
 guidance: The ideal amount of data to be used as validation is dataset dependent, and should be tuned when possible.
 

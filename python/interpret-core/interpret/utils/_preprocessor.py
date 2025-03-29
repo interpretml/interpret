@@ -268,23 +268,18 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         rng = native.create_rng(normalize_seed(self.random_state))
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
-        for feature_idx, (
-            feature_type_in,
-            nonmissings,
-            uniques,
-            X_col,
-            bad,
-        ) in enumerate(
-            unify_columns(
-                X,
-                range(n_features),
-                feature_names_in,
-                self.feature_types,
-                self.min_unique_continuous,
-                True,
-                False,
-            )
-        ):
+
+        get_col = unify_columns(
+            X,
+            feature_names_in,
+            self.feature_types,
+            self.min_unique_continuous,
+            True,
+            False,
+        )
+        for feature_idx in range(n_features):
+            feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+
             max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
             if max_bins < 3:
                 msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
@@ -533,19 +528,13 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         if n_samples > 0:
             native = Native.get_native_singleton()
-            for feature_idx, bins, (_, nonmissings, uniques, X_col, bad) in zip(
-                count(),
-                self.bins_,
-                unify_columns(
-                    X,
-                    range(len(self.bins_)),
-                    self.feature_names_in_,
-                    self.feature_types_in_,
-                    None,
-                    False,
-                    False,
-                ),
-            ):
+
+            get_col = unify_columns(
+                X, self.feature_names_in_, self.feature_types_in_, None, False, False
+            )
+            for feature_idx, bins in enumerate(self.bins_):
+                _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+
                 if X_col is None:
                     # feature_type is "ignore"
 

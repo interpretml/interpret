@@ -52,13 +52,10 @@ def bin_native(
         y = y.copy()
 
     n_bytes = native.measure_dataset_header(len(feature_idxs), n_weights, 1)
-    for feature_idx, feature_bins, (_, nonmissings, uniques, X_col, bad) in zip(
-        feature_idxs,
-        bins_iter,
-        unify_columns(
-            X, feature_idxs, feature_names_in, feature_types_in, None, False, False
-        ),
-    ):
+    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, False)
+    for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
+        _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+
         if isinstance(feature_bins, dict):
             # categorical feature
 
@@ -112,13 +109,10 @@ def bin_native(
 
     native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
 
-    for feature_idx, feature_bins, (_, nonmissings, uniques, X_col, bad) in zip(
-        feature_idxs,
-        bins_iter,
-        unify_columns(
-            X, feature_idxs, feature_names_in, feature_types_in, None, False, False
-        ),
-    ):
+    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, False)
+    for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
+        _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+
         if isinstance(feature_bins, dict):
             # categorical feature
 

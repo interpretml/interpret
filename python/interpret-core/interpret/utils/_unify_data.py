@@ -40,23 +40,12 @@ def unify_data(
     # fill with np.nan for missing values and None for unseen values
     X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
-    for feature_idx, (
-        feature_type_in,
-        nonmissings,
-        uniques,
-        X_col,
-        bad,
-    ) in enumerate(
-        unify_columns(
-            X,
-            range(len(feature_names_in)),
-            feature_names_in,
-            feature_types,
-            min_unique_continuous,
-            True,
-            False,
-        )
-    ):
+    get_col = unify_columns(
+        X, feature_names_in, feature_types, min_unique_continuous, True, False
+    )
+    for feature_idx in range(len(feature_names_in)):
+        feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+
         feature_types_in[feature_idx] = feature_type_in
         if X_col is None:
             # feature_type is "ignore"
