@@ -41,7 +41,13 @@ def unify_data(
     X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
     get_col = unify_columns(
-        X, feature_names_in, feature_types, min_unique_continuous, True, False
+        X,
+        n_samples,
+        feature_names_in,
+        feature_types,
+        min_unique_continuous,
+        True,
+        False,
     )
     for feature_idx in range(len(feature_names_in)):
         feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
@@ -58,11 +64,6 @@ def unify_data(
             X_unified[:, feature_idx] = np.nan
         elif uniques is None:
             # continuous feature
-
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
 
             if not missing_data_allowed and np.isnan(X_col).any():
                 msg = "X cannot contain missing values"
@@ -83,11 +84,6 @@ def unify_data(
             categories = dict(zip(uniques, count(1)))
 
             X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
-
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
 
             if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
                 msg = "X cannot contain missing values"

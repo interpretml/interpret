@@ -296,8 +296,6 @@ _disallowed_types = frozenset(
     ]
 )
 _none_ndarray = np.array(None)
-_repeat_none = repeat(None)
-_repeat_slice_none = repeat(slice(None))
 _repeat_ignore = repeat("ignore")
 
 
@@ -1081,6 +1079,7 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
 
 def unify_columns(
     X,
+    n_samples,
     feature_names_in,
     feature_types,
     min_unique_continuous,
@@ -1475,12 +1474,26 @@ def unify_columns(
         if feature_types is None:
 
             def internal(feature_idx):
-                return _process_dict_column(
+                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                     X[feature_names_in[feature_idx]],
                     is_initial,
                     None,
                     min_unique_continuous,
                 )
+
+                # unlike other datasets, dict must be checked for content length
+                if nonmissings is None or nonmissings is False:
+                    if n_samples != len(X_col):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                else:
+                    if n_samples != len(nonmissings):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                return feature_type, nonmissings, uniques, X_col, bad
 
             return internal
         else:
@@ -1490,12 +1503,28 @@ def unify_columns(
                 if feature_type == "ignore":
                     return "ignore", None, None, None, None
                 else:
-                    return _process_dict_column(
-                        X[feature_names_in[feature_idx]],
-                        is_initial,
-                        feature_type,
-                        min_unique_continuous,
+                    feature_type, nonmissings, uniques, X_col, bad = (
+                        _process_dict_column(
+                            X[feature_names_in[feature_idx]],
+                            is_initial,
+                            feature_type,
+                            min_unique_continuous,
+                        )
                     )
+
+                    # unlike other datasets, dict must be checked for content length
+                    if nonmissings is None or nonmissings is False:
+                        if n_samples != len(X_col):
+                            msg = "The columns of X are mismatched in the number of of samples"
+                            _log.error(msg)
+                            raise ValueError(msg)
+                    else:
+                        if n_samples != len(nonmissings):
+                            msg = "The columns of X are mismatched in the number of of samples"
+                            _log.error(msg)
+                            raise ValueError(msg)
+
+                    return feature_type, nonmissings, uniques, X_col, bad
 
             return internal
     else:

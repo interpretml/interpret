@@ -52,7 +52,9 @@ def bin_native(
         y = y.copy()
 
     n_bytes = native.measure_dataset_header(len(feature_idxs), n_weights, 1)
-    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, False)
+    get_col = unify_columns(
+        X, n_samples, feature_names_in, feature_types_in, None, False, False
+    )
     for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
         _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 
@@ -60,20 +62,9 @@ def bin_native(
             # categorical feature
 
             X_col, bad = categorical_encode(uniques, X_col, nonmissings, feature_bins)
-
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
-
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
-
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
 
             if not X_col.flags.c_contiguous:
                 # X_col could be a slice that has a stride.  We need contiguous for caling into C
@@ -109,7 +100,9 @@ def bin_native(
 
     native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
 
-    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, False)
+    get_col = unify_columns(
+        X, n_samples, feature_names_in, feature_types_in, None, False, False
+    )
     for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
         _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 

@@ -271,6 +271,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
         get_col = unify_columns(
             X,
+            n_samples,
             feature_names_in,
             self.feature_types,
             self.min_unique_continuous,
@@ -295,11 +296,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 feature_bin_weights = None
             elif uniques is None:
                 # continuous feature
-
-                if n_samples != len(X_col):
-                    msg = "The columns of X are mismatched in the number of of samples"
-                    _log.error(msg)
-                    raise ValueError(msg)
 
                 if bad is not None:
                     msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
@@ -410,11 +406,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 categories = dict(zip(uniques, count(1)))
 
                 X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
-
-                if n_samples != len(X_col):
-                    msg = "The columns of X are mismatched in the number of of samples"
-                    _log.error(msg)
-                    raise ValueError(msg)
 
                 if bad is not None:
                     msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
@@ -530,7 +521,13 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             native = Native.get_native_singleton()
 
             get_col = unify_columns(
-                X, self.feature_names_in_, self.feature_types_in_, None, False, False
+                X,
+                n_samples,
+                self.feature_names_in_,
+                self.feature_types_in_,
+                None,
+                False,
+                False,
             )
             for feature_idx, bins in enumerate(self.bins_):
                 _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
@@ -544,22 +541,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col, bad = categorical_encode(uniques, X_col, nonmissings, bins)
 
-                    if n_samples != len(X_col):
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
                     if bad is not None:
                         X_col[X_col == -1] = (
                             1 if len(bins) == 0 else max(bins.values()) + 1
                         )
                 else:
                     # continuous feature
-
-                    if n_samples != len(X_col):
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
 
                     if not X_col.flags.c_contiguous:
                         # X_col could be a slice that has a stride.  We need contiguous for caling into C

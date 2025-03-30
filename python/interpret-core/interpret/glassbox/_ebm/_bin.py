@@ -29,7 +29,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
     waiting = {}
-    # term_features are guaranteed to be ordered by: num_features, [feature_idxes]
+    # term_features are guaranteed to be ordered by: len(feature_idxes), sorted(feature_idxes)
     # Which typically means that the mains are processed in order first
     # by feature_idx.
     for term_idx, feature_idxs in enumerate(term_features):
@@ -40,24 +40,25 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         for feature_idx in feature_idxs:
             waiting_list = waiting.get(feature_idx)
             if waiting_list is None:
-                # rely on the guarantee that iterating over dict is by insertion order
                 waiting[feature_idx] = [requirements]
             else:
                 waiting_list.append(requirements)
 
     native = Native.get_native_singleton()
 
-    get_col = unify_columns(X, feature_names_in, feature_types_in, None, False, True)
+    get_col = unify_columns(
+        X, n_samples, feature_names_in, feature_types_in, None, False, True
+    )
+    # rely on the guarantee that iterating over dict is by insertion order
     for column_feature_idx, all_requirements in waiting.items():
         _, nonmissings, uniques, X_col, bad = get_col(column_feature_idx)
 
+        bin_levels = bins[column_feature_idx]
+        max_level = len(bin_levels)
+        binning_completed = _none_list * max_level
+
         if uniques is None:
             # continuous feature
-
-            if n_samples != len(X_col):
-                msg = "The columns of X are mismatched in the number of of samples"
-                _log.error(msg)
-                raise ValueError(msg)
 
             if bad is not None:
                 # TODO: we could pass out a bool array instead of objects for this function only
@@ -68,9 +69,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # which requires contiguous memory
                 X_col = X_col.copy()
 
-            bin_levels = bins[column_feature_idx]
-            max_level = len(bin_levels)
-            binning_completed = _none_list * max_level
             for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
@@ -94,20 +92,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         else:
             # categorical feature
 
-            if nonmissings is None or nonmissings is False:
-                if n_samples != len(X_col):
-                    msg = "The columns of X are mismatched in the number of of samples"
-                    _log.error(msg)
-                    raise ValueError(msg)
-            else:
-                if n_samples != len(nonmissings):
-                    msg = "The columns of X are mismatched in the number of of samples"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-            bin_levels = bins[column_feature_idx]
-            max_level = len(bin_levels)
-            binning_completed = _none_list * max_level
             for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
