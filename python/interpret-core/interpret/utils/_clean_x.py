@@ -691,7 +691,7 @@ def _process_continuous(X_col, nonmissings):
     # called under: fit or predict
 
     if issubclass(X_col.dtype.type, np.floating):
-        X_col = X_col.astype(dtype=np.float64, copy=False)
+        X_col = X_col.astype(np.float64, "C", copy=False)
         return X_col, None
     if issubclass(X_col.dtype.type, np.integer) or issubclass(
         X_col.dtype.type, np.bool_

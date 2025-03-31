@@ -873,7 +873,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     msg = "A value in bags is outside the valid range -128 to 127"
                     _log.error(msg)
                     raise ValueError(msg)
-                bag = bag.astype(np.int8, copy=not bag.flags.c_contiguous)
+                bag = bag.astype(np.int8, "C", copy=False)
 
             rngs.append(bagged_rng)
             internal_bags.append(bag)

@@ -302,10 +302,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
 
-                if not X_col.flags.c_contiguous:
-                    # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                    X_col = X_col.copy()
-
                 if self.binning == "private":
                     if np.isnan(X_col).any():
                         msg = "missing values in X not supported for private binning"
@@ -547,10 +543,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                         )
                 else:
                     # continuous feature
-
-                    if not X_col.flags.c_contiguous:
-                        # X_col could be a slice that has a stride.  We need contiguous for caling into C
-                        X_col = X_col.copy()
 
                     X_col = native.discretize(X_col, bins)
 

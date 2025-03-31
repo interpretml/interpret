@@ -64,11 +64,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 # TODO: we could pass out a bool array instead of objects for this function only
                 bad = bad != _none_ndarray
 
-            if not X_col.flags.c_contiguous:
-                # we requrested this feature, so at some point we're going to call discretize,
-                # which requires contiguous memory
-                X_col = X_col.copy()
-
             for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
