@@ -289,13 +289,21 @@ _disallowed_types = frozenset(
         frozenset,
         dict,
         Ellipsis,
-        np.csingle,
-        np.complex128,
-        np.clongdouble,
         np.void,
     ]
 )
 _none_ndarray = np.array(None)
+_float_types = (float, np.floating)
+_all_int_types = (int, np.integer)
+_strconv_types = (str, int, bool, np.integer, np.bool_, np.float64)
+_intbool_types = (np.integer, np.bool_)
+_float_int_bool_types = (np.floating, np.integer, np.bool_)
+_complex_void_types = (np.complexfloating, np.void)
+_float_int_types = (float, int, np.floating, np.integer)
+_list_tuple_types = (list, tuple)
+_repeat_float_types = repeat(_float_types)
+_repeat_all_int_types = repeat(_all_int_types)
+_repeat_uint_type = repeat(np.unsignedinteger)
 _repeat_ignore = repeat("ignore")
 
 
@@ -314,40 +322,34 @@ def _densify_object_ndarray(X_col):
         if bool in types:
             return X_col.astype(np.bool_)
 
-    if all(
-        issubclass(one_type, int) or issubclass(one_type, np.integer)
-        for one_type in types
-    ):
-        if all(issubclass(one_type, np.unsignedinteger) for one_type in types):
-            if all(issubclass(one_type, np.uint8) for one_type in types):
-                return X_col.astype(np.uint8)
+    if all(map(issubclass, types, _repeat_all_int_types)):
+        if all(map(issubclass, types, _repeat_uint_type)):
             types.discard(np.uint8)
+            if len(types) == 0:
+                return X_col.astype(np.uint8)
 
-            if all(issubclass(one_type, np.uint16) for one_type in types):
-                return X_col.astype(np.uint16)
             types.discard(np.uint16)
+            if len(types) == 0:
+                return X_col.astype(np.uint16)
 
-            if all(issubclass(one_type, np.uint32) for one_type in types):
+            types.discard(np.uint32)
+            if len(types) == 0:
                 return X_col.astype(np.uint32)
 
             return X_col.astype(np.uint64)
 
-        if all(issubclass(one_type, np.int8) for one_type in types):
-            return X_col.astype(np.int8)
         types.discard(np.int8)
+        if len(types) == 0:
+            return X_col.astype(np.int8)
 
-        if all(
-            issubclass(one_type, np.uint8) or issubclass(one_type, np.int16)
-            for one_type in types
-        ):
-            return X_col.astype(np.int16)
         types.discard(np.uint8)
         types.discard(np.int16)
+        if len(types) == 0:
+            return X_col.astype(np.int16)
 
-        if all(
-            issubclass(one_type, np.uint16) or issubclass(one_type, np.int32)
-            for one_type in types
-        ):
+        types.discard(np.uint16)
+        types.discard(np.int32)
+        if len(types) == 0:
             return X_col.astype(np.int32)
 
         try:
@@ -360,41 +362,38 @@ def _densify_object_ndarray(X_col):
             # TODO : should this be np.float64 with a check for big integers
             return X_col.astype(np.str_)
 
-    if all(
-        issubclass(one_type, float) or issubclass(one_type, np.floating)
-        for one_type in types
-    ):
-        if all(issubclass(one_type, np.float16) for one_type in types):
-            return X_col.astype(np.float16)
+    if all(map(issubclass, types, _repeat_float_types)):
         types.discard(np.float16)
+        if len(types) == 0:
+            return X_col.astype(np.float16)
 
-        if all(issubclass(one_type, np.float32) for one_type in types):
+        types.discard(np.float32)
+        if len(types) == 0:
             return X_col.astype(np.float32)
 
         return X_col.astype(np.float64)
 
     is_float_conversion = False
     for one_type in types:
-        if issubclass(one_type, str):
-            pass  # str objects have __iter__, so special case this to allow
-        elif issubclass(one_type, int):
-            pass  # int objects use the default __str__ function, so special case this to allow
-        elif issubclass(one_type, bool):
-            pass  # bool objects use the default __str__ function, so special case this to allow
-        elif one_type is float:
+        if issubclass(one_type, _strconv_types):
+            # issubclass(, str) also works for np.str_
+            # str objects have __iter__, so special case this to allow
+            # int objects use the default __str__ function, so special case this to allow
+            # bool objects use the default __str__ function, so special case this to allow
+            # np.float64 is what we convert to for floats, so no need to convert this
+            pass
+        elif issubclass(one_type, _float_types):
             # force to np.float64 to guarantee consistent string formatting
             is_float_conversion = True
-        elif issubclass(one_type, np.generic):
-            # numpy objects have __getitem__, so special case this to allow
-            if issubclass(one_type, np.float64):
-                pass  # np.float64 is what we convert to for floats, so no need to convert this
-            elif issubclass(one_type, np.floating):
-                is_float_conversion = True  # force to np.float64 to ensure consistent string formatting of floats
-        elif one_type in _disallowed_types:
+        elif issubclass(one_type, np.complexfloating) or one_type in _disallowed_types:
             # list of python types primarily from: https://docs.python.org/3/library/stdtypes.html
             msg = f"X contains the disallowed type {one_type}"
             _log.error(msg)
             raise TypeError(msg)
+        elif issubclass(one_type, np.generic):
+            # numpy objects have __getitem__, so special case this to allow
+            # numpy hierarchy: https://numpy.org/doc/stable/reference/arrays.scalars.html
+            pass
         elif hasattr(one_type, "__iter__") or hasattr(one_type, "__getitem__"):
             # check for __iter__ and __getitem__ to filter out iterables
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
@@ -422,12 +421,7 @@ def _densify_object_ndarray(X_col):
         if not X_col.flags.owndata:
             X_col = X_col.copy()  # we place into this array below so we need to own it
         places = np.fromiter(
-            map(isinstance, X_col, repeat(float)), np.bool_, count=len(X_col)
-        )
-        places |= np.fromiter(
-            map(isinstance, X_col, repeat(np.floating)),
-            np.bool_,
-            count=len(X_col),
+            map(isinstance, X_col, _repeat_float_types), np.bool_, len(X_col)
         )
         np.place(X_col, places, X_col[places].astype(np.float64))
 
@@ -441,7 +435,7 @@ def _densify_object_ndarray(X_col):
 
 def categorical_encode(uniques, indexes, nonmissings, categories):
     mapping = np.fromiter(
-        map(categories.get, uniques, repeat(-1)), np.int64, count=len(uniques)
+        map(categories.get, uniques, repeat(-1)), np.int64, len(uniques)
     )
 
     if nonmissings is False:
@@ -449,28 +443,27 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
             if np.array_equal(mapping, mapping_cmp):
                 # avoid overflows for np.int8
-                indexes = indexes.astype(dtype=np.int64, copy=False)
+                indexes = indexes.astype(np.int64, copy=False)
                 indexes += 1
                 return indexes
         else:
             mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
             if np.array_equal(mapping[: len(mapping_cmp)], mapping_cmp):
                 # avoid overflows for np.int8
-                indexes = indexes.astype(dtype=np.int64, copy=False)
+                indexes = indexes.astype(np.int64, copy=False)
                 indexes += 1
                 indexes[len(categories) < indexes] = -1
                 return indexes
 
         # missing values are -1 in indexes, so append 0 to the map, which is index -1
-        mapping = np.append(mapping, 0)
-        encoded = mapping[indexes]
-    else:
-        # indexes should be all positive and nonmissings defines the unseen values
-        encoded = mapping[indexes]
-        if nonmissings is not None:
-            encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-            np.place(encoded_tmp, nonmissings, encoded)
-            return encoded_tmp
+        return np.append(mapping, 0)[indexes]
+
+    # indexes should be all positive and nonmissings defines the unseen values
+    encoded = mapping[indexes]
+    if nonmissings is not None:
+        encoded_tmp = np.zeros(len(nonmissings), np.int64)
+        np.place(encoded_tmp, nonmissings, encoded)
+        return encoded_tmp
 
     return encoded
 
@@ -498,7 +491,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
             # TODO: does this work if there are spaces or bools?
 
-            floats = uniques.astype(dtype=np.float64)
+            floats = uniques.astype(np.float64)
         except ValueError:
             floats = None
 
@@ -508,7 +501,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
         if min_unique_continuous <= len(np.unique(floats)):
             floats = floats[indexes]  # expand from the unique floats to expanded floats
             if nonmissings is not None:
-                floats_tmp = np.full(len(nonmissings), np.nan, dtype=np.float64)
+                floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
                 np.place(floats_tmp, nonmissings, floats)
                 floats = floats_tmp
 
@@ -557,7 +550,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
     mapping = np.fromiter(
         map(dict(zip(categories, count())).__getitem__, uniques),
         np.int64,
-        count=len(uniques),
+        len(uniques),
     )
     indexes = mapping[indexes]
     uniques = np.array(categories, np.str_)
@@ -573,17 +566,18 @@ def _encode_categorical_existing(X_col, nonmissings):
     # TODO: add special case handling if there is only 1 sample to make that faster
     # if we have just 1 sample, we can avoid making the mapping below
 
-    if issubclass(X_col.dtype.type, np.floating):
+    tt = X_col.dtype.type
+    if issubclass(tt, np.floating):
         missings = np.isnan(X_col)
         if missings.any():
             nonmissings = np.logical_not(missings, out=missings)
             X_col = X_col[nonmissings]
-    elif X_col.dtype.type is np.object_:
+    elif tt is np.object_:
         X_col = _densify_object_ndarray(X_col)
 
     uniques, indexes = np.unique(X_col, return_inverse=True)
 
-    if issubclass(X_col.dtype.type, np.floating):
+    if issubclass(uniques.dtype.type, np.floating):
         uniques = uniques.astype(np.float64, copy=False)
     uniques = uniques.astype(np.str_, copy=False)
 
@@ -619,6 +613,8 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
         raise ValueError(msg)
     else:
         if isinstance(processing, str):
+            # isinstance(, str) also works for np.str_
+
             # don't allow strings to get to the for loop below
             msg = f"{processing} type invalid for pandas.CategoricalDtype"
             _log.error(msg)
@@ -631,8 +627,9 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
             for item in processing:
                 n_items += 1
                 if isinstance(item, str):
+                    # isinstance(, str) also works for np.str_
                     n_ordinals += 1
-                elif isinstance(item, (float, int, np.floating, np.integer)):
+                elif isinstance(item, _float_int_types):
                     n_continuous += 1
         except TypeError:
             msg = f"{processing} type invalid for pandas.CategoricalDtype"
@@ -670,22 +667,22 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
 def _process_continuous(X_col, nonmissings):
     # called under: fit or predict
 
-    if issubclass(X_col.dtype.type, np.floating):
-        X_col = X_col.astype(np.float64, "C", copy=False)
-        return X_col, None
-    if issubclass(X_col.dtype.type, np.integer) or issubclass(
-        X_col.dtype.type, np.bool_
-    ):
-        X_col = X_col.astype(dtype=np.float64)
+    tt = X_col.dtype.type
+    if issubclass(tt, np.floating):
+        # force C contiguous here for a later call to native.discretize
+        return X_col.astype(np.float64, "C", copy=False), None
+    if issubclass(tt, _intbool_types):
+        X_col = X_col.astype(np.float64)
         if nonmissings is not None:
-            X_col_tmp = np.full(len(nonmissings), np.nan, dtype=np.float64)
+            X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
             np.place(X_col_tmp, nonmissings, X_col)
             X_col = X_col_tmp
 
         return X_col, None
+
     # we either have an np.object_ or np.unicode_/np.str_
     try:
-        floats = X_col.astype(dtype=np.float64)
+        floats = X_col.astype(np.float64)
         bad = None
     except (TypeError, ValueError):
         # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
@@ -693,20 +690,20 @@ def _process_continuous(X_col, nonmissings):
         # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
 
         n_samples = len(X_col)
-        bad = np.zeros(n_samples, dtype=np.bool_)
-        floats = np.zeros(n_samples, dtype=np.float64)
+        bad = np.zeros(n_samples, np.bool_)
+        floats = np.zeros(n_samples, np.float64)
         for idx in range(n_samples):
             # slice one item at a time keeping as an np.ndarray
             one_item_array = X_col[idx : idx + 1]
             try:
                 # use .astype(..) instead of float(..) to ensure identical conversion results
-                floats[idx] = one_item_array.astype(dtype=np.float64)[0]
+                floats[idx] = one_item_array.astype(np.float64)[0]
             except TypeError:
                 # use .astype instead of str(one_item_array) here to ensure identical string categories
-                one_str_array = one_item_array.astype(dtype=np.str_)
+                one_str_array = one_item_array.astype(np.str_)
                 try:
                     # use .astype(..) instead of float(..) to ensure identical conversion results
-                    floats[idx] = one_str_array.astype(dtype=np.float64)[0]
+                    floats[idx] = one_str_array.astype(np.float64)[0]
                 except ValueError:
                     bad[idx] = True
             except ValueError:
@@ -715,10 +712,11 @@ def _process_continuous(X_col, nonmissings):
         # bad.any() would fail to work if bad was allowed to be either None or False, but None
         # values in X_col should always be identified as missing by our caller, and False should be successfully
         # converted to 0.0 above, so neither should end up in the bad array other than non-bad indicators
-        bad = bad if bad.any() else None
+        if not bad.any():
+            bad = None
 
     if nonmissings is not None:
-        floats_tmp = np.full(len(nonmissings), np.nan, dtype=np.float64)
+        floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
         np.place(floats_tmp, nonmissings, floats)
         floats = floats_tmp
 
@@ -733,31 +731,30 @@ def _process_continuous(X_col, nonmissings):
 def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_continuous):
     if processing == "continuous":
         # called under: fit or predict
-        X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", None, None, X_col, bad
+        return "continuous", None, None, *_process_continuous(X_col, nonmissings)
     if processing == "nominal":
         if is_initial:
             # called under: fit
-            nonmissings, uniques, indexes = _process_column_initial(
-                X_col, nonmissings, None, None
+            return (
+                "nominal",
+                *_process_column_initial(X_col, nonmissings, None, None),
+                None,
             )
-            return "nominal", nonmissings, uniques, indexes, None
         # called under: predict
-        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
-        return "nominal", nonmissings, uniques, indexes, None
+        return "nominal", *_encode_categorical_existing(X_col, nonmissings), None
     if processing == "ordinal":
         if is_initial:
             # called under: fit
             # if the caller passes "ordinal" during fit, the only order that makes sense is either
             # alphabetical or based on float values. Frequency doesn't make sense
             # if the caller would prefer an error, they can check feature_types themselves
-            nonmissings, uniques, indexes = _process_column_initial(
-                X_col, nonmissings, None, None
+            return (
+                "ordinal",
+                *_process_column_initial(X_col, nonmissings, None, None),
+                None,
             )
-            return "ordinal", nonmissings, uniques, indexes, None
         # called under: predict
-        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
-        return "ordinal", nonmissings, uniques, indexes, None
+        return "ordinal", *_encode_categorical_existing(X_col, nonmissings), None
     if processing is None or processing == "auto":
         # called under: fit
         nonmissings, uniques, indexes = _process_column_initial(
@@ -772,15 +769,15 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         )
     if processing in ("nominal_prevalence", "nominal_alphabetical"):
         # called under: fit
-        nonmissings, uniques, indexes = _process_column_initial(
-            X_col, nonmissings, processing, None
+        return (
+            "nominal",
+            *_process_column_initial(X_col, nonmissings, processing, None),
+            None,
         )
-        return "nominal", nonmissings, uniques, indexes, None
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         # called under: fit
-        X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", None, None, X_col, bad
-    if isinstance(processing, int):
+        return "continuous", None, None, *_process_continuous(X_col, nonmissings)
+    if isinstance(processing, _all_int_types):
         # called under: fit
         nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, None, processing
@@ -796,6 +793,7 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         # called under: fit
 
         # don't allow strings to get to the np.array conversion below
+        # isinstance(, str) also works for np.str_
         msg = f"{processing} type invalid"
         _log.error(msg)
         raise ValueError(msg)
@@ -808,8 +806,9 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         for item in processing:
             n_items += 1
             if isinstance(item, str):
+                # isinstance(, str) also works for np.str_
                 n_ordinals += 1
-            elif isinstance(item, (float, int, np.floating, np.integer)):
+            elif isinstance(item, _float_int_types):
                 n_continuous += 1
     except TypeError:
         msg = f"{processing} type invalid"
@@ -819,8 +818,7 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
     if n_continuous == n_items:
         # if n_items == 0 then it must be continuous since we
         # can have zero cut points, but not zero ordinal categories
-        X_col, bad = _process_continuous(X_col, nonmissings)
-        return "continuous", None, None, X_col, bad
+        return "continuous", None, None, *_process_continuous(X_col, nonmissings)
     if n_ordinals == n_items:
         nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
 
@@ -828,7 +826,7 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
             mapping = np.fromiter(
                 map(dict(zip(processing, count())).__getitem__, uniques),
                 np.int64,
-                count=len(uniques),
+                len(uniques),
             )
         except KeyError:
             # TODO: we could instead capture the misbehaving
@@ -906,37 +904,37 @@ def _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous
 
 
 def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuous):
-    if isinstance(X_col.dtype, np.dtype):
-        if (
-            issubclass(X_col.dtype.type, np.floating)
-            or issubclass(X_col.dtype.type, np.integer)
-            or issubclass(X_col.dtype.type, np.bool_)
-        ):
-            X_col = X_col.values
+    dt = X_col.dtype
+    tt = dt.type
+    if isinstance(dt, np.dtype):
+        if issubclass(tt, _float_int_bool_types):
             return _process_ndarray(
-                X_col, None, is_initial, feature_type, min_unique_continuous
+                X_col.values, None, is_initial, feature_type, min_unique_continuous
             )
-        if X_col.dtype.type is np.object_:
+        if tt is np.object_:
             nonmissings = None
             if X_col.hasnans:
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
                 nonmissings = X_col.notna().values
                 X_col = X_col.dropna()
-            X_col = X_col.values
             return _process_ndarray(
-                X_col, nonmissings, is_initial, feature_type, min_unique_continuous
+                X_col.values,
+                nonmissings,
+                is_initial,
+                feature_type,
+                min_unique_continuous,
             )
-    elif isinstance(X_col.dtype, pd.CategoricalDtype):
+    elif isinstance(dt, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.values  # pandas 1.0 introduced .cat but .values is older
         is_ordered = X_col.ordered
-        pd_categories = X_col.categories.values.astype(dtype=np.str_, copy=False)
+        uniques = X_col.categories.values.astype(np.str_, copy=False)
         X_col = X_col.codes
 
         if is_initial:
             # called under: fit
             uniques, X_col = _encode_pandas_categorical_initial(
-                X_col, pd_categories, is_ordered, feature_type
+                X_col, uniques, is_ordered, feature_type
             )
         else:
             # called under: predict
@@ -947,8 +945,6 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
                 _log.error(msg)
                 raise ValueError(msg)
 
-            uniques = pd_categories
-
         return (
             "ordinal" if is_ordered else "nominal",
             False,
@@ -956,26 +952,26 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             X_col,
             None,
         )
-    elif issubclass(X_col.dtype.type, np.integer) or issubclass(
-        X_col.dtype.type, np.bool_
-    ):
+    elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         nonmissings = None
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             nonmissings = X_col.notna().values
             X_col = X_col.dropna()
-        X_col = X_col.values
-        # if X_col is a special type like UInt64Dtype convert it to numpy
-        X_col = X_col.astype(dtype=X_col.dtype.type, copy=False)
+        # if X_col is a special type like UInt64Dtype convert it to numpy using astype
         return _process_ndarray(
-            X_col, nonmissings, is_initial, feature_type, min_unique_continuous
+            X_col.values.astype(tt, copy=False),
+            nonmissings,
+            is_initial,
+            feature_type,
+            min_unique_continuous,
         )
 
     # TODO: implement pd.SparseDtype
     # TODO: implement pd.StringDtype both the numpy and arrow versions
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
-    msg = f"{type(X_col.dtype)} not supported"
+    msg = f"{type(dt)} not supported"
     _log.error(msg)
     raise TypeError(msg)
 
@@ -1015,9 +1011,8 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
         )
     elif _pandas_installed and isinstance(X_col, pd.DataFrame):
         if X_col.shape[1] == 1:
-            X_col = X_col.iloc[:, 0]
             return _process_pandas_column(
-                X_col, is_initial, feature_type, min_unique_continuous
+                X_col.iloc[:, 0], is_initial, feature_type, min_unique_continuous
             )
         if X_col.shape[0] == 1:
             X_col = X_col.astype(np.object_, copy=False).values.ravel()
@@ -1040,28 +1035,32 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
             msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
             _log.error(msg)
             raise ValueError(msg)
-    elif isinstance(X_col, (list, tuple)):
+    elif isinstance(X_col, _list_tuple_types):
         X_col = np.array(X_col, np.object_)
     elif isinstance(X_col, str):
+        # isinstance(, str) also works for np.str_
+
         # don't allow strings to get to the np.array conversion below
         X_col_tmp = np.empty(1, np.object_)
         X_col_tmp[0] = X_col
         X_col = X_col_tmp
     else:
         try:
+            # TODO: we need to iterate though all the columns in preclean_X to handle iterable columns
+
             # we don't support iterables that get exhausted on their first examination.  This condition
             # should be detected though in preclean_X where we get the length or bin_native where we check the
             # number of samples on the 2nd run through the generator
-            X_col = list(X_col)
-            X_col = np.array(X_col, np.object_)
+            X_col = np.array(list(X_col), np.object_)
         except TypeError:
             # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
             X_col_tmp = np.empty(1, np.object_)
             X_col_tmp[0] = X_col
             X_col = X_col_tmp
 
-    X_col = _reshape_1D_if_possible(X_col)
-    return _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous)
+    return _process_numpy_column(
+        _reshape_1D_if_possible(X_col), is_initial, feature_type, min_unique_continuous
+    )
 
 
 def unify_columns(
@@ -1101,14 +1100,15 @@ def unify_columns(
     # yielded by using the id(categories) along with the feature_idx
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
-        if issubclass(X.dtype.type, np.complexfloating):
-            msg = "Complex data not supported"
-            _log.error(msg)
-            raise ValueError(msg)
-        elif issubclass(X.dtype.type, np.void):
-            msg = "np.void data not supported"
-            _log.error(msg)
-            raise TypeError(msg)
+        if issubclass(X.dtype.type, _complex_void_types):
+            if issubclass(X.dtype.type, np.complexfloating):
+                msg = "Complex data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            else:
+                msg = "np.void data not supported"
+                _log.error(msg)
+                raise TypeError(msg)
 
         # TODO: in the future special case this to make single samples faster at predict time
 
@@ -1171,7 +1171,7 @@ def unify_columns(
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
-                count=len(feature_types),
+                len(feature_types),
             )
             if keep_cols.sum() != X.shape[1]:
                 # called under: predict
@@ -1294,7 +1294,7 @@ def unify_columns(
                     keep_cols = np.fromiter(
                         map(ne, _repeat_ignore, feature_types),
                         np.bool_,
-                        count=len(feature_types),
+                        len(feature_types),
                     )
                     if keep_cols.sum() != n_cols:
                         # called under: predict
@@ -1329,7 +1329,7 @@ def unify_columns(
             or safe_isinstance(X, "scipy.sparse.bsr_array")
             or safe_isinstance(X, "scipy.sparse.coo_array")
         ):
-            X = X.tocsc(copy=False)
+            X = X.tocsc()
 
         n_cols = X.shape[1]
 
@@ -1369,7 +1369,7 @@ def unify_columns(
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
-                count=len(feature_types),
+                len(feature_types),
             )
             if keep_cols.sum() != n_cols:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -1430,7 +1430,7 @@ def unify_columns(
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
-                count=len(feature_types),
+                len(feature_types),
             )
             if keep_cols.sum() != n_cols:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -1759,7 +1759,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, 0
-    if isinstance(X, (list, tuple)):
+    if isinstance(X, _list_tuple_types):
         is_copied = False
     elif callable(getattr(X, "__array__", None)):
         X = X.__array__()
@@ -1776,6 +1776,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
         raise TypeError(msg)
     elif isinstance(X, str):
         # str objects are iterable, so don't allow them to get to the list() conversion below
+        # isinstance(, str) also works for np.str_
         msg = "X cannot be a str type"
         _log.error(msg)
         raise TypeError(msg)
@@ -1798,7 +1799,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
 
     for idx in range(len(X)):
         sample = X[idx]
-        if isinstance(sample, (list, tuple)):
+        if isinstance(sample, _list_tuple_types):
             pass
         elif isinstance(sample, ma.masked_array):
             # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
@@ -1860,6 +1861,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 X = list(X)
             X[idx] = _reshape_1D_if_possible(sample)
         elif isinstance(sample, str):
+            # isinstance(, str) also works for np.str_
             break  # this only legal if we have one sample
         else:
             try:
