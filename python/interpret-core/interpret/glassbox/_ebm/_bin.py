@@ -14,7 +14,6 @@ _log = logging.getLogger(__name__)
 
 
 _none_list = [None]
-_none_ndarray = np.array(None)
 _repeat_none = repeat(None)
 _slice_remove_last = slice(None, -1)
 
@@ -60,10 +59,6 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         if uniques is None:
             # continuous feature
 
-            if bad is not None:
-                # TODO: we could pass out a bool array instead of objects for this function only
-                bad = bad != _none_ndarray
-
             for requirements in all_requirements:
                 term_idx = requirements[-1]
                 feature_idxs = term_features[term_idx]
@@ -93,7 +88,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 level_idx = min(max_level, len(feature_idxs)) - 1
                 bin_indexes = binning_completed[level_idx]
                 if bin_indexes is None:
-                    bin_indexes, _ = categorical_encode(
+                    bin_indexes = categorical_encode(
                         uniques, X_col, nonmissings, bin_levels[level_idx]
                     )
                     binning_completed[level_idx] = bin_indexes

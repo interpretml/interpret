@@ -401,9 +401,9 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                 categories = dict(zip(uniques, count(1)))
 
-                X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
+                X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
-                if bad is not None:
+                if (X_col == -1).any():
                     msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                     _log.error(msg)
                     raise ValueError(msg)
@@ -535,19 +535,16 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 elif isinstance(bins, dict):
                     # categorical feature
 
-                    X_col, bad = categorical_encode(uniques, X_col, nonmissings, bins)
+                    X_col = categorical_encode(uniques, X_col, nonmissings, bins)
 
-                    if bad is not None:
-                        X_col[X_col == -1] = (
-                            1 if len(bins) == 0 else max(bins.values()) + 1
-                        )
+                    X_col[X_col == -1] = 1 if len(bins) == 0 else max(bins.values()) + 1
                 else:
                     # continuous feature
 
                     X_col = native.discretize(X_col, bins)
 
                     if bad is not None:
-                        X_col[bad != _none_ndarray] = len(bins) + 1
+                        X_col[bad] = len(bins) + 1
 
                 X_binned[:, feature_idx] = X_col
 

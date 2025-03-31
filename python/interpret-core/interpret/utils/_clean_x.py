@@ -449,50 +449,29 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             if np.array_equal(mapping, mapping_cmp):
                 # avoid overflows for np.int8
                 indexes = indexes.astype(dtype=np.int64, copy=False)
-                indexes = indexes + 1
-                return indexes, None
+                indexes += 1
+                return indexes
         else:
             mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
-            if np.array_equal(mapping[0 : len(mapping_cmp)], mapping_cmp):
-                unseens = len(categories) <= indexes
-                bad = np.full(len(indexes), None, dtype=np.object_)
-                bad[unseens] = uniques[indexes[unseens]]
+            if np.array_equal(mapping[: len(mapping_cmp)], mapping_cmp):
                 # avoid overflows for np.int8
                 indexes = indexes.astype(dtype=np.int64, copy=False)
-                indexes = indexes + 1
-                indexes[unseens] = -1
-                return indexes, bad
+                indexes += 1
+                indexes[len(categories) < indexes] = -1
+                return indexes
 
-        mapping = np.insert(mapping, 0, 0)
-        encoded = mapping[indexes + 1]
-
-        bad = None
-        unseens = encoded < 0
-        if unseens.any():
-            bad = np.full(len(indexes), None, dtype=np.object_)
-            bad[unseens] = uniques[indexes[unseens]]
-    else:
+        # missing values are -1 in indexes, so append 0 to the map, which is index -1
+        mapping = np.append(mapping, 0)
         encoded = mapping[indexes]
+    else:
+        # indexes should be all positive and nonmissings defines the unseen values
+        encoded = mapping[indexes]
+        if nonmissings is not None:
+            encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
+            np.place(encoded_tmp, nonmissings, encoded)
+            return encoded_tmp
 
-        if (mapping < 0).any():
-            if nonmissings is not None:
-                encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-                np.place(encoded_tmp, nonmissings, encoded)
-                bad = np.full(len(nonmissings), None, dtype=np.object_)
-                np.place(bad, encoded_tmp < 0, uniques[indexes[encoded < 0]])
-                encoded = encoded_tmp
-            else:
-                bad = np.full(len(encoded), None, dtype=np.object_)
-                unseens = encoded < 0
-                np.place(bad, unseens, uniques[indexes[unseens]])
-        else:
-            bad = None
-            if nonmissings is not None:
-                encoded_tmp = np.zeros(len(nonmissings), dtype=np.int64)
-                np.place(encoded_tmp, nonmissings, encoded)
-                encoded = encoded_tmp
-
-    return encoded, bad
+    return encoded
 
 
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
@@ -713,7 +692,7 @@ def _process_continuous(X_col, nonmissings):
         # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
 
         n_samples = len(X_col)
-        bad = np.full(n_samples, None, dtype=np.object_)
+        bad = np.zeros(n_samples, dtype=np.bool_)
         floats = np.zeros(n_samples, dtype=np.float64)
         for idx in range(n_samples):
             # slice one item at a time keeping as an np.ndarray
@@ -728,9 +707,9 @@ def _process_continuous(X_col, nonmissings):
                     # use .astype(..) instead of float(..) to ensure identical conversion results
                     floats[idx] = one_str_array.astype(dtype=np.float64)[0]
                 except ValueError:
-                    bad[idx] = one_str_array.item()
+                    bad[idx] = True
             except ValueError:
-                bad[idx] = one_item_array.item()
+                bad[idx] = True
 
         # bad.any() would fail to work if bad was allowed to be either None or False, but None
         # values in X_col should always be identified as missing by our caller, and False should be successfully
@@ -743,7 +722,7 @@ def _process_continuous(X_col, nonmissings):
         floats = floats_tmp
 
         if bad is not None:
-            bad_tmp = np.full(len(nonmissings), None, dtype=np.object_)
+            bad_tmp = np.zeros(len(nonmissings), np.bool_)
             np.place(bad_tmp, nonmissings, bad)
             bad = bad_tmp
 

@@ -9,7 +9,6 @@ from ._clean_x import unify_columns, categorical_encode
 from ._native import Native
 
 _log = logging.getLogger(__name__)
-_none_ndarray = np.array(None)
 
 
 def bin_native(
@@ -61,7 +60,10 @@ def bin_native(
         if isinstance(feature_bins, dict):
             # categorical feature
 
-            X_col, bad = categorical_encode(uniques, X_col, nonmissings, feature_bins)
+            X_col = categorical_encode(uniques, X_col, nonmissings, feature_bins)
+            bad = X_col == -1
+            if not bad.any():
+                bad = None
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
             # continuous feature
@@ -70,7 +72,7 @@ def bin_native(
             n_bins = len(feature_bins) + 3
 
         if bad is not None:
-            X_col[bad != _none_ndarray] = n_bins - 1
+            X_col[bad] = n_bins - 1
 
         n_bytes += native.measure_feature(
             n_bins,
@@ -105,7 +107,10 @@ def bin_native(
         if isinstance(feature_bins, dict):
             # categorical feature
 
-            X_col, bad = categorical_encode(uniques, X_col, nonmissings, feature_bins)
+            X_col = categorical_encode(uniques, X_col, nonmissings, feature_bins)
+            bad = X_col == -1
+            if not bad.any():
+                bad = None
 
             n_bins = 2 if len(feature_bins) == 0 else (max(feature_bins.values()) + 2)
         else:
@@ -115,7 +120,7 @@ def bin_native(
             n_bins = len(feature_bins) + 3
 
         if bad is not None:
-            X_col[bad != _none_ndarray] = n_bins - 1
+            X_col[bad] = n_bins - 1
 
         native.fill_feature(
             n_bins,

@@ -11,7 +11,6 @@ from ._clean_x import unify_columns, unify_feature_names, categorical_encode
 _log = logging.getLogger(__name__)
 
 _none_list = [None]
-_none_ndarray = np.array(None)
 
 
 def unify_data(
@@ -75,7 +74,7 @@ def unify_data(
                     msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                     _log.error(msg)
                     raise ValueError(msg)
-                X_col[bad != _none_ndarray] = None
+                X_col[bad] = None  # use None for unseen. np.nan is for missing
 
             X_unified[:, feature_idx] = X_col
         else:
@@ -83,27 +82,24 @@ def unify_data(
 
             categories = dict(zip(uniques, count(1)))
 
-            X_col, bad = categorical_encode(uniques, X_col, nonmissings, categories)
+            X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
             if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
                 msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 
-            mapping = np.empty(len(categories) + 1, np.object_)
-            mapping[0] = np.nan
+            if not unseen_data_allowed and (X_col == -1).any():
+                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            mapping = np.empty(len(categories) + 2, np.object_)
+            mapping[0] = np.nan  # use np.nan for missing
+            mapping[-1] = None  # use None for unseen
             for category, idx in categories.items():
                 mapping[idx] = category
 
-            X_col = mapping[X_col]
-
-            if bad is not None:
-                if not unseen_data_allowed:
-                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                    _log.error(msg)
-                    raise ValueError(msg)
-                X_col[bad != _none_ndarray] = None
-
-            X_unified[:, feature_idx] = X_col
+            X_unified[:, feature_idx] = mapping[X_col]
 
     return X_unified, feature_names_in, feature_types_in
