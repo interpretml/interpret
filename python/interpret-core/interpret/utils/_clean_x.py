@@ -419,7 +419,8 @@ def _densify_object_ndarray(X_col):
     if is_float_conversion:
         # TODO: handle ints here too which need to be checked if they are larger than the safe int max value
 
-        X_col = X_col.copy()
+        if not X_col.flags.owndata:
+            X_col = X_col.copy()  # we place into this array below so we need to own it
         places = np.fromiter(
             map(isinstance, X_col, repeat(float)), np.bool_, count=len(X_col)
         )
@@ -480,7 +481,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
     if issubclass(X_col.dtype.type, np.floating):
         missings = np.isnan(X_col)
         if missings.any():
-            nonmissings = ~missings
+            nonmissings = np.logical_not(missings, out=missings)
             X_col = X_col[nonmissings]
     elif X_col.dtype.type is np.object_:
         X_col = _densify_object_ndarray(X_col)
@@ -575,7 +576,7 @@ def _encode_categorical_existing(X_col, nonmissings):
     if issubclass(X_col.dtype.type, np.floating):
         missings = np.isnan(X_col)
         if missings.any():
-            nonmissings = ~missings
+            nonmissings = np.logical_not(missings, out=missings)
             X_col = X_col[nonmissings]
     elif X_col.dtype.type is np.object_:
         X_col = _densify_object_ndarray(X_col)
@@ -881,12 +882,15 @@ def _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous
 
     if X_col.dtype.type is np.object_:
         if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
-            # we can use it's function that checks for pd.NA, np.nan, and None
+            # pandas also has the pd.NA value that indicates missing. If Pandas is
+            # available we can use the pd.notna function that checks for
+            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+            # alternative (X_col == X_col) & (X_col != np.array(None)) below
             nonmissings2 = pd.notna(X_col)
         else:
             # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-            nonmissings2 = np.logical_and(X_col != _none_ndarray, X_col == X_col)
+            nonmissings2 = X_col == X_col
+            nonmissings2 &= X_col != _none_ndarray
         if not nonmissings2.all():
             X_col = X_col[nonmissings2]
             if nonmissings is None:
@@ -924,7 +928,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             )
     elif isinstance(X_col.dtype, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
-        X_col = X_col.values
+        X_col = X_col.values  # pandas 1.0 introduced .cat but .values is older
         is_ordered = X_col.ordered
         pd_categories = X_col.categories.values.astype(dtype=np.str_, copy=False)
         X_col = X_col.codes
@@ -962,6 +966,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             nonmissings = X_col.notna().values
             X_col = X_col.dropna()
         X_col = X_col.values
+        # if X_col is a special type like UInt64Dtype convert it to numpy
         X_col = X_col.astype(dtype=X_col.dtype.type, copy=False)
         return _process_ndarray(
             X_col, nonmissings, is_initial, feature_type, min_unique_continuous
@@ -981,12 +986,15 @@ def _process_sparse_column(X_col, is_initial, feature_type, min_unique_continuou
     nonmissings = None
     if X_col.dtype.type is np.object_:
         if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
-            # we can use it's function that checks for pd.NA, np.nan, and None
+            # pandas also has the pd.NA value that indicates missing. If Pandas is
+            # available we can use the pd.notna function that checks for
+            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+            # alternative (X_col == X_col) & (X_col != np.array(None)) below
             nonmissings = pd.notna(X_col)
         else:
             # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-            nonmissings = np.logical_and(X_col != _none_ndarray, X_col == X_col)
+            nonmissings = X_col == X_col
+            nonmissings &= X_col != _none_ndarray
 
         if nonmissings.all():
             nonmissings = None

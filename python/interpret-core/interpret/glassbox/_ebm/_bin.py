@@ -19,6 +19,10 @@ _slice_remove_last = slice(None, -1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+    # TODO: modify this function to do a single sweep of the term_features where
+    # we cache extracting the raw data from the dataframe and also cache the discretized
+    # values using a dict with keys (feature_index, id(feature_bins)).
+
     # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
 
     # This generator function returns data as the feature data within terms gets read.  Normally for
