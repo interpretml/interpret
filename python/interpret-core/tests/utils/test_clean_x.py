@@ -1451,6 +1451,20 @@ def test_unify_columns_pandas_categorical():
         X_check, np.array([[None], [None], [None], ["a"], ["bcd"], ["0"]], np.object_)
     )
 
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"a": 1, "0": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    pre.bins_[0]["new"] = 4
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [0], [1], [3], [2]], np.int64))
+
 
 def test_unify_columns_pandas_ordinal():
     X = pd.DataFrame()
@@ -1473,6 +1487,21 @@ def test_unify_columns_pandas_ordinal():
         X_check, np.array([[None], [None], [None], ["a"], ["bcd"], ["0"]], np.object_)
     )
 
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["ordinal"]
+
+    expected_bins = [{"a": 1, "0": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    del pre.bins_[0]["0"]
+    del pre.bins_[0]["bcd"]
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [0], [1], [2], [2]], np.int64))
+
 
 def test_unify_columns_pandas_categorical_unused():
     X = pd.DataFrame()
@@ -1494,6 +1523,190 @@ def test_unify_columns_pandas_categorical_unused():
     assert np.array_equal(
         X_check, np.array([[None], [None], [None], ["a"], ["bcd"]], np.object_)
     )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["ordinal"]
+
+    expected_bins = [{"a": 1, "0": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    del pre.bins_[0]["bcd"]
+    del pre.bins_[0]["0"]
+    X.iloc[0, 0] = "0"
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[2], [0], [0], [1], [2]], np.int64))
+
+
+def test_unify_columns_pandas_categorical_remap():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, "not_in_categories", "a", "bcd", "0"],
+        dtype=pd.CategoricalDtype(categories=["a", "0", "bcd"], ordered=True),
+    )
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["ordinal"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], [None], ["a"], ["bcd"], ["0"]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["ordinal"]
+
+    expected_bins = [{"a": 1, "0": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    del pre.bins_[0]["bcd"]
+    pre.bins_[0]["what"] = 3
+    pre.bins_[0]["0"] = 1
+    pre.bins_[0]["a"] = 2
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [0], [2], [4], [1]], np.int64))
+
+
+def test_unify_columns_extend_categories():
+    X = [[None], [np.nan], ["a"], ["bcd"], ["0"]]
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], ["a"], ["bcd"], ["0"]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"0": 1, "a": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    pre.bins_[0]["x"] = 4
+    X[0][0] = "new_thing"
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[5], [0], [2], [3], [1]], np.int64))
+
+
+def test_unify_columns_reduce_categories():
+    X = [[None], [np.nan], ["a"], ["bcd"], ["0"]]
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], ["a"], ["bcd"], ["0"]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"0": 1, "a": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    del pre.bins_[0]["bcd"]
+    X[0][0] = "new_thing"
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[3], [0], [2], [3], [1]], np.int64))
+
+
+def test_unify_columns_reduce_no_missing_categories():
+    X = [["a"], ["bcd"], ["0"]]
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(X_check, np.array([["a"], ["bcd"], ["0"]], np.object_))
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"0": 1, "a": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    del pre.bins_[0]["bcd"]
+    del pre.bins_[0]["a"]
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[2], [2], [1]], np.int64))
+
+
+def test_unify_columns_remap_categories():
+    X = [["a"], ["bcd"], ["0"]]
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(X_check, np.array([["a"], ["bcd"], ["0"]], np.object_))
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"0": 1, "a": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    pre.bins_[0]["bcd"] = 2
+    pre.bins_[0]["a"] = 3
+    X[0][0] = "new_thing"
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[4], [2], [1]], np.int64))
 
 
 def test_unify_feature_names_data_frame1():

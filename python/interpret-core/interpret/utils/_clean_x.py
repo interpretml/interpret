@@ -305,6 +305,7 @@ _repeat_float_types = repeat(_float_types)
 _repeat_all_int_types = repeat(_all_int_types)
 _repeat_uint_type = repeat(np.unsignedinteger)
 _repeat_ignore = repeat("ignore")
+_repeat_bools = repeat((bool, np.bool_))
 
 
 def _densify_object_ndarray(X_col):
@@ -316,11 +317,13 @@ def _densify_object_ndarray(X_col):
     # TODO: add special case handling if there is only 1 sample to make that faster
 
     types = set(map(type, X_col))
-    if len(types) == 1:
-        if str in types:
-            return X_col.astype(np.str_)
-        if bool in types:
-            return X_col.astype(np.bool_)
+
+    if len(types) == 1 and issubclass(next(iter(types)), str):
+        # this also works for np.str_
+        return X_col.astype(np.str_)
+
+    if all(map(issubclass, types, _repeat_bools)):
+        return X_col.astype(np.bool_)
 
     if all(map(issubclass, types, _repeat_all_int_types)):
         if all(map(issubclass, types, _repeat_uint_type)):
@@ -438,34 +441,46 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
         map(categories.get, uniques, repeat(-1)), np.int64, len(uniques)
     )
 
-    if nonmissings is False:
-        if len(mapping) <= len(categories):
-            mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
-            if np.array_equal(mapping, mapping_cmp):
-                # avoid overflows for np.int8
-                indexes = indexes.astype(np.int64, copy=False)
-                indexes += 1
-                return indexes
-        else:
-            mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
-            if np.array_equal(mapping[: len(mapping_cmp)], mapping_cmp):
-                # avoid overflows for np.int8
-                indexes = indexes.astype(np.int64, copy=False)
-                indexes += 1
-                indexes[len(categories) < indexes] = -1
-                return indexes
+    if len(mapping) <= len(categories):
+        mapping_cmp = np.arange(1, len(mapping) + 1, dtype=np.int64)
+        if np.array_equal(mapping, mapping_cmp):
+            # avoid overflows for np.int8
+            # We also need to make a copy because we could call categorical_encode
+            # multiple times for different terms and we would add one to the indexes.
+            indexes = indexes.astype(np.int64)
+            indexes += 1
+            if nonmissings is not None and nonmissings is not False:
+                indexes_tmp = np.zeros(len(nonmissings), np.int64)
+                np.place(indexes_tmp, nonmissings, indexes)
+                return indexes_tmp
+            return indexes
+    else:
+        mapping_cmp = np.arange(1, len(categories) + 1, dtype=np.int64)
+        if np.array_equal(mapping[: len(mapping_cmp)], mapping_cmp):
+            # avoid overflows for np.int8
+            # We also need to make a copy because we could call categorical_encode
+            # multiple times for different terms and we would add one to the indexes.
+            indexes = indexes.astype(np.int64)
+            indexes += 1
+            indexes[len(categories) < indexes] = -1
+            if nonmissings is not None and nonmissings is not False:
+                indexes_tmp = np.zeros(len(nonmissings), np.int64)
+                np.place(indexes_tmp, nonmissings, indexes)
+                return indexes_tmp
+            return indexes
 
+    if nonmissings is False:
         # missing values are -1 in indexes, so append 0 to the map, which is index -1
         return np.append(mapping, 0)[indexes]
 
     # indexes should be all positive and nonmissings defines the unseen values
-    encoded = mapping[indexes]
+    indexes = mapping[indexes]
     if nonmissings is not None:
-        encoded_tmp = np.zeros(len(nonmissings), np.int64)
-        np.place(encoded_tmp, nonmissings, encoded)
-        return encoded_tmp
+        indexes_tmp = np.zeros(len(nonmissings), np.int64)
+        np.place(indexes_tmp, nonmissings, indexes)
+        return indexes_tmp
 
-    return encoded
+    return indexes
 
 
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
