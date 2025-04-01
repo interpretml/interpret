@@ -2031,3 +2031,79 @@ def test_unify_columns_ma_objects():
     assert np.array_equal(
         binned, np.array([[0], [0], [1], [0], [0], [2], [0]], np.int64)
     )
+
+
+def test_unify_columns_ma_continuous():
+    X = ma.array(
+        [[np.nan], [None], [1], [2], [None], [3], [np.nan]],
+        mask=[[0], [1], [0], [1], [0], [0], [1]],
+        dtype=np.float64,
+    )
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["continuous"]
+    assert np.array_equal(
+        X_check,
+        np.array([[None], [None], [1.0], [None], [None], [3.0], [None]], np.object_),
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["continuous"]
+
+    expected_bins = [np.array([2.0], np.float64)]
+    compare_bins(pre.bins_, expected_bins)
+
+    binned = pre.transform(X)
+    assert np.array_equal(
+        binned, np.array([[0], [0], [1], [0], [0], [2], [0]], np.int64)
+    )
+
+
+def test_unify_columns_ma_objects_categorical():
+    X = ma.array(
+        [[np.nan], [None], [1], [2], [None], [3], [np.nan]],
+        mask=[[0], [1], [0], [1], [0], [0], [1]],
+        dtype=np.float64,
+    )
+
+    feature_names = None
+    feature_types = ["nominal"]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature_0000"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(
+        X_check,
+        np.array(
+            [[None], [None], ["1.0"], [None], [None], ["3.0"], [None]], np.object_
+        ),
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature_0000"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"1.0": 1, "3.0": 2}]
+    compare_bins(pre.bins_, expected_bins)
+
+    binned = pre.transform(X)
+    assert np.array_equal(
+        binned, np.array([[0], [0], [1], [0], [0], [2], [0]], np.int64)
+    )

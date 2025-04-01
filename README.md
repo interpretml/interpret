@@ -603,6 +603,7 @@ We also build on top of many great packages. Please check them out!
 
 - [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
 - [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
+- [Explainable Boosting Machine model in car insurance](https://www.addactis.com/blog/explainable-boosting-machine-model-car-insurance/)
 - [Enhancing Trust in Credit Risk Models: A Comparative Analysis of EBMs and GBMs](https://2os.medium.com/enhancing-trust-in-credit-risk-models-a-comparative-analysis-of-ebms-and-gbms-25e02810300f)
 - [Explainable AI: unlocking value in FEC operations](https://analytiqal.nl/2024/01/22/fec-value-from-explainable-ai/)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
