@@ -306,6 +306,7 @@ _repeat_all_int_types = repeat(_all_int_types)
 _repeat_uint_type = repeat(np.unsignedinteger)
 _repeat_ignore = repeat("ignore")
 _repeat_bools = repeat((bool, np.bool_))
+_repeat_negativeone = repeat(-1)
 
 
 def _densify_object_ndarray(X_col):
@@ -440,7 +441,7 @@ def _densify_object_ndarray(X_col):
 
 def categorical_encode(uniques, indexes, nonmissings, categories):
     mapping = np.fromiter(
-        map(categories.get, uniques, repeat(-1)), np.int64, len(uniques)
+        map(categories.get, uniques, _repeat_negativeone), np.int64, len(uniques)
     )
 
     n_cat = len(categories)
@@ -583,12 +584,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
         np.int64,
         len(uniques),
     )
-    indexes = mapping[indexes]
-    uniques = np.array(categories, np.str_)
-
-    categories = dict(zip(categories, count(1)))
-
-    return nonmissings, uniques, indexes
+    return nonmissings, np.array(categories, np.str_), mapping[indexes]
 
 
 def _encode_categorical_existing(X_col, nonmissings):
@@ -877,24 +873,32 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
 
         try:
+            processing_dict = dict(zip(processing, count()))
+
+            if len(processing) != len(processing_dict):
+                msg = "feature_types contains duplicate ordinal categories."
+                _log.error(msg)
+                raise Exception(msg)
+
             mapping = np.fromiter(
-                map(dict(zip(processing, count())).__getitem__, uniques),
+                map(processing_dict.__getitem__, uniques),
                 np.int64,
                 len(uniques),
             )
         except KeyError:
-            # TODO: we could instead capture the misbehaving
-            # strings and return them in the bad value array
-            # and then let the caller decide how to handle them.
+            # TODO: warn the user, but allow them to make unseen values
 
             msg = "X contains values outside of the ordinal set."
             _log.error(msg)
             raise Exception(msg)
 
-        indexes = mapping[indexes]
-        uniques = np.array(processing, np.str_)
-
-        return "ordinal", nonmissings, uniques, indexes, None
+        return (
+            "ordinal",
+            nonmissings,
+            np.array(processing, np.str_),
+            mapping[indexes],
+            None,
+        )
     msg = f"{processing} type invalid"
     _log.error(msg)
     raise TypeError(msg)
