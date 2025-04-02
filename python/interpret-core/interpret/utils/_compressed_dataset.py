@@ -55,6 +55,11 @@ def bin_native(
         X, n_samples, feature_names_in, feature_types_in, None, False, False
     )
     for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
+        feature_type = feature_types_in[feature_idx]
+        if feature_type == "ignore":
+            # TODO: exclude ignored features from the compressed dataset
+            raise Exception("ignored features not supported yet")
+
         _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 
         if isinstance(feature_bins, dict):
@@ -78,7 +83,7 @@ def bin_native(
             n_bins,
             np.count_nonzero(X_col) != len(X_col),
             bad is not None,
-            feature_types_in[feature_idx] == "nominal",
+            feature_type == "nominal",
             X_col,
         )
 
@@ -102,6 +107,11 @@ def bin_native(
         X, n_samples, feature_names_in, feature_types_in, None, False, False
     )
     for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
+        feature_type = feature_types_in[feature_idx]
+        if feature_type == "ignore":
+            # TODO: exclude ignored features from the compressed dataset
+            raise Exception("ignored features not supported yet")
+
         _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 
         if isinstance(feature_bins, dict):
@@ -126,7 +136,7 @@ def bin_native(
             n_bins,
             np.count_nonzero(X_col) != len(X_col),
             bad is not None,
-            feature_types_in[feature_idx] == "nominal",
+            feature_type == "nominal",
             X_col,
             dataset,
         )

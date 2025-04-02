@@ -49,11 +49,9 @@ def unify_data(
         False,
     )
     for feature_idx in range(len(feature_names_in)):
-        feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
-
-        feature_types_in[feature_idx] = feature_type_in
-        if X_col is None:
-            # feature_type is "ignore"
+        if feature_types is not None and feature_types[feature_idx] == "ignore":
+            # TODO: we should drop these columns instead of passing them to the dependent model
+            # since many models cannot handle missing values.
 
             if not missing_data_allowed:
                 msg = "X cannot contain missing values"
@@ -61,45 +59,50 @@ def unify_data(
                 raise ValueError(msg)
 
             X_unified[:, feature_idx] = np.nan
-        elif uniques is None:
-            # continuous feature
+            feature_types_in[feature_idx] = "ignore"
+        else:
+            feature_types_in[feature_idx], nonmissings, uniques, X_col, bad = get_col(
+                feature_idx
+            )
+            if uniques is None:
+                # continuous feature
 
-            if not missing_data_allowed and np.isnan(X_col).any():
-                msg = "X cannot contain missing values"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if bad is not None:
-                if not unseen_data_allowed:
-                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                if not missing_data_allowed and np.isnan(X_col).any():
+                    msg = "X cannot contain missing values"
                     _log.error(msg)
                     raise ValueError(msg)
-                X_col[bad] = None  # use None for unseen. np.nan is for missing
 
-            X_unified[:, feature_idx] = X_col
-        else:
-            # categorical feature
+                if bad is not None:
+                    if not unseen_data_allowed:
+                        msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    X_col[bad] = None  # use None for unseen. np.nan is for missing
 
-            categories = dict(zip(uniques, count(1)))
+                X_unified[:, feature_idx] = X_col
+            else:
+                # categorical feature
 
-            X_col = categorical_encode(uniques, X_col, nonmissings, categories)
+                categories = dict(zip(uniques, count(1)))
 
-            if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
-                msg = "X cannot contain missing values"
-                _log.error(msg)
-                raise ValueError(msg)
+                X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
-            if not unseen_data_allowed and (X_col == -1).any():
-                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                _log.error(msg)
-                raise ValueError(msg)
+                if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
+                    msg = "X cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-            mapping = np.empty(len(categories) + 2, np.object_)
-            mapping[0] = np.nan  # use np.nan for missing
-            mapping[-1] = None  # use None for unseen
-            for category, idx in categories.items():
-                mapping[idx] = category
+                if not unseen_data_allowed and (X_col == -1).any():
+                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-            X_unified[:, feature_idx] = mapping[X_col]
+                mapping = np.empty(len(categories) + 2, np.object_)
+                mapping[0] = np.nan  # use np.nan for missing
+                mapping[-1] = None  # use None for unseen
+                for category, idx in categories.items():
+                    mapping[idx] = category
+
+                X_unified[:, feature_idx] = mapping[X_col]
 
     return X_unified, feature_names_in, feature_types_in

@@ -443,9 +443,9 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
         map(categories.get, uniques, repeat(-1)), np.int64, len(uniques)
     )
 
-    if len(mapping) <= len(categories):
-        categories = np.arange(1, len(mapping) + 1, dtype=np.int64)
-        if np.array_equal(mapping, categories):
+    n_cat = len(categories)
+    if len(mapping) <= n_cat:
+        if np.array_equal(mapping, np.arange(1, len(mapping) + 1, dtype=np.int64)):
             # avoid overflows for np.int8
             #
             # We also need to make a copy because we could call categorical_encode
@@ -463,8 +463,7 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             np.place(indexes_tmp, nonmissings, indexes)
             return indexes_tmp
     else:
-        categories = np.arange(1, len(categories) + 1, dtype=np.int64)
-        if np.array_equal(mapping[: len(categories)], categories):
+        if np.array_equal(mapping[:n_cat], np.arange(1, n_cat + 1, dtype=np.int64)):
             # avoid overflows for np.int8
             #
             # We also need to make a copy because we could call categorical_encode
@@ -474,7 +473,7 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
 
             indexes = indexes.astype(np.int64)
             indexes += 1
-            indexes[len(categories) < indexes] = -1
+            indexes[n_cat < indexes] = -1
 
             if nonmissings is None or nonmissings is False:
                 return indexes
@@ -615,8 +614,12 @@ def _encode_categorical_existing(X_col, nonmissings):
             _densify_object_ndarray(X_col), return_inverse=True
         )
         if issubclass(uniques.dtype.type, np.floating):
-            # convert all non-float64 floats to float64 to standardize strings.
-            uniques = uniques.astype(np.float64, copy=False)
+            # Convert all non-float64 floats to float64 to ensure consistent strings.
+            return (
+                nonmissings,
+                uniques.astype(np.float64, copy=False).astype(np.str_),
+                indexes,
+            )
         return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
     uniques, indexes = np.unique(X_col, return_inverse=True)
@@ -711,12 +714,14 @@ def _process_continuous(X_col, nonmissings):
         if nonmissings is None:
             # force C contiguous here for a later call to native.discretize
             return X_col.astype(np.float64, "C", copy=False), None
+
         X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
         np.place(X_col_tmp, nonmissings, X_col.astype(np.float64, copy=False))
         return X_col_tmp, None
     if issubclass(tt, _intbool_types):
         if nonmissings is None:
             return X_col.astype(np.float64), None
+
         X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
         np.place(X_col_tmp, nonmissings, X_col.astype(np.float64))
         return X_col_tmp, None
@@ -725,6 +730,7 @@ def _process_continuous(X_col, nonmissings):
     try:
         if nonmissings is None:
             return X_col.astype(np.float64), None
+
         X_col = X_col.astype(np.float64)
         X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
         np.place(X_col_tmp, nonmissings, X_col)
@@ -788,6 +794,10 @@ def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_cont
         return None, *_encode_categorical_existing(X_col, nonmissings), None
     if processing == "ordinal":
         if is_initial:
+            warn(
+                "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
+            )
+
             # called under: fit
             # if the caller passes "ordinal" during fit, the only order that makes sense is either
             # alphabetical or based on float values. Frequency doesn't make sense
@@ -1006,22 +1016,22 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
                 ),
                 None,
             )
-        else:
-            # called under: predict
-            if feature_type != "ordinal" and feature_type != "nominal":
-                # TODO: we could convert the categories to strings and then process them
 
-                msg = "continuous type invalid for pandas.CategoricalDtype"
-                _log.error(msg)
-                raise ValueError(msg)
+        # called under: predict
+        if feature_type != "ordinal" and feature_type != "nominal":
+            # TODO: we could convert the categories to strings and then process them
 
-            return (
-                None,
-                False,
-                X_col.categories.values.astype(np.str_, copy=False),
-                X_col.codes,
-                None,
-            )
+            msg = "continuous type invalid for pandas.CategoricalDtype"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        return (
+            None,
+            False,
+            X_col.categories.values.astype(np.str_, copy=False),
+            X_col.codes,
+            None,
+        )
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         if X_col.hasnans:
@@ -1154,12 +1164,6 @@ def unify_columns(
     is_initial,
     go_fast,
 ):
-    # TODO: modify our callers the EBMPreprocessor and unify_data and the ebm.fit and predict functions
-    # to never pass "ignore" feature_types into requests.  Then we can delete all the places
-    # that we have if feature_type == "ignore" below.  EBMPreprocessor and unify_data will simply drop
-    # any columns that are ignored so they'll return a modified shape.
-    # We can also get rid of the "if X_col is None" in our callers.
-
     # preclean_X is always called on X prior to calling this function
 
     # unify_feature_names is always called on feature_names_in prior to calling this function
@@ -1220,16 +1224,12 @@ def unify_columns(
             else:
 
                 def internal(feature_idx):
-                    feature_type = feature_types[feature_idx]
-                    if feature_type == "ignore":
-                        return "ignore", None, None, None, None
-                    else:
-                        return _process_numpy_column(
-                            X[:, feature_idx],
-                            is_initial,
-                            feature_type,
-                            min_unique_continuous,
-                        )
+                    return _process_numpy_column(
+                        X[:, feature_idx],
+                        is_initial,
+                        feature_types[feature_idx],
+                        min_unique_continuous,
+                    )
 
                 return internal
         else:
@@ -1256,16 +1256,12 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(keep_cols), dtype=np.int64))
 
             def internal(feature_idx):
-                feature_type = feature_types[feature_idx]
-                if feature_type == "ignore":
-                    return "ignore", None, None, None, None
-                else:
-                    return _process_numpy_column(
-                        X[:, col_map[feature_idx]],
-                        is_initial,
-                        feature_type,
-                        min_unique_continuous,
-                    )
+                return _process_numpy_column(
+                    X[:, col_map[feature_idx]],
+                    is_initial,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
+                )
 
             return internal
     elif _pandas_installed and isinstance(X, pd.DataFrame):
@@ -1332,16 +1328,12 @@ def unify_columns(
                     warn("Extra columns present in X that are not used by the model.")
 
                 def internal(feature_idx):
-                    feature_type = feature_types[feature_idx]
-                    if feature_type == "ignore":
-                        return "ignore", None, None, None, None
-                    else:
-                        return _process_pandas_column(
-                            X[mapping[feature_names_in[feature_idx]]],
-                            is_initial,
-                            feature_type,
-                            min_unique_continuous,
-                        )
+                    return _process_pandas_column(
+                        X[mapping[feature_names_in[feature_idx]]],
+                        is_initial,
+                        feature_types[feature_idx],
+                        min_unique_continuous,
+                    )
 
                 return internal
             else:
@@ -1352,16 +1344,12 @@ def unify_columns(
                     )
 
                     def internal(feature_idx):
-                        feature_type = feature_types[feature_idx]
-                        if feature_type == "ignore":
-                            return "ignore", None, None, None, None
-                        else:
-                            return _process_pandas_column(
-                                X[:, feature_idx],
-                                is_initial,
-                                feature_type,
-                                min_unique_continuous,
-                            )
+                        return _process_pandas_column(
+                            X[:, feature_idx],
+                            is_initial,
+                            feature_types[feature_idx],
+                            min_unique_continuous,
+                        )
 
                     return internal
                 else:
@@ -1385,16 +1373,12 @@ def unify_columns(
                     )
 
                     def internal(feature_idx):
-                        feature_type = feature_types[feature_idx]
-                        if feature_type == "ignore":
-                            return "ignore", None, None, None, None
-                        else:
-                            return _process_pandas_column(
-                                X[:, col_map[feature_idx]],
-                                is_initial,
-                                feature_type,
-                                min_unique_continuous,
-                            )
+                        return _process_pandas_column(
+                            X[:, col_map[feature_idx]],
+                            is_initial,
+                            feature_types[feature_idx],
+                            min_unique_continuous,
+                        )
 
                     return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
@@ -1419,16 +1403,12 @@ def unify_columns(
             else:
 
                 def internal(feature_idx):
-                    feature_type = feature_types[feature_idx]
-                    if feature_type == "ignore":
-                        return "ignore", None, None, None, None
-                    else:
-                        return _process_sparse_column(
-                            X[:, (feature_idx,)],
-                            is_initial,
-                            feature_type,
-                            min_unique_continuous,
-                        )
+                    return _process_sparse_column(
+                        X[:, (feature_idx,)],
+                        is_initial,
+                        feature_types[feature_idx],
+                        min_unique_continuous,
+                    )
 
                 return internal
         else:
@@ -1453,16 +1433,12 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
             def internal(feature_idx):
-                feature_type = feature_types[feature_idx]
-                if feature_type == "ignore":
-                    return "ignore", None, None, None, None
-                else:
-                    return _process_sparse_column(
-                        X[:, (col_map[feature_idx],)],
-                        is_initial,
-                        feature_type,
-                        min_unique_continuous,
-                    )
+                return _process_sparse_column(
+                    X[:, (col_map[feature_idx],)],
+                    is_initial,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
+                )
 
             return internal
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
@@ -1480,16 +1456,12 @@ def unify_columns(
             else:
 
                 def internal(feature_idx):
-                    feature_type = feature_types[feature_idx]
-                    if feature_type == "ignore":
-                        return "ignore", None, None, None, None
-                    else:
-                        return _process_sparse_column(
-                            X.getcol(feature_idx),
-                            is_initial,
-                            feature_type,
-                            min_unique_continuous,
-                        )
+                    return _process_sparse_column(
+                        X.getcol(feature_idx),
+                        is_initial,
+                        feature_types[feature_idx],
+                        min_unique_continuous,
+                    )
 
                 return internal
         else:
@@ -1514,16 +1486,12 @@ def unify_columns(
             np.place(col_map, keep_cols, np.arange(len(feature_types), dtype=np.int64))
 
             def internal(feature_idx):
-                feature_type = feature_types[feature_idx]
-                if feature_type == "ignore":
-                    return "ignore", None, None, None, None
-                else:
-                    return _process_sparse_column(
-                        X.getcol(col_map[feature_idx]),
-                        is_initial,
-                        feature_type,
-                        min_unique_continuous,
-                    )
+                return _process_sparse_column(
+                    X.getcol(col_map[feature_idx]),
+                    is_initial,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
+                )
 
             return internal
     elif _pandas_installed and isinstance(X, pd.Series):
@@ -1560,32 +1528,26 @@ def unify_columns(
         else:
 
             def internal(feature_idx):
-                feature_type = feature_types[feature_idx]
-                if feature_type == "ignore":
-                    return "ignore", None, None, None, None
+                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
+                    X[feature_names_in[feature_idx]],
+                    is_initial,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
+                )
+
+                # unlike other datasets, dict must be checked for content length
+                if nonmissings is None or nonmissings is False:
+                    if n_samples != len(X_col):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
                 else:
-                    feature_type, nonmissings, uniques, X_col, bad = (
-                        _process_dict_column(
-                            X[feature_names_in[feature_idx]],
-                            is_initial,
-                            feature_type,
-                            min_unique_continuous,
-                        )
-                    )
+                    if n_samples != len(nonmissings):
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
 
-                    # unlike other datasets, dict must be checked for content length
-                    if nonmissings is None or nonmissings is False:
-                        if n_samples != len(X_col):
-                            msg = "The columns of X are mismatched in the number of of samples"
-                            _log.error(msg)
-                            raise ValueError(msg)
-                    else:
-                        if n_samples != len(nonmissings):
-                            msg = "The columns of X are mismatched in the number of of samples"
-                            _log.error(msg)
-                            raise ValueError(msg)
-
-                    return feature_type, nonmissings, uniques, X_col, bad
+                return feature_type, nonmissings, uniques, X_col, bad
 
             return internal
     else:

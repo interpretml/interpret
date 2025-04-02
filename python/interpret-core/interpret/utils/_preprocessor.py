@@ -279,199 +279,205 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             False,
         )
         for feature_idx in range(n_features):
-            feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
-
-            max_bins = self.max_bins  # TODO: in the future allow this to be per-feature
-            if max_bins < 3:
-                msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
-                raise ValueError(msg)
-
-            feature_types_in[feature_idx] = feature_type_in
             feature_type_given = (
                 None if self.feature_types is None else self.feature_types[feature_idx]
             )
-            if X_col is None:
-                # feature_type is "ignore"
+            if feature_type_given == "ignore":
+                feature_type_in = "ignore"
+            else:
+                feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 
-                feature_bin_weights = None
-            elif uniques is None:
-                # continuous feature
-
-                if bad is not None:
-                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                    _log.error(msg)
+                # TODO: in the future allow this to be per-feature
+                max_bins = self.max_bins
+                if max_bins < 3:
+                    msg = f"max_bins was {max_bins}, but must be 3 or higher. One bin for missing, one bin for unseen, and one or more bins for the non-missing values."
                     raise ValueError(msg)
 
-                if self.binning == "private":
-                    if np.isnan(X_col).any():
-                        msg = "missing values in X not supported for private binning"
+                if uniques is None:
+                    # continuous feature
+
+                    if bad is not None:
+                        msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    if feature_type_given != "continuous":
-                        is_privacy_types_warning = True
+                    if self.binning == "private":
+                        if np.isnan(X_col).any():
+                            msg = (
+                                "missing values in X not supported for private binning"
+                            )
+                            _log.error(msg)
+                            raise ValueError(msg)
 
-                    min_feature_val = np.nan
-                    max_feature_val = np.nan
-                    if self.privacy_bounds is not None:
-                        if isinstance(self.privacy_bounds, dict):
-                            # TODO: check for names/indexes in the dict that are not
-                            # in feature_names_in_ or out of bounds, or duplicate
-                            # int vs names situations
-                            bounds = self.privacy_bounds.get(feature_idx, None)
-                            if bounds is None:
-                                feature_name = feature_names_in[feature_idx]
-                                bounds = self.privacy_bounds.get(feature_name, None)
+                        if feature_type_given != "continuous":
+                            is_privacy_types_warning = True
 
-                            if bounds is not None:
+                        min_feature_val = np.nan
+                        max_feature_val = np.nan
+                        if self.privacy_bounds is not None:
+                            if isinstance(self.privacy_bounds, dict):
+                                # TODO: check for names/indexes in the dict that are not
+                                # in feature_names_in_ or out of bounds, or duplicate
+                                # int vs names situations
+                                bounds = self.privacy_bounds.get(feature_idx, None)
+                                if bounds is None:
+                                    feature_name = feature_names_in[feature_idx]
+                                    bounds = self.privacy_bounds.get(feature_name, None)
+
+                                if bounds is not None:
+                                    min_feature_val = bounds[0]
+                                    max_feature_val = bounds[1]
+                            else:
+                                # TODO: do some sanity checking on the shape of privacy_bounds
+                                bounds = self.privacy_bounds[feature_idx]
                                 min_feature_val = bounds[0]
                                 max_feature_val = bounds[1]
-                        else:
-                            # TODO: do some sanity checking on the shape of privacy_bounds
-                            bounds = self.privacy_bounds[feature_idx]
-                            min_feature_val = bounds[0]
-                            max_feature_val = bounds[1]
 
-                    if math.isnan(min_feature_val):
-                        is_privacy_bounds_warning = True
+                        if math.isnan(min_feature_val):
+                            is_privacy_bounds_warning = True
+                            min_feature_val = np.nanmin(X_col)
+
+                        if math.isnan(max_feature_val):
+                            is_privacy_bounds_warning = True
+                            max_feature_val = np.nanmax(X_col)
+
+                        # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
+                        #       It's not a big deal since it doesn't cause an error, and I don't want to
+                        #       change the results right now, but clean this up eventually
+                        cuts, feature_bin_weights = private_numeric_binning(
+                            X_col,
+                            sample_weight,
+                            noise_scale,
+                            max_bins - 1,
+                            min_feature_val,
+                            max_feature_val,
+                            rng,
+                        )
+                        feature_bin_weights.append(0)
+                        feature_bin_weights = np.array(feature_bin_weights, np.float64)
+                    else:
                         min_feature_val = np.nanmin(X_col)
-
-                    if math.isnan(max_feature_val):
-                        is_privacy_bounds_warning = True
                         max_feature_val = np.nanmax(X_col)
+                        cuts = _cut_continuous(
+                            native,
+                            X_col,
+                            feature_type_given,
+                            self.binning,
+                            max_bins,
+                            self.min_samples_bin,
+                        )
+                        bin_indexes = native.discretize(X_col, cuts)
+                        feature_bin_weights = np.bincount(
+                            bin_indexes, weights=sample_weight, minlength=len(cuts) + 3
+                        )
+                        feature_bin_weights = feature_bin_weights.astype(
+                            np.float64, copy=False
+                        )
 
-                    # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
-                    #       It's not a big deal since it doesn't cause an error, and I don't want to
-                    #       change the results right now, but clean this up eventually
-                    cuts, feature_bin_weights = private_numeric_binning(
-                        X_col,
-                        sample_weight,
-                        noise_scale,
-                        max_bins - 1,
-                        min_feature_val,
-                        max_feature_val,
-                        rng,
-                    )
-                    feature_bin_weights.append(0)
-                    feature_bin_weights = np.array(feature_bin_weights, np.float64)
+                        n_cuts = native.get_histogram_cut_count(X_col)
+                        histogram_cuts = native.cut_uniform(X_col, n_cuts)
+                        bin_indexes = native.discretize(X_col, histogram_cuts)
+                        feature_histogram_weights = np.bincount(
+                            bin_indexes,
+                            weights=sample_weight,
+                            minlength=len(histogram_cuts) + 3,
+                        )
+                        feature_histogram_weights = feature_histogram_weights.astype(
+                            np.float64, copy=False
+                        )
+
+                        histogram_weights[feature_idx] = feature_histogram_weights
+
+                        n_missing = len(X_col)
+                        X_col = X_col[~np.isnan(X_col)]
+                        n_missing = n_missing - len(X_col)
+                        missing_val_counts[feature_idx] = n_missing
+                        unique_val_counts[feature_idx] = len(np.unique(X_col))
+
+                    bins[feature_idx] = cuts
+                    feature_bounds[(feature_idx, 0)] = min_feature_val
+                    feature_bounds[(feature_idx, 1)] = max_feature_val
                 else:
-                    min_feature_val = np.nanmin(X_col)
-                    max_feature_val = np.nanmax(X_col)
-                    cuts = _cut_continuous(
-                        native,
-                        X_col,
-                        feature_type_given,
-                        self.binning,
-                        max_bins,
-                        self.min_samples_bin,
-                    )
-                    bin_indexes = native.discretize(X_col, cuts)
-                    feature_bin_weights = np.bincount(
-                        bin_indexes, weights=sample_weight, minlength=len(cuts) + 3
-                    )
-                    feature_bin_weights = feature_bin_weights.astype(
-                        np.float64, copy=False
-                    )
+                    # categorical feature
 
-                    n_cuts = native.get_histogram_cut_count(X_col)
-                    histogram_cuts = native.cut_uniform(X_col, n_cuts)
-                    bin_indexes = native.discretize(X_col, histogram_cuts)
-                    feature_histogram_weights = np.bincount(
-                        bin_indexes,
-                        weights=sample_weight,
-                        minlength=len(histogram_cuts) + 3,
-                    )
-                    feature_histogram_weights = feature_histogram_weights.astype(
-                        np.float64, copy=False
-                    )
+                    categories = dict(zip(uniques, count(1)))
 
-                    histogram_weights[feature_idx] = feature_histogram_weights
+                    X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
-                    n_missing = len(X_col)
-                    X_col = X_col[~np.isnan(X_col)]
-                    n_missing = n_missing - len(X_col)
-                    missing_val_counts[feature_idx] = n_missing
-                    unique_val_counts[feature_idx] = len(np.unique(X_col))
-
-                bins[feature_idx] = cuts
-                feature_bounds[(feature_idx, 0)] = min_feature_val
-                feature_bounds[(feature_idx, 1)] = max_feature_val
-            else:
-                # categorical feature
-
-                categories = dict(zip(uniques, count(1)))
-
-                X_col = categorical_encode(uniques, X_col, nonmissings, categories)
-
-                if (X_col == -1).any():
-                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                if self.binning == "private":
-                    if np.count_nonzero(X_col) != len(X_col):
-                        msg = "missing values in X not supported for private binning"
+                    if (X_col == -1).any():
+                        msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    if feature_type_given is None:
-                        # if auto-detected then we need to show a privacy warning
-                        is_privacy_types_warning = True
+                    if self.binning == "private":
+                        if np.count_nonzero(X_col) != len(X_col):
+                            msg = (
+                                "missing values in X not supported for private binning"
+                            )
+                            _log.error(msg)
+                            raise ValueError(msg)
 
-                    # TODO: clean up this hack that uses strings of the indexes
-                    # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
-                    #       It's not a big deal since it doesn't cause an error, and I don't want to
-                    #       change the results right now, but clean this up eventually
-                    keep_bins, old_feature_bin_weights = private_categorical_binning(
-                        X_col, sample_weight, noise_scale, max_bins - 1, rng
-                    )
-                    unseen_weight = 0
-                    if keep_bins[-1] == "DPOther":
-                        unseen_weight = old_feature_bin_weights[-1]
-                        keep_bins = keep_bins[:-1]
-                        old_feature_bin_weights = old_feature_bin_weights[:-1]
+                        if feature_type_given is None:
+                            # if auto-detected then we need to show a privacy warning
+                            is_privacy_types_warning = True
 
-                    keep_bins = keep_bins.astype(np.int64)
-                    keep_bins = dict(zip(keep_bins, old_feature_bin_weights))
+                        # TODO: clean up this hack that uses strings of the indexes
+                        # TODO: instead of passing in "max_bins - 1" should we be passing in "max_bins - 2"?
+                        #       It's not a big deal since it doesn't cause an error, and I don't want to
+                        #       change the results right now, but clean this up eventually
+                        keep_bins, old_feature_bin_weights = (
+                            private_categorical_binning(
+                                X_col, sample_weight, noise_scale, max_bins - 1, rng
+                            )
+                        )
+                        unseen_weight = 0
+                        if keep_bins[-1] == "DPOther":
+                            unseen_weight = old_feature_bin_weights[-1]
+                            keep_bins = keep_bins[:-1]
+                            old_feature_bin_weights = old_feature_bin_weights[:-1]
 
-                    feature_bin_weights = np.empty(len(keep_bins) + 2, np.float64)
-                    feature_bin_weights[0] = 0
-                    feature_bin_weights[-1] = unseen_weight
+                        keep_bins = keep_bins.astype(np.int64)
+                        keep_bins = dict(zip(keep_bins, old_feature_bin_weights))
 
-                    categories = list(map(tuple, map(reversed, categories.items())))
-                    categories.sort()  # groupby requires sorted data
+                        feature_bin_weights = np.empty(len(keep_bins) + 2, np.float64)
+                        feature_bin_weights[0] = 0
+                        feature_bin_weights[-1] = unseen_weight
 
-                    new_categories = {}
-                    new_idx = 1
-                    for idx, category_iter in groupby(categories, lambda x: x[0]):
-                        bin_weight = keep_bins.get(idx, None)
-                        if bin_weight is not None:
-                            feature_bin_weights[new_idx] = bin_weight
-                            for _, category in category_iter:
-                                new_categories[category] = new_idx
-                            new_idx += 1
+                        categories = list(map(tuple, map(reversed, categories.items())))
+                        categories.sort()  # groupby requires sorted data
 
-                    categories = new_categories
-                else:
-                    n_unique_indexes = (
-                        0 if len(categories) == 0 else max(categories.values())
-                    )
-                    feature_bin_weights = np.bincount(
-                        X_col, weights=sample_weight, minlength=n_unique_indexes + 2
-                    )
-                    feature_bin_weights = feature_bin_weights.astype(
-                        np.float64, copy=False
-                    )
+                        new_categories = {}
+                        new_idx = 1
+                        for idx, category_iter in groupby(categories, lambda x: x[0]):
+                            bin_weight = keep_bins.get(idx, None)
+                            if bin_weight is not None:
+                                feature_bin_weights[new_idx] = bin_weight
+                                for _, category in category_iter:
+                                    new_categories[category] = new_idx
+                                new_idx += 1
 
-                    # for categoricals histograms and bin weights are the same
-                    histogram_weights[feature_idx] = feature_bin_weights
+                        categories = new_categories
+                    else:
+                        n_unique_indexes = (
+                            0 if len(categories) == 0 else max(categories.values())
+                        )
+                        feature_bin_weights = np.bincount(
+                            X_col, weights=sample_weight, minlength=n_unique_indexes + 2
+                        )
+                        feature_bin_weights = feature_bin_weights.astype(
+                            np.float64, copy=False
+                        )
 
-                    missing_val_counts[feature_idx] = len(X_col) - np.count_nonzero(
-                        X_col
-                    )
-                    unique_val_counts[feature_idx] = len(categories)
-                bins[feature_idx] = categories
-            bin_weights[feature_idx] = feature_bin_weights
+                        # for categoricals histograms and bin weights are the same
+                        histogram_weights[feature_idx] = feature_bin_weights
+
+                        missing_val_counts[feature_idx] = len(X_col) - np.count_nonzero(
+                            X_col
+                        )
+                        unique_val_counts[feature_idx] = len(categories)
+                    bins[feature_idx] = categories
+                bin_weights[feature_idx] = feature_bin_weights
+            feature_types_in[feature_idx] = feature_type_in
 
         if is_privacy_bounds_warning:
             warn(
@@ -526,25 +532,28 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 False,
             )
             for feature_idx, bins in enumerate(self.bins_):
-                _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+                if self.feature_types_in_[feature_idx] == "ignore":
+                    # TODO: strip any ignored columns and drop them from being transformed
+                    # since callers do not need a column of missing values
 
-                if X_col is None:
-                    # feature_type is "ignore"
-
-                    X_col = np.zeros(n_samples, np.int64)
-                elif isinstance(bins, dict):
-                    # categorical feature
-
-                    X_col = categorical_encode(uniques, X_col, nonmissings, bins)
-
-                    X_col[X_col == -1] = 1 if len(bins) == 0 else max(bins.values()) + 1
+                    X_col = 0
                 else:
-                    # continuous feature
+                    _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+                    if isinstance(bins, dict):
+                        # categorical feature
 
-                    X_col = native.discretize(X_col, bins)
+                        X_col = categorical_encode(uniques, X_col, nonmissings, bins)
 
-                    if bad is not None:
-                        X_col[bad] = len(bins) + 1
+                        X_col[X_col == -1] = (
+                            1 if len(bins) == 0 else max(bins.values()) + 1
+                        )
+                    else:
+                        # continuous feature
+
+                        X_col = native.discretize(X_col, bins)
+
+                        if bad is not None:
+                            X_col[bad] = len(bins) + 1
 
                 X_binned[:, feature_idx] = X_col
 
