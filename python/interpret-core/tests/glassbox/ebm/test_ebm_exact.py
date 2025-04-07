@@ -44,7 +44,7 @@ def test_identical_ebm():
                 if 0 <= n_classes
                 else ExplainableBoostingRegressor
             )
-            ebm = ebm_type(names, types, random_state=seed)
+            ebm = ebm_type(names, types, random_state=seed, max_rounds=15000, early_stopping_rounds=0)
             ebm.fit(X, y)
 
             n_rounds += sum(ebm.best_iteration_.ravel())
@@ -56,11 +56,11 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = -3454780.7070280765
+    expected = -154135431.2628078
 
+    print(n_rounds)
+    print(interactions)
     if fingerprint != expected:
-        print(n_rounds)
-        print(interactions)
         assert fingerprint == expected
 
     set_option("acceleration", original)
