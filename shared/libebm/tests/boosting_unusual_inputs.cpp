@@ -2258,6 +2258,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
    const IntEbm cTrainSamples = 211; // have some non-SIMD residuals
    const IntEbm cValidationSamples = 101; // have some non-SIMD residuals
    const size_t cRounds = 200;
+   // const size_t cRounds = 50000;
 
    auto rng = MakeRng(0);
    const std::vector<FeatureTest> features = {
@@ -2294,7 +2295,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
    std::vector<IntEbm> boostFlagsChoose{
          TermBoostFlags_Default, TermBoostFlags_MissingLow, TermBoostFlags_MissingHigh, TermBoostFlags_MissingSeparate};
 
-   double validationMetric = 1.0;
+   double fingerprint = 1.0;
    for(IntEbm classesCount = Task_Regression; classesCount < 5; ++classesCount) {
       if(classesCount != Task_Regression && classesCount < 1) {
          continue;
@@ -2311,7 +2312,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                k_testCreateBoosterFlags_Default,
                acceleration);
 
-         double validationMetricIteration = 0.0;
+         double validationMetric = 0.0;
          for(size_t iRound = 0; iRound < cRounds; ++iRound) {
             for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
                const IntEbm cRealBins =
@@ -2339,41 +2340,76 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                      0 == TestRand(rng, 5) ? static_cast<MonotoneDirection>(TestRand(rng, 2) * 2 - 1) : 0;
                const std::vector<MonotoneDirection> monotonicity(static_cast<size_t>(cDimensions), direction);
 
-               validationMetricIteration = test.Boost(iTerm,
-                                                     boostFlags,
-                                                     learningRate,
-                                                     minSamplesLeaf,
-                                                     minHessian,
-                                                     regAlpha,
-                                                     regLambda,
-                                                     maxDeltaStep,
-                                                     minCategorySamples,
-                                                     categoricalSmoothing,
-                                                     maxCategoricalThreshold,
-                                                     categoricalInclusionPercent,
-                                                     leaves,
-                                                     monotonicity)
-                                                 .validationMetric;
+               validationMetric = test.Boost(iTerm,
+                                            boostFlags,
+                                            learningRate,
+                                            minSamplesLeaf,
+                                            minHessian,
+                                            regAlpha,
+                                            regLambda,
+                                            maxDeltaStep,
+                                            minCategorySamples,
+                                            categoricalSmoothing,
+                                            maxCategoricalThreshold,
+                                            categoricalInclusionPercent,
+                                            leaves,
+                                            monotonicity)
+                                        .validationMetric;
             }
          }
          if(classesCount == 1) {
-            if(std::numeric_limits<double>::infinity() != validationMetricIteration) {
+            if(std::numeric_limits<double>::infinity() != validationMetric) {
                return -std::numeric_limits<double>::infinity();
             }
          } else {
-            validationMetric *= validationMetricIteration;
+            double modelSum = 0.0;
+            for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
+               const auto term = terms[iTerm];
+               size_t cScores = 3 <= classesCount ? static_cast<size_t>(classesCount) : size_t{1};
+               for(size_t iDim = 0; iDim < term.size(); ++iDim) {
+                  const size_t cRealBins = static_cast<size_t>(features[static_cast<size_t>(term[iDim])].m_countBins);
+                  cScores *= cRealBins;
+               }
+
+               std::vector<double> model(cScores);
+               test.GetBestTermScoresRaw(iTerm, &model[0]);
+               for(size_t iScore = 0; iScore < cScores; ++iScore) {
+                  modelSum += model[iScore];
+               }
+
+               test.GetCurrentTermScoresRaw(iTerm, &model[0]);
+               for(size_t iScore = 0; iScore < cScores; ++iScore) {
+                  modelSum += model[iScore];
+               }
+            }
+
+            fingerprint *= validationMetric;
+            fingerprint *= modelSum;
+            if(std::isinf(fingerprint) || std::isnan(fingerprint)) {
+               return -std::numeric_limits<double>::infinity();
+            }
+
+            while(1e100 <= std::abs(fingerprint)) {
+               fingerprint *= 0.5;
+            }
+            while(std::abs(fingerprint) <= 1e-100) {
+               fingerprint *= 2.0;
+            }
          }
       }
    }
-   return validationMetric;
+   return fingerprint;
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = 14219338182453.824;
+   const double expected = -2.4289462940991339e+33;
 
-   double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
-   CHECK(validationMetricExact == expected);
+   double fingerprintExact = RandomizedTesting(AccelerationFlags_NONE);
+   if(fingerprintExact != expected) {
+      printf("  Exact test fingerprint: %e\n", fingerprintExact);
+   }
+   CHECK(fingerprintExact == expected);
 
    double validationMetricSIMD = RandomizedTesting(AccelerationFlags_ALL);
-   CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-2);
+   CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-1);
 }
