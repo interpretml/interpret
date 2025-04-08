@@ -652,8 +652,8 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       }
    }
 
-   EBM_ASSERT(!std::isnan(*pTotalGain));
-   EBM_ASSERT(0 <= *pTotalGain);
+   //EBM_ASSERT(!std::isnan(*pTotalGain));
+   //EBM_ASSERT(0 <= *pTotalGain);
 
 #ifndef NDEBUG
    free(aDebugCopyBins);

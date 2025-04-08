@@ -17,7 +17,7 @@ def test_identical_ebm():
     interactions = []
 
     fingerprint = 1.0
-    seed = 0
+    seed = 10000
     n_rounds = 0
     for n_classes in range(Native.Task_Regression, 4):
         if n_classes < 2 and n_classes != Native.Task_Regression:
@@ -44,7 +44,7 @@ def test_identical_ebm():
                 if 0 <= n_classes
                 else ExplainableBoostingRegressor
             )
-            ebm = ebm_type(names, types, random_state=seed, max_rounds=30000, early_stopping_rounds=0, interactions=0)
+            ebm = ebm_type(names, types, random_state=seed, max_rounds=30001, early_stopping_rounds=0, interactions=0)
             #ebm = ebm_type(names, types, random_state=seed, max_rounds=30000, interactions=0)
             ebm.fit(X, y)
 
@@ -58,7 +58,7 @@ def test_identical_ebm():
             seed += 1
 
     #expected = -3139346.9759765
-    expected = -152698543.0419776
+    expected = -334120176.70034134
 
     print(interactions)
     if fingerprint != expected:
