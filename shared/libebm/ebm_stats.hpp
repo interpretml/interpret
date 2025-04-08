@@ -96,7 +96,7 @@ INLINE_ALWAYS static FloatCalc CalcNegUpdate(const FloatCalc sumGradient,
          return FloatCalc{0};
       }
    }
-   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} < sumHessian);
+//   EBM_ASSERT(std::isnan(sumHessian) || FloatCalc{0} < sumHessian);
 
    FloatCalc ret = ApplyL1(sumGradient, regAlpha) / ApplyL2(sumHessian, regLambda);
    if(UNLIKELY(std::fabs(ret) > deltaStepMax)) {

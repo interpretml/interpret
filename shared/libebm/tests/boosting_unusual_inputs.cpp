@@ -2363,7 +2363,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
          } else {
             double modelSum = 0.0;
             for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
-               const auto term = terms[iTerm];
+               const auto term = terms[static_cast<size_t>(iTerm)];
                size_t cScores = 3 <= classesCount ? static_cast<size_t>(classesCount) : size_t{1};
                for(size_t iDim = 0; iDim < term.size(); ++iDim) {
                   const size_t cRealBins = static_cast<size_t>(features[static_cast<size_t>(term[iDim])].m_countBins);
@@ -2371,12 +2371,12 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                }
 
                std::vector<double> model(cScores);
-               test.GetBestTermScoresRaw(iTerm, &model[0]);
+               test.GetBestTermScoresRaw(static_cast<size_t>(iTerm), &model[0]);
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   modelSum += model[iScore];
                }
 
-               test.GetCurrentTermScoresRaw(iTerm, &model[0]);
+               test.GetCurrentTermScoresRaw(static_cast<size_t>(iTerm), &model[0]);
                for(size_t iScore = 0; iScore < cScores; ++iScore) {
                   modelSum += model[iScore];
                }
