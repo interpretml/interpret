@@ -1476,69 +1476,69 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 term_features,
             )
 
-            if objective_code == Native.Objective_MonoClassification:
-                pass
-            elif objective_code == Native.Objective_Rmse:
-                correction = native.flat_mean(y - scores, sample_weight)
-                intercept += correction
-                bagged_intercept += correction
-            else:
-                exception, intercept_change, _, _, rng = boost(
-                    dataset,
-                    develop.get_option("n_intercept_rounds_final"),
-                    develop.get_option("intercept_learning_rate"),
-                    np.zeros(n_scores, np.float64),
-                    None,
-                    scores,
-                    [],
-                    0,
-                    term_boost_flags,
-                    self.learning_rate,
-                    0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    min_cat_samples,
-                    cat_smooth,
-                    missing,
-                    1,
-                    None,
-                    greedy_ratio,
-                    cyclic_progress,
-                    0,
-                    nominal_smoothing,
-                    0,
-                    0,
-                    early_stopping_tolerance,
-                    noise_scale_boosting,
-                    bin_data_weights,
-                    rng,
-                    (
-                        Native.CreateBoosterFlags_DifferentialPrivacy
-                        if is_differential_privacy
-                        else Native.CreateBoosterFlags_Default
-                    ),
-                    objective,
-                    Native.AccelerationFlags_NONE,
-                    None,
-                    develop._develop_options,
-                )
-                if exception is not None:
-                    raise exception
+            # if objective_code == Native.Objective_MonoClassification:
+            #     pass
+            # elif objective_code == Native.Objective_Rmse:
+            #     correction = native.flat_mean(y - scores, sample_weight)
+            #     intercept += correction
+            #     bagged_intercept += correction
+            # else:
+            #     exception, intercept_change, _, _, rng = boost(
+            #         dataset,
+            #         develop.get_option("n_intercept_rounds_final"),
+            #         develop.get_option("intercept_learning_rate"),
+            #         np.zeros(n_scores, np.float64),
+            #         None,
+            #         scores,
+            #         [],
+            #         0,
+            #         term_boost_flags,
+            #         self.learning_rate,
+            #         0,
+            #         0.0,
+            #         0.0,
+            #         0.0,
+            #         0.0,
+            #         1.0,
+            #         min_cat_samples,
+            #         cat_smooth,
+            #         missing,
+            #         1,
+            #         None,
+            #         greedy_ratio,
+            #         cyclic_progress,
+            #         0,
+            #         nominal_smoothing,
+            #         0,
+            #         0,
+            #         early_stopping_tolerance,
+            #         noise_scale_boosting,
+            #         bin_data_weights,
+            #         rng,
+            #         (
+            #             Native.CreateBoosterFlags_DifferentialPrivacy
+            #             if is_differential_privacy
+            #             else Native.CreateBoosterFlags_Default
+            #         ),
+            #         objective,
+            #         Native.AccelerationFlags_NONE,
+            #         None,
+            #         develop._develop_options,
+            #     )
+            #     if exception is not None:
+            #         raise exception
 
-                bagged_intercept += intercept_change
-                intercept += intercept_change
+            #     bagged_intercept += intercept_change
+            #     intercept += intercept_change
 
-                if bagged_intercept.ndim == 2:
-                    # multiclass
-                    # pick the class that we're going to zero
-                    zero_index = np.argmax(intercept)
-                    intercept -= intercept[zero_index]
-                    bagged_intercept -= np.expand_dims(
-                        bagged_intercept[..., zero_index], -1
-                    )
+            #     if bagged_intercept.ndim == 2:
+            #         # multiclass
+            #         # pick the class that we're going to zero
+            #         zero_index = np.argmax(intercept)
+            #         intercept -= intercept[zero_index]
+            #         bagged_intercept -= np.expand_dims(
+            #             bagged_intercept[..., zero_index], -1
+            #         )
         del dataset
 
         if n_classes < Native.Task_GeneralClassification:

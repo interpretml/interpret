@@ -13,6 +13,8 @@ from interpret.utils._native import Native
 def test_identical_ebm():
     original = get_option("acceleration")
     set_option("acceleration", 0)
+    set_option("n_intercept_rounds_initial", 0)
+    set_option("n_intercept_rounds_final", 0)
 
     interactions = []
 
@@ -56,7 +58,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = -334120176.70034134
+    expected = -276897159.85349244
 
     print(interactions)
     if fingerprint != expected:
