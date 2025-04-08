@@ -45,7 +45,6 @@ def test_identical_ebm():
                 else ExplainableBoostingRegressor
             )
             ebm = ebm_type(names, types, random_state=seed, max_rounds=30001, early_stopping_rounds=0, interactions=0)
-            #ebm = ebm_type(names, types, random_state=seed, max_rounds=30000, interactions=0)
             ebm.fit(X, y)
 
             n_rounds += sum(ebm.best_iteration_.ravel())
@@ -57,7 +56,6 @@ def test_identical_ebm():
 
             seed += 1
 
-    #expected = -3139346.9759765
     expected = -334120176.70034134
 
     print(interactions)

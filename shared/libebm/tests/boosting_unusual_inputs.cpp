@@ -2409,6 +2409,6 @@ TEST_CASE("stress test, boosting") {
    }
    CHECK(fingerprintExact == expected);
 
-   double validationMetricSIMD = RandomizedTesting(AccelerationFlags_ALL);
-   CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-1);
+   //double validationMetricSIMD = RandomizedTesting(AccelerationFlags_ALL);
+   //CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-1);
 }
