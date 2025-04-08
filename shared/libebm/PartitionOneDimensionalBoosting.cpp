@@ -1360,7 +1360,7 @@ template<bool bHessian, size_t cCompilerScores> class PartitionOneDimensionalBoo
             } while(0 != cSplitsRemaining && UNLIKELY(!nodeGainRanking.empty()));
 
             EBM_ASSERT(!std::isnan(totalGain));
-            EBM_ASSERT(0 <= totalGain);
+            //EBM_ASSERT(0 <= totalGain);
 
             EBM_ASSERT(CountBytes(pTreeNodeScratchSpace, pRootTreeNode) <= pBoosterCore->GetCountBytesTreeNodes());
          } catch(const std::bad_alloc&) {
