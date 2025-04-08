@@ -19,6 +19,7 @@ def test_identical_ebm():
     interactions = []
 
     fingerprint = 1.0
+    model_fingerprint = 1.0
     seed = 10000
     n_rounds = 0
     for n_classes in range(Native.Task_Regression, 4):
@@ -49,6 +50,22 @@ def test_identical_ebm():
             ebm = ebm_type(names, types, random_state=seed, max_rounds=30001, early_stopping_rounds=0, interactions=0)
             ebm.fit(X, y)
 
+            if isinstance(ebm.intercept_, float):
+                if ebm.intercept_ != 0:
+                    model_fingerprint *= ebm.intercept_
+            else:
+                for score in ebm.intercept_:
+                    if score != 0:
+                        model_fingerprint *= score
+            for term_scores in ebm.term_scores_:
+                for score in term_scores.ravel():
+                    if score != 0:
+                        model_fingerprint *= score
+                    while 1e100 <= abs(model_fingerprint):
+                        model_fingerprint *= 0.5
+                    while abs(model_fingerprint) <= 1e-100:
+                        model_fingerprint *= 2.0
+
             n_rounds += sum(ebm.best_iteration_.ravel())
 
             interactions.append(ebm.term_features_[ebm.n_features_in_ :])
@@ -59,8 +76,13 @@ def test_identical_ebm():
             seed += 1
 
     expected = -276897159.85349244
+    expected_model = -277224116080027.38
 
     print(interactions)
+
+    if model_fingerprint != expected_model:
+        assert model_fingerprint == expected_model
+
     if fingerprint != expected:
         assert fingerprint == str(expected) + " " + str(n_rounds)
 
