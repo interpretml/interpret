@@ -5,6 +5,7 @@ EXPORTS
   SetTraceLevel
   GetTraceLevelString
   CleanFloats
+  SafeSum
   SafeMean
   SafeStandardDeviation
   MeasureRNG
