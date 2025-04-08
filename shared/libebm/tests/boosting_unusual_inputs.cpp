@@ -2257,7 +2257,7 @@ TEST_CASE("missing category nominal, boosting, regression") {
 static double RandomizedTesting(const AccelerationFlags acceleration) {
    const IntEbm cTrainSamples = 211; // have some non-SIMD residuals
    const IntEbm cValidationSamples = 101; // have some non-SIMD residuals
-   const size_t cRounds = 200;
+   const size_t cRounds = 50000;
 
    auto rng = MakeRng(0);
    const std::vector<FeatureTest> features = {
@@ -2384,17 +2384,30 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
 
             fingerprint *= validationMetric;
             fingerprint *= modelSum;
+            if(std::isinf(fingerprint) || std::isnan(fingerprint)) {
+               return -std::numeric_limits<double>::infinity();
+            }
+
+            while(1e100 <= std::abs(fingerprint)) {
+               fingerprint *= 0.5;
+            }
+            while(std::abs(fingerprint) <= 1e-100) {
+               fingerprint *= 2.0;
+            }
          }
       }
    }
-   return fingerprint;
+    return fingerprint;
 }
 
 TEST_CASE("stress test, boosting") {
-   const double expected = -2.4289462940991339e+33;
+   const double expected = -1.0574093112799381e+68;
 
-   double validationMetricExact = RandomizedTesting(AccelerationFlags_NONE);
-   CHECK(validationMetricExact == expected);
+   double fingerprintExact = RandomizedTesting(AccelerationFlags_NONE);
+   if(fingerprintExact != expected) {
+      printf("  Exact test fingerprint: %e\n", fingerprintExact);
+   }
+   CHECK(fingerprintExact == expected);
 
    double validationMetricSIMD = RandomizedTesting(AccelerationFlags_ALL);
    CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-1);
