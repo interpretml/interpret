@@ -28,7 +28,7 @@ def test_identical_ebm():
 
 
 
-        if n_classes != -2:
+        if n_classes != 2:
             continue
 
 
@@ -83,7 +83,8 @@ def test_identical_ebm():
             seed += 1
 
     #expected = -276897159.85349244
-    expected = 241.3978094140813
+    #expected = 241.3978094140813  # regression
+    expected = 1125.5058112124595 # binary
     expected_model = -277224116080027.38
 
     print(interactions)
