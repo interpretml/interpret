@@ -685,6 +685,7 @@ We also build on top of many great packages. Please check them out!
 - [Multi-Objective Optimization of Performance and Interpretability of Tabular Supervised Machine Learning Models](https://arxiv.org/pdf/2307.08175v1.pdf)
 - [An explainable model to support the decision about the therapy protocol for AML](https://arxiv.org/pdf/2307.02631.pdf)
 - [Assessing wind field characteristics along the airport runway glide slope: an explainable boosting machine-assisted wind tunnel study](https://www.nature.com/articles/s41598-023-36495-5)
+- [Explainable Modeling for Wind Power Forecasting: A Glass-Box Approach with High Accuracy](https://arxiv.org/pdf/2310.18629)
 - [Trustworthy Academic Risk Prediction with Explainable Boosting Machines](https://link.springer.com/chapter/10.1007/978-3-031-36272-9_38)
 - [Binary ECG Classification Using Explainable Boosting Machines for IoT Edge Devices](https://ieeexplore.ieee.org/document/9970834)
 - [Explainable artificial intelligence toward usable and trustworthy computer-aided diagnosis of multiple sclerosis from Optical Coherence Tomography](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10406231/)

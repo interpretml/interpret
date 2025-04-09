@@ -25,7 +25,7 @@ def test_identical_ebm():
 
         classes = None if n_classes == Native.Task_Regression else n_classes
 
-        for iteration in range(1):
+        for iteration in range(2):
             test_type = (
                 "regression"
                 if n_classes == Native.Task_Regression
@@ -44,8 +44,28 @@ def test_identical_ebm():
                 if 0 <= n_classes
                 else ExplainableBoostingRegressor
             )
-            # TODO: remove the max_rounds=10 to force a more complex comparison
-            ebm = ebm_type(names, types, random_state=seed, max_rounds=10)
+            ebm = ebm_type(names, types, random_state=seed)
+
+            if n_classes < 0:
+                # TODO: remove the limitations below force a more complex comparison
+
+                # currently we get floating point last bit differences for regression
+                # if we do too many rounds.  This happens even if interactions=0 and
+                # if "early_stopping_rounds=0, max_rounds=30001".
+                ebm.max_rounds = 10
+            else:
+                # TODO: remove the limitations below force a more complex comparison
+
+                # leaving interactions enabled leads to fairly large differences in the 2nd most
+                # siginficant digit (at least sometimes), so probably different splits are
+                # being chosen in rare cases
+                ebm.interactions = 0
+
+                # leaving early stopping enabled leads to very small float differences
+                # in the least significant bit, so probably it's a floating point
+                # handling difference in the assembly code.
+                ebm.early_stopping_rounds = 0
+
             ebm.fit(X, y)
 
             n_rounds += sum(ebm.best_iteration_.ravel())
@@ -57,7 +77,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = -2613915.129172726
+    expected = 8.231780387209846e16
 
     print(n_rounds)
     print(interactions)

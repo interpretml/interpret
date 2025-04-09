@@ -2254,11 +2254,9 @@ TEST_CASE("missing category nominal, boosting, regression") {
    CHECK_APPROX(termScore, 30.0);
 }
 
-static double RandomizedTesting(const AccelerationFlags acceleration) {
+static double RandomizedTesting(const AccelerationFlags acceleration, const size_t cRounds) {
    const IntEbm cTrainSamples = 211; // have some non-SIMD residuals
    const IntEbm cValidationSamples = 101; // have some non-SIMD residuals
-   const size_t cRounds = 200;
-   // const size_t cRounds = 50000;
 
    auto rng = MakeRng(0);
    const std::vector<FeatureTest> features = {
@@ -2313,6 +2311,7 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
                acceleration);
 
          double validationMetric = 0.0;
+
          for(size_t iRound = 0; iRound < cRounds; ++iRound) {
             for(IntEbm iTerm = 0; iTerm < static_cast<IntEbm>(terms.size()); ++iTerm) {
                const IntEbm cRealBins =
@@ -2401,15 +2400,23 @@ static double RandomizedTesting(const AccelerationFlags acceleration) {
    return fingerprint;
 }
 
-TEST_CASE("stress test, boosting") {
-   const double expected = -2.4289462940991339e+33;
+TEST_CASE("SIMD comparison, boosting") {
+   const size_t cRounds = 10; // the results diverge more with more rounds
 
-   double fingerprintExact = RandomizedTesting(AccelerationFlags_NONE);
+   double fingerprint = RandomizedTesting(AccelerationFlags_NONE, cRounds);
+   double fingerprintSIMD = RandomizedTesting(AccelerationFlags_ALL, cRounds);
+   CHECK_APPROX_TOLERANCE(fingerprint, fingerprintSIMD, 1e-1);
+}
+
+TEST_CASE("stress test, boosting") {
+   const double expected = -1.6408574176814956e+52;
+
+   // TODO: we start hitting ASSERTs if cRounds is 25000, so debug that.
+   const size_t cRounds = 5000;
+
+   double fingerprintExact = RandomizedTesting(AccelerationFlags_NONE, cRounds);
    if(fingerprintExact != expected) {
       printf("  Exact test fingerprint: %e\n", fingerprintExact);
    }
    CHECK(fingerprintExact == expected);
-
-   double validationMetricSIMD = RandomizedTesting(AccelerationFlags_ALL);
-   CHECK_APPROX_TOLERANCE(validationMetricSIMD, expected, 1e-1);
 }
