@@ -238,8 +238,11 @@ def boost(
 
                         # Native code will be returning sums of residuals in slices, not averages.
                         # Compute noisy average by dividing noisy sum by noisy bin weights
-                        region_weight = np.sum(
-                            bin_weights[term_features[term_idx][0]][f:s]
+                        region_weight = np.empty(1, np.float64)
+                        native.safe_sum(
+                            bin_weights[term_features[term_idx][0]][f:s],
+                            region_weight,
+                            0,
                         )
                         noisy_update_tensor[f:s] = (
                             noisy_update_tensor[f:s] / region_weight

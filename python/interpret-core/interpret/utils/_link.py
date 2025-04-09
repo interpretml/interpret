@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
+from ..utils._native import Native
 
 import numpy as np
 
@@ -54,7 +55,12 @@ def link_func(predictions, link, link_param=np.nan):
             val = predictions.squeeze(-1)
         elif predictions.shape[-1] == 2:
             val = predictions[..., 1]
-            val /= predictions.sum(axis=-1)
+            native = Native.get_native_singleton()
+            reduced = np.empty(predictions.shape[:-1], np.float64)
+            if not predictions.flags.c_contiguous:
+                predictions = predictions.copy()
+            native.safe_sum(predictions, reduced, predictions.ndim - 1)
+            val /= reduced
         else:
             msg = f"predictions must have 1 or 2 elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
@@ -175,7 +181,10 @@ def inv_link(scores, link, link_param=np.nan):
         np.any(inf_bool, axis=-1, keepdims=True, out=reduced_bool)
         val[reduced_bool.squeeze(-1)] = 0.0
         val[inf_bool] = 1.0
-        np.sum(val, axis=-1, keepdims=True, out=reduced_float)
+        native = Native.get_native_singleton()
+        if not val.flags.c_contiguous:
+            val = val.copy()
+        native.safe_sum(val, reduced_float, val.ndim - 1)
         val /= reduced_float
         return val
     if link == "vlogit":

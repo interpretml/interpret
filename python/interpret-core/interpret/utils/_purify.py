@@ -93,10 +93,13 @@ def purify(scores, weights, tolerance=0.0, is_randomized=True):
                 if items is not None:
                     items[0] += level_impurities[impure_idx]
                 else:
-                    next_level[new_dims] = [
-                        level_impurities[impure_idx],
-                        level_weights.sum(axis=n_dimensions - 1 - impure_idx),
-                    ]
+                    i = n_dimensions - 1 - impure_idx
+                    reduced = np.zeros(
+                        level_weights.shape[:i] + level_weights.shape[i + 1 :],
+                        np.float64,
+                    )
+                    native.safe_sum(level_weights, reduced, i)
+                    next_level[new_dims] = [level_impurities[impure_idx], reduced]
                 impure_idx += 1
         temp = next_level
         next_level = prev_level

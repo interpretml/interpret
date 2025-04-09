@@ -884,13 +884,17 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 if sample_weight is None:
                     bag_weights.append(n_samples)
                 else:
-                    bag_weights.append(sample_weight.sum())
+                    bag_weight = np.array(1, np.float64)
+                    native.safe_sum(sample_weight, bag_weight, 0)
+                    bag_weights.append(bag_weight.item())
             else:
                 keep = bag > 0
                 if sample_weight is None:
                     bag_weights.append(bag[keep].sum())
                 else:
-                    bag_weights.append((bag[keep] * sample_weight[keep]).sum())
+                    bag_weight = np.array(1, np.float64)
+                    native.safe_sum(bag[keep] * sample_weight[keep], bag_weight, 0)
+                    bag_weights.append(bag_weight.item())
                 del keep
         bag_weights = np.array(bag_weights, np.float64)
 
@@ -1044,8 +1048,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 )
 
                         probs = np.bincount(y_local, weights=sample_weight_local)
-                        total = probs.sum()
-                        probs = probs.astype(np.float64, copy=False)
+                        if sample_weight_local is None:
+                            total = probs.sum()
+                            probs = probs.astype(np.float64, copy=False)
+                        else:
+                            total = np.array(1, np.float64)
+                            native.safe_sum(probs, total, 0)
+                            total = total.item()
+
                         probs /= total
                         bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
