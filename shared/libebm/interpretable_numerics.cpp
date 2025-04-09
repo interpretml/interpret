@@ -1481,6 +1481,123 @@ static double Mean(const size_t cSamples,
 }
 
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
+static int g_cLogEnterSafeSumCount = 25;
+static int g_cLogExitSafeSumCount = 25;
+
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SafeSum(
+      IntEbm countDistant, IntEbm countAxis, IntEbm countClose, const double* in, double* out) {
+
+   LOG_COUNTED_N(&g_cLogEnterSafeSumCount,
+         Trace_Info,
+         Trace_Verbose,
+         "Entered SafeSum: "
+         "countDistant=%" IntEbmPrintf ", "
+         "countAxis=%" IntEbmPrintf ", "
+         "countClose=%" IntEbmPrintf ", "
+         "in=%p, "
+         "out=%p",
+         countDistant,
+         countAxis,
+         countClose,
+         static_cast<const void*>(in),
+         static_cast<const void*>(out));
+
+   if(nullptr == in) {
+      LOG_0(Trace_Error, "ERROR SafeSum nullptr == in");
+      return Error_IllegalParamVal;
+   }
+
+   if(nullptr == out) {
+      LOG_0(Trace_Error, "ERROR SafeSum nullptr == out");
+      return Error_IllegalParamVal;
+   }
+
+   if(countDistant <= IntEbm{0}) {
+      if(countDistant < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SafeSum countDistant < IntEbm{0}");
+         return Error_IllegalParamVal;
+      }
+      return Error_None;
+   }
+   if(IsConvertError<size_t>(countDistant)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsConvertError<size_t>(countDistant)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cDistant = static_cast<size_t>(countDistant);
+
+   if(countClose <= IntEbm{0}) {
+      if(countClose < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SafeSum countClose < IntEbm{0}");
+         return Error_IllegalParamVal;
+      }
+      return Error_None;
+   }
+   if(IsConvertError<size_t>(countClose)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsConvertError<size_t>(countClose)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cClose = static_cast<size_t>(countClose);
+
+   if(IsMultiplyError(sizeof(double), cClose)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsMultiplyError(sizeof(double), cClose)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cCloseBytes = sizeof(double) * cClose;
+
+   if(IsMultiplyError(cCloseBytes, cDistant)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsMultiplyError(cCloseBytes, cDistant)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cNonAxisBytes = cCloseBytes * cDistant;
+
+   if(countAxis <= IntEbm{1}) {
+      if(IntEbm{1} == countAxis) {
+         memcpy(out, in, cNonAxisBytes);
+      } else if(countAxis < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SafeSum countAxis < IntEbm{0}");
+         return Error_IllegalParamVal;
+      }
+      return Error_None;
+   }
+   if(IsConvertError<size_t>(countAxis)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsConvertError<size_t>(countAxis)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cAxis = static_cast<size_t>(countAxis);
+
+   if(IsMultiplyError(cNonAxisBytes, cAxis)) {
+      LOG_0(Trace_Error, "ERROR SafeSum IsMultiplyError(cNonAxisBytes, cAxis)");
+      return Error_IllegalParamVal;
+   }
+
+   const double* const pOutEnd = IndexByte(out, cNonAxisBytes);
+   const size_t cAxisBytes = cCloseBytes * cAxis;
+   const size_t cNext = sizeof(*in) - cAxisBytes;
+   const size_t cNextGrouping = cAxisBytes - cCloseBytes;
+   size_t i = 0;
+   do {
+      const double* const pCloseEnd = IndexByte(out, cCloseBytes);
+      do {
+         const size_t iEnd = i + cAxisBytes;
+         double sum = *IndexByte(in, i);
+         i += cCloseBytes;
+         do {
+            sum += *IndexByte(in, i);
+            i += cCloseBytes;
+         } while(iEnd != i);
+         i += cNext;
+         *out = sum;
+         ++out;
+      } while(pCloseEnd != out);
+      i += cNextGrouping;
+   } while(pOutEnd != out);
+
+   LOG_COUNTED_0(&g_cLogExitSafeSumCount, Trace_Info, Trace_Verbose, "Exited SafeSum");
+
+   return Error_None;
+}
+
+// we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterSafeMeanCount = 25;
 static int g_cLogExitSafeMeanCount = 25;
 
