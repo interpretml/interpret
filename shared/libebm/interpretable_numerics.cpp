@@ -1772,6 +1772,62 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SafeStandardDeviation(
    return Error_None;
 }
 
+EBM_API_BODY void EBM_CALLING_CONVENTION SafeExp(IntEbm count, double* inout) {
+   if(count <= IntEbm{0}) {
+      if(count < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SafeExp count < IntEbm{0}");
+      }
+      return;
+   }
+   if(IsConvertError<size_t>(count)) {
+      LOG_0(Trace_Error, "ERROR SafeExp IsConvertError<size_t>(count)");
+      return;
+   }
+   const size_t c = static_cast<size_t>(count);
+
+   if(IsMultiplyError(sizeof(*inout), c)) {
+      LOG_0(Trace_Error, "ERROR SafeExp IsMultiplyError(sizeof(*inout), c)");
+      return;
+   }
+
+   if(nullptr == inout) {
+      LOG_0(Trace_Error, "ERROR SafeExp nullptr == inout");
+      return;
+   }
+
+   Exp_Cpu_64(c, inout);
+
+   // TODO: add a SIMD version here
+}
+
+EBM_API_BODY void EBM_CALLING_CONVENTION SafeLog(IntEbm count, double* inout) {
+   if(count <= IntEbm{0}) {
+      if(count < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SafeLog count < IntEbm{0}");
+      }
+      return;
+   }
+   if(IsConvertError<size_t>(count)) {
+      LOG_0(Trace_Error, "ERROR SafeLog IsConvertError<size_t>(count)");
+      return;
+   }
+   const size_t c = static_cast<size_t>(count);
+
+   if(IsMultiplyError(sizeof(*inout), c)) {
+      LOG_0(Trace_Error, "ERROR SafeLog IsMultiplyError(sizeof(*inout), c)");
+      return;
+   }
+
+   if(nullptr == inout) {
+      LOG_0(Trace_Error, "ERROR SafeLog nullptr == inout");
+      return;
+   }
+
+   Log_Cpu_64(c, inout);
+
+   // TODO: add a SIMD version here
+}
+
 // we don't care if an extra log message is outputted due to the non-atomic nature of the decrement to this value
 static int g_cLogEnterGetHistogramCutCount = 25;
 static int g_cLogExitGetHistogramCutCount = 25;

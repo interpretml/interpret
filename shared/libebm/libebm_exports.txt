@@ -7,6 +7,8 @@
       SafeSum;
       SafeMean;
       SafeStandardDeviation;
+      SafeExp;
+      SafeLog;
       MeasureRNG;
       InitRNG;
       CopyRNG;

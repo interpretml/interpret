@@ -213,6 +213,9 @@ INTERNAL_IMPORT_EXPORT_INCLUDE ErrorEbm CreateMetric_Cpu_64(
       //   MetricWrapper * const pMetricWrapperOut,
 );
 
+INTERNAL_IMPORT_EXPORT_INCLUDE void Exp_Cpu_64(const size_t c, double* const a);
+INTERNAL_IMPORT_EXPORT_INCLUDE void Log_Cpu_64(const size_t c, double* const a);
+
 INTERNAL_IMPORT_EXPORT_INCLUDE double FinishMetricC(
       const ObjectiveWrapper* const pObjectiveWrapper, const double metricSum);
 INTERNAL_IMPORT_EXPORT_INCLUDE BoolEbm CheckTargetsC(

@@ -519,4 +519,26 @@ INTERNAL_IMPORT_EXPORT_BODY ErrorEbm CreateMetric_Cpu_64(
    return Error_UnexpectedInternal;
 }
 
+INTERNAL_IMPORT_EXPORT_BODY void Exp_Cpu_64(const size_t c, double* const a) {
+   double* p = a;
+   double* aEnd = a + c;
+   while(aEnd != p) {
+      Cpu_64_Float val = Cpu_64_Float::Load(p);
+      val = Exp(val);
+      val.Store(p);
+      p += Cpu_64_Float::k_cSIMDPack;
+   }
+}
+
+INTERNAL_IMPORT_EXPORT_BODY void Log_Cpu_64(const size_t c, double* const a) {
+   double* p = a;
+   double* aEnd = a + c;
+   while(aEnd != p) {
+      Cpu_64_Float val = Cpu_64_Float::Load(p);
+      val = Log(val);
+      val.Store(p);
+      p += Cpu_64_Float::k_cSIMDPack;
+   }
+}
+
 } // namespace DEFINED_ZONE_NAME

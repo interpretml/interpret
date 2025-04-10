@@ -265,7 +265,7 @@ class Native:
                 msg = "vals and weights must have the same shape to call flat_mean."
                 raise Exception(msg)
 
-        n_tensor_bins = math.prod(vals.shape)
+        n_tensor_bins = prod(vals.shape)
 
         mean_result = ct.c_double(np.nan)
 
@@ -340,6 +340,18 @@ class Native:
             raise Native._get_native_exception(return_code, "SafeStandardDeviation")
 
         return stddev_result
+
+    def safe_exp(self, vals):
+        self._unsafe.SafeExp(
+            prod(vals.shape),
+            Native._make_pointer(vals, np.float64, None),
+        )
+
+    def safe_log(self, vals):
+        self._unsafe.SafeLog(
+            prod(vals.shape),
+            Native._make_pointer(vals, np.float64, None),
+        )
 
     def create_rng(self, random_state):
         if random_state is None:
@@ -1095,6 +1107,22 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.SafeStandardDeviation.restype = ct.c_int32
+
+        self._unsafe.SafeExp.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * inout
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeExp.restype = None
+
+        self._unsafe.SafeLog.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * inout
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeLog.restype = None
 
         self._unsafe.MeasureRNG.argtypes = []
         self._unsafe.MeasureRNG.restype = ct.c_int64

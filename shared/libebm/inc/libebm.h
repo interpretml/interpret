@@ -322,6 +322,9 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SafeMean(
 EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION SafeStandardDeviation(
       IntEbm countBags, IntEbm countTensorBins, const double* vals, const double* weights, double* tensorOut);
 
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SafeExp(IntEbm count, double* inout);
+EBM_API_INCLUDE void EBM_CALLING_CONVENTION SafeLog(IntEbm count, double* inout);
+
 EBM_API_INCLUDE IntEbm EBM_CALLING_CONVENTION MeasureRNG(void);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION InitRNG(SeedEbm seed, void* rngOut);
 EBM_API_INCLUDE void EBM_CALLING_CONVENTION CopyRNG(void* rng, void* rngOut);
