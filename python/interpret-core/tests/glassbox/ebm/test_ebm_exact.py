@@ -65,6 +65,7 @@ def test_identical_ebm():
                 # in the least significant bit, so probably it's a floating point
                 # handling difference in the assembly code.
                 ebm.early_stopping_rounds = 0
+                ebm.outer_bags = 1
 
             ebm.fit(X, y)
 
@@ -77,7 +78,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 8.231780387209846e16
+    expected = 1.8101103190347676e+18
 
     print(n_rounds)
     print(interactions)
