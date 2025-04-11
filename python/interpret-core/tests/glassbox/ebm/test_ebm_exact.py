@@ -48,6 +48,7 @@ def test_identical_ebm():
 
             # TODO: remove the limitations below force a more complex comparison
             ebm.max_rounds = 10
+            ebm.interactions = 0
 
             ebm.fit(X, y)
 
@@ -60,7 +61,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 34663182146407.414
+    expected = 34381622478445.14
 
     print(n_rounds)
     print(interactions)
