@@ -12,6 +12,7 @@ from math import ceil, isnan
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 from warnings import warn
 from dataclasses import dataclass, field
+import math
 
 import numpy as np
 from sklearn.base import (
@@ -1070,6 +1071,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             feature_types_in,
         )
 
+        self.fingerprint_ = 1.0
+
         parallel_args = []
         for idx in range(self.outer_bags):
             early_stopping_rounds_local = early_stopping_rounds
@@ -1088,6 +1091,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 # TODO: instead of making these copies we should
                 # put init_score into the native shared dataframe
                 init_score_local = init_score_local[bag != 0]
+
+
+            val = math.prod(bagged_intercept[idx])
+            self.fingerprint_ *= 1.1 if val == 0 else val
+            self.fingerprint_ *= sum(dataset) / 541116.3752389174
+
+            print(self.fingerprint_)
 
             parallel_args.append(
                 (

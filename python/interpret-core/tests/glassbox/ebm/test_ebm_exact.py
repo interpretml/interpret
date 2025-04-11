@@ -16,6 +16,7 @@ def test_identical_ebm():
 
     interactions = []
 
+    alternate = 1.0
     fingerprint = 1.0
     seed = 0
     n_rounds = 0
@@ -51,6 +52,7 @@ def test_identical_ebm():
             ebm.interactions = 0
 
             ebm.fit(X, y)
+            alternate *= ebm.fingerprint_
 
             n_rounds += sum(ebm.best_iteration_.ravel())
 
@@ -61,10 +63,11 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 34381622478445.14
+    expected = 38024547116712.41
 
     print(n_rounds)
     print(interactions)
+    assert 3.082567349945751e-22 == alternate
     assert fingerprint == expected
 
     set_option("acceleration", original)
