@@ -77,7 +77,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 8.231780387209846e16
+    expected = 8.235132680510427e16
 
     print(n_rounds)
     print(interactions)

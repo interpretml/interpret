@@ -52,15 +52,14 @@ def link_func(predictions, link, link_param=np.nan):
         if predictions.ndim == 0:
             val = predictions
         elif predictions.shape[-1] == 1:
-            val = predictions.squeeze(-1)
+            val = np.ascontiguousarray(predictions.squeeze(-1))
         elif predictions.shape[-1] == 2:
+            predictions = np.ascontiguousarray(predictions)
             val = predictions[..., 1]
             native = Native.get_native_singleton()
             reduced = np.empty(predictions.shape[:-1], np.float64)
-            if not predictions.flags.c_contiguous:
-                predictions = predictions.copy()
             native.safe_sum(predictions, reduced, predictions.ndim - 1)
-            val /= reduced
+            val = np.asarray(np.divide(val, reduced, order="C"))
         else:
             msg = f"predictions must have 1 or 2 elements in the last dimensions, but has {predictions.shape[-1]}."
             _log.error(msg)
@@ -68,8 +67,9 @@ def link_func(predictions, link, link_param=np.nan):
 
         with np.errstate(divide="ignore"):
             # val == 1.0 and val == 0.0 gives warning otherwise
-            val /= 1.0 - val
-            np.log(val, out=val)
+            np.divide(val, 1.0 - val, out=val)
+        native = Native.get_native_singleton()
+        native.safe_log(val)
         if val.ndim == 0:
             val = val.item()
 
@@ -81,10 +81,9 @@ def link_func(predictions, link, link_param=np.nan):
             _log.error(msg)
             raise ValueError(msg)
 
-        val = predictions / predictions.max(axis=-1, keepdims=True)
-        with np.errstate(divide="ignore"):
-            # log(0.0) gives warning otherwise
-            np.log(val, out=val)
+        val = np.divide(predictions, predictions.max(axis=-1, keepdims=True), order="C")
+        native = Native.get_native_singleton()
+        native.safe_log(val)
 
         return val
     if link == "vlogit":
@@ -93,17 +92,19 @@ def link_func(predictions, link, link_param=np.nan):
             _log.error(msg)
             raise ValueError(msg)
 
-        val = 1.0 - predictions
+        val = np.subtract(1.0, predictions, order="C")
         with np.errstate(divide="ignore"):
             # val == 0.0 and log(0.0) gives warning otherwise
             np.divide(predictions, val, out=val)
-            np.log(val, out=val)
+        native = Native.get_native_singleton()
+        native.safe_log(val)
 
         return val
     if link == "log":
-        with np.errstate(divide="ignore"):
-            # log(0.0) gives warning otherwise
-            return np.log(predictions)
+        predictions = predictions.copy()
+        native = Native.get_native_singleton()
+        native.safe_log(predictions)
+        return predictions
     if link == "monoclassification":
         if predictions.ndim == 0:
             if predictions == 1.0:
@@ -149,9 +150,10 @@ def inv_link(scores, link, link_param=np.nan):
     if link == "identity":
         return scores.copy()
     if link == "logit":
-        with np.errstate(over="ignore"):
-            # scores == 999 gives warning otherwise from overflow
-            val = np.expand_dims(np.exp(scores), axis=-1)
+        val = scores.copy()
+        native = Native.get_native_singleton()
+        native.safe_exp(val)
+        val = np.expand_dims(val, axis=-1)
         inf_bool = np.isposinf(val)
         tmp = val + 1.0
         with np.errstate(invalid="ignore"):
@@ -176,8 +178,9 @@ def inv_link(scores, link, link_param=np.nan):
         inf_bool &= reduced_bool
         with np.errstate(invalid="ignore"):
             # reduced_float == +inf or all -inf gives warning otherwise
-            val = scores - reduced_float
-        np.exp(val, out=val)
+            val = np.subtract(scores, reduced_float, order="C")
+        native = Native.get_native_singleton()
+        native.safe_exp(val)
         np.any(inf_bool, axis=-1, keepdims=True, out=reduced_bool)
         val[reduced_bool.squeeze(-1)] = 0.0
         val[inf_bool] = 1.0
@@ -188,9 +191,9 @@ def inv_link(scores, link, link_param=np.nan):
         val /= reduced_float
         return val
     if link == "vlogit":
-        with np.errstate(over="ignore"):
-            # scores == 999 gives warning otherwise
-            val = np.exp(scores)
+        val = scores.copy()
+        native = Native.get_native_singleton()
+        native.safe_exp(val)
         inf_bool = np.isposinf(val)
         with np.errstate(invalid="ignore"):
             # val == +inf gives warning otherwise
@@ -198,9 +201,10 @@ def inv_link(scores, link, link_param=np.nan):
         val[inf_bool] = 1.0
         return val
     if link == "log":
-        with np.errstate(over="ignore"):
-            # scores == 999 gives warning otherwise
-            return np.exp(scores)
+        val = scores.copy()
+        native = Native.get_native_singleton()
+        native.safe_exp(val)
+        return val
     if link == "monoclassification":
         bools = np.isnan(scores)
         preds = np.ones((*scores.shape, 1), np.float64)
