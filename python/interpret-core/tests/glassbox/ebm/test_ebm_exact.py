@@ -47,7 +47,7 @@ def test_identical_ebm():
             ebm = ebm_type(names, types, random_state=seed)
 
             # TODO: remove the limitations below force a more complex comparison
-            ebm.max_rounds = 10
+            #ebm.max_rounds = 10
             ebm.interactions = 0
 
             ebm.fit(X, y)
