@@ -46,25 +46,8 @@ def test_identical_ebm():
             )
             ebm = ebm_type(names, types, random_state=seed)
 
-            if n_classes < 0:
-                # TODO: remove the limitations below force a more complex comparison
-
-                # currently we get floating point last bit differences for regression
-                # if we do too many rounds.  This happens even if interactions=0 and
-                # if "early_stopping_rounds=0, max_rounds=30001".
-                ebm.max_rounds = 10
-            else:
-                # TODO: remove the limitations below force a more complex comparison
-
-                # leaving interactions enabled leads to fairly large differences in the 2nd most
-                # siginficant digit (at least sometimes), so probably different splits are
-                # being chosen in rare cases
-                ebm.interactions = 0
-
-                # leaving early stopping enabled leads to very small float differences
-                # in the least significant bit, so probably it's a floating point
-                # handling difference in the assembly code.
-                ebm.early_stopping_rounds = 0
+            # TODO: remove the limitations below force a more complex comparison
+            ebm.max_rounds = 10
 
             ebm.fit(X, y)
 
@@ -77,7 +60,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 8.235132680510427e16
+    expected = 34663182146407.414
 
     print(n_rounds)
     print(interactions)
