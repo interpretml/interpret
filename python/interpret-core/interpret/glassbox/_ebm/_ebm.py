@@ -1095,7 +1095,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             val = math.prod(bagged_intercept[idx])
             self.fingerprint_ *= 1.1 if val == 0 else val
-            self.fingerprint_ *= sum(dataset) / 541116.3752389174
+            #self.fingerprint_ *= sum(dataset) / 541116.3752389174
 
             print(self.fingerprint_)
 
