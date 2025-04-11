@@ -42,19 +42,23 @@ def test_identical_ebm():
                 raise Exception(f"unsupported number of classes {n_classes}")
 
             ebm_type = (
-                ExplainableBoostingClassifier
-                if 0 <= n_classes
-                else ExplainableBoostingRegressor
+                ExplainableBoostingRegressor
+                if n_classes == Native.Task_Regression
+                else ExplainableBoostingClassifier
             )
             ebm = ebm_type(names, types, random_state=seed)
             ebm.fit(X, y)
 
-            pred = ebm._predict_score(X)
+            pred = (
+                ebm.predict(X)
+                if n_classes == Native.Task_Regression
+                else ebm.predict_proba(X)
+            )
             fingerprint *= sum(pred.flat)  # do not use numpy since it can use SIMD.
 
             seed += 1
 
-    expected = 1.2040766120758734e22
+    expected = 3.2938302430019002e19
 
     assert fingerprint == expected
 
