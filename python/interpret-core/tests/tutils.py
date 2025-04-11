@@ -24,6 +24,7 @@ from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
 from sklearn.model_selection import train_test_split
+import sklearn.datasets
 
 
 def get_all_explainers():
@@ -109,6 +110,50 @@ def _synthetic(mode="regression"):
         "train": {"X": X_df_train, "y": y_df_train},
         "test": {"X": X_df_test, "y": y_df_test},
     }
+
+
+def toy_regression():
+    data = sklearn.datasets.load_diabetes()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["bmi"] = pd.qcut(X["bmi"], q=4, labels=["Low", "Mid-Low", "Mid-High", "High"])
+    X["bp"] = pd.qcut(
+        X["bp"], q=5, labels=["Low", "Mid-Low", "Mid-High", "High", "VHigh"]
+    )
+    return X, y, feature_names, None
+
+
+def toy_binary():
+    data = sklearn.datasets.load_breast_cancer()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["mean radius"] = pd.qcut(
+        X["mean radius"], q=3, labels=["Small", "Medium", "Large"]
+    )
+    X["mean texture"] = pd.qcut(
+        X["mean texture"],
+        q=4,
+        labels=["Low", "Mid-Low", "Mid-High", "High"],
+    )
+    return X, y, feature_names, None
+
+
+def toy_multiclass():
+    data = sklearn.datasets.load_iris()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["petal length (cm)"] = pd.qcut(
+        X["petal length (cm)"], q=3, labels=["Short", "Medium", "Long"]
+    )
+    X["sepal length (cm)"] = pd.qcut(
+        X["sepal length (cm)"],
+        q=5,
+        labels=["Small", "Average", "Medium", "Large", "Extra Large"],
+    )
+    return X, y, feature_names, None
 
 
 def iris_classification():
