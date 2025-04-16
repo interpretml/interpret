@@ -79,7 +79,7 @@ struct alignas(k_cAlignment) Avx2_32_Int final {
    inline void Store(T* const a) const noexcept { _mm256_store_si256(reinterpret_cast<TPack*>(a), m_data); }
 
    inline static Avx2_32_Int LoadBytes(const uint8_t* const a) noexcept {
-      return Avx2_32_Int(_mm256_cvtepu8_epi32(_mm_loadu_si64(a)));
+      return Avx2_32_Int(_mm256_cvtepu8_epi32(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(a))));
    }
 
    template<typename TFunc> static inline void Execute(const TFunc& func, const Avx2_32_Int& val0) noexcept {

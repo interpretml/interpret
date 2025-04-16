@@ -20,35 +20,35 @@ jobs:
       matrix:
         include:
           - name: linux_release_64
-            image: ubuntu-20.04
+            image: ubuntu-latest
             options: "-release_64"
             asm: "-asm"
           - name: linux_debug_64
-            image: ubuntu-20.04
+            image: ubuntu-latest
             options: "-debug_64"
             asm: ""
           - name: linux_release_arm
-            image: ubuntu-20.04
+            image: ubuntu-22.04-arm
             options: "-release_arm"
             asm: "-asm"
           - name: linux_debug_arm
-            image: ubuntu-20.04
+            image: ubuntu-22.04-arm
             options: "-debug_arm"
             asm: ""
           - name: mac_release_64
-            image: macos-13  # macos-13 is an intel based mac
+            image: macos-14
             options: "-release_64"
             asm: "-asm"
           - name: mac_debug_64
-            image: macos-13  # macos-13 is an intel based mac
+            image: macos-14
             options: "-debug_64"
             asm: ""
           - name: mac_release_arm
-            image: macos-14  # macos-14 is an ARM based mac
+            image: macos-14
             options: "-release_arm"
             asm: "-asm"
           - name: mac_debug_arm
-            image: macos-14  # macos-14 is an ARM based mac
+            image: macos-14
             options: "-debug_arm"
             asm: ""
           - name: win_release_64
@@ -65,8 +65,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-      - name: Build on Windows
-        if: startsWith(matrix.image, 'windows')
+      - name: Build for Windows
+        if: startsWith(matrix.image, 'windows-')
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
           $env:CudaToolkitDir = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
@@ -77,14 +77,20 @@ jobs:
               exit 201
           }
           ./build.bat ${{ matrix.options }} ${{ matrix.asm }}
-      - name: Build on Linux
-        if: startsWith(matrix.image, 'ubuntu')
+      - name: Build for ManyLinux
+        if: startsWith(matrix.image, 'ubuntu-') && !endsWith(matrix.image, '-arm')
         run: |
-          sudo apt-get --yes update
-          sudo apt-get --yes install nvidia-cuda-toolkit
-          /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
-      - name: Build on macOS
-        if: startsWith(matrix.image, 'macos')
+          # sudo apt-get --yes update
+          # sudo apt-get --yes install nvidia-cuda-toolkit
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            quay.io/pypa/manylinux2010_x86_64 \
+            /bin/sh -c "
+              /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
+              "
+      - name: Build for macOS and LinuxARM
+        if: startsWith(matrix.image, 'macos-') || (startsWith(matrix.image, 'ubuntu-') && endsWith(matrix.image, '-arm'))
         run: |
           /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
       - name: Publish shared library
@@ -100,7 +106,7 @@ jobs:
           path: bld/asm/
 
   vis:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
@@ -122,7 +128,7 @@ jobs:
 
   npm:
     needs: [bdist]  # bdist is not needed but slow this step down
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
@@ -147,7 +153,7 @@ jobs:
 
   R:
     needs: [bdist]  # bdist is not needed but slow this step down
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
@@ -169,7 +175,7 @@ jobs:
           path: bld/R
 
   sdist:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
@@ -193,7 +199,7 @@ jobs:
           path: bld/sdist
 
   docs:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [sdist]
     permissions:
       checks: write
@@ -242,7 +248,7 @@ jobs:
           path: docs/interpret/_build/html/
 
   bdist:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [bld, vis]
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
@@ -279,7 +285,7 @@ jobs:
 
   powerlift:
     needs: [bdist]  # bdist is not needed but slow this step down
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
         uses: actions/checkout@v4
@@ -330,7 +336,7 @@ jobs:
           name: powerlift
           path: bld/powerlift
       - name: pytest (non-win)
-        if: ${{ !startsWith(matrix.image, 'windows') }}
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/powerlift/powerlift-*.whl)
@@ -341,7 +347,7 @@ jobs:
           cd "tmp/zqmr/t"
           python -m pytest -vv -n auto --cov=powerlift --cov-report=xml
       - name: pytest (win)
-        if: ${{ startsWith(matrix.image, 'windows') }}
+        if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/powerlift" -Filter "powerlift-*.whl"
@@ -438,24 +444,24 @@ jobs:
           name: libebm_${{ matrix.name }}
           path: bld/lib
       - name: mac test_native
-        if: ${{ startsWith(matrix.image, 'macos') }}
+        if: ${{ startsWith(matrix.image, 'macos-') }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (CI)
-        if: ${{ startsWith(matrix.image, 'ubuntu') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name != 'schedule' }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'ubuntu') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name == 'schedule' }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
       - name: win test_native (CI)
-        if: ${{ startsWith(matrix.image, 'windows') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name != 'schedule' }}
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
       - name: win test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'windows') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
@@ -529,7 +535,7 @@ jobs:
           name: sdist
           path: bld/sdist
       - name: pytest (non-win)
-        if: ${{ !startsWith(matrix.image, 'windows') }}
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/sdist/interpret_core-*.tar.gz)
@@ -540,7 +546,7 @@ jobs:
           cd "tmp/zqmr/t"
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: pytest (win)
-        if: ${{ startsWith(matrix.image, 'windows') }}
+        if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/sdist" -Filter "interpret_core-*.tar.gz"
@@ -630,7 +636,7 @@ jobs:
           name: bdist
           path: bld/bdist
       - name: pytest (non-win)
-        if: ${{ !startsWith(matrix.image, 'windows') }}
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/bdist/interpret_core-*.whl)
@@ -641,7 +647,7 @@ jobs:
           cd "tmp/zqmr/t"
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: pytest (win)
-        if: ${{ startsWith(matrix.image, 'windows') }}
+        if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/bdist" -Filter "interpret_core-*.whl"
@@ -681,7 +687,7 @@ jobs:
           name: R
           path: bld/R
       - name: R test
-        if: startsWith(matrix.image, 'ubuntu')
+        if: startsWith(matrix.image, 'ubuntu-')
         continue-on-error: true
         run: |
           sudo apt-get --yes update

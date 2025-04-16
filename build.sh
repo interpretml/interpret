@@ -19,11 +19,27 @@ check_install() {
    l1_tmp_path_unsanitized="$1"
    l1_package="$2"
    
+   SUDO_CMD=""
+   if [ "$(id -u)" -ne 0 ]; then
+      SUDO_CMD="sudo"
+   fi
+
+   if command -v apt-get >/dev/null; then
+      PM_UPDATE="$SUDO_CMD apt-get --yes update"
+      PM_INSTALL="$SUDO_CMD apt-get --yes install"
+   elif command -v dnf >/dev/null; then
+      g_is_updated=1
+      PM_INSTALL="$SUDO_CMD dnf -y install"
+   else
+      echo "No supported package manager found!"
+      exit 1
+   fi
+
    if [ ! -f "$l1_tmp_path_unsanitized/$l1_package.chk" ]; then
       printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
-         sudo apt-get --yes update
+         $PM_UPDATE
          l1_ret_code=$?
          if [ $l1_ret_code -ne 0 ]; then 
             exit $l1_ret_code
@@ -32,7 +48,7 @@ check_install() {
          g_is_updated=1
       fi
 
-      sudo apt-get --yes install "$l1_package"
+      $PM_INSTALL "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
          exit $l1_ret_code
@@ -606,8 +622,6 @@ if [ "$os_type" = "Linux" ]; then
    if [ $release_arm -eq 1 ]; then
       ########################## Linux release|arm
 
-      cpp_compiler=aarch64-linux-gnu-g++
-
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|arm"
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/arm/libebm"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/arm/libebm"
@@ -619,7 +633,6 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "g++-aarch64-linux-gnu"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
@@ -634,8 +647,6 @@ if [ "$os_type" = "Linux" ]; then
       ########################## Linux debug|arm
       printf "%s\n" "Compiling libebm with $cpp_compiler for Linux debug|arm"
 
-      cpp_compiler=aarch64-linux-gnu-g++
-
       obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/arm/libebm"
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/arm/libebm"
       bin_file="libebm_linux_arm_debug.so"
@@ -646,7 +657,6 @@ if [ "$os_type" = "Linux" ]; then
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      check_install "$tmp_path_unsanitized" "g++-aarch64-linux-gnu"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0

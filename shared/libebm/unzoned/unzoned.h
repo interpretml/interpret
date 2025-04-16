@@ -6,6 +6,7 @@
 #define UNZONED_H
 
 #include <limits.h> // CHAR_BIT
+#include <cstddef>
 
 #include "libebm.h" // STATIC_CAST, BoolEbm
 #include "logging.h" // INTERNAL_IMPORT_EXPORT_INCLUDE

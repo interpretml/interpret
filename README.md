@@ -652,6 +652,7 @@ We also build on top of many great packages. Please check them out!
 - [Explaining Phishing Attacks: An XAI Approach to Enhance User Awareness and Trust](https://www.researchgate.net/profile/Giuseppe-Desolda/publication/370003878_Explaining_Phishing_Attacks_An_XAI_Approach_to_Enhance_User_Awareness_and_Trust/links/643922a8e881690c4bd50ced/Explaining-Phishing-Attacks-An-XAI-Approach-to-Enhance-User-Awareness-and-Trust.pdf)
 - [Revealing the Galaxy-Halo Connection Through Machine Learning](https://arxiv.org/pdf/2204.10332.pdf)
 - [How the Galaxy–Halo Connection Depends on Large-Scale Environment](https://arxiv.org/pdf/2402.07995.pdf)
+- [Unveiling the drivers of the Baryon Cycles with Interpretable Multi-step Machine Learning and Simulations](https://arxiv.org/pdf/2504.09744v1)
 - [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
 - [A diagnostic support system based on interpretable machine learning and oscillometry for accurate diagnosis of respiratory dysfunction in silicosis](https://www.biorxiv.org/content/10.1101/2025.01.08.632001v1.full.pdf)
 - [Using Explainable Boosting Machines (EBMs) to Detect Common Flaws in Data](https://link.springer.com/chapter/10.1007/978-3-030-93736-2_40)
