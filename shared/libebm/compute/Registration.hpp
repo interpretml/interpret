@@ -9,6 +9,7 @@
 #include <vector>
 #include <functional> // std::function
 #include <memory>
+#include <tuple>
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
@@ -23,6 +24,38 @@ namespace DEFINED_ZONE_NAME {
 #ifndef DEFINED_ZONE_NAME
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
+
+template<std::size_t... Is> struct index_sequence {};
+template<std::size_t N, std::size_t... Is> struct make_index_sequence : make_index_sequence<N - 1, N - 1, Is...> {};
+template<std::size_t... Is> struct make_index_sequence<0, Is...> : index_sequence<Is...> {};
+template<typename Func, typename Tuple, std::size_t... Is>
+bool call_with_tuple_impl(Func& f,
+      const AccelerationFlags zones,
+      const Config* const pConfig,
+      const char* const sRegistration,
+      const char* const sRegistrationEnd,
+      void* const pWrapperOut,
+      const Tuple& t,
+      index_sequence<Is...>) {
+   return f(zones, pConfig, sRegistration, sRegistrationEnd, pWrapperOut, std::get<Is>(t)...);
+}
+template<typename Func, typename Tuple>
+bool call_with_tuple(Func& f,
+      const AccelerationFlags zones,
+      const Config* const pConfig,
+      const char* const sRegistration,
+      const char* const sRegistrationEnd,
+      void* const pWrapperOut,
+      const Tuple& t) {
+   return call_with_tuple_impl(f,
+         zones,
+         pConfig,
+         sRegistration,
+         sRegistrationEnd,
+         pWrapperOut,
+         t,
+         make_index_sequence<std::tuple_size<typename std::remove_reference<Tuple>::type>::value>{});
+}
 
 class ParamBase {
    const char* const m_sParamName;
@@ -157,7 +190,7 @@ class Registration {
    }
 
    static void FinalCheckParams(
-         const char* sRegistration, const char* const sRegistrationEnd, const size_t cUsedParams) {
+         const char* const sRegistration, const char* const sRegistrationEnd, const size_t cUsedParams) {
       if(cUsedParams != CountParams(sRegistration, sRegistrationEnd)) {
          // our counts don't match up, so there are strings in the sRegistration string that we didn't
          // process as params.
@@ -166,7 +199,7 @@ class Registration {
    }
 
    virtual bool AttemptCreate(const Config* const pConfig,
-         const char* sRegistration,
+         const char* const sRegistration,
          const char* const sRegistrationEnd,
          void* const pWrapperOut) const = 0;
 
@@ -179,8 +212,8 @@ class Registration {
 
  public:
    static bool CreateRegistrable(const Config* const pConfig,
-         const char* sRegistration,
-         const char* sRegistrationEnd,
+         const char* const sRegistration,
+         const char* const sRegistrationEnd,
          void* const pWrapperOut,
          const std::vector<std::shared_ptr<const Registration>>& registrations) {
       EBM_ASSERT(nullptr != pConfig);
@@ -214,13 +247,8 @@ class Registration {
 template<typename TFloat, template<typename> class TRegistrable, typename... Args>
 class RegistrationPack final : public Registration {
 
-   // this lambda function holds our templated parameter pack until we need it
-   std::function<bool(const AccelerationFlags zones,
-         const Config* const pConfig,
-         const char* const sRegistration,
-         const char* const sRegistrationEnd,
-         void* const pWrapperOut)>
-         m_callBack;
+   // this tuple holds our templated parameter pack until we need it
+   std::tuple<Args...> m_args;
 
    INLINE_ALWAYS static void UnpackRecursive(std::vector<const char*>& paramNames) {
       UNUSED(paramNames);
@@ -229,7 +257,7 @@ class RegistrationPack final : public Registration {
 
    template<typename TParam, typename... ArgsConverted>
    INLINE_ALWAYS static void UnpackRecursive(
-         std::vector<const char*>& paramNames, const TParam param, const ArgsConverted&... args) {
+         std::vector<const char*>& paramNames, const TParam& param, const ArgsConverted&... args) {
       static_assert(std::is_base_of<ParamBase, TParam>::value,
             "RegistrationPack::UnpackRecursive TParam must derive from ParamBase");
       CheckParamNames(param.GetParamName(), paramNames);
@@ -317,42 +345,49 @@ class RegistrationPack final : public Registration {
          return true;
       }
 
-      // m_callBack contains the parameter pack that our constructor was created with, so we're regaining access here
-      return m_callBack(m_zones, pConfig, sRegistration, sRegistrationEnd, pWrapperOut);
+      return call_with_tuple(RegistrationPack::AttemptCreateInternal,
+            m_zones,
+            pConfig,
+            sRegistration,
+            sRegistrationEnd,
+            pWrapperOut,
+            m_args);
+   }
+
+   static bool AttemptCreateInternal(const AccelerationFlags zones,
+         const Config* const pConfig,
+         const char* const sRegistration,
+         const char* const sRegistrationEnd,
+         void* const pWrapperOut,
+         const Args&... args) {
+
+      // The usage of cUsedParams is a bit unusual.  It starts off at zero, but gets incremented in the calls to
+      // UnpackParam.  When CheckAndCallNew is called, the value in cUsedParams is the total of all parameters
+      // that were "claimed" by calls to UnpackParam.  Inside CheckAndCallNew we check that the total number
+      // of valid parameters equals the number of parameters that were processed.  This is just to get arround
+      // the issue that template parameter packs are hard to deal with in C++11 at least.
+      size_t cUsedParams = 0;
+
+      // UnpackParam processes each Param type independently, but we keep a count of all the valid parameters
+      // that were processed.  C++ gives us no guarantees about which order
+      // the UnpackParam functions are called, but we are guaranteed that they are all called before
+      // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
+
+      return CheckAndCallNew(zones,
+            pConfig,
+            sRegistration,
+            sRegistrationEnd,
+            pWrapperOut,
+            cUsedParams,
+            UnpackParam(args, sRegistration, sRegistrationEnd, INOUT cUsedParams)...);
    }
 
  public:
-   RegistrationPack(const AccelerationFlags zones, const char* sRegistrationName, const Args&... args) :
-         Registration(zones, sRegistrationName) {
+   RegistrationPack(const AccelerationFlags zones, const char* const sRegistrationName, const Args&... args) :
+         Registration(zones, sRegistrationName), m_args(std::make_tuple(typename std::decay<Args>::type(args)...)) {
 
       std::vector<const char*> usedParamNames;
       UnpackRecursive(usedParamNames, args...);
-
-      // hide our parameter pack in a lambda so that we don't have to think about it yet. The lambda also makes a copy.
-      m_callBack = [args...](const AccelerationFlags zonesLambda,
-                         const Config* const pConfig,
-                         const char* const sRegistration,
-                         const char* const sRegistrationEnd,
-                         void* const pWrapperOut) {
-         // The usage of cUsedParams is a bit unusual.  It starts off at zero, but gets incremented in the calls to
-         // UnpackParam.  When CheckAndCallNew is called, the value in cUsedParams is the total of all parameters
-         // that were "claimed" by calls to UnpackParam.  Inside CheckAndCallNew we check that the total number
-         // of valid parameters equals the number of parameters that were processed.  This is just to get arround
-         // the issue that template parameter packs are hard to deal with in C++11 at least.
-         size_t cUsedParams = 0;
-
-         // UnpackParam processes each Param type independently, but we keep a count of all the valid parameters
-         // that were processed.  C++ gives us no guarantees about which order
-         // the UnpackParam functions are called, but we are guaranteed that they are all called before
-         // CheckAndCallNew is called, so inside there we verify whether all the parameters were used
-         return CheckAndCallNew(zonesLambda,
-               pConfig,
-               sRegistration,
-               sRegistrationEnd,
-               pWrapperOut,
-               cUsedParams,
-               UnpackParam(args, sRegistration, sRegistrationEnd, INOUT cUsedParams)...);
-      };
    }
 };
 
