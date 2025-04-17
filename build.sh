@@ -522,13 +522,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm"
       bin_file="libebm_linux_x64.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x64_build_log.txt"
-      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" "$is_asm"
@@ -549,13 +548,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm"
       bin_file="libebm_linux_x64_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x64_build_log.txt"
-      specific_args="$all_args -march=core2 -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0

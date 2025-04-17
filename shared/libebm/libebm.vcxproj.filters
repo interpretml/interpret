@@ -26,9 +26,6 @@
     <ClCompile Include="RandomDeterministic.cpp" />
     <ClCompile Include="SubsetInnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
-    <ClCompile Include="special\linux_wrap_functions.cpp">
-      <Filter>special</Filter>
-    </ClCompile>
     <ClCompile Include="special\windows_DllMain.cpp">
       <Filter>special</Filter>
     </ClCompile>

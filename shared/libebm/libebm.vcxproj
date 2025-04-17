@@ -114,12 +114,6 @@
     <ClCompile Include="RandomDeterministic.cpp" />
     <ClCompile Include="SubsetInnerBag.cpp" />
     <ClCompile Include="BoosterCore.cpp" />
-    <ClCompile Include="special\linux_wrap_functions.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="libebm_exports.def" />
