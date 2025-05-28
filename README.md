@@ -603,7 +603,7 @@ We also build on top of many great packages. Please check them out!
 
 - [Machine Learning Interpretability in Banking: Why It Matters and How Explainable Boosting Machines Can Help](https://www.prometeia.com/en/trending-topics-article/machine-learning-interpretability-in-banking-why-it-matters-and-how-explainable-boosting-machines-can-help)
 - [Interpretable Machine Learning – Increase Trust and Eliminate Bias](https://ficonsulting.com/insight-post/interpretable-machine-learning-increase-trust-and-eliminate-bias/)
-- [Explainable Boosting Machine model in car insurance](https://www.addactis.com/blog/explainable-boosting-machine-model-car-insurance/)
+- [Explainable Boosting Machine for Predicting Claim Severity and Frequency in Car Insurance](https://arxiv.org/pdf/2503.21321)
 - [Enhancing Trust in Credit Risk Models: A Comparative Analysis of EBMs and GBMs](https://2os.medium.com/enhancing-trust-in-credit-risk-models-a-comparative-analysis-of-ebms-and-gbms-25e02810300f)
 - [Explainable AI: unlocking value in FEC operations](https://analytiqal.nl/2024/01/22/fec-value-from-explainable-ai/)
 - [Interpretable or Accurate? Why Not Both?](https://towardsdatascience.com/interpretable-or-accurate-why-not-both-4d9c73512192)
@@ -630,6 +630,7 @@ We also build on top of many great packages. Please check them out!
 - [Challenging the Performance-Interpretability Trade-off: An Evaluation of Interpretable Machine Learning Models](https://link.springer.com/article/10.1007/s12599-024-00922-2)
 - [Explainable Boosting Machine for Predicting Claim Severity and Frequency in Car Insurance](https://arxiv.org/pdf/2503.21321)
 - [GAMFORMER: In-context Learning for Generalized Additive Models](https://arxiv.org/pdf/2410.04560v1)
+- [Beyond black-box Predictions: Identifying Marginal Feature Effects in Tabular Transformer Networks](https://arxiv.org/pdf/2504.08712)
 - [Glass Box Machine Learning and Corporate Bond Returns](https://download.ssrn.com/2024/12/7/5047456.pdf?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEJn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQC4Tahz9gLK1PnaT2OcGVvU95LIXVjM6MGGLiR8muLBHwIgDhBNcW1HFouaDPID%2FgMGtfAOIqCtr0JTXSsBYYGjXZEqvQUIYhAEGgwzMDg0NzUzMDEyNTciDBSJqXVnefWlpTvEvSqaBfTjYUxrqKGMDY1QImthn4LR848sVKt0vRNJSuhmBUct5KZ%2FYHehm4HVsRgxd%2FYezoCGxoo%2Bee1rhSCW7WVwdPrNzvAb34a410A6DkywgnsGsKhvMltoeYudsXrL2SlqY6fP5z8mmzELDBjHhNRbpjaPx%2BmHQiv8PrE6bqrQz%2Fe18Aj9JVsAlUAiJ0s9AiK5kaqJU6yZJJvaFh4AWHd8IsOj0QBU%2BHoTYj5ff2XzM9PtWUQbZccke066NcJEuUSE7fj5OREKYi%2BCXG6zNWu8y4BubfSzjL1pLRDuBB%2Fc6zQNWu%2Bz9sibZRzBvx1mmhTrL2ffhWCeTlCaSj1EsM3VuyNz3d8z2MFTpxn4hBqcR3lk0daL4qllASz3UMp%2FPwteZszzpE9moZwEwJWmR4TrH3KFF7x2bZaQPLvgt%2BqnstHyJXOgaEmXDX0yEyGQyDQh9RpD4n%2FlBTSHsXme0OfjEt5AscRnBqRpsX3ZG9Bx0cK5ibthJ5M%2FwsExm76cF8tPdyOCqozaF%2B9l1sJsWK1h4jHYrbdyZZZtKj786Ed2CAOZ0M%2FzY1hyHHAO47jOlNs9Ju2qLhsdXmcbFRiBfA2IN4UxClTyrAaYA2fQhpFHpRdM5CMk8%2Fe4h8Mt1PVO7K95BihB2P5O%2BCiWWzrlwAVKa5KKipxmRTDTjl2VIKFkwLeCwPHJFpQCL1ZknhGyIiD9hLpS%2BykAXnHyN4U7dN6rtOf8FGqDO0QUA2ZvTaT6DXrUps1Wf2iNqk%2Facl3RyB3nNwRw4igeUx9UysRRFsz2Rs93kZJq17yGiCLP38xF%2FniKj8doporrNbBjkMhBpAXKyqDpQ7JQ%2Bwu8GPAWdPiD%2FumnjvuuoG0UkmGX81izy5zCREKOraIuDzqOMjD6%2BIu7BjqxAYNSOCdUDYw30aHTCSDBoj%2B4LzQk2ZMdumvEyvNKv%2ButPmI1J6LsIwV8s1q7dgqpe2%2FA%2BLX4ZbWaT0OPR3idfz7ADSNZp6Ykfinfj6FSf673Kj%2FOm4etpiZxcMy8MDD65CHXCDy0%2FhMz9JAwmDyD2Dmb%2Fhvta226gohBnpuBA8KCoP946GdYEzyaXGvByrO4BOmvB%2BlRifauewFHndym7seWzQtJ%2B514aguu1JT%2F7XJVUw%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20241218T174139Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIAUPUUPRWE45GYNSPF%2F20241218%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=2c2b0fd799efafee1598fbc8ba7dd050451f67845f5cfa3b01a5b3ed0db7db1c&abstractId=5047456)
 - [Data Science with LLMs and Interpretable Models](https://arxiv.org/pdf/2402.14474v1.pdf)
 - [DimVis: Interpreting Visual Clusters in Dimensionality Reduction With Explainable Boosting Machine](https://arxiv.org/pdf/2402.06885.pdf)
@@ -640,6 +641,11 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable Additive Tabular Transformer Networks](https://openreview.net/pdf/d2f0db2646418b24bb322fc1f4082fd9e65409c2.pdf)
 - [Signature Informed Sampling for Transcriptomic Data](https://www.biorxiv.org/content/biorxiv/early/2023/10/31/2023.10.26.564263.full.pdf)
 - [Interpretable Survival Analysis for Heart Failure Risk Prediction](https://arxiv.org/pdf/2310.15472.pdf)
+- [Investigating Protective and Risk Factors and Predictive Insights for Aboriginal Perinatal Mental Health: Explainable Artificial Intelligence Approach](https://www.jmir.org/2025/1/e68030)
+- [Analyzing User Characteristics of Hate Speech Spreaders on Social Media](https://arxiv.org/pdf/2310.15772)
+- [Explainable Boosting Machines Identify Key Metabolomic Biomarkers in Rheumatoid Arthritis](https://www.mdpi.com/1648-9144/61/5/833)
+- [AI-Based Estimation and Segmentation of Biological Age Using Clinical Data](https://doi.org/10.21203/rs.3.rs-6638646/v1)
+- [Interpretable machine learning for precision cognitive aging](https://www.frontiersin.org/journals/computational-neuroscience/articles/10.3389/fncom.2025.1560064/full)
 - [LLMs Understand Glass-Box Models, Discover Surprises, and Suggest Repairs](https://arxiv.org/pdf/2308.01157.pdf)
 - [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
@@ -654,6 +660,7 @@ We also build on top of many great packages. Please check them out!
 - [How the Galaxy–Halo Connection Depends on Large-Scale Environment](https://arxiv.org/pdf/2402.07995.pdf)
 - [Unveiling the drivers of the Baryon Cycles with Interpretable Multi-step Machine Learning and Simulations](https://arxiv.org/pdf/2504.09744v1)
 - [Explainable Artificial Intelligence for COVID-19 Diagnosis Through Blood Test Variables](https://link.springer.com/content/pdf/10.1007/s40313-021-00858-y.pdf)
+- [Evaluation of Machine Learning Models for Early Prediction of Gestational Diabetes Using Retrospective Electronic Health Records from Current and Previous Pregnancies](https://www.medrxiv.org/content/10.1101/2025.05.12.25327431v1.full.pdf)
 - [A diagnostic support system based on interpretable machine learning and oscillometry for accurate diagnosis of respiratory dysfunction in silicosis](https://www.biorxiv.org/content/10.1101/2025.01.08.632001v1.full.pdf)
 - [Using Explainable Boosting Machines (EBMs) to Detect Common Flaws in Data](https://link.springer.com/chapter/10.1007/978-3-030-93736-2_40)
 - [Differentially Private Gradient Boosting on Linear Learners for Tabular Data Analysis](https://assets.amazon.science/fa/3a/a62ba73f4bbda1d880b678c39193/differentially-private-gradient-boosting-on-linear-learners-for-tabular-data-analysis.pdf)
@@ -772,6 +779,7 @@ We also build on top of many great packages. Please check them out!
 - [Platform and Model Design for Responsible AI: Design and build resilient, private, fair, and transparent machine learning models](https://www.amazon.com/Platform-Model-Design-Responsible-transparent/dp/1803237074)
 - [Explainable AI Recipes](https://www.amazon.com/Explainable-Recipes-Implement-Explainability-Interpretability-ebook/dp/B0BSF5NBY7)
 - [Ensemble Methods for Machine Learning](https://www.amazon.com/Ensemble-Methods-Machine-Learning-Kunapuli/dp/1617297135)
+- [Interpretability and Explainability in AI Using Python](https://www.amazon.com/Interpretability-Explainability-Using-Python-Decision-Making/dp/B0F536GGT5/ref=sr_1_1?crid=5QJBMJKZOJ4H&dib=eyJ2IjoiMSJ9.oiAm3_DaQcHqA3YNRGrC70d1KcpeDZReI29ATLUdCe0VWb6wKLo-U1iLlyW24-u0SIdRxce8m_E1urP9pl-Qwjm9JSfu6l8nX3Ws9itlpXw.AJkX9wz_VBTb3OSeiW22Fbt2NCI3_kM7zJ_TCTUcbt0&dib_tag=se&keywords=interpretability+and+explainability+in+ai&qid=1748138569&sprefix=interpretability+and+explainability+in+ai%2Caps%2C175&sr=8-1)
 
 # External tools
 
