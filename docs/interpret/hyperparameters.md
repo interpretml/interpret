@@ -6,7 +6,7 @@ The parameters below are ordered by tuning importance, with the most important h
 
 
 ## max_leaves
-default: 3 (classification) 2 (regression)
+default: 2
 
 hyperparameters: [2, 3]
 
@@ -130,10 +130,47 @@ hyperparameters: [14]
 guidance: Increasing outer bags beyond 14 provides no observable benefit. Reducing outer_bags below 14 might improve fitting time on machines with less than 14 cores. Setting outer_bags to 8 is reasonable on many datasets, and can improve fitting time.
 
 ## max_rounds
-default: 25000
+default: 50000
 
 ideal: 1000000000 (early stopping should stop long before this point)
 
 hyperparameters: [1000000000]
 
 guidance: The max_rounds parameter serves as a limit to prevent excessive training on datasets where improvements taper off. Set this parameter sufficiently high to avoid premature early stopping provided fitting times are reasonable.
+
+## missing
+default: 'separate'
+
+hyperparameters: ['separate', 'low', 'high', 'gain']
+
+guidance: Needs investigation before we offer guidance on tuning.
+
+## reg_alpha
+default: 0.0
+
+guidance: Needs investigation before we offer guidance on tuning.
+
+## reg_lambda
+default: 0.0
+
+guidance: Needs investigation before we offer guidance on tuning.
+
+## max_delta_step
+default: 0.0
+
+guidance: Needs investigation before we offer guidance on tuning.
+
+## gain_scale
+default: 5.0
+
+guidance: Needs investigation before we offer guidance on tuning. Until then, experimentally try [0.5, 1.0, 2.0, 5.0]
+
+## min_cat_samples
+default: 10
+
+guidance: Needs investigation before we offer guidance on tuning. Until then, experimentally try [5, 10, 15, 20]
+
+## cat_smooth
+default: 10.0
+
+guidance: Needs investigation before we offer guidance on tuning. Until then, experimentally try [5.0, 10.0, 20.0, 100.0, +inf, NaN]
