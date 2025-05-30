@@ -23,7 +23,6 @@ from sklearn.base import (
 )
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted
-from ._excel import UNTESTED_to_excel_exportable
 
 from ... import develop
 from ...api.base import ExplainerMixin
@@ -1708,6 +1707,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
+        from ._excel import UNTESTED_to_excel_exportable
+
         assert isinstance(self, ExplainableBoostingClassifier)
 
         workbook = UNTESTED_to_excel_exportable(self, file)
@@ -1724,8 +1725,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         check_is_fitted(self, "has_fitted_")
 
-        workbook = to_excel_exportable(self, file)
-        worbook.close()
+        workbook = self.to_excel_exportable(file)
+        workbook.close()
 
     def _predict_score(self, X, init_score=None):
         """Predict scores on provided samples.
