@@ -1,13 +1,14 @@
+from itertools import islice
+
+import pandas as pd
+import pytest
+from powerlift import db
 from powerlift.bench.store import (
     Store,
+    populate_with_datasets,
     retrieve_openml,
     retrieve_pmlb,
-    populate_with_datasets,
 )
-import pandas as pd
-from powerlift import db
-import pytest
-from itertools import islice
 
 
 @pytest.mark.skip("high bandwidth test")
@@ -21,7 +22,7 @@ def test_retrieve_openml(cache_dir, dataset_limit):
             assert meta["problem"] in ["binary", "multiclass"]
             assert len(meta["feature_names"]) > 0
             assert len(meta["categorical_mask"]) > 0
-            assert meta["source"] == "openml"
+            assert meta["origin"] == "openml"
             assert isinstance(X, pd.DataFrame)
             assert isinstance(y, pd.Series)
             count += 1
@@ -39,7 +40,7 @@ def test_retrieve_pmlb(cache_dir, dataset_limit):
             assert meta["problem"] in ["binary", "multiclass", "regression"]
             assert len(meta["feature_names"]) > 0
             assert len(meta["categorical_mask"]) > 0
-            assert meta["source"] == "pmlb"
+            assert meta["origin"] == "pmlb"
             assert isinstance(X, pd.DataFrame)
             assert isinstance(y, pd.Series)
             count += 1
@@ -53,5 +54,5 @@ def test_populate_with_datasets(store: Store, dataset_limit):
     dataset_iter = islice(retrieve_openml(), dataset_limit)
     populate_with_datasets(store, dataset_iter)
 
-    assert store._session.query(func.count(db.Asset.id)).scalar()
-    assert store._session.query(func.count(db.Task.id)).scalar()
+    assert store.session.query(func.count(db.Asset.id)).scalar()
+    assert store.session.query(func.count(db.Task.id)).scalar()

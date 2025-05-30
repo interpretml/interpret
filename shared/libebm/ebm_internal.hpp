@@ -31,38 +31,32 @@ typedef uint64_t UIntMain;
 typedef double FloatMain;
 typedef double FloatCalc;
 typedef double FloatScore;
+typedef double FloatPrecomp;
 
-
-// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage based on the data type 
-//   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a dynamically detected/changing value.  
-//   Perhaps take the sqrt of the minimal change from 1?
-// when comparing floating point numbers, check this info out: https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
-
+// TODO: put a list of all the epilon constants that we use here throughout (use 1e-7 format).  Make it a percentage
+// based on the data type
+//   minimum eplison from 1 + minimal_change.  If we can make it a constant, then do that, or make it a percentage of a
+//   dynamically detected/changing value. Perhaps take the sqrt of the minimal change from 1?
+// when comparing floating point numbers, check this info out:
+// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 
 // TODO: search on all my epsilon values and see if they are being used consistently
 
-// gain should be positive, so any number is essentially illegal, but let's make our number very very negative so that we can't confuse it with small 
-// negative values close to zero that might occur due to numeric instability
-static constexpr FloatCalc k_illegalGainFloat = std::numeric_limits<FloatCalc>::lowest();
 static constexpr double k_illegalGainDouble = std::numeric_limits<double>::lowest();
-
-#ifndef NDEBUG
-static constexpr FloatCalc k_epsilonNegativeGainAllowed = FloatCalc { -1e-7 };
-#endif // NDEBUG
-
-static constexpr bool k_bUseLogitboost = false;
 
 extern double FloatTickIncrementInternal(double deprecisioned[1]) noexcept;
 extern double FloatTickDecrementInternal(double deprecisioned[1]) noexcept;
 
 INLINE_ALWAYS static double FloatTickIncrement(const double val) noexcept {
-   // we use an array in the call to FloatTickIncrementInternal to chop off any extended precision bits that might be in the float
+   // we use an array in the call to FloatTickIncrementInternal to chop off any extended precision bits that might be in
+   // the float
    double deprecisioned[1];
    deprecisioned[0] = val;
    return FloatTickIncrementInternal(deprecisioned);
 }
 INLINE_ALWAYS static double FloatTickDecrement(const double val) noexcept {
-   // we use an array in the call to FloatTickDecrementInternal to chop off any extended precision bits that might be in the float
+   // we use an array in the call to FloatTickDecrementInternal to chop off any extended precision bits that might be in
+   // the float
    double deprecisioned[1];
    deprecisioned[0] = val;
    return FloatTickDecrementInternal(deprecisioned);
@@ -76,6 +70,6 @@ INLINE_ALWAYS static double CleanFloat(const double val) noexcept {
    return deprecisioned[0];
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // EBM_INTERNAL_HPP

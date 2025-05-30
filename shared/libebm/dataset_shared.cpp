@@ -51,9 +51,10 @@ namespace DEFINED_ZONE_NAME {
 //   - For mains we should probably preserve the sparsity, but for pairs we probably want to de-sparsify
 //     the data in the boosting and interaction datasets because we do not want to deal with dimensions
 //     being either sparse or not and wanting to template that for low dimensions
-// 
+//
 // STEPS :
-//   - C will fill a temporary index array in the RawArray, sort the data by target with the indexes, and secondarily by input features.  The index array 
+//   - C will fill a temporary index array in the RawArray, sort the data by target with the indexes, and secondarily by
+//   input features.  The index array
 //     will remain for reconstructing the original order
 //   - Now the memory is read only from now on, and shareable, and the original order can be re-constructed
 
@@ -64,7 +65,7 @@ static constexpr UIntShared k_sharedDataSetDoneId = 0x61E3; // random 15 bit num
 
 // feature ids
 static constexpr UIntShared k_missingFeatureBit = 0x1;
-static constexpr UIntShared k_unknownFeatureBit = 0x2;
+static constexpr UIntShared k_unseenFeatureBit = 0x2;
 static constexpr UIntShared k_nominalFeatureBit = 0x4;
 static constexpr UIntShared k_sparseFeatureBit = 0x8;
 static constexpr UIntShared k_featureId = 0x2B40; // random 15 bit number with lower 4 bits set to zero
@@ -77,18 +78,18 @@ static constexpr UIntShared k_classificationBit = 0x1;
 static constexpr UIntShared k_targetId = 0x5A92; // random 15 bit number with lowest bit set to zero
 
 INLINE_ALWAYS static bool IsFeature(const UIntShared id) noexcept {
-   return (k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
-      ((k_missingFeatureBit | k_unknownFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit) | id);
+   return (k_missingFeatureBit | k_unseenFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit | k_featureId) ==
+         ((k_missingFeatureBit | k_unseenFeatureBit | k_nominalFeatureBit | k_sparseFeatureBit) | id);
 }
 INLINE_ALWAYS static bool IsMissingFeature(const UIntShared id) noexcept {
    static_assert(0 == (k_missingFeatureBit & k_featureId), "k_featureId should not be missing");
    EBM_ASSERT(IsFeature(id));
    return 0 != (k_missingFeatureBit & id);
 }
-INLINE_ALWAYS static bool IsUnknownFeature(const UIntShared id) noexcept {
-   static_assert(0 == (k_unknownFeatureBit & k_featureId), "k_featureId should not be unknown");
+INLINE_ALWAYS static bool IsUnseenFeature(const UIntShared id) noexcept {
+   static_assert(0 == (k_unseenFeatureBit & k_featureId), "k_featureId should not be unseen");
    EBM_ASSERT(IsFeature(id));
-   return 0 != (k_unknownFeatureBit & id);
+   return 0 != (k_unseenFeatureBit & id);
 }
 INLINE_ALWAYS static bool IsNominalFeature(const UIntShared id) noexcept {
    static_assert(0 == (k_nominalFeatureBit & k_featureId), "k_featureId should not be nominal");
@@ -101,16 +102,10 @@ INLINE_ALWAYS static bool IsSparseFeature(const UIntShared id) noexcept {
    return 0 != (k_sparseFeatureBit & id);
 }
 INLINE_ALWAYS static UIntShared GetFeatureId(
-   const bool bMissing,
-   const bool bUnknown,
-   const bool bNominal,
-   const bool bSparse
-) noexcept {
-   return k_featureId | 
-      (bMissing ? k_missingFeatureBit : UIntShared { 0 }) |
-      (bUnknown ? k_unknownFeatureBit : UIntShared { 0 }) |
-      (bNominal ? k_nominalFeatureBit : UIntShared { 0 }) |
-      (bSparse ? k_sparseFeatureBit : UIntShared { 0 });
+      const bool bMissing, const bool bUnseen, const bool bNominal, const bool bSparse) noexcept {
+   return k_featureId | (bMissing ? k_missingFeatureBit : UIntShared{0}) |
+         (bUnseen ? k_unseenFeatureBit : UIntShared{0}) | (bNominal ? k_nominalFeatureBit : UIntShared{0}) |
+         (bSparse ? k_sparseFeatureBit : UIntShared{0});
 }
 
 INLINE_ALWAYS static bool IsTarget(const UIntShared id) noexcept {
@@ -122,9 +117,8 @@ INLINE_ALWAYS static bool IsClassificationTarget(const UIntShared id) noexcept {
    return 0 != (k_classificationBit & id);
 }
 INLINE_ALWAYS static UIntShared GetTargetId(const bool bClassification) noexcept {
-   return k_targetId | (bClassification ? k_classificationBit : UIntShared { 0 });
+   return k_targetId | (bClassification ? k_classificationBit : UIntShared{0});
 }
-
 
 struct HeaderDataSetShared {
    // m_id should be in the first position since we use it to mark validity
@@ -139,22 +133,22 @@ struct HeaderDataSetShared {
    UIntShared m_offsets[1];
 };
 static_assert(std::is_standard_layout<HeaderDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<HeaderDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 static const size_t k_cBytesHeaderId = offsetof(HeaderDataSetShared, m_id) + sizeof(HeaderDataSetShared::m_id);
 static const size_t k_cBytesHeaderNoOffset = offsetof(HeaderDataSetShared, m_offsets);
-static const UIntShared k_unfilledOffset = static_cast<UIntShared>(k_cBytesHeaderNoOffset - size_t { 1 });
+static const UIntShared k_unfilledOffset = static_cast<UIntShared>(k_cBytesHeaderNoOffset - size_t{1});
 
 struct FeatureDataSetShared {
-   UIntShared m_id; // dense or sparse?  nominal, missing, unknown or not?
+   UIntShared m_id; // dense or sparse?  nominal, missing, unseen or not?
    UIntShared m_cBins;
 };
 static_assert(std::is_standard_layout<FeatureDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<FeatureDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct SparseFeatureDataSetShared {
    // TODO: implement sparse features
@@ -165,51 +159,48 @@ struct SparseFeatureDataSetShared {
    SparseFeatureDataSetSharedEntry m_nonDefaults[1];
 };
 static_assert(std::is_standard_layout<SparseFeatureDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<SparseFeatureDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct WeightDataSetShared {
    UIntShared m_id;
 };
 static_assert(std::is_standard_layout<WeightDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<WeightDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct TargetDataSetShared {
    UIntShared m_id; // classification or regression
 };
 static_assert(std::is_standard_layout<TargetDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<TargetDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 struct ClassificationTargetDataSetShared {
    UIntShared m_cClasses;
 };
 static_assert(std::is_standard_layout<ClassificationTargetDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 static_assert(std::is_trivial<ClassificationTargetDataSetShared>::value,
-   "These structs are shared between processes, so they definetly need to be standard layout and trivial");
+      "These structs are shared between processes, so they definetly need to be standard layout and trivial");
 
 // No RegressionTargetDataSetShared required
 
 static bool IsHeaderError(
-   const UIntShared countSamples,
-   const size_t cBytesAllocated,
-   const unsigned char * const pFillMem
-) {
+      const UIntShared countSamples, const size_t cBytesAllocated, const unsigned char* const pFillMem) {
    EBM_ASSERT(nullptr != pFillMem);
 
-   // we only call IsHeaderError when adding a section, so we need at least the global header, 
+   // we only call IsHeaderError when adding a section, so we need at least the global header,
    // one section offset, and at least one section header and/or the state index
    if(cBytesAllocated < k_cBytesHeaderNoOffset + sizeof(HeaderDataSetShared::m_offsets[0]) + sizeof(UIntShared)) {
       LOG_0(Trace_Error, "ERROR IsHeaderError not enough memory allocated for the shared dataset header");
       return true;
    }
 
-   const HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared *>(pFillMem);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pFillMem);
    EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id); // checked by our caller
 
    const UIntShared countFeatures = pHeaderDataSetShared->m_cFeatures;
@@ -274,8 +265,8 @@ static bool IsHeaderError(
       return true;
    }
 
-   const UIntShared * const pInternalState =
-      reinterpret_cast<const UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+   const UIntShared* const pInternalState =
+         reinterpret_cast<const UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
 
    const UIntShared internalState = *pInternalState;
    if(IsConvertError<size_t>(internalState)) {
@@ -289,8 +280,8 @@ static bool IsHeaderError(
       return true;
    }
 
-   if(size_t { 0 } == iOffset) {
-      if(UIntShared { 0 } != pHeaderDataSetShared->m_cSamples) {
+   if(size_t{0} == iOffset) {
+      if(UIntShared{0} != pHeaderDataSetShared->m_cSamples) {
          LOG_0(Trace_Error, "ERROR IsHeaderError UIntShared { 0 } != pHeaderDataSetShared->m_cSamples");
          return true;
       }
@@ -345,7 +336,7 @@ static bool IsHeaderError(
    return false;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAllocated, const void * dataSet) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAllocated, const void* dataSet) {
    // if countBytesAllocated is 0 then we do not check the bytes allocated
    // if countBytesAllocated is positive then countBytesAllocated must exactly equal the dataSet size
    // if countBytesAllocated is negative then -countBytesAllocated must equal or exceed the dataSet size
@@ -358,14 +349,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       LOG_0(Trace_Error, "ERROR CheckDataSet nullptr == dataSet");
       return Error_IllegalParamVal;
    }
-   const unsigned char * const pDataSetShared = static_cast<const unsigned char *>(dataSet);
+   const unsigned char* const pDataSetShared = static_cast<const unsigned char*>(dataSet);
 
    if(IsAbsCastError<size_t>(countBytesAllocated)) {
       LOG_0(Trace_Error, "ERROR CheckDataSet IsAbsCastError<size_t>(countBytesAllocated)");
       return Error_IllegalParamVal;
    }
    size_t cBytesMax = AbsCast<size_t>(countBytesAllocated);
-   if(size_t { 0 } == cBytesMax) {
+   if(size_t{0} == cBytesMax) {
       // 0 means do not check it
       cBytesMax = std::numeric_limits<size_t>::max();
    }
@@ -375,8 +366,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       return Error_IllegalParamVal;
    }
 
-   const HeaderDataSetShared * const pHeaderDataSetShared =
-      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pDataSetShared);
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR CheckDataSet k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
@@ -429,10 +419,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       return Error_IllegalParamVal;
    }
 
-   const UIntShared * pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
+   const UIntShared* pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
 
-   if(size_t { 0 } != cFeatures) {
-      const UIntShared * const pOffsetEnd = pOffset + cFeatures;
+   if(size_t{0} != cFeatures) {
+      const UIntShared* const pOffsetEnd = pOffset + cFeatures;
       do {
          const UIntShared indexOffsetCur = *pOffset;
          if(IsConvertError<size_t>(indexOffsetCur)) {
@@ -457,8 +447,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             return Error_IllegalParamVal;
          }
 
-         const FeatureDataSetShared * pFeatureDataSetShared =
-            reinterpret_cast<const FeatureDataSetShared *>(pDataSetShared + iOffsetCur);
+         const FeatureDataSetShared* pFeatureDataSetShared =
+               reinterpret_cast<const FeatureDataSetShared*>(pDataSetShared + iOffsetCur);
 
          const UIntShared id = pFeatureDataSetShared->m_id;
          if(!IsFeature(id)) {
@@ -485,8 +475,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                return Error_IllegalParamVal;
             }
 
-            const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
-               reinterpret_cast<const SparseFeatureDataSetShared *>(pDataSetShared + iOffsetCur);
+            const SparseFeatureDataSetShared* const pSparseFeatureDataSetShared =
+                  reinterpret_cast<const SparseFeatureDataSetShared*>(pDataSetShared + iOffsetCur);
 
             const UIntShared defaultVal = pSparseFeatureDataSetShared->m_defaultVal;
             if(countBins <= defaultVal) {
@@ -502,7 +492,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             const size_t cNonDefaults = static_cast<size_t>(countNonDefaults);
 
             if(IsMultiplyError(sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]), cNonDefaults)) {
-               LOG_0(Trace_Error, "ERROR CheckDataSet IsMultiplyError(sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]), cNonDefaults)");
+               LOG_0(Trace_Error,
+                     "ERROR CheckDataSet IsMultiplyError(sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]), "
+                     "cNonDefaults)");
                return Error_IllegalParamVal;
             }
             const size_t cTotalNonDefaults = sizeof(pSparseFeatureDataSetShared->m_nonDefaults[0]) * cNonDefaults;
@@ -513,12 +505,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             iOffsetNext += cTotalNonDefaults;
 
             if(cBytesMax < iOffsetNext) {
-               LOG_0(Trace_Error, "ERROR CheckDataSet Not enough space to access SparseFeatureDataSetShared::m_nonDefaults");
+               LOG_0(Trace_Error,
+                     "ERROR CheckDataSet Not enough space to access SparseFeatureDataSetShared::m_nonDefaults");
                return Error_IllegalParamVal;
             }
 
-            const SparseFeatureDataSetSharedEntry * pNonDefault = ArrayToPointer(pSparseFeatureDataSetShared->m_nonDefaults);
-            const SparseFeatureDataSetSharedEntry * const pNonDefaultEnd = &pNonDefault[cNonDefaults];
+            const SparseFeatureDataSetSharedEntry* pNonDefault =
+                  ArrayToPointer(pSparseFeatureDataSetShared->m_nonDefaults);
+            const SparseFeatureDataSetSharedEntry* const pNonDefaultEnd = &pNonDefault[cNonDefaults];
             while(pNonDefaultEnd != pNonDefault) {
                if(countSamples <= pNonDefault->m_iSample) {
                   LOG_0(Trace_Error, "ERROR CheckDataSet countSamples <= pNonDefault->m_iSample");
@@ -533,8 +527,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
          } else {
             // if there is only 1 bin we always know what it will be and we do not need to store anything
-            if(UIntShared { 0 } != countSamples && UIntShared { 1 } < countBins) {
-               const int cBitsRequiredMin = CountBitsRequired(countBins - UIntShared { 1 });
+            if(UIntShared{0} != countSamples && UIntShared{1} < countBins) {
+               const int cBitsRequiredMin = CountBitsRequired(countBins - UIntShared{1});
                EBM_ASSERT(1 <= cBitsRequiredMin);
                EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
 
@@ -542,9 +536,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                EBM_ASSERT(1 <= cItemsPerBitPack);
                EBM_ASSERT(cItemsPerBitPack <= COUNT_BITS(UIntShared));
 
-               EBM_ASSERT(UIntShared { 1 } <= countSamples);
-               const UIntShared countDataUnits = (countSamples - UIntShared { 1 }) /
-                  static_cast<UIntShared>(cItemsPerBitPack) + UIntShared { 1 };
+               EBM_ASSERT(UIntShared{1} <= countSamples);
+               const UIntShared countDataUnits =
+                     (countSamples - UIntShared{1}) / static_cast<UIntShared>(cItemsPerBitPack) + UIntShared{1};
 
                if(IsConvertError<size_t>(countDataUnits)) {
                   LOG_0(Trace_Error, "ERROR CheckDataSet IsConvertError<size_t>(countDataUnits)");
@@ -574,15 +568,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                EBM_ASSERT(1 <= cBitsPerItemMax);
                EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
 
-               int cShift = static_cast<int>((countSamples - UIntShared { 1 }) % static_cast<UIntShared>(cItemsPerBitPack)) * cBitsPerItemMax;
+               int cShift =
+                     static_cast<int>((countSamples - UIntShared{1}) % static_cast<UIntShared>(cItemsPerBitPack)) *
+                     cBitsPerItemMax;
                const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
 
                const UIntShared maskBits = MakeLowMask<UIntShared>(cBitsPerItemMax);
 
-               const UIntShared * pInputData =
-                  reinterpret_cast<const UIntShared *>(pDataSetShared + iOffsetCur);
-               const UIntShared * const pInputDataEnd =
-                  reinterpret_cast<const UIntShared *>(pDataSetShared + iOffsetNext);
+               const UIntShared* pInputData = reinterpret_cast<const UIntShared*>(pDataSetShared + iOffsetCur);
+               const UIntShared* const pInputDataEnd =
+                     reinterpret_cast<const UIntShared*>(pDataSetShared + iOffsetNext);
 
                do {
                   const UIntShared iBinCombined = *pInputData;
@@ -605,14 +600,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       } while(pOffsetEnd != pOffset);
    }
 
-   if(size_t { 0 } != cWeights) {
+   if(size_t{0} != cWeights) {
       if(IsConvertError<size_t>(countSamples)) {
          LOG_0(Trace_Error, "ERROR CheckDataSet IsConvertError<size_t>(countSamples)");
          return Error_IllegalParamVal;
       }
       const size_t cSamples = static_cast<size_t>(countSamples);
 
-      const UIntShared * const pOffsetEnd = pOffset + cWeights;
+      const UIntShared* const pOffsetEnd = pOffset + cWeights;
       do {
          const UIntShared indexOffsetCur = *pOffset;
          if(IsConvertError<size_t>(indexOffsetCur)) {
@@ -637,8 +632,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             return Error_IllegalParamVal;
          }
 
-         const WeightDataSetShared * pWeightDataSetShared =
-            reinterpret_cast<const WeightDataSetShared *>(pDataSetShared + iOffsetCur);
+         const WeightDataSetShared* pWeightDataSetShared =
+               reinterpret_cast<const WeightDataSetShared*>(pDataSetShared + iOffsetCur);
 
          const UIntShared id = pWeightDataSetShared->m_id;
          if(k_weightId != id) {
@@ -665,11 +660,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
          }
 
          // TODO: should I be checking for these bad weight values here or somewhere else?
-         //const FloatShared * pInputData =
+         // const FloatShared * pInputData =
          //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetCur);
-         //const FloatShared * const pInputDataEnd =
+         // const FloatShared * const pInputDataEnd =
          //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetNext);
-         //while(pInputDataEnd != pInputData) {
+         // while(pInputDataEnd != pInputData) {
          //   const FloatShared weight = *pInputData;
          //   if(std::isnan(weight)) {
          //      LOG_0(Trace_Error, "ERROR CheckDataSet std::isnan(weight)");
@@ -690,8 +685,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       } while(pOffsetEnd != pOffset);
    }
 
-   if(size_t { 0 } != cTargets) {
-      const UIntShared * const pOffsetEnd = pOffset + cTargets;
+   if(size_t{0} != cTargets) {
+      const UIntShared* const pOffsetEnd = pOffset + cTargets;
       do {
          const UIntShared indexOffsetCur = *pOffset;
          if(IsConvertError<size_t>(indexOffsetCur)) {
@@ -716,8 +711,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             return Error_IllegalParamVal;
          }
 
-         const TargetDataSetShared * pTargetDataSetShared =
-            reinterpret_cast<const TargetDataSetShared *>(pDataSetShared + iOffsetCur);
+         const TargetDataSetShared* pTargetDataSetShared =
+               reinterpret_cast<const TargetDataSetShared*>(pDataSetShared + iOffsetCur);
 
          const UIntShared id = pTargetDataSetShared->m_id;
          if(!IsTarget(id)) {
@@ -734,7 +729,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
 
             iOffsetCur = iOffsetNext;
             if(IsAddError(iOffsetNext, sizeof(ClassificationTargetDataSetShared))) {
-               LOG_0(Trace_Error, "ERROR CheckDataSet IsAddError(iOffsetNext, sizeof(ClassificationTargetDataSetShared))");
+               LOG_0(Trace_Error,
+                     "ERROR CheckDataSet IsAddError(iOffsetNext, sizeof(ClassificationTargetDataSetShared))");
                return Error_IllegalParamVal;
             }
             iOffsetNext += sizeof(ClassificationTargetDataSetShared);
@@ -744,8 +740,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                return Error_IllegalParamVal;
             }
 
-            const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
-               reinterpret_cast<const ClassificationTargetDataSetShared *>(pDataSetShared + iOffsetCur);
+            const ClassificationTargetDataSetShared* const pClassificationTargetDataSetShared =
+                  reinterpret_cast<const ClassificationTargetDataSetShared*>(pDataSetShared + iOffsetCur);
 
             // we do not need to allocate anything based on the number of classes, so allow numbers of classes
             // that would exceed a size_t here and catch those on whatever system this dataset is unpacked on
@@ -769,10 +765,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
                return Error_IllegalParamVal;
             }
 
-            const UIntShared * pInputData =
-               reinterpret_cast<const UIntShared *>(pDataSetShared + iOffsetCur);
-            const UIntShared * const pInputDataEnd =
-               reinterpret_cast<const UIntShared *>(pDataSetShared + iOffsetNext);
+            const UIntShared* pInputData = reinterpret_cast<const UIntShared*>(pDataSetShared + iOffsetCur);
+            const UIntShared* const pInputDataEnd = reinterpret_cast<const UIntShared*>(pDataSetShared + iOffsetNext);
             while(pInputDataEnd != pInputData) {
                const UIntShared target = *pInputData;
                if(countClasses <= target) {
@@ -794,7 +788,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
             const size_t cTotalMem = sizeof(FloatShared) * cSamples;
 
-            //iOffsetCur = iOffsetNext;
+            // iOffsetCur = iOffsetNext;
             if(IsAddError(iOffsetNext, cTotalMem)) {
                LOG_0(Trace_Error, "ERROR CheckDataSet IsAddError(iOffsetNext, cTotalMem)");
                return Error_IllegalParamVal;
@@ -807,11 +801,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
             }
 
             // TODO: should I be checking for these bad regression targets here or somewhere else?
-            //const FloatShared * pInputData =
+            // const FloatShared * pInputData =
             //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetCur);
-            //const FloatShared * const pInputDataEnd =
+            // const FloatShared * const pInputDataEnd =
             //   reinterpret_cast<const FloatShared *>(pDataSetShared + iOffsetNext);
-            //while(pInputDataEnd != pInputData) {
+            // while(pInputDataEnd != pInputData) {
             //   const FloatShared target = *pInputData;
             //   if(std::isnan(target)) {
             //      LOG_0(Trace_Error, "ERROR CheckDataSet std::isnan(target)");
@@ -828,7 +822,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
       } while(pOffsetEnd != pOffset);
    }
 
-   if(IntEbm { 0 } < countBytesAllocated) {
+   if(IntEbm{0} < countBytesAllocated) {
       if(iOffsetNext != cBytesMax) {
          LOG_0(Trace_Error, "ERROR CheckDataSet dataSet length does not match");
          return Error_IllegalParamVal;
@@ -838,12 +832,11 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CheckDataSet(IntEbm countBytesAlloc
    return Error_None;
 }
 
-static ErrorEbm LockDataSetShared(const size_t cBytesAllocated, unsigned char * const pFillMem) {
-   HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+static ErrorEbm LockDataSetShared(const size_t cBytesAllocated, unsigned char* const pFillMem) {
+   HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
    EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
 
    // TODO: sort the data by the target (if there is only one target)
-
 
    // breifly set this to done so that we can check it with our public CheckDataSet function
    pHeaderDataSetShared->m_id = k_sharedDataSetDoneId;
@@ -858,30 +851,25 @@ static ErrorEbm LockDataSetShared(const size_t cBytesAllocated, unsigned char * 
 
 WARNING_PUSH
 WARNING_REDUNDANT_CODE
-static IntEbm AppendHeader(
-   const IntEbm countFeatures,
-   const IntEbm countWeights,
-   const IntEbm countTargets,
-   const size_t cBytesAllocated,
-   unsigned char * const pFillMem
-) {
-   EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
+static IntEbm AppendHeader(const IntEbm countFeatures,
+      const IntEbm countWeights,
+      const IntEbm countTargets,
+      const size_t cBytesAllocated,
+      unsigned char* const pFillMem) {
+   EBM_ASSERT(size_t{0} == cBytesAllocated && nullptr == pFillMem || nullptr != pFillMem);
 
-   LOG_N(
-      Trace_Info,
-      "Entered AppendHeader: "
-      "countFeatures=%" IntEbmPrintf ", "
-      "countWeights=%" IntEbmPrintf ", "
-      "countTargets=%" IntEbmPrintf ", "
-      "cBytesAllocated=%zu, "
-      "pFillMem=%p"
-      ,
-      countFeatures,
-      countWeights,
-      countTargets,
-      cBytesAllocated,
-      static_cast<void *>(pFillMem)
-   );
+   LOG_N(Trace_Info,
+         "Entered AppendHeader: "
+         "countFeatures=%" IntEbmPrintf ", "
+         "countWeights=%" IntEbmPrintf ", "
+         "countTargets=%" IntEbmPrintf ", "
+         "cBytesAllocated=%zu, "
+         "pFillMem=%p",
+         countFeatures,
+         countWeights,
+         countTargets,
+         cBytesAllocated,
+         static_cast<void*>(pFillMem));
 
    if(IsConvertError<size_t>(countFeatures) || IsConvertError<UIntShared>(countFeatures)) {
       LOG_0(Trace_Error, "ERROR AppendHeader countFeatures is outside the range of a valid index");
@@ -927,7 +915,7 @@ static IntEbm AppendHeader(
    }
 
    if(nullptr != pFillMem) {
-      if(size_t { 0 } == cOffsets) {
+      if(size_t{0} == cOffsets) {
          if(cBytesAllocated != cBytesHeader) {
             LOG_0(Trace_Error, "ERROR AppendHeader buffer size and fill size do not agree");
             return Error_IllegalParamVal;
@@ -941,7 +929,7 @@ static IntEbm AppendHeader(
          }
       }
 
-      HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+      HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
 
       pHeaderDataSetShared->m_id = k_sharedDataSetWorkingId;
       pHeaderDataSetShared->m_cSamples = 0;
@@ -949,7 +937,7 @@ static IntEbm AppendHeader(
       pHeaderDataSetShared->m_cWeights = static_cast<UIntShared>(cWeights);
       pHeaderDataSetShared->m_cTargets = static_cast<UIntShared>(cTargets);
 
-      if(size_t { 0 } == cOffsets) {
+      if(size_t{0} == cOffsets) {
          // we allow this shared data set to be permissive in it's construction but if there are things like
          // zero targets we expect the booster or interaction detector constructors to give errors
          const ErrorEbm error = LockDataSetShared(cBytesAllocated, pFillMem);
@@ -957,8 +945,8 @@ static IntEbm AppendHeader(
             return error;
          }
       } else {
-         UIntShared * pCur = ArrayToPointer(pHeaderDataSetShared->m_offsets);
-         const UIntShared * const pEnd = pCur + cOffsets;
+         UIntShared* pCur = ArrayToPointer(pHeaderDataSetShared->m_offsets);
+         const UIntShared* const pEnd = pCur + cOffsets;
          do {
             *pCur = k_unfilledOffset;
             ++pCur;
@@ -966,8 +954,8 @@ static IntEbm AppendHeader(
 
          // position our first item right after the header
          pHeaderDataSetShared->m_offsets[0] = static_cast<UIntShared>(cBytesHeader);
-         UIntShared * const pInternalState =
-            reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+         UIntShared* const pInternalState =
+               reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
          *pInternalState = 0;
       }
       return Error_None;
@@ -980,7 +968,7 @@ static IntEbm AppendHeader(
 }
 WARNING_POP
 
-static bool DecideIfSparse(const size_t cSamples, const IntEbm * binIndexes) {
+static bool DecideIfSparse(const size_t cSamples, const IntEbm* binIndexes) {
    // For sparsity in the data set shared memory the only thing that matters is compactness since we don't use
    // this memory in any high performance loops
 
@@ -993,43 +981,38 @@ static bool DecideIfSparse(const size_t cSamples, const IntEbm * binIndexes) {
 
 WARNING_PUSH
 WARNING_REDUNDANT_CODE
-static IntEbm AppendFeature(
-   const IntEbm countBins,
-   const BoolEbm isMissing,
-   const BoolEbm isUnknown,
-   const BoolEbm isNominal,
-   const IntEbm countSamples,
-   const IntEbm * binIndexes,
-   const size_t cBytesAllocated,
-   unsigned char * const pFillMem
-) {
-   EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || 
-      nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
+static IntEbm AppendFeature(const IntEbm countBins,
+      const BoolEbm isMissing,
+      const BoolEbm isUnseen,
+      const BoolEbm isNominal,
+      const IntEbm countSamples,
+      const IntEbm* binIndexes,
+      const size_t cBytesAllocated,
+      unsigned char* const pFillMem) {
+   EBM_ASSERT(size_t{0} == cBytesAllocated && nullptr == pFillMem ||
+         nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
 
-   LOG_N(
-      Trace_Info,
-      "Entered AppendFeature: "
-      "countBins=%" IntEbmPrintf ", "
-      "isMissing=%s, "
-      "isUnknown=%s, "
-      "isNominal=%s, "
-      "countSamples=%" IntEbmPrintf ", "
-      "binIndexes=%p, "
-      "cBytesAllocated=%zu, "
-      "pFillMem=%p"
-      ,
-      countBins,
-      ObtainTruth(isMissing),
-      ObtainTruth(isUnknown),
-      ObtainTruth(isNominal),
-      countSamples,
-      static_cast<const void *>(binIndexes),
-      cBytesAllocated,
-      static_cast<void *>(pFillMem)
-   );
+   LOG_N(Trace_Info,
+         "Entered AppendFeature: "
+         "countBins=%" IntEbmPrintf ", "
+         "isMissing=%s, "
+         "isUnseen=%s, "
+         "isNominal=%s, "
+         "countSamples=%" IntEbmPrintf ", "
+         "binIndexes=%p, "
+         "cBytesAllocated=%zu, "
+         "pFillMem=%p",
+         countBins,
+         ObtainTruth(isMissing),
+         ObtainTruth(isUnseen),
+         ObtainTruth(isNominal),
+         countSamples,
+         static_cast<const void*>(binIndexes),
+         cBytesAllocated,
+         static_cast<void*>(pFillMem));
 
    {
-      if(countBins <= IntEbm { 1 }) {
+      if(countBins <= IntEbm{1}) {
          LOG_0(Trace_Error, "ERROR AppendFeature countBins must be 2 or larger");
          goto return_bad;
       }
@@ -1039,15 +1022,15 @@ static IntEbm AppendFeature(
          goto return_bad;
       }
       UIntShared cBins = static_cast<UIntShared>(countBins);
-      cBins -= EBM_FALSE != isMissing ? UIntShared { 0 } : UIntShared { 1 };
-      cBins -= EBM_FALSE != isUnknown ? UIntShared { 0 } : UIntShared { 1 };
+      cBins -= EBM_FALSE != isMissing ? UIntShared{0} : UIntShared{1};
+      cBins -= EBM_FALSE != isUnseen ? UIntShared{0} : UIntShared{1};
 
       if(EBM_FALSE != isMissing && EBM_TRUE != isMissing) {
          LOG_0(Trace_Error, "ERROR AppendFeature isMissing is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
-      if(EBM_FALSE != isUnknown && EBM_TRUE != isUnknown) {
-         LOG_0(Trace_Error, "ERROR AppendFeature isUnknown is not EBM_FALSE or EBM_TRUE");
+      if(EBM_FALSE != isUnseen && EBM_TRUE != isUnseen) {
+         LOG_0(Trace_Error, "ERROR AppendFeature isUnseen is not EBM_FALSE or EBM_TRUE");
          goto return_bad;
       }
       if(EBM_FALSE != isNominal && EBM_TRUE != isNominal) {
@@ -1061,7 +1044,7 @@ static IntEbm AppendFeature(
       const size_t cSamples = static_cast<size_t>(countSamples);
 
       bool bSparse = false;
-      if(size_t { 0 } != cSamples) {
+      if(size_t{0} != cSamples) {
          if(nullptr == binIndexes) {
             LOG_0(Trace_Error, "ERROR AppendFeature nullptr == binIndexes");
             goto return_bad;
@@ -1078,11 +1061,11 @@ static IntEbm AppendFeature(
             goto return_bad;
          }
 
-         UIntShared * const pInternalState =
-            reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+         UIntShared* const pInternalState =
+               reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
          iOffset = static_cast<size_t>(*pInternalState);
 
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
 
          const size_t cFeatures = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures);
 
@@ -1104,32 +1087,28 @@ static IntEbm AppendFeature(
             goto return_bad;
          }
 
-         EBM_ASSERT(size_t { 0 } == iOffset && UIntShared { 0 } == pHeaderDataSetShared->m_cSamples ||
-            static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
+         EBM_ASSERT(size_t{0} == iOffset && UIntShared{0} == pHeaderDataSetShared->m_cSamples ||
+               static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
          pHeaderDataSetShared->m_cSamples = static_cast<UIntShared>(cSamples);
 
-         FeatureDataSetShared * const pFeatureDataSetShared = 
-            reinterpret_cast<FeatureDataSetShared *>(pFillMem + iHighestOffset);
+         FeatureDataSetShared* const pFeatureDataSetShared =
+               reinterpret_cast<FeatureDataSetShared*>(pFillMem + iHighestOffset);
 
-         pFeatureDataSetShared->m_id = GetFeatureId(
-            EBM_FALSE != isMissing,
-            EBM_FALSE != isUnknown,
-            EBM_FALSE != isNominal,
-            bSparse
-         );
+         pFeatureDataSetShared->m_id =
+               GetFeatureId(EBM_FALSE != isMissing, EBM_FALSE != isUnseen, EBM_FALSE != isNominal, bSparse);
          pFeatureDataSetShared->m_cBins = cBins;
       }
 
       // if there is only 1 bin we always know what it will be and we do not need to store anything
-      if(size_t { 0 } != cSamples) {
-         const IntEbm * pBinIndex = binIndexes;
-         const IntEbm * const pBinIndexsEnd = binIndexes + cSamples;
-         if(cBins <= UIntShared { 1 }) {
-            if(UIntShared { 0 } == cBins) {
+      if(size_t{0} != cSamples) {
+         const IntEbm* pBinIndex = binIndexes;
+         const IntEbm* const pBinIndexsEnd = binIndexes + cSamples;
+         if(cBins <= UIntShared{1}) {
+            if(UIntShared{0} == cBins) {
                LOG_0(Trace_Error, "ERROR AppendFeature UIntShared { 0 } == cBins");
                goto return_bad;
             }
-            const IntEbm indexBinLegal = EBM_FALSE != isMissing ? IntEbm { 0 } : IntEbm { 1 };
+            const IntEbm indexBinLegal = EBM_FALSE != isMissing ? IntEbm{0} : IntEbm{1};
             do {
                const IntEbm indexBin = *pBinIndex;
                if(indexBinLegal != indexBin) {
@@ -1139,7 +1118,7 @@ static IntEbm AppendFeature(
                ++pBinIndex;
             } while(pBinIndexsEnd != pBinIndex);
          } else {
-            const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared { 1 });
+            const int cBitsRequiredMin = CountBitsRequired(cBins - UIntShared{1});
             EBM_ASSERT(1 <= cBitsRequiredMin);
             EBM_ASSERT(cBitsRequiredMin <= COUNT_BITS(UIntShared));
 
@@ -1152,7 +1131,7 @@ static IntEbm AppendFeature(
             EBM_ASSERT(cBitsPerItemMax <= COUNT_BITS(UIntShared));
 
             EBM_ASSERT(1 <= cSamples);
-            const size_t cDataUnits = (cSamples - size_t { 1 }) / static_cast<size_t>(cItemsPerBitPack) + size_t { 1 };
+            const size_t cDataUnits = (cSamples - size_t{1}) / static_cast<size_t>(cItemsPerBitPack) + size_t{1};
 
             if(IsMultiplyError(sizeof(UIntShared), cDataUnits)) {
                LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(UIntShared), cDataUnits)");
@@ -1176,11 +1155,12 @@ static IntEbm AppendFeature(
                   LOG_0(Trace_Error, "ERROR AppendFeature IsMultiplyError(sizeof(binIndexes[0]), cSamples)");
                   goto return_bad;
                }
-               UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
+               UIntShared* pFillData = reinterpret_cast<UIntShared*>(pFillMem + iByteCur);
 
-               int cShift = static_cast<int>((cSamples - size_t { 1 }) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
+               int cShift =
+                     static_cast<int>((cSamples - size_t{1}) % static_cast<size_t>(cItemsPerBitPack)) * cBitsPerItemMax;
                const int cShiftReset = (cItemsPerBitPack - 1) * cBitsPerItemMax;
-               const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnknown ? IntEbm { 0 } : IntEbm { 1 });
+               const IntEbm indexBinIllegal = countBins - (EBM_FALSE != isUnseen ? IntEbm{0} : IntEbm{1});
                do {
                   UIntShared bits = 0;
                   do {
@@ -1190,12 +1170,12 @@ static IntEbm AppendFeature(
                         goto return_bad;
                      }
                      if(EBM_FALSE != isMissing) {
-                        if(indexBin < IntEbm { 0 }) {
+                        if(indexBin < IntEbm{0}) {
                            LOG_0(Trace_Error, "ERROR AppendFeature indexBin can't be negative");
                            goto return_bad;
                         }
                      } else {
-                        if(indexBin <= IntEbm { 0 }) {
+                        if(indexBin <= IntEbm{0}) {
                            LOG_0(Trace_Error, "ERROR AppendFeature indexBin <= IntEbm { 0 }");
                            goto return_bad;
                         }
@@ -1215,21 +1195,21 @@ static IntEbm AppendFeature(
                   *pFillData = bits;
                   ++pFillData;
                } while(pBinIndexsEnd != pBinIndex);
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+               EBM_ASSERT(reinterpret_cast<unsigned char*>(pFillData) == pFillMem + iByteNext);
             }
             iByteCur = iByteNext;
          }
       }
 
       if(nullptr != pFillMem) {
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
          EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
 
          ++iOffset;
-         const size_t cOffsets = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures) + 
-            static_cast<size_t>(pHeaderDataSetShared->m_cWeights) + 
-            static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
-         
+         const size_t cOffsets = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures) +
+               static_cast<size_t>(pHeaderDataSetShared->m_cWeights) +
+               static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
+
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
                LOG_0(Trace_Error, "ERROR AppendFeature buffer size and fill size do not agree");
@@ -1255,8 +1235,8 @@ static IntEbm AppendFeature(
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<UIntShared>(iByteCur);
-            UIntShared * const pInternalState =
-               reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+            UIntShared* const pInternalState =
+                  reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
             *pInternalState = static_cast<UIntShared>(iOffset); // the offset index is our state
          }
          return Error_None;
@@ -1271,7 +1251,7 @@ static IntEbm AppendFeature(
 return_bad:;
 
    if(nullptr != pFillMem) {
-      HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+      HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
    return Error_IllegalParamVal;
@@ -1281,27 +1261,20 @@ WARNING_POP
 WARNING_PUSH
 WARNING_REDUNDANT_CODE
 static IntEbm AppendWeight(
-   const IntEbm countSamples,
-   const double * aWeights,
-   const size_t cBytesAllocated,
-   unsigned char * const pFillMem
-) {
-   EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem || 
-      nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
+      const IntEbm countSamples, const double* aWeights, const size_t cBytesAllocated, unsigned char* const pFillMem) {
+   EBM_ASSERT(size_t{0} == cBytesAllocated && nullptr == pFillMem ||
+         nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
 
-   LOG_N(
-      Trace_Info,
-      "Entered AppendWeight: "
-      "countSamples=%" IntEbmPrintf ", "
-      "aWeights=%p, "
-      "cBytesAllocated=%zu, "
-      "pFillMem=%p"
-      ,
-      countSamples,
-      static_cast<const void *>(aWeights),
-      cBytesAllocated,
-      static_cast<void *>(pFillMem)
-   );
+   LOG_N(Trace_Info,
+         "Entered AppendWeight: "
+         "countSamples=%" IntEbmPrintf ", "
+         "aWeights=%p, "
+         "cBytesAllocated=%zu, "
+         "pFillMem=%p",
+         countSamples,
+         static_cast<const void*>(aWeights),
+         cBytesAllocated,
+         static_cast<void*>(pFillMem));
 
    {
       if(IsConvertError<size_t>(countSamples) || IsConvertError<UIntShared>(countSamples)) {
@@ -1317,12 +1290,12 @@ static IntEbm AppendWeight(
             goto return_bad;
          }
 
-         UIntShared * const pInternalState =
-            reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+         UIntShared* const pInternalState =
+               reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
 
          iOffset = static_cast<size_t>(*pInternalState);
 
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
 
          const size_t cFeatures = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures);
          const size_t cWeights = static_cast<size_t>(pHeaderDataSetShared->m_cWeights);
@@ -1349,22 +1322,24 @@ static IntEbm AppendWeight(
             goto return_bad;
          }
 
-         EBM_ASSERT(size_t { 0 } == iOffset && UIntShared { 0 } == pHeaderDataSetShared->m_cSamples ||
-            static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
+         EBM_ASSERT(size_t{0} == iOffset && UIntShared{0} == pHeaderDataSetShared->m_cSamples ||
+               static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
          pHeaderDataSetShared->m_cSamples = static_cast<UIntShared>(cSamples);
 
-         WeightDataSetShared * const pWeightDataSetShared = reinterpret_cast<WeightDataSetShared *>(pFillMem + iHighestOffset);
+         WeightDataSetShared* const pWeightDataSetShared =
+               reinterpret_cast<WeightDataSetShared*>(pFillMem + iHighestOffset);
          pWeightDataSetShared->m_id = k_weightId;
       }
 
-      if(size_t { 0 } != cSamples) {
+      if(size_t{0} != cSamples) {
          if(nullptr == aWeights) {
             LOG_0(Trace_Error, "ERROR AppendWeight nullptr == aWeights");
             goto return_bad;
          }
 
          if(IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatShared)), cSamples)) {
-            LOG_0(Trace_Error, "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatShared)), cSamples)");
+            LOG_0(Trace_Error,
+                  "ERROR AppendWeight IsMultiplyError(EbmMax(sizeof(*aWeights), sizeof(FloatShared)), cSamples)");
             goto return_bad;
          }
          const size_t cBytesAllSamples = sizeof(FloatShared) * cSamples;
@@ -1380,9 +1355,9 @@ static IntEbm AppendWeight(
                goto return_bad;
             }
 
-            FloatShared * pFill = reinterpret_cast<FloatShared *>(pFillMem + iByteCur);
-            const double * pWeight = aWeights;
-            const double * const pWeightsEnd = &aWeights[cSamples];
+            FloatShared* pFill = reinterpret_cast<FloatShared*>(pFillMem + iByteCur);
+            const double* pWeight = aWeights;
+            const double* const pWeightsEnd = &aWeights[cSamples];
             do {
                const double weight = *pWeight;
 
@@ -1396,12 +1371,14 @@ static IntEbm AppendWeight(
                }
                if(weight < static_cast<double>(std::numeric_limits<float>::min())) {
                   // we use floats internally in some places, so limit the weight to a float minimum
-                  LOG_0(Trace_Warning, "WARNING AppendWeight weight < static_cast<double>(std::numeric_limits<float>::min())");
+                  LOG_0(Trace_Warning,
+                        "WARNING AppendWeight weight < static_cast<double>(std::numeric_limits<float>::min())");
                   goto return_bad;
                }
                if(static_cast<double>(std::numeric_limits<float>::max()) < weight) {
                   // we use floats internally in some places, so limit the weight to a float maximum
-                  LOG_0(Trace_Warning, "WARNING AppendWeight static_cast<double>(std::numeric_limits<float>::max()) < weight");
+                  LOG_0(Trace_Warning,
+                        "WARNING AppendWeight static_cast<double>(std::numeric_limits<float>::max()) < weight");
                   goto return_bad;
                }
 
@@ -1414,13 +1391,13 @@ static IntEbm AppendWeight(
       }
 
       if(nullptr != pFillMem) {
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
          EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
 
          ++iOffset;
          const size_t cOffsets = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures) +
-            static_cast<size_t>(pHeaderDataSetShared->m_cWeights) +
-            static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
+               static_cast<size_t>(pHeaderDataSetShared->m_cWeights) +
+               static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
 
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
@@ -1447,8 +1424,8 @@ static IntEbm AppendWeight(
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<UIntShared>(iByteCur);
-            UIntShared * const pInternalState =
-               reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+            UIntShared* const pInternalState =
+                  reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
             *pInternalState = static_cast<UIntShared>(iOffset); // the offset index is our state
          }
          return Error_None;
@@ -1463,7 +1440,7 @@ static IntEbm AppendWeight(
 return_bad:;
 
    if(nullptr != pFillMem) {
-      HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+      HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
    return Error_IllegalParamVal;
@@ -1472,34 +1449,29 @@ WARNING_POP
 
 WARNING_PUSH
 WARNING_REDUNDANT_CODE
-static IntEbm AppendTarget(
-   const bool bClassification,
-   const IntEbm countClasses,
-   const IntEbm countSamples,
-   const void * aTargets,
-   const size_t cBytesAllocated,
-   unsigned char * const pFillMem
-) {
-   EBM_ASSERT(size_t { 0 } == cBytesAllocated && nullptr == pFillMem ||
-      nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
+static IntEbm AppendTarget(const bool bClassification,
+      const IntEbm countClasses,
+      const IntEbm countSamples,
+      const void* aTargets,
+      const size_t cBytesAllocated,
+      unsigned char* const pFillMem) {
+   EBM_ASSERT(size_t{0} == cBytesAllocated && nullptr == pFillMem ||
+         nullptr != pFillMem && k_cBytesHeaderId <= cBytesAllocated);
 
-   LOG_N(
-      Trace_Info,
-      "Entered AppendTarget: "
-      "bClassification=%s, "
-      "countClasses=%" IntEbmPrintf ", "
-      "countSamples=%" IntEbmPrintf ", "
-      "aTargets=%p, "
-      "cBytesAllocated=%zu, "
-      "pFillMem=%p"
-      ,
-      ObtainTruth(bClassification ? EBM_TRUE : EBM_FALSE),
-      countClasses,
-      countSamples,
-      static_cast<const void *>(aTargets),
-      cBytesAllocated,
-      static_cast<void *>(pFillMem)
-   );
+   LOG_N(Trace_Info,
+         "Entered AppendTarget: "
+         "bClassification=%s, "
+         "countClasses=%" IntEbmPrintf ", "
+         "countSamples=%" IntEbmPrintf ", "
+         "aTargets=%p, "
+         "cBytesAllocated=%zu, "
+         "pFillMem=%p",
+         ObtainTruth(bClassification ? EBM_TRUE : EBM_FALSE),
+         countClasses,
+         countSamples,
+         static_cast<const void*>(aTargets),
+         cBytesAllocated,
+         static_cast<void*>(pFillMem));
 
    {
       if(IsConvertError<UIntShared>(countClasses)) {
@@ -1514,18 +1486,18 @@ static IntEbm AppendTarget(
 
       size_t iOffset = 0;
       size_t iByteCur = bClassification ? sizeof(TargetDataSetShared) + sizeof(ClassificationTargetDataSetShared) :
-         sizeof(TargetDataSetShared);
+                                          sizeof(TargetDataSetShared);
       if(nullptr != pFillMem) {
          if(IsHeaderError(static_cast<UIntShared>(cSamples), cBytesAllocated, pFillMem)) {
             goto return_bad;
          }
 
-         UIntShared * const pInternalState =
-            reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+         UIntShared* const pInternalState =
+               reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
 
          iOffset = static_cast<size_t>(*pInternalState);
 
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
 
          const size_t cFeatures = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures);
          const size_t cWeights = static_cast<size_t>(pHeaderDataSetShared->m_cWeights);
@@ -1548,22 +1520,22 @@ static IntEbm AppendTarget(
             goto return_bad;
          }
 
-         EBM_ASSERT(size_t { 0 } == iOffset && UIntShared { 0 } == pHeaderDataSetShared->m_cSamples ||
-            static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
+         EBM_ASSERT(size_t{0} == iOffset && UIntShared{0} == pHeaderDataSetShared->m_cSamples ||
+               static_cast<UIntShared>(cSamples) == pHeaderDataSetShared->m_cSamples);
          pHeaderDataSetShared->m_cSamples = static_cast<UIntShared>(cSamples);
 
-         unsigned char * const pFillMemTemp = pFillMem + iHighestOffset;
-         TargetDataSetShared * const pTargetDataSetShared = reinterpret_cast<TargetDataSetShared *>(pFillMemTemp);
+         unsigned char* const pFillMemTemp = pFillMem + iHighestOffset;
+         TargetDataSetShared* const pTargetDataSetShared = reinterpret_cast<TargetDataSetShared*>(pFillMemTemp);
          pTargetDataSetShared->m_id = GetTargetId(bClassification);
 
          if(bClassification) {
-            ClassificationTargetDataSetShared * pClassificationTargetDataSetShared = 
-               reinterpret_cast<ClassificationTargetDataSetShared *>(pFillMemTemp + sizeof(TargetDataSetShared));
+            ClassificationTargetDataSetShared* pClassificationTargetDataSetShared =
+                  reinterpret_cast<ClassificationTargetDataSetShared*>(pFillMemTemp + sizeof(TargetDataSetShared));
             pClassificationTargetDataSetShared->m_cClasses = static_cast<UIntShared>(countClasses);
          }
       }
 
-      if(size_t { 0 } != cSamples) {
+      if(size_t{0} != cSamples) {
          if(nullptr == aTargets) {
             LOG_0(Trace_Error, "ERROR AppendTarget nullptr == aTargets");
             goto return_bad;
@@ -1572,13 +1544,15 @@ static IntEbm AppendTarget(
          size_t cBytesAllSamples;
          if(bClassification) {
             if(IsMultiplyError(EbmMax(sizeof(IntEbm), sizeof(UIntShared)), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbm), sizeof(UIntShared)), cSamples)");
+               LOG_0(Trace_Error,
+                     "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(IntEbm), sizeof(UIntShared)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(UIntShared) * cSamples;
          } else {
             if(IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatShared)), cSamples)) {
-               LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatShared)), cSamples)");
+               LOG_0(Trace_Error,
+                     "ERROR AppendTarget IsMultiplyError(EbmMax(sizeof(double), sizeof(FloatShared)), cSamples)");
                goto return_bad;
             }
             cBytesAllSamples = sizeof(FloatShared) * cSamples;
@@ -1594,16 +1568,16 @@ static IntEbm AppendTarget(
                goto return_bad;
             }
             if(bClassification) {
-               const IntEbm * pTarget = reinterpret_cast<const IntEbm *>(aTargets);
+               const IntEbm* pTarget = reinterpret_cast<const IntEbm*>(aTargets);
                if(IsMultiplyError(sizeof(pTarget[0]), cSamples)) {
                   LOG_0(Trace_Error, "ERROR AppendTarget IsMultiplyError(sizeof(UIntShared), cSamples)");
                   goto return_bad;
                }
-               const IntEbm * const pTargetsEnd = pTarget + cSamples;
-               UIntShared * pFillData = reinterpret_cast<UIntShared *>(pFillMem + iByteCur);
+               const IntEbm* const pTargetsEnd = pTarget + cSamples;
+               UIntShared* pFillData = reinterpret_cast<UIntShared*>(pFillMem + iByteCur);
                do {
                   const IntEbm target = *pTarget;
-                  if(target < IntEbm { 0 }) {
+                  if(target < IntEbm{0}) {
                      LOG_0(Trace_Error, "ERROR AppendTarget classification target can't be negative");
                      goto return_bad;
                   }
@@ -1613,17 +1587,17 @@ static IntEbm AppendTarget(
                   }
                   // since countClasses can be converted to UIntShared, so now can target
                   EBM_ASSERT(!IsConvertError<UIntShared>(target));
-               
+
                   *pFillData = static_cast<UIntShared>(target);
-               
+
                   ++pFillData;
                   ++pTarget;
                } while(pTargetsEnd != pTarget);
-               EBM_ASSERT(reinterpret_cast<unsigned char *>(pFillData) == pFillMem + iByteNext);
+               EBM_ASSERT(reinterpret_cast<unsigned char*>(pFillData) == pFillMem + iByteNext);
             } else {
-               FloatShared * pFill = reinterpret_cast<FloatShared *>(pFillMem + iByteCur);
-               const double * pTarget = reinterpret_cast<const double *>(aTargets);
-               const double * const pTargetsEnd = &pTarget[cSamples];
+               FloatShared* pFill = reinterpret_cast<FloatShared*>(pFillMem + iByteCur);
+               const double* pTarget = reinterpret_cast<const double*>(aTargets);
+               const double* const pTargetsEnd = &pTarget[cSamples];
                do {
                   const double target = *pTarget;
                   const double cleaned = CleanFloat(target);
@@ -1657,13 +1631,13 @@ static IntEbm AppendTarget(
       }
 
       if(nullptr != pFillMem) {
-         HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+         HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
          EBM_ASSERT(k_sharedDataSetWorkingId == pHeaderDataSetShared->m_id);
 
          ++iOffset;
          const size_t cOffsets = static_cast<size_t>(pHeaderDataSetShared->m_cFeatures) +
-            static_cast<size_t>(pHeaderDataSetShared->m_cWeights) +
-            static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
+               static_cast<size_t>(pHeaderDataSetShared->m_cWeights) +
+               static_cast<size_t>(pHeaderDataSetShared->m_cTargets);
 
          if(iOffset == cOffsets) {
             if(cBytesAllocated != iByteCur) {
@@ -1689,8 +1663,8 @@ static IntEbm AppendTarget(
                goto return_bad;
             }
             ArrayToPointer(pHeaderDataSetShared->m_offsets)[iOffset] = static_cast<UIntShared>(iByteCur);
-            UIntShared * const pInternalState =
-               reinterpret_cast<UIntShared *>(pFillMem + cBytesAllocated - sizeof(UIntShared));
+            UIntShared* const pInternalState =
+                  reinterpret_cast<UIntShared*>(pFillMem + cBytesAllocated - sizeof(UIntShared));
             *pInternalState = static_cast<UIntShared>(iOffset); // the offset index is our state
          }
          return Error_None;
@@ -1705,7 +1679,7 @@ static IntEbm AppendTarget(
 return_bad:;
 
    if(nullptr != pFillMem) {
-      HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(pFillMem);
+      HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(pFillMem);
       pHeaderDataSetShared->m_id = k_sharedDataSetErrorId;
    }
    return Error_IllegalParamVal;
@@ -1713,20 +1687,12 @@ return_bad:;
 WARNING_POP
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureDataSetHeader(
-   IntEbm countFeatures,
-   IntEbm countWeights,
-   IntEbm countTargets
-) {
+      IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets) {
    return AppendHeader(countFeatures, countWeights, countTargets, 0, nullptr);
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
-   IntEbm countFeatures,
-   IntEbm countWeights,
-   IntEbm countTargets,
-   IntEbm countBytesAllocated,
-   void * fillMem
-) {
+      IntEbm countFeatures, IntEbm countWeights, IntEbm countTargets, IntEbm countBytesAllocated, void* fillMem) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillDataSetHeader nullptr == fillMem");
       return Error_IllegalParamVal;
@@ -1739,46 +1705,28 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillDataSetHeader(
    }
    const size_t cBytesAllocated = static_cast<size_t>(countBytesAllocated);
 
-   const IntEbm ret = AppendHeader(
-      countFeatures, 
-      countWeights, 
-      countTargets, 
-      cBytesAllocated, 
-      static_cast<unsigned char *>(fillMem)
-   );
+   const IntEbm ret =
+         AppendHeader(countFeatures, countWeights, countTargets, cBytesAllocated, static_cast<unsigned char*>(fillMem));
    return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureFeature(
-   IntEbm countBins,
-   BoolEbm isMissing,
-   BoolEbm isUnknown,
-   BoolEbm isNominal,
-   IntEbm countSamples,
-   const IntEbm * binIndexes
-) {
-   return AppendFeature(
-      countBins,
-      isMissing,
-      isUnknown,
-      isNominal,
-      countSamples,
-      binIndexes,
-      0,
-      nullptr
-   );
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureFeature(IntEbm countBins,
+      BoolEbm isMissing,
+      BoolEbm isUnseen,
+      BoolEbm isNominal,
+      IntEbm countSamples,
+      const IntEbm* binIndexes) {
+   return AppendFeature(countBins, isMissing, isUnseen, isNominal, countSamples, binIndexes, 0, nullptr);
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(
-   IntEbm countBins,
-   BoolEbm isMissing,
-   BoolEbm isUnknown,
-   BoolEbm isNominal,
-   IntEbm countSamples,
-   const IntEbm * binIndexes,
-   IntEbm countBytesAllocated,
-   void * fillMem
-) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(IntEbm countBins,
+      BoolEbm isMissing,
+      BoolEbm isUnseen,
+      BoolEbm isNominal,
+      IntEbm countSamples,
+      const IntEbm* binIndexes,
+      IntEbm countBytesAllocated,
+      void* fillMem) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillFeature nullptr == fillMem");
       return Error_IllegalParamVal;
@@ -1797,44 +1745,30 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillFeature(
       return Error_IllegalParamVal;
    }
 
-   HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
+   HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillFeature k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamVal;
    }
 
-   const IntEbm ret = AppendFeature(
-      countBins,
-      isMissing,
-      isUnknown,
-      isNominal,
-      countSamples,
-      binIndexes,
-      cBytesAllocated,
-      static_cast<unsigned char *>(fillMem)
-   );
+   const IntEbm ret = AppendFeature(countBins,
+         isMissing,
+         isUnseen,
+         isNominal,
+         countSamples,
+         binIndexes,
+         cBytesAllocated,
+         static_cast<unsigned char*>(fillMem));
    return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureWeight(
-   IntEbm countSamples,
-   const double * weights
-) {
-   return AppendWeight(
-      countSamples,
-      weights,
-      0,
-      nullptr
-   );
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureWeight(IntEbm countSamples, const double* weights) {
+   return AppendWeight(countSamples, weights, 0, nullptr);
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillWeight(
-   IntEbm countSamples,
-   const double * weights,
-   IntEbm countBytesAllocated,
-   void * fillMem
-) {
+      IntEbm countSamples, const double* weights, IntEbm countBytesAllocated, void* fillMem) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillWeight nullptr == fillMem");
       return Error_IllegalParamVal;
@@ -1853,44 +1787,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillWeight(
       return Error_IllegalParamVal;
    }
 
-   HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
+   HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillWeight k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamVal;
    }
 
-   const IntEbm ret = AppendWeight(
-      countSamples,
-      weights,
-      cBytesAllocated,
-      static_cast<unsigned char *>(fillMem)
-   );
+   const IntEbm ret = AppendWeight(countSamples, weights, cBytesAllocated, static_cast<unsigned char*>(fillMem));
    return static_cast<ErrorEbm>(ret);
 }
 
 EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureClassificationTarget(
-   IntEbm countClasses,
-   IntEbm countSamples,
-   const IntEbm * targets
-) {
-   return AppendTarget(
-      true,
-      countClasses,
-      countSamples,
-      targets,
-      0,
-      nullptr
-   );
+      IntEbm countClasses, IntEbm countSamples, const IntEbm* targets) {
+   return AppendTarget(true, countClasses, countSamples, targets, 0, nullptr);
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
-   IntEbm countClasses,
-   IntEbm countSamples,
-   const IntEbm * targets,
-   IntEbm countBytesAllocated,
-   void * fillMem
-) {
+      IntEbm countClasses, IntEbm countSamples, const IntEbm* targets, IntEbm countBytesAllocated, void* fillMem) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget nullptr == fillMem");
       return Error_IllegalParamVal;
@@ -1909,44 +1823,24 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillClassificationTarget(
       return Error_IllegalParamVal;
    }
 
-   HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
+   HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillClassificationTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamVal;
    }
 
-   const IntEbm ret = AppendTarget(
-      true,
-      countClasses,
-      countSamples,
-      targets,
-      cBytesAllocated,
-      static_cast<unsigned char *>(fillMem)
-   );
+   const IntEbm ret =
+         AppendTarget(true, countClasses, countSamples, targets, cBytesAllocated, static_cast<unsigned char*>(fillMem));
    return static_cast<ErrorEbm>(ret);
 }
 
-EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRegressionTarget(
-   IntEbm countSamples,
-   const double * targets
-) {
-   return AppendTarget(
-      false,
-      0,
-      countSamples,
-      targets,
-      0,
-      nullptr
-   );
+EBM_API_BODY IntEbm EBM_CALLING_CONVENTION MeasureRegressionTarget(IntEbm countSamples, const double* targets) {
+   return AppendTarget(false, 0, countSamples, targets, 0, nullptr);
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
-   IntEbm countSamples,
-   const double * targets,
-   IntEbm countBytesAllocated,
-   void * fillMem
-) {
+      IntEbm countSamples, const double* targets, IntEbm countBytesAllocated, void* fillMem) {
    if(nullptr == fillMem) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget nullptr == fillMem");
       return Error_IllegalParamVal;
@@ -1965,31 +1859,23 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION FillRegressionTarget(
       return Error_IllegalParamVal;
    }
 
-   HeaderDataSetShared * const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared *>(fillMem);
+   HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<HeaderDataSetShared*>(fillMem);
    if(k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR FillRegressionTarget k_sharedDataSetWorkingId != pHeaderDataSetShared->m_id");
       // don't set the header to bad since it's already set to something invalid and we don't know why
       return Error_IllegalParamVal;
    }
 
-   const IntEbm ret = AppendTarget(
-      false,
-      0,
-      countSamples,
-      targets,
-      cBytesAllocated,
-      static_cast<unsigned char *>(fillMem)
-   );
+   const IntEbm ret =
+         AppendTarget(false, 0, countSamples, targets, cBytesAllocated, static_cast<unsigned char*>(fillMem));
    return static_cast<ErrorEbm>(ret);
 }
 
-extern ErrorEbm GetDataSetSharedHeader(
-   const unsigned char * const pDataSetShared,
-   UIntShared * const pcSamplesOut,
-   size_t * const pcFeaturesOut,
-   size_t * const pcWeightsOut,
-   size_t * const pcTargetsOut
-) {
+extern ErrorEbm GetDataSetSharedHeader(const unsigned char* const pDataSetShared,
+      UIntShared* const pcSamplesOut,
+      size_t* const pcFeaturesOut,
+      size_t* const pcWeightsOut,
+      size_t* const pcTargetsOut) {
    EBM_ASSERT(nullptr != pcSamplesOut);
    EBM_ASSERT(nullptr != pcFeaturesOut);
    EBM_ASSERT(nullptr != pcWeightsOut);
@@ -2001,8 +1887,7 @@ extern ErrorEbm GetDataSetSharedHeader(
    }
    EBM_ASSERT(nullptr != pDataSetShared); // checked in CheckDataSet
 
-   const HeaderDataSetShared * const pHeaderDataSetShared = 
-      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pDataSetShared);
    EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
 
    // our shared dataset allows some cases where there can be more samples then can fit into a size_t. Caller checks
@@ -2023,25 +1908,18 @@ extern ErrorEbm GetDataSetSharedHeader(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
-   const void * dataSet,
-   IntEbm * countSamplesOut,
-   IntEbm * countFeaturesOut,
-   IntEbm * countWeightsOut,
-   IntEbm * countTargetsOut
-) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(const void* dataSet,
+      IntEbm* countSamplesOut,
+      IntEbm* countFeaturesOut,
+      IntEbm* countWeightsOut,
+      IntEbm* countTargetsOut) {
    UIntShared countSamples;
    size_t cFeatures;
    size_t cWeights;
    size_t cTargets;
 
    const ErrorEbm error = GetDataSetSharedHeader(
-      static_cast<const unsigned char *>(dataSet),
-      &countSamples,
-      &cFeatures,
-      &cWeights,
-      &cTargets
-   );
+         static_cast<const unsigned char*>(dataSet), &countSamples, &cFeatures, &cWeights, &cTargets);
    if(Error_None != error) {
       // already logged
       return error;
@@ -2087,28 +1965,25 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractDataSetHeader(
 
 // TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
 // GetDataSetSharedFeature will return either (SparseFeatureDataSetSharedEntry *) or (UIntShared *)
-extern const void * GetDataSetSharedFeature(
-   const unsigned char * const pDataSetShared,
-   const size_t iFeature,
-   bool * const pbMissingOut,
-   bool * const pbUnknownOut,
-   bool * const pbNominalOut,
-   bool * const pbSparseOut,
-   UIntShared * const pcBinsOut,
-   UIntShared * const pDefaultValSparseOut,
-   size_t * const pcNonDefaultsSparseOut
-) {
+extern const void* GetDataSetSharedFeature(const unsigned char* const pDataSetShared,
+      const size_t iFeature,
+      bool* const pbMissingOut,
+      bool* const pbUnseenOut,
+      bool* const pbNominalOut,
+      bool* const pbSparseOut,
+      UIntShared* const pcBinsOut,
+      UIntShared* const pDefaultValSparseOut,
+      size_t* const pcNonDefaultsSparseOut) {
    EBM_ASSERT(nullptr != pDataSetShared);
    EBM_ASSERT(nullptr != pbMissingOut);
-   EBM_ASSERT(nullptr != pbUnknownOut);
+   EBM_ASSERT(nullptr != pbUnseenOut);
    EBM_ASSERT(nullptr != pbNominalOut);
    EBM_ASSERT(nullptr != pbSparseOut);
    EBM_ASSERT(nullptr != pcBinsOut);
    EBM_ASSERT(nullptr != pDefaultValSparseOut);
    EBM_ASSERT(nullptr != pcNonDefaultsSparseOut);
 
-   const HeaderDataSetShared * const pHeaderDataSetShared = 
-      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pDataSetShared);
    EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
 
    EBM_ASSERT(!IsConvertError<size_t>(pHeaderDataSetShared->m_cFeatures));
@@ -2119,38 +1994,91 @@ extern const void * GetDataSetSharedFeature(
    EBM_ASSERT(!IsConvertError<size_t>(indexMem)); // it is allocated and we trust it (or should have verified it)
    const size_t iMem = static_cast<size_t>(indexMem);
 
-   const FeatureDataSetShared * pFeatureDataSetShared = 
-      reinterpret_cast<const FeatureDataSetShared *>(pDataSetShared + iMem);
+   const FeatureDataSetShared* pFeatureDataSetShared =
+         reinterpret_cast<const FeatureDataSetShared*>(pDataSetShared + iMem);
 
    const UIntShared id = pFeatureDataSetShared->m_id;
    EBM_ASSERT(IsFeature(id));
    *pbMissingOut = IsMissingFeature(id);
-   *pbUnknownOut = IsUnknownFeature(id);
+   *pbUnseenOut = IsUnseenFeature(id);
    *pbNominalOut = IsNominalFeature(id);
    const bool bSparse = IsSparseFeature(id);
    *pbSparseOut = bSparse;
 
    *pcBinsOut = pFeatureDataSetShared->m_cBins;
 
-   const void * pRet = reinterpret_cast<const void *>(pFeatureDataSetShared + 1);
+   const void* pRet = reinterpret_cast<const void*>(pFeatureDataSetShared + 1);
    if(bSparse) {
-      const SparseFeatureDataSetShared * const pSparseFeatureDataSetShared =
-         reinterpret_cast<const SparseFeatureDataSetShared *>(pRet);
+      const SparseFeatureDataSetShared* const pSparseFeatureDataSetShared =
+            reinterpret_cast<const SparseFeatureDataSetShared*>(pRet);
 
       *pDefaultValSparseOut = pSparseFeatureDataSetShared->m_defaultVal;
       const UIntShared countNonDefaults = pSparseFeatureDataSetShared->m_cNonDefaults;
       EBM_ASSERT(!IsConvertError<size_t>(countNonDefaults)); // it's allocated so must be in memory
       *pcNonDefaultsSparseOut = static_cast<size_t>(countNonDefaults);
-      pRet = reinterpret_cast<const void *>(pSparseFeatureDataSetShared->m_nonDefaults);
+      pRet = reinterpret_cast<const void*>(pSparseFeatureDataSetShared->m_nonDefaults);
    }
    return pRet;
 }
 
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractNominals(
+      const void* dataSet, IntEbm countFeaturesVerify, BoolEbm* nominalsOut) {
+   if(nullptr == dataSet) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals nullptr == dataSet");
+      return Error_IllegalParamVal;
+   }
+
+   if(IsConvertError<size_t>(countFeaturesVerify)) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals IsConvertError<size_t>(countFeaturesVerify)");
+      return Error_IllegalParamVal;
+   }
+   const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
+
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(dataSet);
+
+   if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
+      return Error_IllegalParamVal;
+   }
+
+   const UIntShared countFeatures = pHeaderDataSetShared->m_cFeatures;
+   EBM_ASSERT(!IsConvertError<size_t>(countFeatures)); // it's allocated so must fit into size_t
+   size_t cFeatures = static_cast<size_t>(countFeatures);
+
+   if(cFeatures != cFeaturesVerify) {
+      LOG_0(Trace_Error, "ERROR ExtractNominals cFeatures != cFeaturesVerify");
+      return Error_IllegalParamVal;
+   }
+   if(size_t{0} != cFeatures) {
+      if(nullptr == nominalsOut) {
+         LOG_0(Trace_Error, "ERROR ExtractNominals nullptr == nominalsOut");
+         return Error_IllegalParamVal;
+      }
+
+      const UIntShared* pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
+      BoolEbm* pbNominal = nominalsOut;
+      const BoolEbm* const pbNominalsEnd = nominalsOut + cFeatures;
+      do {
+         const UIntShared indexOffsetCur = *pOffset;
+         ++pOffset;
+
+         EBM_ASSERT(!IsConvertError<size_t>(indexOffsetCur)); // it is in allocated space so size_t must fit
+         const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
+
+         const FeatureDataSetShared* pFeatureDataSetShared =
+               reinterpret_cast<const FeatureDataSetShared*>(static_cast<const char*>(dataSet) + iOffsetCur);
+
+         EBM_ASSERT(IsFeature(pFeatureDataSetShared->m_id));
+
+         *pbNominal = IsNominalFeature(pFeatureDataSetShared->m_id) ? EBM_TRUE : EBM_FALSE;
+         ++pbNominal;
+      } while(pbNominalsEnd != pbNominal);
+   }
+   return Error_None;
+}
+
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
-   const void * dataSet,
-   IntEbm countFeaturesVerify,
-   IntEbm * binCountsOut
-) {
+      const void* dataSet, IntEbm countFeaturesVerify, IntEbm* binCountsOut) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == dataSet");
       return Error_IllegalParamVal;
@@ -2162,8 +2090,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    }
    const size_t cFeaturesVerify = static_cast<size_t>(countFeaturesVerify);
 
-   const HeaderDataSetShared * const pHeaderDataSetShared =
-      reinterpret_cast<const HeaderDataSetShared *>(dataSet);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(dataSet);
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR ExtractBinCounts k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
@@ -2178,15 +2105,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
       LOG_0(Trace_Error, "ERROR ExtractBinCounts cFeatures != cFeaturesVerify");
       return Error_IllegalParamVal;
    }
-   if(size_t { 0 } != cFeatures) {
+   if(size_t{0} != cFeatures) {
       if(nullptr == binCountsOut) {
          LOG_0(Trace_Error, "ERROR ExtractBinCounts nullptr == binCountsOut");
          return Error_IllegalParamVal;
       }
 
-      const UIntShared * pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
-      IntEbm * pcBins = binCountsOut;
-      const IntEbm * const pcBinsEnd = binCountsOut + cFeatures;
+      const UIntShared* pOffset = ArrayToPointer(pHeaderDataSetShared->m_offsets);
+      IntEbm* pcBins = binCountsOut;
+      const IntEbm* const pcBinsEnd = binCountsOut + cFeatures;
       do {
          const UIntShared indexOffsetCur = *pOffset;
          ++pOffset;
@@ -2194,15 +2121,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
          EBM_ASSERT(!IsConvertError<size_t>(indexOffsetCur)); // it is in allocated space so size_t must fit
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
-         const FeatureDataSetShared * pFeatureDataSetShared =
-            reinterpret_cast<const FeatureDataSetShared *>(static_cast<const char *>(dataSet) + iOffsetCur);
+         const FeatureDataSetShared* pFeatureDataSetShared =
+               reinterpret_cast<const FeatureDataSetShared*>(static_cast<const char*>(dataSet) + iOffsetCur);
 
          EBM_ASSERT(IsFeature(pFeatureDataSetShared->m_id));
 
          UIntShared countBins = pFeatureDataSetShared->m_cBins;
          // countBins originally fit into UIntShared so it should still with these additions
-         countBins += IsMissingFeature(pFeatureDataSetShared->m_id) ? UIntShared { 0 } : UIntShared { 1 };
-         countBins += IsUnknownFeature(pFeatureDataSetShared->m_id) ? UIntShared { 0 } : UIntShared { 1 };
+         countBins += IsMissingFeature(pFeatureDataSetShared->m_id) ? UIntShared{0} : UIntShared{1};
+         countBins += IsUnseenFeature(pFeatureDataSetShared->m_id) ? UIntShared{0} : UIntShared{1};
          if(IsConvertError<IntEbm>(countBins)) {
             LOG_0(Trace_Error, "ERROR ExtractBinCounts IsConvertError<IntEbm>(countBins)");
             return Error_IllegalParamVal;
@@ -2215,12 +2142,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractBinCounts(
    return Error_None;
 }
 
-extern const FloatShared * GetDataSetSharedWeight(
-   const unsigned char * const pDataSetShared,
-   const size_t iWeight
-) {
-   const HeaderDataSetShared * const pHeaderDataSetShared =
-      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+extern const FloatShared* GetDataSetSharedWeight(const unsigned char* const pDataSetShared, const size_t iWeight) {
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pDataSetShared);
    EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
 
    const UIntShared countFeatures = pHeaderDataSetShared->m_cFeatures;
@@ -2238,23 +2161,19 @@ extern const FloatShared * GetDataSetSharedWeight(
    EBM_ASSERT(!IsConvertError<size_t>(indexMem));
    const size_t iMem = static_cast<size_t>(indexMem);
 
-   const WeightDataSetShared * pWeightDataSetShared =
-      reinterpret_cast<const WeightDataSetShared *>(pDataSetShared + iMem);
+   const WeightDataSetShared* pWeightDataSetShared =
+         reinterpret_cast<const WeightDataSetShared*>(pDataSetShared + iMem);
 
    EBM_ASSERT(k_weightId == pWeightDataSetShared->m_id);
 
-   return reinterpret_cast<const FloatShared *>(pWeightDataSetShared + 1);
+   return reinterpret_cast<const FloatShared*>(pWeightDataSetShared + 1);
 }
 
 // TODO: make an inline wrapper that forces this to the correct type and have 2 differently named functions
 // GetDataSetSharedTarget returns (FloatShared *) for regression and (UIntShared *) for classification
-extern const void * GetDataSetSharedTarget(
-   const unsigned char * const pDataSetShared,
-   const size_t iTarget,
-   ptrdiff_t * const pcClassesOut
-) {
-   const HeaderDataSetShared * const pHeaderDataSetShared =
-      reinterpret_cast<const HeaderDataSetShared *>(pDataSetShared);
+extern const void* GetDataSetSharedTarget(
+      const unsigned char* const pDataSetShared, const size_t iTarget, ptrdiff_t* const pcClassesOut) {
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(pDataSetShared);
    EBM_ASSERT(k_sharedDataSetDoneId == pHeaderDataSetShared->m_id);
 
    const UIntShared countFeatures = pHeaderDataSetShared->m_cFeatures;
@@ -2276,17 +2195,17 @@ extern const void * GetDataSetSharedTarget(
    EBM_ASSERT(!IsConvertError<size_t>(indexMem));
    const size_t iMem = static_cast<size_t>(indexMem);
 
-   const TargetDataSetShared * pTargetDataSetShared =
-      reinterpret_cast<const TargetDataSetShared *>(pDataSetShared + iMem);
+   const TargetDataSetShared* pTargetDataSetShared =
+         reinterpret_cast<const TargetDataSetShared*>(pDataSetShared + iMem);
 
    const UIntShared id = pTargetDataSetShared->m_id;
    EBM_ASSERT(IsTarget(id));
 
-   ptrdiff_t cClasses = ptrdiff_t { Task_Regression };
-   const void * pRet = reinterpret_cast<const void *>(pTargetDataSetShared + 1);
+   ptrdiff_t cClasses = ptrdiff_t{Task_Regression};
+   const void* pRet = reinterpret_cast<const void*>(pTargetDataSetShared + 1);
    if(IsClassificationTarget(id)) {
-      const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
-         reinterpret_cast<const ClassificationTargetDataSetShared *>(pRet);
+      const ClassificationTargetDataSetShared* const pClassificationTargetDataSetShared =
+            reinterpret_cast<const ClassificationTargetDataSetShared*>(pRet);
 
       const UIntShared countClasses = pClassificationTargetDataSetShared->m_cClasses;
       if(IsConvertError<ptrdiff_t>(countClasses)) {
@@ -2295,17 +2214,14 @@ extern const void * GetDataSetSharedTarget(
       }
       cClasses = static_cast<ptrdiff_t>(countClasses);
       EBM_ASSERT(0 <= cClasses); // 0 is possible with 0 samples
-      pRet = reinterpret_cast<const void *>(pClassificationTargetDataSetShared + 1);
+      pRet = reinterpret_cast<const void*>(pClassificationTargetDataSetShared + 1);
    }
    *pcClassesOut = cClasses;
    return pRet;
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
-   const void * dataSet,
-   IntEbm countTargetsVerify,
-   IntEbm * classCountsOut
-) {
+      const void* dataSet, IntEbm countTargetsVerify, IntEbm* classCountsOut) {
    if(nullptr == dataSet) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == dataSet");
       return Error_IllegalParamVal;
@@ -2317,8 +2233,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
    }
    const size_t cTargetsVerify = static_cast<size_t>(countTargetsVerify);
 
-   const HeaderDataSetShared * const pHeaderDataSetShared =
-      reinterpret_cast<const HeaderDataSetShared *>(dataSet);
+   const HeaderDataSetShared* const pHeaderDataSetShared = reinterpret_cast<const HeaderDataSetShared*>(dataSet);
 
    if(k_sharedDataSetDoneId != pHeaderDataSetShared->m_id) {
       LOG_0(Trace_Error, "ERROR ExtractTargetClasses k_sharedDataSetDoneId != pHeaderDataSetShared->m_id");
@@ -2342,15 +2257,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
       return Error_IllegalParamVal;
    }
 
-   if(size_t { 0 } != cTargets) {
+   if(size_t{0} != cTargets) {
       if(nullptr == classCountsOut) {
          LOG_0(Trace_Error, "ERROR ExtractTargetClasses nullptr == classCountsOut");
          return Error_IllegalParamVal;
       }
-      
-      const UIntShared * pOffset = &ArrayToPointer(pHeaderDataSetShared->m_offsets)[cFeatures + cWeights];
-      IntEbm * pcClasses = classCountsOut;
-      const IntEbm * const pcClassesEnd = classCountsOut + cTargets;
+
+      const UIntShared* pOffset = &ArrayToPointer(pHeaderDataSetShared->m_offsets)[cFeatures + cWeights];
+      IntEbm* pcClasses = classCountsOut;
+      const IntEbm* const pcClassesEnd = classCountsOut + cTargets;
       do {
          const UIntShared indexOffsetCur = *pOffset;
          ++pOffset;
@@ -2358,16 +2273,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
          EBM_ASSERT(!IsConvertError<size_t>(indexOffsetCur));
          const size_t iOffsetCur = static_cast<size_t>(indexOffsetCur);
 
-         const TargetDataSetShared * pTargetDataSetShared =
-            reinterpret_cast<const TargetDataSetShared *>(static_cast<const char *>(dataSet) + iOffsetCur);
+         const TargetDataSetShared* pTargetDataSetShared =
+               reinterpret_cast<const TargetDataSetShared*>(static_cast<const char*>(dataSet) + iOffsetCur);
 
          const UIntShared id = pTargetDataSetShared->m_id;
          EBM_ASSERT(IsTarget(id));
 
-         IntEbm countClasses = IntEbm { Task_Regression };
+         IntEbm countClasses = IntEbm{Task_Regression};
          if(IsClassificationTarget(id)) {
-            const ClassificationTargetDataSetShared * const pClassificationTargetDataSetShared =
-               reinterpret_cast<const ClassificationTargetDataSetShared *>(pTargetDataSetShared + 1);
+            const ClassificationTargetDataSetShared* const pClassificationTargetDataSetShared =
+                  reinterpret_cast<const ClassificationTargetDataSetShared*>(pTargetDataSetShared + 1);
 
             const UIntShared cClasses = pClassificationTargetDataSetShared->m_cClasses;
 
@@ -2386,4 +2301,4 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION ExtractTargetClasses(
    return Error_None;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

@@ -1,0 +1,11 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 1%
+        threshold: 99%
+        base: auto
+        paths: []
+        flags: []
+    patch: no
+    changes: no

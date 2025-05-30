@@ -1,13 +1,14 @@
+import os
 import warnings
-import pytest
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from copy import deepcopy
 
-from .tutils import synthetic_classification, get_all_explainers
+import pytest
 
 # from interpret.blackbox import PermutationImportance
-from interpret import set_show_addr, shutdown_show_server, show_link
-from copy import deepcopy
-import os
+from interpret import set_show_addr, show_link, shutdown_show_server
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
+from .tutils import get_all_explainers, synthetic_classification
 
 # Timeout for element to not show up in selenium driver.
 TIMEOUT = 60
@@ -50,7 +51,8 @@ def all_explanations():
             else:
                 explainer = explainer_class(regression_model)
         else:
-            raise Exception("Not supported explainer type.")
+            msg = "Not supported explainer type."
+            raise Exception(msg)
 
         if "local" in explainer.available_explanations:
             with warnings.catch_warnings():
@@ -80,14 +82,14 @@ def all_explanations():
 num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
 
 
-@pytest.mark.selenium  # noqa: C901
+@pytest.mark.selenium
 @pytest.mark.xfail(strict=False)
 @pytest.mark.parametrize("job_id", list(range(num_jobs)))
 def test_all_explainers_selenium(all_explanations, job_id):
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from selenium.webdriver.common.by import By
     from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 
     # Select explanations to target based on job id
     explanations = [
@@ -117,7 +119,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
         dropdown_el = driver.find_element_by_class_name("Select-control")
         dropdown_el.click()
         specific_el = dropdown_el.find_element_by_xpath(
-            "//div[contains(text(),'{} : ')]".format(index + 1)
+            f"//div[contains(text(),'{index + 1} : ')]"
         )
         specific_el.click()
 
@@ -149,16 +151,14 @@ def test_all_explainers_selenium(all_explanations, job_id):
             tab_name = "Performance"
         else:
             tab_name = explanation_type.capitalize()
-        tab_el = tabs_el.find_element_by_xpath(
-            "//span[contains(text(),'{}')]".format(tab_name)
-        )
+        tab_el = tabs_el.find_element_by_xpath(f"//span[contains(text(),'{tab_name}')]")
         tab_el.click()
 
     def duplicate_explanations(explanation, num_duplicates):
         explanations = []
         for i in range(num_duplicates):
             an_explanation = deepcopy(explanation)
-            an_explanation.name = "{}_{}".format(explanation.name, i)
+            an_explanation.name = f"{explanation.name}_{i}"
             explanations.append(an_explanation)
         return explanations
 
@@ -185,7 +185,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             dropdown_el.click()
 
             item_el = dropdown_el.find_element_by_xpath(
-                "//div[contains(text(),'{}')]".format(explanation.name)
+                f"//div[contains(text(),'{explanation.name}')]"
             )
             item_el.click()
 
@@ -194,9 +194,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             return
 
         for i in range(len(explanations)):
-            wait.until(
-                EC.presence_of_element_located((By.ID, "overall-graph-{}".format(i)))
-            )
+            wait.until(EC.presence_of_element_located((By.ID, f"overall-graph-{i}")))
 
     def check_full_specific_graphs(explanations, share_tables, num_records=2):
         if explanations[0].visualize(0) is None:
@@ -212,7 +210,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
 
             # Click on records
             for i in range(num_records):
-                record_path = "(//input[@type='checkbox'])[{}]".format(i + 1)
+                record_path = f"(//input[@type='checkbox'])[{i + 1}]"
                 record_el = driver.find_element_by_xpath(record_path)
                 record_el.click()
         else:
@@ -222,7 +220,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
                     EC.presence_of_element_located(
                         (
                             By.XPATH,
-                            "//div[@class='gr']/div[@class='gr-col'][{}]".format(i + 1),
+                            f"//div[@class='gr']/div[@class='gr-col'][{i + 1}]",
                         )
                     )
                 )
@@ -230,9 +228,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             # Click on records
             for explanation_idx in range(len(explanations)):
                 for record_idx in range(num_records):
-                    record_path = "(//div[@class='gr-col'][{}]//input[@type='checkbox'])[{}]".format(
-                        explanation_idx + 1, record_idx + 1
-                    )
+                    record_path = f"(//div[@class='gr-col'][{explanation_idx + 1}]//input[@type='checkbox'])[{record_idx + 1}]"
                     record_el = driver.find_element_by_xpath(record_path)
                     record_el.click()
 
@@ -241,7 +237,7 @@ def test_all_explainers_selenium(all_explanations, job_id):
             for record_idx in range(num_records):
                 wait.until(
                     EC.presence_of_element_located(
-                        (By.ID, "graph-{}-{}".format(explanation_idx, record_idx))
+                        (By.ID, f"graph-{explanation_idx}-{record_idx}")
                     )
                 )
 

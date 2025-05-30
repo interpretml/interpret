@@ -1,29 +1,28 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+import re
+from copy import deepcopy
 from itertools import count
+from dataclasses import dataclass, field
+from typing import Optional
+
+import numpy as np
+import pandas as pd
 from sklearn.base import ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
 
 from ..api.base import ExplainerMixin, ExplanationMixin
+from ..utils._clean_simple import clean_dimensions, typify_classification
+from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
     gen_perf_dicts,
 )
-
-from copy import deepcopy
-import numpy as np
-import pandas as pd
-import re
-
-from ..utils._clean_x import preclean_X
-from ..utils._clean_simple import clean_dimensions, typify_classification
-
 from ..utils._unify_data import unify_data
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -100,16 +99,67 @@ class RulesExplanation(ExplanationMixin):
             return rules_to_html(data_dict, title="Triggered Rule")
 
         # Handle global feature graphs
-        elif self.explanation_type == "global":
+        if self.explanation_type == "global":
             return rules_to_html(
                 data_dict,
-                title="Rules with Feature: {0}".format(self.feature_names[key]),
+                title=f"Rules with Feature: {self.feature_names[key]}",
             )
         # Handle everything else as invalid
-        else:  # pragma: no cover
-            msg = "Not suppported: {0}, {1}".format(self.explanation_type, key)
-            _log.error(msg)
-            raise Exception(msg)
+        # pragma: no cover
+        msg = f"Not suppported: {self.explanation_type}, {key}"
+        _log.error(msg)
+        raise Exception(msg)
+
+
+@dataclass
+class DecisionInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = False
+    pairwise: bool = False
+
+
+@dataclass
+class DecisionTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class DecisionClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = False
+    multi_label: bool = False
+
+
+@dataclass
+class DecisionRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class DecisionTags:
+    estimator_type: Optional[str] = None
+    target_tags: DecisionTargetTags = field(default_factory=DecisionTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[DecisionClassifierTags] = None
+    regressor_tags: Optional[DecisionRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: DecisionInputTags = field(default_factory=DecisionInputTags)
 
 
 class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
@@ -148,8 +198,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         try:
             from skrules import SkopeRules as SR
         except ImportError:  # NOTE: skoperules loves six, shame it's deprecated.
-            import six
             import sys
+
+            import six
 
             sys.modules["sklearn.externals.six"] = six
             from skrules import SkopeRules as SR
@@ -183,9 +234,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             _BASE_FEATURE_NAME + x
             for x in np.arange(len(self.feature_names_in_)).astype(str)
         ]
-        self.feature_map_ = {
-            key: name for key, name in zip(self.feature_index_, self.feature_names_in_)
-        }
+        self.feature_map_ = dict(zip(self.feature_index_, self.feature_names_in_))
         self.sk_model_ = SR(feature_names=self.feature_index_, **self.kwargs)
 
         self.sk_model_.fit(X, y)
@@ -209,7 +258,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx in range(len(self.feature_names_in_)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         # TODO: move this call into the explain_global function and extract the information needed
         #       in a cleaner way.  Also, look over the above fields to see if we can simplify
@@ -250,9 +299,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             matched_idx = list(df.query(r[0]).index)
             scores[matched_idx] = np.minimum(k, scores[matched_idx])
         scores[np.isinf(scores)] = len(selected_rules)
-        scores = scores.astype("int64")
-
-        return scores
+        return scores.astype("int64")
 
     def predict_proba(self, X):
         """Provides probability estimates on provided instances.
@@ -278,7 +325,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
     def _extract_rules(self, rules):
         rules = deepcopy(rules)
-        rules = list(sorted(rules, key=lambda x: x[1][0], reverse=True))
+        rules = sorted(rules, key=lambda x: x[1][0], reverse=True)
 
         rule_li = []
         prec_li = []
@@ -298,7 +345,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             rule = rule_rec[0]
             rule_round = " ".join(
                 [
-                    "{0:.2f}".format(float(x)) if x.replace(".", "", 1).isdigit() else x
+                    f"{float(x):.2f}" if x.replace(".", "", 1).isdigit() else x
                     for x in rule.split(" ")
                 ]
             )
@@ -343,7 +390,8 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             y = typify_classification(y)
@@ -443,3 +491,9 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
             name=name,
             selector=self.global_selector_,
         )
+
+    def __sklearn_tags__(self):
+        tags = DecisionTags()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = DecisionClassifierTags()
+        return tags

@@ -3,40 +3,92 @@
 
 import numpy as np
 import pytest
-
-from interpret.utils import link_func, inv_link
-
-from sklearn.utils.extmath import softmax
+from interpret.utils import inv_link, link_func
 
 
-def test_link_func_monoclassification():
-    predictions = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+def test_link_func_monoclassification_22():
+    predictions = np.array([[1.0, 1.0], [1.0, 1.0]])
     with pytest.raises(ValueError):
         link_func(predictions, "monoclassification")
 
 
-def test_link_func_monoclassification0():
+def test_link_func_monoclassification_12():
+    predictions = np.array([[1.0, 1.0]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "monoclassification")
+
+
+def test_link_func_monoclassification_21_fail():
+    predictions = np.array([[1.0], [2.0]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "monoclassification")
+
+
+def test_link_func_monoclassification_21():
+    predictions = np.array([[1.0], [1.0]])
+    expected = np.array([-np.inf, -np.inf])
+    result = link_func(predictions, "monoclassification")
+    assert np.array_equal(result, expected)
+
+
+def test_link_func_monoclassification_11_fail():
+    predictions = np.array([[2.0]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "monoclassification")
+
+
+def test_link_func_monoclassification_11():
+    predictions = np.array([[1.0]])
+    expected = np.array([-np.inf])
+    result = link_func(predictions, "monoclassification")
+    assert np.array_equal(result, expected)
+
+
+def test_link_func_monoclassification_10():
     predictions = np.array([[]])
-    expected = np.array([[]])
+    expected = np.array([-np.inf])
     result = link_func(predictions, "monoclassification")
-    assert result.shape == expected.shape
+    assert np.array_equal(result, expected)
 
 
-def test_link_func_monoclassification1():
-    predictions = np.array([[[0.5], [np.nan]]])
-    expected = np.array([[[], []]])
+def test_link_func_monoclassification_1():
+    predictions = np.array([1.0])
+    expected = -np.inf
     result = link_func(predictions, "monoclassification")
-    assert result.shape == expected.shape
+    assert result == expected
 
 
-def test_link_func_logit1():
+def test_link_func_monoclassification_0():
+    predictions = np.array([])
+    expected = -np.inf
+    result = link_func(predictions, "monoclassification")
+    assert result == expected
+
+
+def test_link_func_monoclassification_empty():
+    # this breaks our rule of needing the last dimesion, but the intent is unambiguous
+    predictions = np.array(1.0)
+    expected = -np.inf
+    result = link_func(predictions, "monoclassification")
+    assert result == expected
+
+
+def test_link_func_monoclassification_value():
+    # this breaks our rule of needing the last dimesion, but the intent is unambiguous
+    predictions = 1.0
+    expected = -np.inf
+    result = link_func(predictions, "monoclassification")
+    assert result == expected
+
+
+def test_link_func_logit_31():
     predictions = np.array([[[0.75], [1.0], [0.0], [np.nan]]])
     expected = np.array([[1.0986123, np.inf, -np.inf, np.nan]])
     result = link_func(predictions, "logit")
     np.testing.assert_almost_equal(result, expected)
 
 
-def test_link_func_logit2():
+def test_link_func_logit_32():
     predictions = np.array(
         [
             [
@@ -52,6 +104,60 @@ def test_link_func_logit2():
     expected = np.array([[1.0986123, 1.0986123, np.inf, -np.inf, np.nan, np.nan]])
     result = link_func(predictions, "logit")
     np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_33():
+    predictions = np.array([[[0.25, 0.5, 0.25], [0.5, 0.25, 0.25]]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "logit")
+
+
+def test_link_func_logit_31():
+    predictions = np.array([[[0.25, 0.5, 0.25]]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "logit")
+
+
+def test_link_func_logit_1():
+    predictions = [0.75]
+    expected = 1.0986123
+    result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_12():
+    predictions = np.array([0.25, 0.75])
+    expected = 1.0986123
+    result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_0():
+    # this breaks our rule of needing the last dimesion, but the intent is unambiguous
+    predictions = 0.75
+    expected = 1.0986123
+    result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_2():
+    predictions = [[0.75]]
+    expected = [1.0986123]
+    result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_22():
+    predictions = np.array([[0.25, 0.75]])
+    expected = [1.0986123]
+    result = link_func(predictions, "logit")
+    np.testing.assert_almost_equal(result, expected)
+
+
+def test_link_func_logit_22():
+    predictions = np.array([[0.25, 0.5, 0.25]])
+    with pytest.raises(ValueError):
+        link_func(predictions, "logit")
 
 
 def test_link_func_vlogit():
@@ -100,17 +206,31 @@ def test_link_func_log():
     np.testing.assert_almost_equal(result, expected)
 
 
-def test_inv_link_monoclassification():
-    scores = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+def test_inv_link_monoclassification_fail():
+    scores = np.array([[-np.inf, -np.inf], [8.0, -np.inf]])
     with pytest.raises(ValueError):
         inv_link(scores, "monoclassification")
 
 
-def test_inv_link_monoclassification0():
-    scores = np.array([[]])
+def test_inv_link_monoclassification1():
+    scores = np.array([-np.inf])
     expected = np.array([[1.0]])
     result = inv_link(scores, "monoclassification")
-    assert np.all(result == expected)
+    assert np.array_equal(result, expected)
+
+
+def test_inv_link_monoclassification0():
+    scores = np.array([])
+    expected = np.empty((0, 1), np.float64)
+    result = inv_link(scores, "monoclassification")
+    assert np.array_equal(result, expected)
+
+
+def test_inv_link_monoclassification_nan():
+    scores = np.array([np.nan])
+    expected = np.array([[np.nan]])
+    result = inv_link(scores, "monoclassification")
+    np.testing.assert_almost_equal(result, expected)
 
 
 def test_inv_link_logit():

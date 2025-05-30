@@ -2,9 +2,44 @@
 # Distributed under the MIT software license
 
 import sys
+import math
+
+from .utils._native import Native
 
 _current_module = sys.modules[__name__]
 _current_module.is_debug_mode = False
+
+# Global options
+_develop_options = {
+    "n_intercept_rounds_initial": 25,
+    "n_intercept_rounds_final": 100,
+    "intercept_learning_rate": 0.25,
+    "cat_l2": 0.0,
+    "min_samples_leaf_nominal": None,
+    "learning_rate_scale": 1.0,
+    "max_cat_threshold": 9223372036854775807,
+    "cat_include": 1.0,
+    "full_interaction": False,
+    "boost_corners": False,
+    "purify_boosting": False,
+    "purify_result": False,
+    "randomize_initial_feature_order": True,
+    "randomize_greedy_feature_order": True,  # Randomize feature order if greedy.
+    "randomize_feature_order": False,  # Randomize feature order. No cost to results.
+    "acceleration": Native.AccelerationFlags_ALL,
+}
+
+
+def get_option(name):
+    return _develop_options[name]
+
+
+def set_option(name, value):
+    if name not in _develop_options:
+        msg = f"Unrecognized development option {name}."
+        raise Exception(msg)
+
+    _develop_options[name] = value
 
 
 def print_debug_info(file=None):
@@ -47,8 +82,8 @@ def dynamic_system_info():
         A dictionary containing dynamic system information.
     """
 
-    import psutil
     import numpy as np
+    import psutil
 
     try:
         cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
@@ -66,12 +101,12 @@ def dynamic_system_info():
         system_info = {
             "psutil.virtual_memory": virtual_memory,
             "psutil.swap_memory": swap_memory,
-            "psutil.avg_cpu_percent": None
-            if cpu_percent is None
-            else np.mean(cpu_percent),
-            "psutil.std_cpu_percent": None
-            if cpu_percent is None
-            else np.std(cpu_percent),
+            "psutil.avg_cpu_percent": (
+                None if cpu_percent is None else np.mean(cpu_percent)
+            ),
+            "psutil.std_cpu_percent": (
+                None if cpu_percent is None else np.std(cpu_percent)
+            ),
             "psutil.cpu_freq": None if cpu_freq is None else cpu_freq._asdict(),
         }
     except Exception:  # pragma: no cover
@@ -87,9 +122,10 @@ def static_system_info():
         A dictionary containing static system information.
     """
     import platform
+
     import psutil
 
-    system_info = {
+    return {
         "platform": platform.platform(),
         "platform.architecture": platform.architecture(),
         "platform.machine": platform.machine(),
@@ -103,8 +139,6 @@ def static_system_info():
         "psutil.virtual_memory.total": _sizeof_fmt(psutil.virtual_memory().total),
         "psutil.swap_memory.total": _sizeof_fmt(psutil.swap_memory().total),
     }
-
-    return system_info
 
 
 def _sizeof_fmt(num, suffix="B"):
@@ -120,32 +154,32 @@ def _sizeof_fmt(num, suffix="B"):
     """
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
-    return "%.1f%s%s" % (num, "Yi", suffix)  # pragma: no cover
+    return "{:.1f}{}{}".format(num, "Yi", suffix)  # pragma: no cover
 
 
-def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd=True):
+def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     """Sets package into debug mode.
 
     Args:
         log_filename: A string that is the filepath to log to, or sys.stderr/sys.stdout.
         log_level: Logging level. For example, "DEBUG".
         native_debug: Load debug versions of native libraries if True.
-        simd: Turns on or off the use of SIMD on systems that support it.
 
     Returns:
         Logging handler.
     """
     import json
     import logging
+
     from .utils._native import Native
 
     # Exit fast on second call.
     if _current_module.is_debug_mode:
-        raise Exception("Cannot call debug_mode more than once in the same session.")
-    else:
-        _current_module.is_debug_mode = True
+        msg = "Cannot call debug_mode more than once in the same session."
+        raise Exception(msg)
+    _current_module.is_debug_mode = True
 
     # Register log
     handler = register_log(log_filename, log_level)
@@ -157,7 +191,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True, simd
     root.info(debug_str)
 
     # Load native libraries in debug mode if needed
-    native = Native.get_native_singleton(is_debug=native_debug, simd=simd)
+    native = Native.get_native_singleton(is_debug=native_debug)
     native.set_logging(log_level)
 
     return handler
@@ -194,12 +228,13 @@ def register_log(filename, level="DEBUG"):
 
 
 if __name__ == "__main__":  # pragma: no cover
-    import pytest
     import os
+
+    import pytest
 
     register_log("test-log.txt")
 
     script_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "tests"
     )
-    pytest.main(["--rootdir={0}".format(script_path), script_path])
+    pytest.main([f"--rootdir={script_path}", script_path])

@@ -11,7 +11,7 @@
 extern "C" {
 #endif // __cplusplus
 
-INTERNAL_IMPORT_EXPORT_BODY const char * SkipWhitespace(const char * s) {
+INTERNAL_IMPORT_EXPORT_BODY const char* SkipWhitespace(const char* s) {
    char oneChar = *s;
    while(0x20 == oneChar || (0x9 <= oneChar && oneChar <= 0xd)) {
       // skip whitespace
@@ -21,7 +21,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * SkipWhitespace(const char * s) {
    return s;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY const char * ConvertStringToFloat(const char * const s, double * const pResultOut) {
+INTERNAL_IMPORT_EXPORT_BODY const char* ConvertStringToFloat(const char* const s, double* const pResultOut) {
    // we skip beginning whitespaces (strtod guarantees this)
    // unlike strtod, we also skip trailing whitespaces
 
@@ -33,9 +33,9 @@ INTERNAL_IMPORT_EXPORT_BODY const char * ConvertStringToFloat(const char * const
    //   conversion is performed; the value of nptr is stored in the object
    //   pointed to by endptr, provided that endptr is not a null pointer.
    //
-   // But, I'm unwilling to trust that there is no variation in the C++ runtime libraries, so I'll do my best to 
+   // But, I'm unwilling to trust that there is no variation in the C++ runtime libraries, so I'll do my best to
    // trust but verify by setting sNext before calling strtod, even though that involves a const cast
-   char * sNext = const_cast<char *>(s);
+   char* sNext = const_cast<char*>(s);
    const double ret = strtod(s, &sNext);
    if(s == sNext || NULL == sNext) {
       // technically, sNext should never be nullptr, but we're again verifying our trust of the C++ library
@@ -45,8 +45,8 @@ INTERNAL_IMPORT_EXPORT_BODY const char * ConvertStringToFloat(const char * const
    return SkipWhitespace(sNext);
 }
 
-INTERNAL_IMPORT_EXPORT_BODY const char * IsStringEqualsCaseInsensitive(const char * sMain, const char * sLabel) {
-   // this function returns nullptr if there is no match, otherwise it returns a pointer to the 
+INTERNAL_IMPORT_EXPORT_BODY const char* IsStringEqualsCaseInsensitive(const char* sMain, const char* sLabel) {
+   // this function returns nullptr if there is no match, otherwise it returns a pointer to the
    // first non-whitespace character following a successfully equal comparison
 
    char mainChar = *sMain;
@@ -78,7 +78,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * IsStringEqualsCaseInsensitive(const cha
    return sMain;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY BoolEbm IsStringEqualsForgiving(const char * sMain, const char * sLabel) {
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm IsStringEqualsForgiving(const char* sMain, const char* sLabel) {
    sMain = IsStringEqualsCaseInsensitive(sMain, sLabel);
    if(NULL == sMain || '\0' != *sMain) {
       return EBM_FALSE;
@@ -86,7 +86,7 @@ INTERNAL_IMPORT_EXPORT_BODY BoolEbm IsStringEqualsForgiving(const char * sMain, 
    return EBM_TRUE;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckForIllegalCharacters(const char * s) {
+INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckForIllegalCharacters(const char* s) {
    if(NULL != s) {
       // to be generously safe towards people adding new objective/metric registrations, check for nullptr
       while(EBM_TRUE) {
@@ -98,11 +98,8 @@ INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckForIllegalCharacters(const char * s) {
             // whitespace is illegal
             break;
          }
-         if(k_registrationSeparator == chr ||
-            k_paramSeparator == chr ||
-            k_valueSeparator == chr ||
-            k_typeTerminator == chr
-         ) {
+         if(k_registrationSeparator == chr || k_paramSeparator == chr || k_valueSeparator == chr ||
+               k_typeTerminator == chr) {
             break;
          }
          ++s;
@@ -111,11 +108,8 @@ INTERNAL_IMPORT_EXPORT_BODY BoolEbm CheckForIllegalCharacters(const char * s) {
    return EBM_TRUE;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY const char * CheckRegistrationName(
-   const char * sRegistration, 
-   const char * const sRegistrationEnd,
-   const char * const sRegistrationName
-) {
+INTERNAL_IMPORT_EXPORT_BODY const char* CheckRegistrationName(
+      const char* sRegistration, const char* const sRegistrationEnd, const char* const sRegistrationName) {
    EBM_ASSERT(NULL != sRegistration);
    EBM_ASSERT(NULL != sRegistrationEnd);
    EBM_ASSERT(sRegistration < sRegistrationEnd); // empty string not allowed
@@ -140,10 +134,7 @@ INTERNAL_IMPORT_EXPORT_BODY const char * CheckRegistrationName(
    return sRegistration;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY size_t CountParams(
-   const char * sRegistration,
-   const char * const sRegistrationEnd
-) {
+INTERNAL_IMPORT_EXPORT_BODY size_t CountParams(const char* sRegistration, const char* const sRegistrationEnd) {
    EBM_ASSERT(NULL != sRegistration);
    EBM_ASSERT(NULL != sRegistrationEnd);
    EBM_ASSERT(sRegistration <= sRegistrationEnd); // sRegistration contains the part after the tag now
@@ -179,43 +170,65 @@ INTERNAL_IMPORT_EXPORT_BODY size_t CountParams(
    return cParams;
 }
 
-INTERNAL_IMPORT_EXPORT_BODY void * AlignedAlloc(const size_t cBytes) {
+INTERNAL_IMPORT_EXPORT_BODY void* AlignedAlloc(const size_t cBytes) {
    EBM_ASSERT(0 != cBytes);
-   if(SIZE_MAX - (sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {
+   if(SIZE_MAX - (sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1) < cBytes) {
       return NULL;
    }
-   const size_t cPaddedBytes = sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1 + cBytes;
-   void * const p = malloc(cPaddedBytes);
+   const size_t cPaddedBytes = sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1 + cBytes;
+   void* const p = malloc(cPaddedBytes);
    if(NULL == p) {
       return NULL;
    }
 
    uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
-   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void *) + SIMD_BYTE_ALIGNMENT - 1)) & 
-      STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
-   *(REINTERPRET_CAST(void **, pointer) - 1) = p;
-   return REINTERPRET_CAST(void *, pointer);
+   pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1)) &
+         STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
+   *(REINTERPRET_CAST(void**, pointer) - 1) = p;
+   return REINTERPRET_CAST(void*, pointer);
 }
-INTERNAL_IMPORT_EXPORT_BODY void AlignedFree(void * const p) {
+INTERNAL_IMPORT_EXPORT_BODY void AlignedFree(void* const p) {
    if(NULL != p) {
-      free(*(REINTERPRET_CAST(void **, p) - 1));
+      free(*(REINTERPRET_CAST(void**, p) - 1));
    }
 }
-INTERNAL_IMPORT_EXPORT_BODY void * AlignedRealloc(void * const p, const size_t cOldBytes, const size_t cNewBytes) {
-   EBM_ASSERT(NULL != p);
-   EBM_ASSERT(0 != cOldBytes);
-   EBM_ASSERT(0 != cNewBytes);
-   EBM_ASSERT(cOldBytes < cNewBytes);
-
-   void * const pNew = AlignedAlloc(cNewBytes);
-   if(pNew == NULL) {
-      // identically to realloc, we do NOT free the old memory if there is not enough memory
-      return NULL;
+INTERNAL_IMPORT_EXPORT_BODY ErrorEbm AlignedGrow(
+      void** const pp, size_t* const pcOldBytes, const size_t cRequiredBytes, const BoolEbm bCopy) {
+   const size_t cOldBytes = *pcOldBytes;
+   if(cOldBytes < cRequiredBytes) {
+      // Grow by about 50%
+      const size_t cAddBytes = (cRequiredBytes >> 1) + size_t{16}; // Cannot overflow. Cannot be zero.
+      if(SIZE_MAX - (sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1) - cAddBytes < cRequiredBytes) {
+         return Error_OutOfMemory;
+      }
+      const size_t cPaddedBytes = sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1 + cAddBytes + cRequiredBytes;
+      if(EBM_FALSE == bCopy) {
+         AlignedFree(*pp);
+         *pp = NULL;
+      }
+      char* const p = REINTERPRET_CAST(char*, malloc(cPaddedBytes));
+      if(NULL == p) {
+         return Error_OutOfMemory;
+      }
+      uintptr_t pointer = REINTERPRET_CAST(uintptr_t, p);
+      pointer = (pointer + STATIC_CAST(uintptr_t, sizeof(void*) + SIMD_BYTE_ALIGNMENT - 1)) &
+            STATIC_CAST(uintptr_t, ~STATIC_CAST(uintptr_t, SIMD_BYTE_ALIGNMENT - 1));
+      char* const pNew = REINTERPRET_CAST(char*, pointer);
+      EBM_ASSERT(p < pNew);
+      *(REINTERPRET_CAST(void**, pNew) - 1) = p;
+      const size_t cRemoveBytes = pNew - p;
+      EBM_ASSERT(cRemoveBytes < cPaddedBytes);
+      const size_t cAllocatedBytes = cPaddedBytes - cRemoveBytes;
+      EBM_ASSERT(cRequiredBytes <= cAllocatedBytes);
+      *pcOldBytes = cAllocatedBytes;
+      if(EBM_FALSE != bCopy) {
+         void* pOld = *pp;
+         memcpy(pNew, pOld, cOldBytes);
+         AlignedFree(pOld);
+      }
+      *pp = pNew;
    }
-   memcpy(pNew, p, cOldBytes); // NOLINT(clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling)
-
-   AlignedFree(p);
-   return pNew;
+   return Error_None;
 }
 
 #ifdef __cplusplus

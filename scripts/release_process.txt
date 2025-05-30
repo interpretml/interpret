@@ -9,7 +9,7 @@
   - python exact value comparison tests in stash
   - C++ exact value comparison tests in stash
   - console tests
-  - compare benchmark to previous known release (v0.4.2 is a validated release)
+  - compare benchmark to previous known release (v0.6.0 is a validated release)
 
 - IMPORTANT: check that the linux shared library is manylinux:
   - in azure-pipelines, under the published artifacts, under asm-x64-ubuntu-*, open libebm_linux_x64.s
@@ -33,14 +33,23 @@
   - bdist: interpret-*-py3-none-any.whl
   - bdist: interpret_core-*-py3-none-any.whl
 
+- check the docs
+  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
+  - unzip the docs.zip file
+  - open one of the html files and go to the first document in the list
+  - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
+  - clone the repo: https://github.com/interpretml/docs
+  - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
+  - copy the new files into that repo
+  - commit changes to the docs repo, BUT DO NOT PUSH YET
+
 - test the bdist:
   - open anaconda console window
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
   - conda env remove --name interpret_bdist && conda create --yes --name interpret_bdist python=3.10 && conda activate interpret_bdist
-  - pip install interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+  - pip install jupyter interpret_core-*-py3-none-any.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]
   - cd <REPO_ROOT>
-  - cd examples/python
-  - pip install jupyter
+  - cd docs/interpret/python/examples
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -55,10 +64,9 @@ set_visualize_provider(InlineProvider())
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
   - conda env remove --name interpret_sdist && conda create --yes --name interpret_sdist python=3.10 && conda activate interpret_sdist
   - IN WINDOWS: get the Visual studio environment with: "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-  - pip install interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,dash,skoperules,testing]
+  - pip install jupyter interpret-core-*.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]
   - cd <REPO_ROOT>
-  - cd examples/python/
-  - pip install jupyter
+  - cd docs/interpret/python/examples
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -70,20 +78,10 @@ set_visualize_provider(InlineProvider())
 
 - test the R package
   - run the "--as-cran" checks on the downloaded package:
-    - TODO: add this as a step in the build pipeline so that we can just check it there, but make it not fail the pipeline if it fails since we'd then have to keep updating the date in the package
     - cd <PACKAGE_DOWNLOAD_DIRECTORY>
     - R CMD check --as-cran -o ../tmp/R interpret_*.tar.gz
   - upload the R package at <PACKAGE_DOWNLOAD_DIRECTORY> to test on multiple platforms in: https://builder.r-hub.io
   - In particular, the "Oracle Developer Studio 12.6" is worth testing as that C++ compiler is picky, and CRAN tests it
-
-- check the docs
-  - cd <PACKAGE_DOWNLOAD_DIRECTORY>
-  - unzip the docs.zip file
-  - open one of the html files and go to the first document in the list
-  - do a side by side browser comparison to the existing documentation at: https://interpret.ml/docs
-  - clone the repo: https://github.com/interpretml/docs
-  - delete all the files, except possibly for ".gitignore" (TODO: can we remove .gitignore even since all the files are uploaded?)
-  - copy the new files into that repo, BUT DO NOT PUSH YET
 
 - publish on NPM
   - cd <PACKAGE_DOWNLOAD_DIRECTORY>
@@ -172,9 +170,9 @@ set_visualize_provider(InlineProvider())
   - open anaconda console window
   - conda env remove --name interpret_conda && conda create --yes --name interpret_conda python=3.10 && conda activate interpret_conda
   - conda install --yes -c conda-forge interpret-core psutil ipykernel ipython plotly lime SALib shap dill dash dash-core-components dash-html-components dash-table dash_cytoscape gevent requests
-  - cd <REPO_ROOT>
-  - cd examples/python
   - pip install jupyter
+  - cd <REPO_ROOT>
+  - cd docs/interpret/python/examples
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -196,22 +194,23 @@ set_visualize_provider(InlineProvider())
       https://pypi.org/project/interpret/#files
 
 - test PyPI release on colab:
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Classification_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Interpretable_Regression_Methods.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Differentially_Private_EBMs.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Merging_EBM_Models.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/EBM_Importances.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Classifiers.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Explaining_Blackbox_Regressors.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/examples/python/Prototype_Selection_with_SPOTgreedy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/custom-interactions.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/differential-privacy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-classifiers.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-regressors.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/group-importances.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-classification.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression-synthetic.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/merge-ebms.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/prototype-selection.ipynb
 
 - test PyPI release locally:
   - open anaconda console window
   - conda env remove --name interpret_pypi && conda create --yes --name interpret_pypi python=3.10 && conda activate interpret_pypi
-  - pip install interpret lime  # remove lime if we remove lime from example notebooks
+  - pip install jupyter interpret lime  # remove lime if we remove lime from example notebooks
   - cd <REPO_ROOT>
-  - cd examples/python
-  - pip install jupyter
+  - cd docs/interpret/python/examples
   - jupyter notebook
   - open all the example notebooks, run them, and check the visualizations
   - clear all outputs on all notebooks
@@ -256,3 +255,15 @@ set_visualize_provider(InlineProvider())
   - merge "develop" into "main" (this will also cary along with it the tag)
   - push the "main" branch
 - verify main and develop branch have been updated in github
+
+
+
+
+
+POWERLIFT:
+- update CHANGELOG.md
+- update version in:
+  python\powerlift\scripts\build-docker.sh
+  python\powerlift\scripts\Dockerfile (in 2 places)
+  python\powerlift\setup.py
+  python\powerlift\powerlift\_version.py

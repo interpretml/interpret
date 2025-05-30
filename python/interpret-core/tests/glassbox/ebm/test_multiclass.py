@@ -1,9 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.glassbox._ebm._multiclass import multiclass_postprocess_RESTORE_THIS
-
 import numpy as np
+from interpret.glassbox._ebm._multiclass import multiclass_postprocess_RESTORE_THIS
 
 
 def test_multiclass_postprocess_smoke():

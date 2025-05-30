@@ -1,8 +1,25 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-
+import logging
 from itertools import count
+
 import numpy as np
+from typing import Any
+import sys
+
+_log = logging.getLogger(__name__)
+
+
+def safe_isinstance(obj: Any, name: str) -> bool:
+    splits = name.rsplit(".", 1)
+    if len(splits) <= 1:
+        raise ValueError("name must contain the full module path to a class.")
+    module = sys.modules.get(splits[0], None)
+    if module is not None:
+        class_type = getattr(module, splits[1], None)
+        if class_type is not None and isinstance(obj, class_type):
+            return True
+    return False
 
 
 def clean_index(index, n_items, names, param_name, attribute_name):
@@ -47,7 +64,7 @@ def clean_indexes(indexes, n_items, names, param_name, attribute_name):
     result = set()
     for i, v in enumerate(indexes):
         n_indexes += 1
-        if isinstance(v, bool) or isinstance(v, np.bool_):
+        if isinstance(v, (bool, np.bool_)):
             n_bools += 1
             if v:
                 v = i

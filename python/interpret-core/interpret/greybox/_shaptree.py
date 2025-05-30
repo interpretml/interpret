@@ -1,12 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..utils._shap_common import shap_explain_local
+import numpy as np
 
 from interpret.api.base import ExplainerMixin
 
-import numpy as np
 from ..utils._clean_x import preclean_X
+from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
 
 

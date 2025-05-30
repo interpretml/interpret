@@ -6,17 +6,17 @@
 
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
-template<typename TFloat>
-struct TweedieDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Link_log)
+template<typename TFloat> struct TweedieDevianceRegressionObjective : RegressionObjective {
+   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
 
    TFloat m_variancePowerParamSub1;
    TFloat m_variancePowerParamSub2;
-   TFloat m_inverseVariancePowerParamSub1;
+   TFloat m_negInverseVariancePowerParamSub1;
    TFloat m_inverseVariancePowerParamSub2;
 
-   // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
-   inline TweedieDevianceRegressionObjective(const Config & config, double variancePower) {
+   // The constructor parameters following config must match the RegisterObjective parameters in
+   // objective_registrations.hpp
+   inline TweedieDevianceRegressionObjective(const Config& config, double variancePower) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
@@ -40,7 +40,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
 
       m_variancePowerParamSub1 = variancePowerParamSub1;
       m_variancePowerParamSub2 = variancePowerParamSub2;
-      m_inverseVariancePowerParamSub1 = 1.0 / variancePowerParamSub1;
+      m_negInverseVariancePowerParamSub1 = (-1.0) / variancePowerParamSub1;
       m_inverseVariancePowerParamSub2 = 1.0 / variancePowerParamSub2;
    }
 
@@ -48,9 +48,7 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       return std::isnan(target) || std::isinf(target) || target < 0.0;
    }
 
-   inline double LinkParam() const noexcept {
-      return std::numeric_limits<double>::quiet_NaN();
-   }
+   inline double LinkParam() const noexcept { return std::numeric_limits<double>::quiet_NaN(); }
 
    inline double LearningRateAdjustmentDifferentialPrivacy() const noexcept {
       return 1.0; // typically leave this at 1.0 (unmodified)
@@ -72,45 +70,34 @@ struct TweedieDevianceRegressionObjective : RegressionObjective {
       return 1.0; // typically leave this at 1.0 (unmodified)
    }
 
-   inline double GradientConstant() const noexcept {
-      return 1.0;
-   }
+   inline double GradientConstant() const noexcept { return 1.0; }
 
-   inline double HessianConstant() const noexcept {
-      return 1.0;
-   }
+   inline double HessianConstant() const noexcept { return 1.0; }
 
-   inline double FinishMetric(const double metricSum) const noexcept {
-      return 2.0 * metricSum;
-   }
+   inline double FinishMetric(const double metricSum) const noexcept { return 2.0 * metricSum; }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
-      const TFloat metric = FusedNegateMultiplyAdd(
-         target * m_inverseVariancePowerParamSub1, 
-         exp1Score, 
-         exp2Score * m_inverseVariancePowerParamSub2
-      );
+      const TFloat metric = FusedMultiplyAdd(
+            target * m_negInverseVariancePowerParamSub1, exp1Score, exp2Score * m_inverseVariancePowerParamSub2);
       return metric;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat& score, const TFloat& target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
       const TFloat gradient = FusedNegateMultiplyAdd(target, exp1Score, exp2Score);
       return gradient;
    }
 
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(
+         const TFloat& score, const TFloat& target) const noexcept {
       const TFloat exp1Score = Exp(m_variancePowerParamSub1 * score);
       const TFloat exp2Score = Exp(m_variancePowerParamSub2 * score);
       const TFloat gradient = FusedNegateMultiplyAdd(target, exp1Score, exp2Score);
-      const TFloat hessian = FusedNegateMultiplyAdd(
-         m_variancePowerParamSub1 * target, 
-         exp1Score, 
-         m_variancePowerParamSub2 * exp2Score
-      );
+      const TFloat hessian =
+            FusedNegateMultiplyAdd(m_variancePowerParamSub1 * target, exp1Score, m_variancePowerParamSub2 * exp2Score);
       return MakeGradientHessian(gradient, hessian);
    }
 };

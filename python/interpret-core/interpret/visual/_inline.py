@@ -3,17 +3,16 @@
 
 # NOTE: This module is highly experimental. Expect changes every version.
 
+import base64
+import json
+import logging
 import os
+import sys
 import time
 import uuid
 
-from plotly.io import to_json
 from plotly import graph_objs as go
-import sys
-import json
-import base64
-
-import logging
+from plotly.io import to_json
 
 _log = logging.getLogger(__name__)
 interpret_help_link = "https://interpret.ml/docs/ebm.html"
@@ -42,7 +41,7 @@ def _build_error_frame(msg):
 
 def _build_base64_frame_src(html_str):
     html_hex64 = base64.b64encode(html_str.encode("utf-8")).decode("ascii")
-    return "data:text/html;base64,{}".format(html_hex64)
+    return f"data:text/html;base64,{html_hex64}"
 
 
 def _build_cytoscape_json(cytoscape):
@@ -69,11 +68,14 @@ def _build_viz_figure(visualization, detected_envs=None):
         if hasattr(visualization, "_interpret_help_text"):
             if "azuresynapse" in detected_envs:
                 link = synapse_help_link
+                help = {"text": visualization._interpret_help_text, "link": link}
             elif hasattr(visualization, "_interpret_help_link"):
                 link = visualization._interpret_help_link
             else:
                 link = interpret_help_link
-            help = {"text": visualization._interpret_help_text, "link": link}
+            # for now disable this help text everywhere except for Synapse because it
+            # creates annoying scroll bars due to the additional height.
+            # help = {"text": visualization._interpret_help_text, "link": link}
     elif isinstance(visualization, str):
         _type = "html"
         figure = _build_base64_frame_src(visualization)
@@ -85,7 +87,7 @@ def _build_viz_figure(visualization, detected_envs=None):
         #       all Dash component visualizations are being replaced with D3 soon.
         _type = "html"
         msg = "This visualization is not yet supported in the cloud environment."
-        _log.debug("Visualization type cannot render: {}".format(type(visualization)))
+        _log.debug(f"Visualization type cannot render: {type(visualization)}")
         figure = _build_error_frame(msg)
 
     return {"type": _type, "figure": figure, "help": help}
@@ -96,13 +98,12 @@ def _build_viz_err_obj(err_msg):
     figure = _build_error_frame(err_msg)
     viz_figure = {"type": _type, "figure": figure}
 
-    viz_obj = {
+    return {
         "name": "Error",
         "overall": viz_figure,
         "specific": [],
         "selector": {"columns": [], "data": []},
     }
-    return viz_obj
 
 
 def _build_viz_obj(explanation, detected_envs):
@@ -121,49 +122,46 @@ def _build_viz_obj(explanation, detected_envs):
             "data": explanation.selector.to_dict("records"),
         }
 
-    viz_obj = {
+    return {
         "name": explanation.name,
         "overall": overall,
         "specific": specific,
         "selector": selector_obj,
     }
-    return viz_obj
 
 
 def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
     if js_url is None:
         interpret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
         root_path = os.path.join(interpret_path, "root")
-        if not os.path.isdir(root_path):
+        if os.path.isdir(root_path):
+            # if root directory exists, then use that
+            js_path = os.path.join(root_path, "bld", "lib", "interpret-inline.js")
+        else:
             # if no root directory then fallback to the git source location
             root_path = os.path.join(interpret_path, "..", "..", "..")
-        js_path = os.path.join(root_path, "bld", "lib", "interpret-inline.js")
+            js_path = os.path.join(
+                root_path, "shared", "vis", "dist", "interpret-inline.js"
+            )
         js_last_modified = time.ctime(os.path.getmtime(js_path))
 
-        with open(js_path, "r", encoding="utf-8") as f:
+        with open(js_path, encoding="utf-8") as f:
             show_js = f.read()
-        init_js = """
+        init_js = f"""
         <script type="text/javascript">
-        console.log("Initializing interpret-inline (last modified: {1})");
-        {0}
+        console.log("Initializing interpret-inline (last modified: {js_last_modified})");
+        {show_js}
         </script>
-        """.format(
-            show_js, js_last_modified
-        )
+        """
     else:
-        init_js = """
-        <script type="text/javascript" src="{0}"></script>
-        """.format(
-            js_url
-        )
+        init_js = f"""
+        <script type="text/javascript" src="{js_url}"></script>
+        """
 
-    if id_str is None:
-        div_id = "_interpret-viz-{0}".format(uuid.uuid4())
-    else:
-        div_id = id_str
+    div_id = f"_interpret-viz-{uuid.uuid4()}" if id_str is None else id_str
 
-    body_js = """
-    <div id="{0}"></div>
+    body_js = f"""
+    <div id="{div_id}"></div>
     <script defer type="text/javascript">
 
     (function universalLoad(root, callback) {{
@@ -189,13 +187,11 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
         callback(root['interpret-inline']);
       }}
     }})(this, function(interpretInline) {{
-        interpretInline.RenderApp("{0}", {1}, {2});
+        interpretInline.RenderApp("{div_id}", {json.dumps(viz_obj)}, {default_key});
     }});
 
     </script>
-    """.format(
-        div_id, json.dumps(viz_obj), default_key
-    )
+    """
 
     return init_js, body_js
 
@@ -227,7 +223,7 @@ _render_databricks.displayHTML = None
 
 
 def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=None):
-    from IPython.display import display, HTML
+    from IPython.display import HTML, display
 
     if isinstance(explanation, list):
         msg = "Dashboard not yet supported in cloud environments."
@@ -253,9 +249,8 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
         components.html(
             HTML(init_js + body_js).data, height=1000, width=1000, scrolling=True
         )
-    else:  # Fallthrough assumes we are in an IPython environment at a minimum.
-        if not _current_module.jupyter_initialized:
-            _current_module.jupyter_initialized = True
-            display(HTML(init_js + body_js))
-        else:
-            display(HTML(body_js))
+    elif not _current_module.jupyter_initialized:
+        _current_module.jupyter_initialized = True
+        display(HTML(init_js + body_js))
+    else:
+        display(HTML(body_js))

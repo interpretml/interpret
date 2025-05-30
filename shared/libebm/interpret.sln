@@ -11,12 +11,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{F5894036-A
 		..\..\.gitattributes = ..\..\.gitattributes
 		..\..\.gitignore = ..\..\.gitignore
 		..\..\ACKNOWLEDGEMENTS.md = ..\..\ACKNOWLEDGEMENTS.md
-		..\..\azure-pipelines.yml = ..\..\azure-pipelines.yml
 		..\..\build.bat = ..\..\build.bat
 		..\..\build.sh = ..\..\build.sh
 		..\..\CHANGELOG.md = ..\..\CHANGELOG.md
+		..\..\.github\workflows\ci.yml = ..\..\.github\workflows\ci.yml
+		..\..\codecov.yml = ..\..\codecov.yml
 		..\..\CONTRIBUTING.md = ..\..\CONTRIBUTING.md
+		..\..\docs\interpret\hyperparameters.md = ..\..\docs\interpret\hyperparameters.md
 		..\..\README.md = ..\..\README.md
+		..\..\.github\workflows\release_interpret.yml = ..\..\.github\workflows\release_interpret.yml
+		..\..\.github\workflows\release_powerlift.yml = ..\..\.github\workflows\release_powerlift.yml
 		..\..\scripts\release_process.txt = ..\..\scripts\release_process.txt
 		..\..\python\interpret\setup.py = ..\..\python\interpret\setup.py
 		vs_python_setup.txt = vs_python_setup.txt
@@ -65,6 +69,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compute", "compute", "{5B3D
 		compute\BinSumsInteraction.hpp = compute\BinSumsInteraction.hpp
 		compute\compute.hpp = compute\compute.hpp
 		compute\compute_wrapper.hpp = compute\compute_wrapper.hpp
+		compute\math.hpp = compute\math.hpp
 		compute\Objective.hpp = compute\Objective.hpp
 		compute\Registration.hpp = compute\Registration.hpp
 		compute\registration_exceptions.hpp = compute\registration_exceptions.hpp
@@ -118,6 +123,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "avx2_ebm", "compute\avx2_ebm\avx2_ebm.vcxproj", "{510BED68-1ABE-4FAA-8666-A0051EE308C1}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "interpret-core", "..\..\python\interpret-core\interpret-core.pyproj", "{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "powerlift", "..\..\python\powerlift\powerlift.pyproj", "{B74B9754-8E97-40D4-BD6A-48C453A3CE16}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -175,6 +182,10 @@ Global
 		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x64.ActiveCfg = Release|Any CPU
 		{A647BDD9-8305-4EE3-AF8F-C2F88E3E5053}.Release|x86.ActiveCfg = Release|Any CPU
+		{B74B9754-8E97-40D4-BD6A-48C453A3CE16}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B74B9754-8E97-40D4-BD6A-48C453A3CE16}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B74B9754-8E97-40D4-BD6A-48C453A3CE16}.Release|x64.ActiveCfg = Release|Any CPU
+		{B74B9754-8E97-40D4-BD6A-48C453A3CE16}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

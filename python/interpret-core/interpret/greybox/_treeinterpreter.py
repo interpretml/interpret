@@ -1,16 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import numpy as np
+
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-from ..utils._explanation import gen_name_from_class, gen_perf_dicts, gen_local_selector
-
-import numpy as np
-from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_local_selector, gen_name_from_class, gen_perf_dicts
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 class TreeInterpreter(ExplainerMixin):
@@ -91,7 +90,8 @@ class TreeInterpreter(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         feature_names = (
@@ -114,7 +114,7 @@ class TreeInterpreter(ExplainerMixin):
             X, n_samples, feature_names, feature_types, False, 0
         )
 
-        is_classification = 0 <= n_classes
+        is_classification = n_classes >= 0
         if y is not None:
             if is_classification:
                 y = typify_classification(y)

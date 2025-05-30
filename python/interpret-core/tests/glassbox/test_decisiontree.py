@@ -1,11 +1,11 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import numpy as np
 from interpret.glassbox import ClassificationTree, RegressionTree
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
-import numpy as np
 
 
 def test_rt():

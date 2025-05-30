@@ -1,12 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from itertools import repeat
+import logging
+from itertools import repeat, count
+
 import numpy as np
 
-import logging
-
-from ._clean_x import unify_columns, unify_feature_names
+from ._clean_x import unify_columns, unify_feature_names, categorical_encode
 
 _log = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ def unify_data(
     feature_names=None,
     feature_types=None,
     missing_data_allowed=False,
+    unseen_data_allowed=False,
     min_unique_continuous=0,
 ):
     _log.info("Unifying data")
@@ -35,56 +36,73 @@ def unify_data(
     feature_names_in = unify_feature_names(X, feature_names, feature_types)
     feature_types_in = _none_list * len(feature_names_in)
 
-    # TODO: this could be made more efficient by storing continuous and categorical values in separate numpy arrays
-    # and merging afterwards.  Categoricals are going to share the same objects, but we don't want object
-    # fragmentation for continuous values which generates a lot of garbage to collect later
-    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, order="F")
+    # fill with np.nan for missing values and None for unseen values
+    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
-    for feature_idx, (feature_type_in, X_col, categories, bad) in enumerate(
-        unify_columns(
-            X,
-            zip(range(len(feature_names_in)), repeat(None)),
-            feature_names_in,
-            feature_types,
-            min_unique_continuous,
-            False,
-        )
-    ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
+    get_col = unify_columns(
+        X,
+        n_samples,
+        feature_names_in,
+        feature_types,
+        min_unique_continuous,
+        True,
+        False,
+    )
+    for feature_idx in range(len(feature_names_in)):
+        if feature_types is not None and feature_types[feature_idx] == "ignore":
+            # TODO: we should drop these columns instead of passing them to the dependent model
+            # since many models cannot handle missing values.
 
-        feature_types_in[feature_idx] = feature_type_in
-        if categories is None:
-            # continuous feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if not missing_data_allowed and np.isnan(X_col).any():
+            if not missing_data_allowed:
                 msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 
-            X_unified[:, feature_idx] = X_col
+            X_unified[:, feature_idx] = np.nan
+            feature_types_in[feature_idx] = "ignore"
         else:
-            # categorical feature
-            if bad is not None:
-                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                _log.error(msg)
-                raise ValueError(msg)
+            feature_types_in[feature_idx], nonmissings, uniques, X_col, bad = get_col(
+                feature_idx
+            )
+            if uniques is None:
+                # continuous feature
 
-            if not missing_data_allowed and np.count_nonzero(X_col) != len(X_col):
-                msg = "X cannot contain missing values"
-                _log.error(msg)
-                raise ValueError(msg)
+                if not missing_data_allowed and np.isnan(X_col).any():
+                    msg = "X cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-            mapping = np.empty(len(categories) + 1, np.object_)
-            mapping.itemset(0, np.nan)
-            for category, idx in categories.items():
-                mapping.itemset(idx, category)
-            X_unified[:, feature_idx] = mapping[X_col]
+                if bad is not None:
+                    if not unseen_data_allowed:
+                        msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    X_col[bad] = None  # use None for unseen. np.nan is for missing
+
+                X_unified[:, feature_idx] = X_col
+            else:
+                # categorical feature
+
+                categories = dict(zip(uniques, count(1)))
+
+                X_col = categorical_encode(uniques, X_col, nonmissings, categories)
+
+                if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
+                    msg = "X cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if not unseen_data_allowed and (X_col == -1).any():
+                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                mapping = np.empty(len(categories) + 2, np.object_)
+                mapping[0] = np.nan  # use np.nan for missing
+                mapping[-1] = None  # use None for unseen
+                for category, idx in categories.items():
+                    mapping[idx] = category
+
+                X_unified[:, feature_idx] = mapping[X_col]
 
     return X_unified, feature_names_in, feature_types_in

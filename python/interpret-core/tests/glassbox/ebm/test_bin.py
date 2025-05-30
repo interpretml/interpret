@@ -1,13 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import numpy as np
 import math
 
+import numpy as np
 from interpret.glassbox._ebm._bin import (
+    ebm_predict_scores,
     eval_terms,
     make_bin_weights,
-    ebm_predict_scores,
 )
 from interpret.utils._clean_x import preclean_X
 
@@ -20,10 +20,10 @@ def test_eval_terms():
     feature_names_in = ["f1", "99", "f3"]
     feature_types_in = ["nominal", "nominal", "continuous"]
 
-    shared_categores = {"a": 1}  # "b" is unknown category
+    shared_categores = {"a": 1}  # "b" is unseen category
     shared_cuts = np.array([8.5], dtype=np.float64)
 
-    # for level 1, "b" is unknown category
+    # for level 1, "b" is unseen category
     # for level 1, we combine "2" and "3" into one category!
     # for level 2, collapse all our categories to keep the tensor small for testing
     bins = [
@@ -90,33 +90,37 @@ def test_eval_terms():
     )
     result = [term_scores[x[0]][tuple(x[1])] for x in result]
 
+    # feature 0
     assert result[0][0] == 0.2
     assert result[0][1] == 0.3
     assert result[0][2] == 0.2
     assert result[0][3] == 0.1
 
+    # feature 1
     assert result[1][0] == 0.02
     assert result[1][1] == 0.03
     assert result[1][2] == 0.03
     assert result[1][3] == 0.04
 
-    assert result[2][0] == 0.001
-    assert result[2][1] == 0.002
-    assert result[2][2] == 0.003
-    assert result[2][3] == 0
+    # with feature 0 and 1 completed the pair term (0, 1) is available
+    assert result[2][0] == 0.0005
+    assert result[2][1] == 0
+    assert result[2][2] == 0.0006
+    assert result[2][3] == 0.0003
 
-    # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
-    assert result[4][0] == 0.0005
-    assert result[4][1] == 0
-    assert result[4][2] == 0.0006
-    assert result[4][3] == 0.0003
-
-    # term4 finishes before term3 since shared_cuts allows the 3rd feature to be completed first
-    assert result[3][0] == 0.00004
-    assert result[3][1] == 0
-    assert result[3][2] == 0.00006
+    # feature 2
+    assert result[3][0] == 0.001
+    assert result[3][1] == 0.002
+    assert result[3][2] == 0.003
     assert result[3][3] == 0
 
+    # with feature 0 and 2 completed the pair term (0, 2) is available
+    assert result[4][0] == 0.00004
+    assert result[4][1] == 0
+    assert result[4][2] == 0.00006
+    assert result[4][3] == 0
+
+    # with feature 0, 1, and 2 completed the pair term (0, 1, 2) is available
     assert result[5][0] == 0.000007
     assert result[5][1] == 0
     assert result[5][2] == 0.000008
@@ -125,6 +129,7 @@ def test_eval_terms():
     scores = ebm_predict_scores(
         X,
         n_samples,
+        None,
         feature_names_in,
         feature_types_in,
         bins,

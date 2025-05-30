@@ -23,24 +23,17 @@ namespace DEFINED_ZONE_NAME {
 #endif // DEFINED_ZONE_NAME
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
-   void * rng,
-   IntEbm countTrainingSamples,
-   IntEbm countValidationSamples,
-   BagEbm * bagOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered SampleWithoutReplacement: "
-      "rng=%p, "
-      "countTrainingSamples=%" IntEbmPrintf ", "
-      "countValidationSamples=%" IntEbmPrintf ", "
-      "bagOut=%p"
-      ,
-      rng,
-      countTrainingSamples,
-      countValidationSamples,
-      static_cast<void *>(bagOut)
-   );
+      void* rng, IntEbm countTrainingSamples, IntEbm countValidationSamples, BagEbm* bagOut) {
+   LOG_N(Trace_Info,
+         "Entered SampleWithoutReplacement: "
+         "rng=%p, "
+         "countTrainingSamples=%" IntEbmPrintf ", "
+         "countValidationSamples=%" IntEbmPrintf ", "
+         "bagOut=%p",
+         rng,
+         countTrainingSamples,
+         countValidationSamples,
+         static_cast<void*>(bagOut));
 
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacement IsConvertError<size_t>(countTrainingSamples)");
@@ -59,7 +52,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
       return Error_IllegalParamVal;
    }
    size_t cSamplesRemaining = cTrainingSamples + cValidationSamples;
-   if(UNLIKELY(size_t { 0 } == cSamplesRemaining)) {
+   if(UNLIKELY(size_t{0} == cSamplesRemaining)) {
       LOG_0(Trace_Info, "Exited SampleWithoutReplacement with zero elements");
       return Error_None;
    }
@@ -75,17 +68,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
 
    size_t cTrainingRemaining = cTrainingSamples;
 
-   BagEbm * pSampleReplicationOut = bagOut;
+   BagEbm* pSampleReplicationOut = bagOut;
    if(nullptr != rng) {
-      RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      RandomDeterministic* const pRng = reinterpret_cast<RandomDeterministic*>(rng);
       // the compiler understands the internal state of this RNG and can locate its internal state into CPU registers
       RandomDeterministic cpuRng;
       cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
       do {
          const size_t iRandom = cpuRng.NextFast(cSamplesRemaining);
          const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
-         cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
-         *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
+         cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t{1} : size_t{0};
+         *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm{1} : BagEbm{-1};
          ++pSampleReplicationOut;
          --cSamplesRemaining;
       } while(0 != cSamplesRemaining);
@@ -96,12 +89,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
          do {
             const size_t iRandom = randomGenerator.NextFast(cSamplesRemaining);
             const bool bTrainingSample = UNPREDICTABLE(iRandom < cTrainingRemaining);
-            cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
-            *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
+            cTrainingRemaining -= UNPREDICTABLE(bTrainingSample) ? size_t{1} : size_t{0};
+            *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm{1} : BagEbm{-1};
             ++pSampleReplicationOut;
             --cSamplesRemaining;
          } while(0 != cSamplesRemaining);
-      } catch(const std::bad_alloc &) {
+      } catch(const std::bad_alloc&) {
          LOG_0(Trace_Warning, "WARNING SampleWithoutReplacement Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
@@ -115,36 +108,31 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacement(
    return Error_None;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
-   void * rng,
-   IntEbm countClasses,
-   IntEbm countTrainingSamples,
-   IntEbm countValidationSamples,
-   const IntEbm * targets,
-   BagEbm * bagOut
-) {
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(void* rng,
+      IntEbm countClasses,
+      IntEbm countTrainingSamples,
+      IntEbm countValidationSamples,
+      const IntEbm* targets,
+      BagEbm* bagOut) {
    struct TargetClass {
       size_t m_cTrainingSamples;
       size_t m_cSamples;
    };
 
-   LOG_N(
-      Trace_Info,
-      "Entered SampleWithoutReplacementStratified: "
-      "rng=%p, "
-      "countClasses=%" IntEbmPrintf ", "
-      "countTrainingSamples=%" IntEbmPrintf ", "
-      "countValidationSamples=%" IntEbmPrintf ", "
-      "targets=%p, "
-      "bagOut=%p"
-      ,
-      rng,
-      countClasses,
-      countTrainingSamples,
-      countValidationSamples,
-      static_cast<const void *>(targets),
-      static_cast<void *>(bagOut)
-   );
+   LOG_N(Trace_Info,
+         "Entered SampleWithoutReplacementStratified: "
+         "rng=%p, "
+         "countClasses=%" IntEbmPrintf ", "
+         "countTrainingSamples=%" IntEbmPrintf ", "
+         "countValidationSamples=%" IntEbmPrintf ", "
+         "targets=%p, "
+         "bagOut=%p",
+         rng,
+         countClasses,
+         countTrainingSamples,
+         countValidationSamples,
+         static_cast<const void*>(targets),
+         static_cast<void*>(bagOut));
 
    if(UNLIKELY(IsConvertError<size_t>(countTrainingSamples))) {
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsConvertError<size_t>(countTrainingSamples)");
@@ -159,18 +147,21 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    const size_t cValidationSamples = static_cast<size_t>(countValidationSamples);
 
    if(UNLIKELY(IsAddError(cTrainingSamples, cValidationSamples))) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
+      LOG_0(Trace_Error,
+            "ERROR SampleWithoutReplacementStratified IsAddError(countTrainingSamples, countValidationSamples))");
       return Error_IllegalParamVal;
    }
 
    const size_t cSamples = cTrainingSamples + cValidationSamples;
-   if(UNLIKELY(size_t { 0 } == cSamples)) {
+   if(UNLIKELY(size_t{0} == cSamples)) {
       LOG_0(Trace_Info, "Exited SampleWithoutReplacementStratified with zero samples");
       return Error_None;
    }
 
    if(UNLIKELY(IsMultiplyError(EbmMax(sizeof(*targets), sizeof(*bagOut)), cSamples))) {
-      LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified IsMultiplyError(EbmMax(sizeof(*targets), sizeof(*bagOut)), cSamples)");
+      LOG_0(Trace_Error,
+            "ERROR SampleWithoutReplacementStratified IsMultiplyError(EbmMax(sizeof(*targets), sizeof(*bagOut)), "
+            "cSamples)");
       return Error_IllegalParamVal;
    }
 
@@ -184,7 +175,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       return Error_IllegalParamVal;
    }
 
-   if(UNLIKELY(countClasses <= IntEbm { 0 })) {
+   if(UNLIKELY(countClasses <= IntEbm{0})) {
       // countClasses cannot be zero since 1 <= cSamples
       LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified countClasses <= IntEbm { 0 }");
       return Error_IllegalParamVal;
@@ -218,7 +209,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       try {
          RandomNondeterministic<uint64_t> randomGenerator;
          seed = randomGenerator.Next(std::numeric_limits<uint64_t>::max());
-      } catch(const std::bad_alloc &) {
+      } catch(const std::bad_alloc&) {
          LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified Out of memory in std::random_device");
          return Error_OutOfMemory;
       } catch(...) {
@@ -227,12 +218,12 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       }
       cpuRng.Initialize(seed);
    } else {
-      const RandomDeterministic * const pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      const RandomDeterministic* const pRng = reinterpret_cast<RandomDeterministic*>(rng);
       cpuRng.Initialize(*pRng); // move the RNG from memory into CPU registers
    }
 
    EBM_ASSERT(1 <= cBytesAllTargetClasses); // we cannot have zero classes where there are any samples
-   TargetClass * const aTargetClasses = static_cast<TargetClass *>(malloc(cBytesAllTargetClasses));
+   TargetClass* const aTargetClasses = static_cast<TargetClass*>(malloc(cBytesAllTargetClasses));
    if(UNLIKELY(nullptr == aTargetClasses)) {
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified out of memory on aTargetClasses");
       return Error_OutOfMemory;
@@ -240,16 +231,16 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    // the C++ says memset legal to use for setting classes with unsigned integer types
    memset(aTargetClasses, 0, cBytesAllTargetClasses);
 
-   const TargetClass * const pTargetClassesEnd = IndexByte(aTargetClasses, cBytesAllTargetClasses);
+   const TargetClass* const pTargetClassesEnd = IndexByte(aTargetClasses, cBytesAllTargetClasses);
    EBM_ASSERT(pTargetClassesEnd != aTargetClasses);
 
    // determine number of samples per class in the target
-   const IntEbm * pTargetInit = targets;
-   const IntEbm * const pTargetsEnd = &targets[cSamples];
+   const IntEbm* pTargetInit = targets;
+   const IntEbm* const pTargetsEnd = &targets[cSamples];
    do {
       const IntEbm indexClass = *pTargetInit;
-      if(indexClass < 0) {
-         LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified indexClass < 0");
+      if(indexClass < IntEbm{0}) {
+         LOG_0(Trace_Error, "ERROR SampleWithoutReplacementStratified indexClass < IntEbm{0}");
          free(aTargetClasses);
          return Error_IllegalParamVal;
       }
@@ -264,45 +255,45 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    } while(pTargetsEnd != pTargetInit);
 
    // This stratified sampling algorithm guarantees:
-   // (1) Either the train/validation counts work out perfectly for each class -or- there is at 
+   // (1) Either the train/validation counts work out perfectly for each class -or- there is at
    //     least one class with a count above the ideal training count and at least one class with
    //     a training count below the ideal count,
-   // (2) Given a sufficient amount of training samples, if a class has only one sample, it 
+   // (2) Given a sufficient amount of training samples, if a class has only one sample, it
    //     should go to training,
-   // (3) Given a sufficient amount of training samples, if a class only has two samples, one 
+   // (3) Given a sufficient amount of training samples, if a class only has two samples, one
    //     should go to train and one should go to test,
    // (4) If a class has enough samples to hit the target train/validation count, its actual
-   //     train/validation count should be no more than one away from the ideal count. 
-   // 
-   // Given these guarantees, the sketch of this algorithm is that for the common case where there 
-   // are enough training samples to have more than one sample per class, we initialize the count 
-   // of the training samples per class to be the floor of the ideal training count.  This will 
+   //     train/validation count should be no more than one away from the ideal count.
+   //
+   // Given these guarantees, the sketch of this algorithm is that for the common case where there
+   // are enough training samples to have more than one sample per class, we initialize the count
+   // of the training samples per class to be the floor of the ideal training count.  This will
    // leave some amount of samples to be "leftover".  We assign leftovers to classes by determining
-   // which class will get closest to its ideal training count by giving it one more training 
-   // sample.  If there is more than one class that gets the same improvement, we'll randomly 
+   // which class will get closest to its ideal training count by giving it one more training
+   // sample.  If there is more than one class that gets the same improvement, we'll randomly
    // assign the "leftover" to one of the classes.
-   // 
-   // In addition to having leftovers as a result of taking the floor of the ideal training count 
+   //
+   // In addition to having leftovers as a result of taking the floor of the ideal training count
    // of each class, we decrement the ideal training count of each class by 1 and consider those
    // samples leftovers as well.  This assures us we have enough leftovers to give 1 to any classes
-   // that have 0 training samples when looking at leftovers.  We use this to achieve the 2nd 
+   // that have 0 training samples when looking at leftovers.  We use this to achieve the 2nd
    // guarantee that any class with at 1 sample will get at least one sample assigned to training.
    //
-   // For the odd cases where there aren't enough training samples given to give at least one 
+   // For the odd cases where there aren't enough training samples given to give at least one
    // sample to each class, we'll let all the training samples be considered leftover and allow our
-   // boosting of improvement for classes with no samples to drive how assignment of training 
+   // boosting of improvement for classes with no samples to drive how assignment of training
    // samples is done as ideal training counts are impossible to achieve, but we'll try to assign
    // at least one training sample to each class that has samples.
 
    const double idealTrainingProportion = static_cast<double>(cTrainingSamples) / cSamples;
    EBM_ASSERT(!std::isnan(idealTrainingProportion)); // since we checked cSamples not zero above
    EBM_ASSERT(!std::isinf(idealTrainingProportion)); // since we checked cSamples not zero above
-   EBM_ASSERT(0 <= idealTrainingProportion);
-   EBM_ASSERT(idealTrainingProportion <= 1);
+   EBM_ASSERT(0.0 <= idealTrainingProportion);
+   EBM_ASSERT(idealTrainingProportion <= 1.0);
 
    size_t cLeftoverTrainingSamples = cTrainingSamples;
    if(cClasses < cTrainingSamples) {
-      TargetClass * pTargetClass = aTargetClasses;
+      TargetClass* pTargetClass = aTargetClasses;
       do {
          size_t cClassSamples = pTargetClass->m_cSamples;
          double trainingPerClass = std::floor(idealTrainingProportion * cClassSamples);
@@ -318,12 +309,13 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    }
    EBM_ASSERT(cLeftoverTrainingSamples <= cSamples);
 
-   if(IsMultiplyError(sizeof(TargetClass *), cClasses)) {
-      LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetClass *), cClasses)");
+   if(IsMultiplyError(sizeof(TargetClass*), cClasses)) {
+      LOG_0(Trace_Warning,
+            "WARNING SampleWithoutReplacementStratified IsMultiplyError(sizeof(TargetClass *), cClasses)");
       free(aTargetClasses);
       return Error_OutOfMemory;
    }
-   TargetClass ** const apMostImprovedClasses = static_cast<TargetClass **>(malloc(sizeof(TargetClass *) * cClasses));
+   TargetClass** const apMostImprovedClasses = static_cast<TargetClass**>(malloc(sizeof(TargetClass*) * cClasses));
    if(UNLIKELY(nullptr == apMostImprovedClasses)) {
       LOG_0(Trace_Warning, "WARNING SampleWithoutReplacementStratified out of memory on apMostImprovedClasses");
       free(aTargetClasses);
@@ -332,8 +324,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
 
    while(0 != cLeftoverTrainingSamples) {
       double bestImprovement = -std::numeric_limits<double>::infinity();
-      TargetClass ** ppMostImprovedClasses = apMostImprovedClasses;
-      TargetClass * pTargetClass = aTargetClasses;
+      TargetClass** ppMostImprovedClasses = apMostImprovedClasses;
+      TargetClass* pTargetClass = aTargetClasses;
       do {
          const size_t cClassTrainingSamples = pTargetClass->m_cTrainingSamples;
          const size_t cClassSamples = pTargetClass->m_cSamples;
@@ -356,8 +348,8 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
             }
 
             if(bestImprovement <= improvement) {
-               ppMostImprovedClasses = 
-                  LIKELY(improvement != bestImprovement) ? apMostImprovedClasses : ppMostImprovedClasses;
+               ppMostImprovedClasses =
+                     LIKELY(improvement != bestImprovement) ? apMostImprovedClasses : ppMostImprovedClasses;
                *ppMostImprovedClasses = pTargetClass;
                ++ppMostImprovedClasses;
                bestImprovement = improvement;
@@ -372,7 +364,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
       const size_t cMostImproved = ppMostImprovedClasses - apMostImprovedClasses;
       EBM_ASSERT(1 <= cMostImproved);
       const size_t iRandom = cpuRng.NextFast(cMostImproved);
-      TargetClass * const pMostImprovedClasses = apMostImprovedClasses[iRandom];
+      TargetClass* const pMostImprovedClasses = apMostImprovedClasses[iRandom];
       ++pMostImprovedClasses->m_cTrainingSamples;
 
       --cLeftoverTrainingSamples;
@@ -389,20 +381,20 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    EBM_ASSERT(cSamplesDebug == cSamples);
 #endif
 
-   const IntEbm * pTarget = targets;
-   BagEbm * pSampleReplicationOut = bagOut;
+   const IntEbm* pTarget = targets;
+   BagEbm* pSampleReplicationOut = bagOut;
    do {
       const IntEbm indexClass = *pTarget;
       EBM_ASSERT(0 <= indexClass);
       EBM_ASSERT(indexClass < countClasses);
 
-      TargetClass * const pTargetClass = &aTargetClasses[static_cast<size_t>(indexClass)];
+      TargetClass* const pTargetClass = &aTargetClasses[static_cast<size_t>(indexClass)];
       EBM_ASSERT(1 <= pTargetClass->m_cSamples);
       const size_t iRandom = cpuRng.NextFast(pTargetClass->m_cSamples);
       const bool bTrainingSample = UNPREDICTABLE(iRandom < pTargetClass->m_cTrainingSamples);
 
-      *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm { 1 } : BagEbm { -1 };
-      const size_t cSubtract = UNPREDICTABLE(bTrainingSample) ? size_t { 1 } : size_t { 0 };
+      *pSampleReplicationOut = UNPREDICTABLE(bTrainingSample) ? BagEbm{1} : BagEbm{-1};
+      const size_t cSubtract = UNPREDICTABLE(bTrainingSample) ? size_t{1} : size_t{0};
       pTargetClass->m_cTrainingSamples -= cSubtract;
       --pTargetClass->m_cSamples;
 
@@ -411,7 +403,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    } while(pTargetsEnd != pTarget);
 
    if(nullptr != rng) {
-      RandomDeterministic * pRng = reinterpret_cast<RandomDeterministic *>(rng);
+      RandomDeterministic* pRng = reinterpret_cast<RandomDeterministic*>(rng);
       pRng->Initialize(cpuRng); // move the RNG from memory into CPU registers
    }
 
@@ -430,12 +422,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION SampleWithoutReplacementStratified(
    return Error_None;
 }
 
-extern ErrorEbm Unbag(
-   const size_t cSamples,
-   const BagEbm * const aBag,
-   size_t * const pcTrainingSamplesOut,
-   size_t * const pcValidationSamplesOut
-) {
+extern ErrorEbm Unbag(const size_t cSamples,
+      const BagEbm* const aBag,
+      size_t* const pcTrainingSamplesOut,
+      size_t* const pcValidationSamplesOut) {
    EBM_ASSERT(nullptr != pcTrainingSamplesOut);
    EBM_ASSERT(nullptr != pcValidationSamplesOut);
 
@@ -444,11 +434,11 @@ extern ErrorEbm Unbag(
    if(nullptr != aBag) {
       cTrainingSamples = 0;
       if(0 != cSamples) {
-         const BagEbm * pSampleReplication = aBag;
-         const BagEbm * const pSampleReplicationEnd = aBag + cSamples;
+         const BagEbm* pSampleReplication = aBag;
+         const BagEbm* const pSampleReplicationEnd = aBag + cSamples;
          do {
             const BagEbm replication = *pSampleReplication;
-            if(replication < BagEbm { 0 }) {
+            if(replication < BagEbm{0}) {
                if(IsAbsCastError<size_t>(replication)) {
                   LOG_0(Trace_Error, "ERROR Unbag IsAbsCastError<size_t>(replication)");
                   return Error_IllegalParamVal;
@@ -480,4 +470,4 @@ extern ErrorEbm Unbag(
    return Error_None;
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

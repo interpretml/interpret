@@ -18,10 +18,10 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
-Term * Term::Allocate(const size_t cDimensions) noexcept {
+Term* Term::Allocate(const size_t cDimensions) noexcept {
    const size_t cBytes = GetTermCountBytes(cDimensions);
    EBM_ASSERT(1 <= cBytes);
-   Term * const pTerm = static_cast<Term *>(malloc(cBytes));
+   Term* const pTerm = static_cast<Term*>(malloc(cBytes));
    if(UNLIKELY(nullptr == pTerm)) {
       return nullptr;
    }
@@ -29,19 +29,19 @@ Term * Term::Allocate(const size_t cDimensions) noexcept {
    return pTerm;
 }
 
-Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
+Term** Term::AllocateTerms(const size_t cTerms) noexcept {
    LOG_0(Trace_Info, "Entered Term::AllocateTerms");
 
-   if(IsMultiplyError(sizeof(Term *), cTerms)) {
+   if(IsMultiplyError(sizeof(Term*), cTerms)) {
       LOG_0(Trace_Warning, "WARNING Term::AllocateTerms IsMultiplyError(sizeof(Term *), cTerms)");
       return nullptr;
    }
 
    EBM_ASSERT(1 <= cTerms);
-   Term ** const apTerms = static_cast<Term **>(malloc(sizeof(Term *) * cTerms));
+   Term** const apTerms = static_cast<Term**>(malloc(sizeof(Term*) * cTerms));
    if(nullptr != apTerms) {
-      Term ** ppTerm = apTerms;
-      const Term * const * const ppTermsEnd = &apTerms[cTerms];
+      Term** ppTerm = apTerms;
+      const Term* const* const ppTermsEnd = &apTerms[cTerms];
       do {
          *ppTerm = nullptr;
          ++ppTerm;
@@ -52,7 +52,7 @@ Term ** Term::AllocateTerms(const size_t cTerms) noexcept {
    return apTerms;
 }
 
-void Term::FreeTerms(const size_t cTerms, Term ** apTerms) noexcept {
+void Term::FreeTerms(const size_t cTerms, Term** apTerms) noexcept {
    LOG_0(Trace_Info, "Entered Term::FreeTerms");
    if(nullptr != apTerms) {
       EBM_ASSERT(0 < cTerms);
@@ -66,4 +66,4 @@ void Term::FreeTerms(const size_t cTerms, Term ** apTerms) noexcept {
    LOG_0(Trace_Info, "Exited Term::FreeTerms");
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

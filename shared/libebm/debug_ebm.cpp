@@ -3,9 +3,9 @@
 // Author: Paul Koch <code@koch.ninja>
 
 // We normally only test the external public interface because unit testing in C++ is a bit more complicated
-// and would require us to make unit test specific builds.  For our package it seems we can get away with this, 
-// yet still have good tests since most of the code is targetable from the outside and we cover a lot of the 
-// code with just a few option combinations.  In some special cases though, it's useful to have some 
+// and would require us to make unit test specific builds.  For our package it seems we can get away with this,
+// yet still have good tests since most of the code is targetable from the outside and we cover a lot of the
+// code with just a few option combinations.  In some special cases though, it's useful to have some
 // glass box testing, so we have a few aspects tested specially here and invoked on startup in DEBUG
 // builds.  Don't include significant code here, since the DEBUG build does get included in the package.  Normally
 // it'll just eat some filespace though as the RELEASE build is the only one loaded by default
@@ -36,20 +36,14 @@ static_assert(COUNT_BITS(uint16_t) == 16, "automated test with compiler");
 static_assert(COUNT_BITS(uint32_t) == 32, "automated test with compiler");
 static_assert(COUNT_BITS(uint64_t) == 64, "automated test with compiler");
 
-
-
-
-
-//#define INCLUDE_TESTS_IN_RELEASE
-//#define ENABLE_TRANSPOSE
-//#define ENABLE_TEST_LOG_SUM_ERRORS
-//#define ENABLE_TEST_EXP_SUM_ERRORS
-//#define ENABLE_TEST_SOFTMAX_SUM_ERRORS
-//#define ENABLE_PRINTF
+// #define INCLUDE_TESTS_IN_RELEASE
+// #define ENABLE_TRANSPOSE
+// #define ENABLE_TEST_LOG_SUM_ERRORS
+// #define ENABLE_TEST_EXP_SUM_ERRORS
+// #define ENABLE_TEST_SOFTMAX_SUM_ERRORS
+// #define ENABLE_PRINTF
 
 #if !defined(NDEBUG) || defined(INCLUDE_TESTS_IN_RELEASE)
-
-
 
 #ifdef ENABLE_TRANSPOSE
 static double TestTranspose() {
@@ -73,7 +67,7 @@ static double TestTranspose() {
       term.Initialize(cDimensions);
       term.SetCountRealDimensions(cDimensions);
 
-      TermFeature * aTermFeatures = term.GetTermFeatures();
+      TermFeature* aTermFeatures = term.GetTermFeatures();
       size_t cTensorBins = 1;
       for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
          aTermFeatures[iDimension].m_iTranspose = iDimension;
@@ -82,16 +76,16 @@ static double TestTranspose() {
 
          int cBins;
          bool bMissing;
-         bool bUnknown;
+         bool bUnseen;
          int cExpandedBins;
          do {
             cBins = dimensionsDistributions(testRandom);
             bMissing = 4 <= dimensionsDistributions(testRandom);
-            bUnknown = 4 <= dimensionsDistributions(testRandom);
-            cExpandedBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            bUnseen = 4 <= dimensionsDistributions(testRandom);
+            cExpandedBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
          } while(cExpandedBins < 2);
 
-         features[iDimension].Initialize(cBins, bMissing, bUnknown, EBM_FALSE);
+         features[iDimension].Initialize(cBins, bMissing, bUnseen, EBM_FALSE);
 
          cTensorBins *= cBins;
       }
@@ -121,14 +115,14 @@ static double TestTranspose() {
 
       while(true) {
          for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
-            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
             size_t i = indexIncrement[iDimension];
 
-            if(i == cBins - 1 && !bUnknown) {
+            if(i == cBins - 1 && !bUnseen) {
                --i;
             }
             if(i == 0 && !bMissing) {
@@ -142,11 +136,11 @@ static double TestTranspose() {
          size_t iFlatIncrement = 0;
          size_t iFlatCorrected = 0;
          for(int iDimension = 0; iDimension < cDimensions; ++iDimension) {
-            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
 
             iFlatIncrement += indexIncrement[iDimension] * cTensorBins;
             iFlatCorrected += indexCorrected[iDimension] * cTensorBins;
@@ -158,11 +152,11 @@ static double TestTranspose() {
 
          int iDimension;
          for(iDimension = 0; iDimension < cDimensions; ++iDimension) {
-            const FeatureBoosting * pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
+            const FeatureBoosting* pFeature = aTermFeatures[aTermFeatures[iDimension].m_iTranspose].m_pFeature;
             bool bMissing = pFeature->IsMissing();
-            bool bUnknown = pFeature->IsUnknown();
+            bool bUnseen = pFeature->IsUnseen();
             size_t cBins = pFeature->GetCountBins();
-            cBins = cBins + (bMissing ? 0 : 1) + (bUnknown ? 0 : 1);
+            cBins = cBins + (bMissing ? 0 : 1) + (bUnseen ? 0 : 1);
             size_t i = indexIncrement[iDimension];
             ++i;
             indexIncrement[iDimension] = i;
@@ -184,7 +178,6 @@ static double TestTranspose() {
 // this is just to prevent the compiler for optimizing our code away on release
 extern double g_TestTranspose = TestTranspose();
 #endif
-
 
 #ifdef ENABLE_TEST_LOG_SUM_ERRORS
 static double TestLogSumErrors() {
@@ -215,15 +208,19 @@ static double TestLogSumErrors() {
    EBM_ASSERT(LogApproxSchraudolph(std::numeric_limits<float>::max()) < 88.875f);
    EBM_ASSERT(std::numeric_limits<float>::infinity() == LogApproxSchraudolph(std::numeric_limits<float>::infinity()));
 
-   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
-   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
+   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as
+   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2)
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
    // boosting will push our exp values to between 1 and 1 + a small number less than e
    static constexpr double k_testLowerInclusiveBound = 1; // this is true lower bound
-   static constexpr double k_testUpperExclusiveBound = static_cast<double>(1.0f + 1000 * std::numeric_limits<float>::epsilon()); // 2 would be random guessing. we should optimize for the final rounds.  1.5 gives a log loss about 0.4 which is on the high side of log loss
+   static constexpr double k_testUpperExclusiveBound = static_cast<double>(
+         1.0f + 1000 * std::numeric_limits<float>::epsilon()); // 2 would be random guessing. we should optimize for the
+                                                               // final rounds.  1.5 gives a log loss about 0.4 which is
+                                                               // on the high side of log loss
    static constexpr uint64_t k_cTests = 123513;
    static constexpr bool k_bIsRandom = false;
-   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr bool k_bIsRandomFinalFill =
+         true; // if true we choose a random value to randomly fill the space between ticks
    static constexpr float termMid = k_logTermLowerBoundInputCloseToOne;
    static constexpr uint32_t termStepsFromMid = 5;
    static constexpr uint32_t termStepDistance = 1;
@@ -233,9 +230,9 @@ static double TestLogSumErrors() {
 
    // uniform_real_distribution includes the lower bound, but not the upper bound, which is good because
    // our window is balanced by not including both ends
-   std::uniform_real_distribution<double> testDistribution(k_bIsRandom ? k_testLowerInclusiveBound : double { 0 }, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
+   std::uniform_real_distribution<double> testDistribution(
+         k_bIsRandom ? k_testLowerInclusiveBound : double{0}, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
    std::mt19937 testRandom(52);
-
 
    float addTerm = termMid;
    for(int i = 0; i < termStepDistance * termStepsFromMid; ++i) {
@@ -276,17 +273,15 @@ static double TestLogSumErrors() {
          avgSquareError /= k_cTests;
 
 #ifdef ENABLE_PRINTF
-         printf(
-            "TextLogApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.8le %s%s\n",
-            avgError,
-            avgAbsError,
-            avgSquareError,
-            minError,
-            maxError,
-            addTerm,
-            addTerm == termMid ? "*" : "",
-            iStat == k_cStats - 1 ? "\n" : ""
-         );
+         printf("TextLogApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.8le %s%s\n",
+               avgError,
+               avgAbsError,
+               avgSquareError,
+               minError,
+               maxError,
+               addTerm,
+               addTerm == termMid ? "*" : "",
+               iStat == k_cStats - 1 ? "\n" : "");
 #endif // ENABLE_PRINTF
 
          // this is just to prevent the compiler for optimizing our code away on release
@@ -304,7 +299,7 @@ static double TestLogSumErrors() {
    }
 
    // this is just to prevent the compiler for optimizing our code away on release
-    return debugRet;
+   return debugRet;
 }
 // this is just to prevent the compiler for optimizing our code away on release
 extern double g_TestLogSumErrors = TestLogSumErrors();
@@ -322,30 +317,31 @@ static double TestExpSumErrors() {
    EBM_ASSERT(!std::isnan(ExpApproxSchraudolph(k_expOverflowPoint, k_expTermUpperBound)));
    EBM_ASSERT(ExpApproxSchraudolph(k_expOverflowPoint, k_expTermUpperBound) <= std::numeric_limits<float>::max());
 
-
-   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
-   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
+   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as
+   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2)
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
    static constexpr double k_testLowerInclusiveBound = -k_expErrorPeriodicity / 2;
    static constexpr double k_testUpperExclusiveBound = k_expErrorPeriodicity / 2;
    static constexpr uint64_t k_cTests = 10000;
    static constexpr bool k_bIsRandom = false;
-   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr bool k_bIsRandomFinalFill =
+         true; // if true we choose a random value to randomly fill the space between ticks
    static constexpr uint32_t termMid = k_expTermZeroMeanRelativeError;
    static constexpr uint32_t termStepsFromMid = 20;
    static constexpr uint32_t termStepDistance = 10;
-
 
    static constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
    static constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cTests;
 
    // uniform_real_distribution includes the lower bound, but not the upper bound, which is good because
    // our window is balanced by not including both ends
-   std::uniform_real_distribution<double> testDistribution(k_bIsRandom ? k_testLowerInclusiveBound : double { 0 }, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
+   std::uniform_real_distribution<double> testDistribution(
+         k_bIsRandom ? k_testLowerInclusiveBound : double{0}, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
    std::mt19937 testRandom(52);
 
    for(ptrdiff_t iStat = 0; iStat < k_cStats; ++iStat) {
-      const uint32_t addTerm = termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
+      const uint32_t addTerm =
+            termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
       if(k_expTermLowerBound <= addTerm && addTerm <= k_expTermUpperBound) {
          double avgAbsRelativeError = 0;
          double avgRelativeError = 0;
@@ -380,17 +376,15 @@ static double TestExpSumErrors() {
          avgSquareRelativeError /= k_cTests;
 
 #ifdef ENABLE_PRINTF
-         printf(
-            "TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n", 
-            avgRelativeError, 
-            avgAbsRelativeError, 
-            avgSquareRelativeError, 
-            minRelativeError, 
-            maxRelativeError, 
-            addTerm, 
-            addTerm == termMid ? "*" : "",
-            iStat == k_cStats - 1 ? "\n" : ""
-         );
+         printf("TextExpApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n",
+               avgRelativeError,
+               avgAbsRelativeError,
+               avgSquareRelativeError,
+               minRelativeError,
+               maxRelativeError,
+               addTerm,
+               addTerm == termMid ? "*" : "",
+               iStat == k_cStats - 1 ? "\n" : "");
 #endif // ENABLE_PRINTF
 
          // this is just to prevent the compiler for optimizing our code away on release
@@ -422,9 +416,10 @@ static double TestSoftmaxSumErrors() {
    static_assert(1 <= expWindowMultiple, "window must have a positive non-zero size");
 
    static constexpr bool k_bIsRandom = true;
-   static constexpr bool k_bIsRandomFinalFill = true; // if true we choose a random value to randomly fill the space between ticks
-   static constexpr uint64_t k_cTests = uint64_t { 10000000 }; // std::numeric_limits<uint64_t>::max()
-   static constexpr uint64_t k_outputPeriodicity = uint64_t { 100000000 };
+   static constexpr bool k_bIsRandomFinalFill =
+         true; // if true we choose a random value to randomly fill the space between ticks
+   static constexpr uint64_t k_cTests = uint64_t{10000000}; // std::numeric_limits<uint64_t>::max()
+   static constexpr uint64_t k_outputPeriodicity = uint64_t{100000000};
    static constexpr uint64_t k_cDivisions = 1609; // ideally choose a prime number
    static constexpr ptrdiff_t k_cSoftmaxTerms = 3;
    static_assert(2 <= k_cSoftmaxTerms, "can't have just 1 since that's always 100% chance");
@@ -434,16 +429,15 @@ static double TestSoftmaxSumErrors() {
    static constexpr uint32_t termStepsFromMid = 0;
    static constexpr uint32_t termStepDistance = 1;
 
-
    // below here are calculated values dependent on the above settings
 
-   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as 
-   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2) 
+   // our exp error has a periodicity of ln(2), so [0, ln(2)) should have the same relative error as
+   // [ln(2), 2 * ln(2)) OR [-ln(2), 0) OR [-ln(2)/2, +ln(2)/2)
    // BUT, this needs to be evenly distributed, so we can't use nextafter. We need to increment with a constant.
-   static constexpr double k_testLowerInclusiveBound = 
-      k_expWindowSkew - static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
-   static constexpr double k_testUpperExclusiveBound = 
-      k_expWindowSkew + static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
+   static constexpr double k_testLowerInclusiveBound =
+         k_expWindowSkew - static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
+   static constexpr double k_testUpperExclusiveBound =
+         k_expWindowSkew + static_cast<double>(expWindowMultiple) * k_expErrorPeriodicity / 2;
    static constexpr ptrdiff_t k_cStats = termStepsFromMid * 2 + 1;
    static constexpr double k_movementTick = (k_testUpperExclusiveBound - k_testLowerInclusiveBound) / k_cDivisions;
 
@@ -457,7 +451,7 @@ static double TestSoftmaxSumErrors() {
    // uniform_real_distribution includes the lower bound, but not the upper bound, which is good because
    // our window is balanced by not including both ends
    std::uniform_real_distribution<double> testDistribution(
-      k_bIsRandom ? k_testLowerInclusiveBound : double { 0 }, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
+         k_bIsRandom ? k_testLowerInclusiveBound : double{0}, k_bIsRandom ? k_testUpperExclusiveBound : k_movementTick);
    std::mt19937 testRandom(seed);
 
    double softmaxTerms[k_cSoftmaxTerms];
@@ -485,7 +479,8 @@ static double TestSoftmaxSumErrors() {
    uint64_t iTest = 0;
    while(true) {
       for(ptrdiff_t iStat = 0; iStat < k_cStats; ++iStat) {
-         const uint32_t addTerm = termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
+         const uint32_t addTerm =
+               termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
          if(k_expTermLowerBound <= addTerm && addTerm <= k_expTermUpperBound) {
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
                if(iTerm != iEliminateOneTerm) {
@@ -500,19 +495,22 @@ static double TestSoftmaxSumErrors() {
                }
             }
 
-            const double exactNumerator = 0 == iEliminateOneTerm ? double { 1 } : std::exp(softmaxTerms[0]);
+            const double exactNumerator = 0 == iEliminateOneTerm ? double{1} : std::exp(softmaxTerms[0]);
             double exactDenominator = 0;
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
-               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : std::exp(softmaxTerms[iTerm]);
+               const double oneTermAdd = iTerm == iEliminateOneTerm ? double{1} : std::exp(softmaxTerms[iTerm]);
                exactDenominator += oneTermAdd;
             }
             const double exactVal = exactNumerator / exactDenominator;
 
-
-            const double approxNumerator = 0 == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[0]);
+            const double approxNumerator = 0 == iEliminateOneTerm ?
+                  double{1} :
+                  ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[0]);
             double approxDenominator = 0;
             for(ptrdiff_t iTerm = 0; iTerm < k_cSoftmaxTerms; ++iTerm) {
-               const double oneTermAdd = iTerm == iEliminateOneTerm ? double { 1 } : ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[iTerm]);
+               const double oneTermAdd = iTerm == iEliminateOneTerm ?
+                     double{1} :
+                     ExpApproxSchraudolph<false, false, false, false>(softmaxTerms[iTerm]);
                approxDenominator += oneTermAdd;
             }
             const double approxVal = approxNumerator / approxDenominator;
@@ -552,20 +550,19 @@ static double TestSoftmaxSumErrors() {
 
       if(bDone || (0 < k_outputPeriodicity && 0 == iTest % k_outputPeriodicity)) {
          for(ptrdiff_t iStat = 0; iStat < k_cStats; ++iStat) {
-            const uint32_t addTerm = termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
+            const uint32_t addTerm =
+                  termMid - termStepsFromMid * termStepDistance + static_cast<uint32_t>(iStat) * termStepDistance;
             if(k_expTermLowerBound <= addTerm && addTerm <= k_expTermUpperBound) {
 #ifdef ENABLE_PRINTF
-               printf(
-                  "TextSoftmaxApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n",
-                  avgRelativeError[iStat] / iTest,
-                  avgAbsRelativeError[iStat] / iTest,
-                  avgSquareRelativeError[iStat] / iTest,
-                  minRelativeError[iStat],
-                  maxRelativeError[iStat],
-                  addTerm,
-                  addTerm == termMid ? "*" : "",
-                  iStat == k_cStats - 1 ? "\n" : ""
-               );
+               printf("TextSoftmaxApprox: %+.10lf, %+.10lf, %+.10lf, %+.10lf, %+.10lf, %d %s%s\n",
+                     avgRelativeError[iStat] / iTest,
+                     avgAbsRelativeError[iStat] / iTest,
+                     avgSquareRelativeError[iStat] / iTest,
+                     minRelativeError[iStat],
+                     maxRelativeError[iStat],
+                     addTerm,
+                     addTerm == termMid ? "*" : "",
+                     iStat == k_cStats - 1 ? "\n" : "");
 #endif // ENABLE_PRINTF
             } else {
 #ifdef ENABLE_PRINTF
@@ -591,4 +588,4 @@ extern double g_TestSoftmaxSumErrors = TestSoftmaxSumErrors();
 
 #endif // !defined(NDEBUG) || defined(INCLUDE_TESTS_IN_RELEASE)
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

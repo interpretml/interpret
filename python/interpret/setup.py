@@ -1,11 +1,11 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 name = "interpret"
 # NOTE: Version is replaced by a regex script.
-version = "0.5.0"
+version = "0.6.10"
 long_description = """
 In the beginning machines learned in darkness, and data scientists struggled in the void to explain them.
 
@@ -17,13 +17,14 @@ interpret_core_extra = [
     "debug",
     "notebook",
     "plotly",
-    #"lime",  # no longer maintained
+    # "lime",  # no longer maintained
     "sensitivity",
     "shap",
-    #"skoperules",  # no longer maintained
+    # "skoperules",  # no longer maintained
     "linear",
     "dash",
-    #"treeinterpreter",  # no longer maintained
+    # "treeinterpreter",  # no longer maintained
+    "aplr",
 ]
 
 setup(
@@ -38,11 +39,10 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",

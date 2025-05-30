@@ -1,38 +1,69 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+
 import numpy as np
-from scipy.stats import norm
-from scipy.optimize import brentq
+import math
 
 from ._native import Native
-
-import logging
 
 _log = logging.getLogger(__name__)
 
 
 def validate_eps_delta(eps, delta):
     if eps is None or eps <= 0 or delta is None or delta <= 0:
-        raise ValueError(
-            f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers"
-        )
+        msg = f"Epsilon: '{eps}' and delta: '{delta}' must be set to positive numbers"
+        raise ValueError(msg)
 
 
 def calc_classic_noise_multi(total_queries, target_epsilon, delta, sensitivity):
     variance = (
-        8
-        * total_queries
-        * sensitivity**2
-        * np.log(np.exp(1) + target_epsilon / delta)
+        8 * total_queries * sensitivity**2 * np.log(np.exp(1) + target_epsilon / delta)
     ) / target_epsilon**2
     return np.sqrt(variance)
+
+
+_sqrt_2 = math.sqrt(2)
+
+
+def norm_cdf(x):
+    return (math.erf(x / _sqrt_2) + 1.0) * 0.5
 
 
 # General calculations, largely borrowed from tensorflow/privacy and presented in https://arxiv.org/abs/1911.11607
 def delta_eps_mu(eps, mu):
     """Code adapted from: https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/analysis/gdp_accountant.py#L44"""
-    return norm.cdf(-eps / mu + mu / 2) - np.exp(eps) * norm.cdf(-eps / mu - mu / 2)
+
+    return norm_cdf(-eps / mu + mu / 2) - np.exp(eps) * norm_cdf(-eps / mu - mu / 2)
+
+
+def brentq_local(f, a, b):
+    fa = f(a)
+    fb = f(b)
+    if fa * fb >= 0:
+        raise ValueError("The function must have different signs at a and b.")
+
+    best_abs_fc = np.inf
+    best_c = a * 0.5 + b * 0.5
+    iters_no_improvement = 0
+
+    while iters_no_improvement < 100:
+        iters_no_improvement += 1
+        c = a * 0.5 + b * 0.5
+        fc = f(c)
+        abs_fc = abs(fc)
+        if abs_fc < best_abs_fc:
+            best_abs_fc = abs_fc
+            best_c = c
+            iters_no_improvement = 0
+        if fa * fc < 0:
+            b = c
+            fb = fc
+        else:
+            a = c
+            fa = fc
+    return best_c
 
 
 def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
@@ -41,9 +72,8 @@ def calc_gdp_noise_multi(total_queries, target_epsilon, delta):
     def f(mu, eps, delta):
         return delta_eps_mu(eps, mu) - delta
 
-    final_mu = brentq(lambda x: f(x, target_epsilon, delta), 1e-5, 1000)
-    sigma = np.sqrt(total_queries) / final_mu
-    return sigma
+    final_mu = brentq_local(lambda x: f(x, target_epsilon, delta), 1e-5, 1000)
+    return np.sqrt(total_queries) / final_mu
 
 
 def private_numeric_binning(

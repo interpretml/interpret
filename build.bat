@@ -4,6 +4,9 @@ SETLOCAL
 REM The free version of Visual Studio (Community) is sufficient for compiling InterpretML for Windows.
 REM Visual Studio Community can be downloaded for free here:  https://visualstudio.microsoft.com/vs/
 
+REM If running in a non-Visual Studio window, the required environment variables can be obtained with:
+REM "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+
 SET root_path=%~dp0
 
 SET bld_default=1

@@ -4,12 +4,20 @@
       SetTraceLevel;
       GetTraceLevelString;
       CleanFloats;
+      SafeSum;
+      SafeMean;
+      SafeStandardDeviation;
+      SafeExp;
+      SafeLog;
       MeasureRNG;
       InitRNG;
       CopyRNG;
       BranchRNG;
       GenerateSeed;
       GenerateGaussianRandom;
+      Shuffle;
+      MeasureImpurity;
+      Purify;
       GetHistogramCutCount;
       CutUniform;
       CutQuantile;
@@ -28,6 +36,7 @@
       FillRegressionTarget;
       CheckDataSet;
       ExtractDataSetHeader;
+      ExtractNominals;
       ExtractBinCounts;
       ExtractTargetClasses;
       SampleWithoutReplacement;

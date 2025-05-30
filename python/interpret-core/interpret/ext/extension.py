@@ -19,9 +19,7 @@ def _is_valid_explainer(proposed_explainer, expected_explainer_type):
         available_explanations = proposed_explainer.available_explanations
 
         if explainer_type != expected_explainer_type:
-            _log.warning(
-                "Proposed explainer is not a {}.".format(expected_explainer_type)
-            )
+            _log.warning(f"Proposed explainer is not a {expected_explainer_type}.")
             return False
 
         for available_explanation in available_explanations:
@@ -30,16 +28,14 @@ def _is_valid_explainer(proposed_explainer, expected_explainer_type):
             )
             if not has_explain_method:
                 _log.warning(
-                    "Proposed explainer has available explanation {} but has no respective method.".format(
-                        available_explanation
-                    )
+                    f"Proposed explainer has available explanation {available_explanation} but has no respective method."
                 )
                 return False
 
         return True
 
     except Exception as e:
-        _log.warning("Validate function threw exception {}".format(e))
+        _log.warning(f"Validate function threw exception {e}")
         return False
 
 
@@ -64,7 +60,7 @@ def _is_valid_glassbox_explainer(proposed_explainer):
         return is_valid_explainer and has_fit and has_predict
 
     except Exception as e:
-        _log.warning("Validate function threw exception {}".format(e))
+        _log.warning(f"Validate function threw exception {e}")
         return False
 
 
@@ -92,5 +88,5 @@ def _is_valid_provider(proposed_provider):
         return False
 
     except Exception as e:
-        _log.warning("Validate function threw exception {}".format(e))
+        _log.warning(f"Validate function threw exception {e}")
         return False

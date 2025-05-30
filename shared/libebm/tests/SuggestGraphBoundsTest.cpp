@@ -4,6 +4,8 @@
 
 #include "pch_test.hpp"
 
+#include <float.h>
+
 #include "libebm.h"
 #include "libebm_test.hpp"
 #include "RandomStreamTest.hpp"
@@ -22,15 +24,7 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min -inf, max nan") {
    static constexpr double highestCut = -1;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::quiet_NaN();
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(-std::numeric_limits<double>::infinity() == highGraphBound);
@@ -46,15 +40,7 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min nan, max inf") {
    static constexpr double highestCut = -1;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::infinity();
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(std::numeric_limits<double>::infinity() == highGraphBound);
@@ -70,15 +56,7 @@ TEST_CASE("SuggestGraphBounds, 0 cuts, min 7, max 99") {
    static constexpr double highestCut = -1;
    static constexpr double maxFeatureVal = 99;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(7 == lowGraphBound);
    CHECK(99 == highGraphBound);
@@ -94,15 +72,7 @@ TEST_CASE("SuggestGraphBounds, all 6") {
    static constexpr double highestCut = 6;
    static constexpr double maxFeatureVal = 6;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(6 == lowGraphBound);
    CHECK(6 == highGraphBound);
@@ -118,15 +88,7 @@ TEST_CASE("SuggestGraphBounds, progression") {
    static constexpr double highestCut = 7;
    static constexpr double maxFeatureVal = 8;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(6 == lowGraphBound);
    CHECK(8 == highGraphBound);
@@ -142,15 +104,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, mismatched low high") {
    static constexpr double highestCut = -2;
    static constexpr double maxFeatureVal = 1;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(lowGraphBound < -2);
    CHECK(1 == highGraphBound);
@@ -166,15 +120,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, mismatched low high") {
    static constexpr double highestCut = 0;
    static constexpr double maxFeatureVal = -1;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(-2 == lowGraphBound);
    CHECK(0 < highGraphBound);
@@ -190,15 +136,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, out of range high") {
    static constexpr double highestCut = 0;
    static constexpr double maxFeatureVal = 2;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(lowGraphBound < 0);
    CHECK(2 == highGraphBound);
@@ -210,19 +148,11 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min -inf") {
 
    static constexpr IntEbm countCuts = 1;
    static constexpr double minFeatureVal = -std::numeric_limits<double>::infinity();
-   static constexpr double lowestCut = std::numeric_limits<double>::lowest() + double { 1e300 };
-   static constexpr double highestCut = std::numeric_limits<double>::lowest() + double { 1e300 };
-   static constexpr double maxFeatureVal = std::numeric_limits<double>::lowest() + double { 1.5e300 };
+   static constexpr double lowestCut = std::numeric_limits<double>::lowest() + double{1e300};
+   static constexpr double highestCut = std::numeric_limits<double>::lowest() + double{1e300};
+   static constexpr double maxFeatureVal = std::numeric_limits<double>::lowest() + double{1.5e300};
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(minFeatureVal == lowGraphBound);
    CHECK(maxFeatureVal == highGraphBound);
@@ -238,15 +168,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max +inf") {
    static constexpr double highestCut = std::numeric_limits<double>::max() - 1e300;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::infinity();
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(minFeatureVal == lowGraphBound);
    CHECK(maxFeatureVal == highGraphBound);
@@ -262,15 +184,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow diff") {
    static constexpr double highestCut = lowestCut;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::max() - 1e300;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(maxFeatureVal == highGraphBound);
@@ -286,15 +200,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, min longest") {
    static constexpr double highestCut = 100;
    static constexpr double maxFeatureVal = 101;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(98 == lowGraphBound);
    CHECK(101 == highGraphBound);
@@ -310,15 +216,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, max longest") {
    static constexpr double highestCut = 100;
    static constexpr double maxFeatureVal = 102;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(99 == lowGraphBound);
    CHECK(102 == highGraphBound);
@@ -334,15 +232,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow high") {
    static constexpr double highestCut = std::numeric_limits<double>::max() - 1e306;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::max() - 1e307;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(minFeatureVal == lowGraphBound);
    CHECK(std::numeric_limits<double>::infinity() == highGraphBound);
@@ -358,15 +248,7 @@ TEST_CASE("SuggestGraphBounds, 1 cuts, overflow low") {
    static constexpr double highestCut = std::numeric_limits<double>::lowest() + 1e306;
    static constexpr double maxFeatureVal = std::numeric_limits<double>::lowest() + 1e307;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(maxFeatureVal == highGraphBound);
@@ -382,15 +264,7 @@ TEST_CASE("SuggestGraphBounds, 2 cuts") {
    static constexpr double highestCut = 7;
    static constexpr double maxFeatureVal = 8;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(5 == lowGraphBound);
    CHECK(8 == highGraphBound);
@@ -406,15 +280,7 @@ TEST_CASE("SuggestGraphBounds, 4 cuts") {
    static constexpr double highestCut = 7;
    static constexpr double maxFeatureVal = 8;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK_APPROX(lowGraphBound, 5);
    CHECK_APPROX(highGraphBound, 8);
@@ -430,17 +296,652 @@ TEST_CASE("SuggestGraphBounds, 2 cuts, overflow diff") {
    static constexpr double highestCut = std::numeric_limits<double>::max();
    static constexpr double maxFeatureVal = 1;
 
-   SuggestGraphBounds(
-      countCuts,
-      lowestCut,
-      highestCut,
-      minFeatureVal,
-      maxFeatureVal,
-      &lowGraphBound,
-      &highGraphBound
-   );
+   SuggestGraphBounds(countCuts, lowestCut, highestCut, minFeatureVal, maxFeatureVal, &lowGraphBound, &highGraphBound);
 
    CHECK(-std::numeric_limits<double>::infinity() == lowGraphBound);
    CHECK(std::numeric_limits<double>::infinity() == highGraphBound);
 }
 
+TEST_CASE("SafeSum, 4x3x2") {
+   const double in[]{1.0,
+         2.0,
+         3.0,
+         4.0,
+         5.0,
+         6.0,
+         7.0,
+         8.0,
+         9.0,
+         10.0,
+         11.0,
+         12.0,
+         13.0,
+         14.0,
+         15.0,
+         16.0,
+         17.0,
+         18.0,
+         19.0,
+         20.0,
+         21.0,
+         22.0,
+         23.0,
+         24.0};
+
+   double out[sizeof(in) / sizeof(in[0]) / 3];
+
+   const ErrorEbm error = SafeSum(4, 3, 2, in, out);
+   CHECK(Error_None == error);
+
+   CHECK(out[0] == 1.0 + 3.0 + 5.0);
+   CHECK(out[1] == 2.0 + 4.0 + 6.0);
+
+   CHECK(out[2] == 7.0 + 9.0 + 11.0);
+   CHECK(out[3] == 8.0 + 10.0 + 12.0);
+
+   CHECK(out[4] == 13.0 + 15.0 + 17.0);
+   CHECK(out[5] == 14.0 + 16.0 + 18.0);
+
+   CHECK(out[6] == 19.0 + 21.0 + 23.0);
+   CHECK(out[7] == 20.0 + 22.0 + 24.0);
+}
+
+TEST_CASE("SafeMean, 4 values") {
+   double vals[]{1.0, 2.5, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values in bag") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean[2];
+
+   const ErrorEbm error = SafeMean(cVals / 2, 2, vals, nullptr, mean);
+   CHECK(Error_None == error);
+   CHECK(mean[0] == 28.375);
+   CHECK(mean[1] == -99.0);
+}
+
+TEST_CASE("SafeMean, -inf") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == double{-std::numeric_limits<double>::infinity()});
+}
+
+TEST_CASE("SafeMean, +inf") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeMean, nan") {
+   double vals[]{1.0, std::numeric_limits<double>::quiet_NaN(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(mean));
+}
+
+TEST_CASE("SafeMean, nan with others") {
+   double vals[]{1.0,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::quiet_NaN(),
+         -std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(mean));
+}
+
+TEST_CASE("SafeMean, +inf and -inf") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(), 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeMean, -inf and +inf") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), +std::numeric_limits<double>::infinity(), 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeMean, more -inf") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == double{-std::numeric_limits<double>::infinity()});
+}
+
+TEST_CASE("SafeMean, more +inf") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeMean, no overflow positive") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(mean));
+}
+
+TEST_CASE("SafeMean, no overflow negative") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, nullptr, &mean);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(mean));
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 1.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 2.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.0, 2.0, 2.0, 2.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.0, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 28.375);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{std::numeric_limits<double>::infinity(), 10.0, std::numeric_limits<double>::infinity(), 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.5, 0.0, 2.5, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, 2.5, 0.0, 2.5};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, std::numeric_limits<double>::infinity(), 9.0, std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, 2.5, 0.0, 5.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 4.0);
+}
+
+TEST_CASE("SafeMean, 4 values, weights of 0.0") {
+   double vals[]{2.5, 10, 100, 1.0};
+   double weights[]{0.0, DBL_MAX, 9.0, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double mean = -99.0;
+
+   const ErrorEbm error = SafeMean(cVals, 1, vals, weights, &mean);
+   CHECK(Error_None == error);
+   CHECK(mean == 5.5);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values") {
+   double vals[]{1.0, 2.5, 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+TEST_CASE("SafeStandardDeviation, 3 values in bag") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev[2];
+
+   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, nullptr, stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev[0], 41.493034053922834);
+   CHECK(stddev[1] == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, +inf") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, nan") {
+   double vals[]{1.0, std::numeric_limits<double>::quiet_NaN(), 10, 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, nan with others") {
+   double vals[]{1.0,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::quiet_NaN(),
+         -std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, +inf and -inf") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(), 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, -inf and +inf") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), +std::numeric_limits<double>::infinity(), 100};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, more -inf") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, more +inf") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow positive") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow negative") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, nullptr, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, weighted") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{2.0, 2.0, 2.0, 2.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+TEST_CASE("SafeStandardDeviation, 3 values in bag, weighted") {
+   double vals[]{1.0, -99.0, 2.5, -99.0, 10, -99.0, 100, -99.0};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev[2];
+
+   const ErrorEbm error = SafeStandardDeviation(cVals / 2, 2, vals, weights, stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev[0], 41.493034053922834);
+   CHECK(stddev[1] == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, -inf, weighted") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, +inf, weighted") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, nan, weighted") {
+   double vals[]{1.0, std::numeric_limits<double>::quiet_NaN(), 10, 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, nan with others, weighted") {
+   double vals[]{1.0,
+         std::numeric_limits<double>::infinity(),
+         std::numeric_limits<double>::quiet_NaN(),
+         -std::numeric_limits<double>::infinity()};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isnan(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, +inf and -inf, weighted") {
+   double vals[]{1.0, std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(), 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, -inf and +inf, weighted") {
+   double vals[]{1.0, -std::numeric_limits<double>::infinity(), +std::numeric_limits<double>::infinity(), 100};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, more -inf, weighted") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         -std::numeric_limits<double>::infinity()};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, more +inf, weighted") {
+   double vals[]{1.0,
+         -std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity(),
+         +std::numeric_limits<double>::infinity()};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == std::numeric_limits<double>::infinity());
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow positive, weighted") {
+   double vals[]{1.0, DBL_MAX, DBL_MAX, -DBL_MAX};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, no overflow negative, weighted") {
+   double vals[]{1.0, -DBL_MAX, -DBL_MAX, DBL_MAX};
+   double weights[]{1.0, 1.0, 1.0, 1.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(std::isfinite(stddev));
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, different weighted") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, 1.25, 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights at start") {
+   double vals[]{99.0, 98.0, 1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.5, 1.25, 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights at start") {
+   double vals[]{99.0, 98.0, 1.0, 2.5, 10, 97.0, 100};
+   double weights[]{0.0, 0.0, 0.5, 1.25, 2.5, 0.0, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 42.72131556172047);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, std::numeric_limits<double>::infinity(), 2.5, 10.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK(stddev == 0.0);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, one inf weight") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, std::numeric_limits<double>::infinity(), 2.5, std::numeric_limits<double>::infinity()};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 48.75);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, overflow weights") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.5, DBL_MAX, 2.5, DBL_MAX};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 48.75);
+}
+
+TEST_CASE("SafeStandardDeviation, 4 values, zero weights") {
+   double vals[]{1.0, 2.5, 10, 100};
+   double weights[]{0.0, 0.0, 0.0, 0.0};
+   const size_t cVals = sizeof(vals) / sizeof(vals[0]);
+   double stddev = -99.0;
+
+   const ErrorEbm error = SafeStandardDeviation(cVals, 1, vals, weights, &stddev);
+   CHECK(Error_None == error);
+   CHECK_APPROX(stddev, 41.493034053922834);
+}
+
+// # this function calculates the weighted standard deviation
+// def _weighted_std(a, axis, weights):
+//     if weights is None:
+//         return np.std(a, axis=axis)
+//     average = np.average(a, axis, weights)
+//     variance = np.average((a - average) ** 2, axis, weights)
+//     return np.sqrt(variance)

@@ -52,13 +52,13 @@
     <Compile Include="interpret\ext\perf\__init__.py" />
     <Compile Include="interpret\ext\provider\__init__.py" />
     <Compile Include="interpret\ext\__init__.py" />
+    <Compile Include="interpret\glassbox\_aplr.py" />
     <Compile Include="interpret\glassbox\_decisiontree.py" />
     <Compile Include="interpret\glassbox\_ebm\_bin.py" />
     <Compile Include="interpret\glassbox\_ebm\_ebm.py" />
     <Compile Include="interpret\glassbox\_ebm\_json.py" />
     <Compile Include="interpret\glassbox\_ebm\_multiclass.py" />
     <Compile Include="interpret\glassbox\_ebm\_research\_group_importance.py" />
-    <Compile Include="interpret\glassbox\_ebm\_research\_purify.py" />
     <Compile Include="interpret\glassbox\_ebm\_research\__init__.py" />
     <Compile Include="interpret\glassbox\_ebm\_tensor.py" />
     <Compile Include="interpret\glassbox\_ebm\_utils.py" />
@@ -84,6 +84,7 @@
     <Compile Include="interpret\utils\_histogram.py" />
     <Compile Include="interpret\utils\_link.py" />
     <Compile Include="interpret\utils\_misc.py" />
+    <Compile Include="interpret\utils\_purify.py" />
     <Compile Include="interpret\utils\_rank_interactions.py" />
     <Compile Include="interpret\utils\_shap_common.py" />
     <Compile Include="interpret\utils\_clean_x.py" />
@@ -113,14 +114,15 @@
     <Compile Include="tests\ext\test_examples.py" />
     <Compile Include="tests\ext\__init__.py" />
     <Compile Include="tests\glassbox\ebm\research\test_group_importance.py" />
-    <Compile Include="tests\glassbox\ebm\research\test_purify.py" />
     <Compile Include="tests\glassbox\ebm\research\__init__.py" />
     <Compile Include="tests\glassbox\ebm\test_bin.py" />
     <Compile Include="tests\glassbox\ebm\test_ebm.py" />
+    <Compile Include="tests\glassbox\ebm\test_ebm_exact.py" />
     <Compile Include="tests\glassbox\ebm\test_ebm_utils.py" />
     <Compile Include="tests\glassbox\ebm\test_merge_ebms.py" />
     <Compile Include="tests\glassbox\ebm\test_multiclass.py" />
     <Compile Include="tests\glassbox\ebm\__init__.py" />
+    <Compile Include="tests\glassbox\test_aplr.py" />
     <Compile Include="tests\glassbox\test_decisiontree.py" />
     <Compile Include="tests\glassbox\test_linear.py" />
     <Compile Include="tests\glassbox\__init__.py" />
@@ -144,6 +146,7 @@
     <Compile Include="tests\utils\test_link.py" />
     <Compile Include="tests\utils\test_measure_interactions.py" />
     <Compile Include="tests\utils\test_native.py" />
+    <Compile Include="tests\utils\test_purify.py" />
     <Compile Include="tests\utils\test_SPOTgreedy.py" />
     <Compile Include="tests\utils\__init__.py" />
     <Compile Include="tests\visual\test_dashboard.py" />

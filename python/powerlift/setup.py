@@ -1,11 +1,11 @@
 import setuptools
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="powerlift",
-    version="0.0.2",
+    version="0.1.12",
     author="The InterpretML Contributors",
     author_email="interpret@microsoft.com",
     description="Interactive Benchmarking for Machine Learning.",
@@ -20,8 +20,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    package_dir={"": "src"},
-    packages=setuptools.find_namespace_packages(where="src", include=["powerlift.*"]),
+    packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.7",
     install_requires=[
         "SQLAlchemy >=1.4",
@@ -37,6 +36,7 @@ setuptools.setup(
         "datasets": [
             "pmlb >=1.0",
             "openml >=0.12",
+            "catboost",
         ],
         "docker": [
             "docker",
@@ -53,13 +53,18 @@ setuptools.setup(
             "azure-mgmt-sql",
             "azure-mgmt-resource",
             "azure-mgmt-containerinstance",
+            "azure-mgmt-authorization",
+            "azure-mgmt-compute",
+            "azure-mgmt-network",
             "azure-identity",
+            "cryptography",
         ],
         "testing": [
             "pytest",
             "pytest-cov",
             "scikit-learn",
             "python-dotenv",
+            "pytest-xdist",
         ],
     },
 )

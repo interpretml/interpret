@@ -1,18 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import numpy as np
+
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
-
-from ..utils._explanation import gen_name_from_class, gen_local_selector
-from ..utils._explanation import gen_perf_dicts
-
-import numpy as np
-from ..utils._clean_x import preclean_X
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_local_selector, gen_name_from_class, gen_perf_dicts
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: Make kwargs explicit.
@@ -79,7 +76,8 @@ class LimeTabular(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
         X, n_samples = preclean_X(
@@ -87,8 +85,9 @@ class LimeTabular(ExplainerMixin):
         )
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass LIME not supported")
+        if n_classes >= 3:
+            msg = "multiclass LIME not supported"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
         X, _, _ = unify_data(
@@ -100,7 +99,7 @@ class LimeTabular(ExplainerMixin):
         X = X.astype(np.float64, order="C", copy=False)
 
         if y is not None:
-            if 0 <= n_classes:
+            if n_classes >= 0:
                 y = typify_classification(y)
             else:
                 y = y.astype(np.float64, copy=False)

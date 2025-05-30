@@ -1,39 +1,38 @@
 import pytest
-import warnings
-from sklearn.exceptions import NotFittedError
-
 from interpret.glassbox import (
-    ExplainableBoostingRegressor,
     ExplainableBoostingClassifier,
+    ExplainableBoostingRegressor,
 )
-from ....tutils import (
-    synthetic_multiclass,
-    synthetic_classification,
-    synthetic_regression,
+from interpret.glassbox._ebm._research import (
+    append_group_importance,
+    compute_group_importance,
+    get_group_and_individual_importances,
+    get_importance_per_top_groups,
+    get_individual_importances,
 )
 from interpret.glassbox._ebm._research._group_importance import (
     _get_group_name,
 )
-from interpret.glassbox._ebm._research import (
-    compute_group_importance,
-    append_group_importance,
-    get_group_and_individual_importances,
-    get_individual_importances,
-    get_importance_per_top_groups,
+from sklearn.exceptions import NotFittedError
+
+from ....tutils import (
+    synthetic_classification,
+    synthetic_multiclass,
+    synthetic_regression,
 )
 
 
 def test_group_name():
     mocked_ebm_term_list = ["Ft1", "Ft2", "Ft3", "Ft4", "Ft1 & Ft2"]
 
-    assert "Ft3" == _get_group_name(["Ft3"], mocked_ebm_term_list)
+    assert _get_group_name(["Ft3"], mocked_ebm_term_list) == "Ft3"
 
     term_names = ["Ft1", "Ft3", "Ft1 & Ft2"]
-    assert "Ft1, Ft3, Ft1 & Ft2" == _get_group_name(term_names, mocked_ebm_term_list)
+    assert _get_group_name(term_names, mocked_ebm_term_list) == "Ft1, Ft3, Ft1 & Ft2"
 
     # Ft2, Ft4, Ft1 & Ft2
     term_indices = [1, 3, 4]
-    assert "Ft2, Ft4, Ft1 & Ft2" == _get_group_name(term_indices, mocked_ebm_term_list)
+    assert _get_group_name(term_indices, mocked_ebm_term_list) == "Ft2, Ft4, Ft1 & Ft2"
 
     out_of_bound_indices = [-1, 5]
     with pytest.raises(ValueError):
@@ -176,9 +175,9 @@ def test_get_importance_per_top_groups():
 
     assert df.shape[0] == len(ebm.term_features_)
     # First group
-    assert list(dict.keys())[0] in df["terms_per_group"][0]
+    assert next(iter(dict.keys())) in df["terms_per_group"][0]
     # Second group
-    assert list(dict.keys())[0] in df["terms_per_group"][1]
+    assert next(iter(dict.keys())) in df["terms_per_group"][1]
     assert list(dict.keys())[1] in df["terms_per_group"][1]
 
 

@@ -4,6 +4,136 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [v0.6.10] - 2025-03-26
+### Added
+- reorder_classes function which allows reordering of the classes after fitting
+- support for ARM based Linux
+### Changed
+- changed default to max_leaves=2 for classification
+- changed default to n_jobs=2
+- changed default to outer_bags=14
+### Fixed
+- restrict to dash 2.x since visualizations are not working on dash 3.x
+
+## [v0.6.9] - 2025-01-06
+### Added
+- refitting of the intercept term after fitting the rest of the model to improve the intercept value
+- new options for handling missing values: "low", "high", "separate", and "gain"
+- use Fischer (1958) for handling categorical values. This is the same method employed by LightGBM.
+- added new parameters to control overfitting of nominal categoricals: gain\_scale, min\_cat\_samples, cat\_smooth
+### Changed
+- enable AVX-512 by default
+- modified default EBM parameters: outer\_bags=16, n\_jobs=-1
+### Fixed
+- fixed memory leak in the purification function
+
+## [v0.6.8] - 2024-12-09
+### Fixed
+- resolved new scikit-learn requirement for having \_\_sklearn\_tags\_\_
+- changed position of ClassifierMixin and RegressorMixin inheritance to satisfy scikit-learn check
+- reliable handling of sparse arrays (previously only sparse matrices worked)
+
+## [v0.6.7] - 2024-11-27
+### Changed
+- minimum python version increased to 3.9
+- minimum numpy version increased to 1.25
+### Fixed
+- removed scipy dependency to resolve Issue #588
+
+## [v0.6.6] - 2024-11-20
+### Changed
+- added predict_with_uncertainty function by @degenfabian in PR #584
+- handle mono-classification in SHAP by @degenfabian in PR #582
+- improvements to tree building in C++
+### Fixed
+- issue that develop/debug options were not being honored in Windows when 1<n_jobs in joblib
+- fix several bugs in C++ from negative hessians or negative gain values caused by floating point noise
+
+## [v0.6.5] - 2024-10-23
+### Changed
+- default EBM parameters changed to improve model performance
+- switch to using exact versions of exp/log instead of the previously used approximate versions
+### Fixed
+- fix issue where very large feature values fail in the UI PR #581 by @degenfabian
+
+## [v0.6.4] - 2024-09-28
+### Added
+- support for regularization parameters reg_alpha, and reg_lambda in EBMs
+- support for the parameter max_delta_step in EBMs
+- improved fitting speed for most of the alternative objectives
+
+## [v0.6.3] - 2024-08-07
+### Added
+- visualizations for the APRL (Automatic Piecewise Linear Regression) package by @mathias-von-ottenbreit
+### Changed
+- early_stopping_tolerance default changed to 1e-5 to reduce EBMs fitting time slightly
+- shuffle initial feature order within each bag and during greedy boosting
+### Fixed
+- fixed numpy 2.0 issue in the Marginal class
+
+## [v0.6.2] - 2024-06-22
+### Added
+- pass optional kwargs to DecisionTreeClassifier in PR #537 by @busFred
+- support for multiclass purification
+- support for higher dimensional purification
+- allow higher levels of purification than would be supported via the tolerance parameter
+### Changed
+- numpy 2.0 support for EBMs
+- update documentation regarding monotonicity in PR #531 by @Krzys25
+- moved purification utility from "interpret/glassbox/_ebm/_research" to "interpret.utils"
+### Fixed
+- possible fix for issue #543 where merge_ebms was creating unexpected NaN values
+
+## [v0.6.1] - 2024-04-14
+### Fixed
+- added compatibility with numpy 2.0 thanks to @DerWeh in PR #525
+- fixed bug that was preventing SIMD from being used in python
+- removed approximate division in SIMD since the approximation was too inaccurate
+### Changed
+- EBM fitting time reduced
+
+## [v0.6.0] - 2024-03-16
+### Added
+- Documentation on recommended hyperparameters to help users optimize their models.
+- Support for monotone_constraints during model fitting, although post-processed monotonization is still suggested/preferred.
+- The EBMModel class now includes _more_tags for better integration with the scikit-learn API, thanks to contributions from @DerWeh.
+### Changed
+- Default max_rounds parameter increased from 5,000 to 25,000, for improved model accuracy.
+- Numerous code simplifications, additional tests, and enhancements for scikit-learn compatibility, thanks to @DerWeh.
+- The greedy boosting algorithm has been updated to support variable-length greedy sections, offering more flexibility during model training.
+- Full compatibility with Python 3.12.
+- Removal of the DecisionListClassifier from our documentation, as the skope-rules package seems to no longer be actively maintained.
+### Fixed
+- The sweep function now properly returns self, correcting an oversight identified by @alvanli.
+- Default exclude parameter set to None, aligning with scikit-learn's expected defaults, fixed by @DerWeh.
+- A potential bug when converting features from categorical to continuous values has been addressed.
+- Updated to handle the new return format for TreeShap in the SHAP 0.45.0 release.
+### Breaking Changes
+- replaced the greediness \_\_init\_\_ parameter with greedy_ratio and cyclic_progress parameters for better control of the boosting process
+  (see documentation for notes on greedy_ratio and cyclic_progress)
+- replaced breakpoint_iteration_ with best_iteration_, which now contains the number of boosting steps rather than the number of boosting rounds
+
+## [v0.5.1] - 2024-02-08
+### Added
+- Added new init parameter: interaction_smoothing_rounds
+- Added new init parameter: min_hessian
+- synthetic dataset generator (make_synthetic) for testing GAMs and for documentation
+### Changed
+- default parameters have been modified to improve the accuracy of EBMs
+- changed boosting internals to use LogitBoost to improve accuracy
+- changed interaction detection to use hessians to improve interaction selection
+- enabled smoothing_rounds by default to improve the smoothness of EBMs
+- added the ability to specify interactions via feature names or negative indexing
+- improved the speed of Morris sensitivity and partial dependence
+- python 3.12 support for core EBMs. Some of our optional dependencies do not yet support python 3.12 though
+- made early stopping more consistent and changed the early_stopping_tolerance to be a percentage
+### Fixed
+- avoid displaying a scroll bar by default in jupyter notebook cells
+- removed the dependency on deprecated distutils
+### Breaking Changes
+- changed the internal representation for classifiers that have just 1 class
+
 ## [v0.5.0] - 2023-12-13
 ### Added
 - added support for AVX-512 in PyPI installations to improve fitting speed

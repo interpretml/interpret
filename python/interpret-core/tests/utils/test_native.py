@@ -1,11 +1,25 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.utils._native import Native
-
 import numpy as np
-
+from interpret.utils._native import Native
 from scipy.stats import normaltest, shapiro
+
+
+def test_mean():
+    native = Native.get_native_singleton()
+    tensor = np.array([[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]], np.float64)
+    means = native.safe_mean(tensor)
+
+    assert np.allclose(np.average(tensor, axis=0), means)
+
+
+def test_stddev():
+    native = Native.get_native_singleton()
+    tensor = np.array([[1.5, 2.5], [3.5, 4.5], [5.5, 6.5]], np.float64)
+    stddevs = native.safe_stddev(tensor)
+
+    assert np.allclose(np.std(tensor, axis=0), stddevs)
 
 
 def test_hist():
@@ -62,7 +76,7 @@ def test_suggest_graph_bound_no_min_max():
     cuts = [25, 50, 75]
     (low_graph_bound, high_graph_bound) = native.suggest_graph_bounds(cuts)
     assert low_graph_bound < 25
-    assert 75 < high_graph_bound
+    assert high_graph_bound > 75
 
 
 def test_suggest_graph_bound_no_cuts():
@@ -84,7 +98,7 @@ def test_gaussian_random_number_generator():
 
     for std in stddevs:
         norm_results, shapiro_results = [], []
-        for i in range(n_iter):
+        for _i in range(n_iter):
             rands = native.generate_gaussian_random(None, std, count=1000)
             norm_results.append(normaltest(rands).pvalue > 0.05)
             shapiro_results.append(shapiro(rands).pvalue > 0.05)

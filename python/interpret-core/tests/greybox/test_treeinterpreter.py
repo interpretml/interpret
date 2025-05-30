@@ -3,11 +3,11 @@
 
 
 import warnings
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.datasets import load_diabetes
-from interpret.greybox import TreeInterpreter
 
 import pytest
+from interpret.greybox import TreeInterpreter
+from sklearn.datasets import load_diabetes
+from sklearn.ensemble import RandomForestRegressor
 
 
 @pytest.mark.skip(reason="treeinterpreter no longer maintained")
@@ -41,16 +41,11 @@ def test_that_tree_works():
 
     a_local_data = local_expl.data(key=0)
     assert all(
-        [
-            feature_names[i] == a_local_data["names"][i]
-            for i in range(len(feature_names))
-        ]
+        feature_names[i] == a_local_data["names"][i] for i in range(len(feature_names))
     )
     assert all(
-        [
-            contributions[0, i] == a_local_data["scores"][i]
-            for i in range(len(feature_names))
-        ]
+        contributions[0, i] == a_local_data["scores"][i]
+        for i in range(len(feature_names))
     )
     assert a_local_data["extra"]["names"][0] == "Bias"
     assert a_local_data["extra"]["scores"][0] == bias[0]

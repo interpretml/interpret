@@ -1,36 +1,30 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+
+import dash.development.base_component as dash_base
+import numpy as np
+import pandas as pd
+from interpret.blackbox import (
+    PartialDependence,
+)
 from interpret.data import ClassHistogram, Marginal
-from interpret.perf import ROC, PR, RegressionPerf
-
-from interpret.blackbox import LimeTabular
-from interpret.blackbox import ShapKernel
-from interpret.blackbox import MorrisSensitivity
-from interpret.blackbox import PartialDependence
-
-# from ..blackbox import PermutationImportance
-
-from interpret.greybox import TreeInterpreter
-from interpret.greybox import ShapTree
-
-from interpret.glassbox import LogisticRegression, LinearRegression
-from interpret.glassbox import ClassificationTree, RegressionTree
-from interpret.glassbox import DecisionListClassifier
 from interpret.glassbox import (
+    ClassificationTree,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
+    LinearRegression,
+    LogisticRegression,
+    RegressionTree,
 )
 
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-import dash.development.base_component as dash_base
+# from ..blackbox import PermutationImportance
+from interpret.perf import PR, ROC, RegressionPerf
 from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
-
-import sys
+from sklearn.model_selection import train_test_split
+import sklearn.datasets
 
 
 def get_all_explainers():
@@ -48,16 +42,20 @@ def get_all_explainers():
     specific_explainer_classes = [
         # (TreeInterpreter, True),  # andosa/treeinterpreter no longer maintained
         # (TreeInterpreter, False),  # andosa/treeinterpreter no longer maintained
-        (ShapTree, True),
-        (ShapTree, False),
+        # TODO: Turn this back on after TreeSHAP works on numpy 2.0
+        # https://github.com/shap/shap/pull/3704
+        # (ShapTree, True),
+        # (ShapTree, False),
     ]
     blackbox_explainer_classes = [
         # (LimeTabular, True),  # lime no longer maintained
         # (LimeTabular, False),  # lime no longer maintained
-        (ShapKernel, True),
-        (ShapKernel, False),
-        (MorrisSensitivity, True),
-        (MorrisSensitivity, False),
+        # TODO: Turn this back on after SHAP works on numpy 2.0
+        # https://github.com/shap/shap/pull/3704
+        # (ShapKernel, True),
+        # (ShapKernel, False),
+        # (MorrisSensitivity, True),
+        # (MorrisSensitivity, False),
         (PartialDependence, True),
         (PartialDependence, False),
         # PermutationImportance
@@ -79,18 +77,15 @@ def get_all_explainers():
 
 
 def synthetic_regression():
-    dataset = _synthetic("regression")
-    return dataset
+    return _synthetic("regression")
 
 
 def synthetic_classification():
-    dataset = _synthetic("classification")
-    return dataset
+    return _synthetic("classification")
 
 
 def synthetic_multiclass():
-    dataset = _synthetic("multiclass")
-    return dataset
+    return _synthetic("multiclass")
 
 
 def _synthetic(mode="regression"):
@@ -110,13 +105,55 @@ def _synthetic(mode="regression"):
         X_df, y_df, test_size=0.20, random_state=1
     )
 
-    dataset = {
+    return {
         "full": {"X": X_df, "y": y_df},
         "train": {"X": X_df_train, "y": y_df_train},
         "test": {"X": X_df_test, "y": y_df_test},
     }
 
-    return dataset
+
+def toy_regression():
+    data = sklearn.datasets.load_diabetes()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["bmi"] = pd.qcut(X["bmi"], q=4, labels=["Low", "Mid-Low", "Mid-High", "High"])
+    X["bp"] = pd.qcut(
+        X["bp"], q=5, labels=["Low", "Mid-Low", "Mid-High", "High", "VHigh"]
+    )
+    return X, y, feature_names, None
+
+
+def toy_binary():
+    data = sklearn.datasets.load_breast_cancer()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["mean radius"] = pd.qcut(
+        X["mean radius"], q=3, labels=["Small", "Medium", "Large"]
+    )
+    X["mean texture"] = pd.qcut(
+        X["mean texture"],
+        q=4,
+        labels=["Low", "Mid-Low", "Mid-High", "High"],
+    )
+    return X, y, feature_names, None
+
+
+def toy_multiclass():
+    data = sklearn.datasets.load_iris()
+    feature_names = data["feature_names"]
+    X = pd.DataFrame(data=data["data"], columns=feature_names)
+    y = pd.DataFrame(data=data["target"], columns=["target"])
+    X["petal length (cm)"] = pd.qcut(
+        X["petal length (cm)"], q=3, labels=["Short", "Medium", "Long"]
+    )
+    X["sepal length (cm)"] = pd.qcut(
+        X["sepal length (cm)"],
+        q=5,
+        labels=["Small", "Average", "Medium", "Large", "Extra Large"],
+    )
+    return X, y, feature_names, None
 
 
 def iris_classification():
@@ -131,53 +168,11 @@ def iris_classification():
         X_df, y_df, test_size=0.20, random_state=1
     )
 
-    dataset = {
+    return {
         "full": {"X": X_df, "y": y_df},
         "train": {"X": X_df_train, "y": y_df_train},
         "test": {"X": X_df_test, "y": y_df_test},
     }
-
-    return dataset
-
-
-def adult_classification(sample=0.01):
-    df = pd.read_csv(
-        "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
-        header=None,
-    ).sample(frac=sample, random_state=42)
-    df.columns = [
-        "Age",
-        "WorkClass",
-        "fnlwgt",
-        "Education",
-        "EducationNum",
-        "MaritalStatus",
-        "Occupation",
-        "Relationship",
-        "Race",
-        "Gender",
-        "CapitalGain",
-        "CapitalLoss",
-        "HoursPerWeek",
-        "NativeCountry",
-        "Income",
-    ]
-    train_cols = df.columns[0:-1]
-    label = df.columns[-1]
-    X_df = df[train_cols].values
-    y_df = df[label].apply(lambda x: 0 if x == " <=50K" else 1)
-
-    X_df_train, X_df_test, y_df_train, y_df_test = train_test_split(
-        X_df, y_df, test_size=0.20, random_state=1
-    )
-
-    dataset = {
-        "full": {"X": X_df, "y": y_df},
-        "train": {"X": X_df_train, "y": y_df_train},
-        "test": {"X": X_df_test, "y": y_df_test},
-    }
-
-    return dataset
 
 
 def valid_predict(explainer, X):
@@ -216,28 +211,16 @@ def assert_valid_model_explainer(explainer, X):
 
 
 def valid_visualization(obj):
-    if obj is None:
-        return True
-    elif isinstance(obj, NDFrame):
-        return True
-    elif isinstance(obj, str):
-        return True
-    elif isinstance(obj, go.Figure):
-        return True
-    elif isinstance(obj, dash_base.Component):
-        return True
-    else:
-        return False
+    return bool(
+        obj is None or isinstance(obj, (NDFrame, str, go.Figure, dash_base.Component))
+    )
 
 
 def valid_data_dict(data_dict):
     if data_dict is None:
         return True
 
-    if not isinstance(data_dict, dict):
-        return False
-
-    return True
+    return isinstance(data_dict, dict)
 
 
 def valid_internal_obj(obj):
@@ -281,7 +264,7 @@ def assert_valid_explanation(explanation):
 
 
 def smoke_test_explanations(global_exp, local_exp, port):
-    from interpret import preserve, show, shutdown_show_server, set_show_addr
+    from interpret import preserve, set_show_addr, show, shutdown_show_server
 
     set_show_addr(("127.0.0.1", port))
 

@@ -1,16 +1,18 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-
-from warnings import warn
-from ...utils._link import identify_task
-from math import isnan
-import numpy as np
+import logging
 from itertools import groupby
+from math import isnan
+from warnings import warn
 
-from ._utils import generate_term_names
-from ...utils._histogram import make_all_histogram_edges
+import numpy as np
 
 from ...utils._clean_simple import typify_classification
+from ...utils._histogram import make_all_histogram_edges
+from ...utils._link import identify_task
+from ._utils import generate_term_names
+
+_log = logging.getLogger(__name__)
 
 
 def jsonify_lists(vals):
@@ -76,7 +78,7 @@ def _to_json_inner(ebm, detail="all"):
     if task == "classification":
         output["classes"] = ebm.classes_.tolist()
     elif task == "regression":
-        if 3 <= level:
+        if level >= 3:
             min_target = getattr(ebm, "min_target_", None)
             if min_target is not None and not isnan(min_target):
                 output["min_target"] = jsonify_item(min_target)
@@ -84,7 +86,8 @@ def _to_json_inner(ebm, detail="all"):
             if max_target is not None and not isnan(max_target):
                 output["max_target"] = jsonify_item(max_target)
     else:
-        raise ValueError(f"Unsupported link function: {ebm.link_}")
+        msg = f"Unsupported link function: {ebm.link_}"
+        raise ValueError(msg)
 
     output["link"] = ebm.link_
     output["link_param"] = jsonify_item(ebm.link_param_)
@@ -105,7 +108,7 @@ def _to_json_inner(ebm, detail="all"):
     if bagged_intercept is not None:
         j["bagged_intercept"] = jsonify_lists(bagged_intercept.tolist())
 
-    if 3 <= level:
+    if level >= 3:
         noise_scale_binning = getattr(ebm, "noise_scale_binning_", None)
         if noise_scale_binning is not None:
             j["noise_scale_binning"] = jsonify_item(noise_scale_binning)
@@ -113,17 +116,17 @@ def _to_json_inner(ebm, detail="all"):
         if noise_scale_boosting is not None:
             j["noise_scale_boosting"] = jsonify_item(noise_scale_boosting)
 
-    if 2 <= level:
+    if level >= 2:
         bag_weights = getattr(ebm, "bag_weights_", None)
         if bag_weights is not None:
             j["bag_weights"] = jsonify_lists(bag_weights.tolist())
 
-    if 3 <= level:
-        breakpoint_iteration = getattr(ebm, "breakpoint_iteration_", None)
-        if breakpoint_iteration is not None:
-            j["breakpoint_iteration"] = breakpoint_iteration.tolist()
+    if level >= 3:
+        best_iteration = getattr(ebm, "best_iteration_", None)
+        if best_iteration is not None:
+            j["best_iteration"] = best_iteration.tolist()
 
-    if 3 <= level:
+    if level >= 3:
         j["implementation"] = "python"
         params = {}
 
@@ -161,11 +164,14 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "learning_rate"):
             params["learning_rate"] = ebm.learning_rate
 
-        if hasattr(ebm, "greediness"):
-            params["greediness"] = ebm.greediness
+        if hasattr(ebm, "greedy_ratio"):
+            params["greedy_ratio"] = ebm.greedy_ratio
 
         if hasattr(ebm, "smoothing_rounds"):
             params["smoothing_rounds"] = ebm.smoothing_rounds
+
+        if hasattr(ebm, "interaction_smoothing_rounds"):
+            params["interaction_smoothing_rounds"] = ebm.interaction_smoothing_rounds
 
         if hasattr(ebm, "max_rounds"):
             params["max_rounds"] = ebm.max_rounds
@@ -178,6 +184,18 @@ def _to_json_inner(ebm, detail="all"):
 
         if hasattr(ebm, "min_samples_leaf"):
             params["min_samples_leaf"] = ebm.min_samples_leaf
+
+        if hasattr(ebm, "min_hessian"):
+            params["min_hessian"] = ebm.min_hessian
+
+        if hasattr(ebm, "reg_alpha"):
+            params["reg_alpha"] = ebm.reg_alpha
+
+        if hasattr(ebm, "reg_lambda"):
+            params["reg_lambda"] = ebm.reg_lambda
+
+        if hasattr(ebm, "max_delta_step"):
+            params["max_delta_step"] = ebm.max_delta_step
 
         if hasattr(ebm, "max_leaves"):
             params["max_leaves"] = ebm.max_leaves
@@ -226,11 +244,10 @@ def _to_json_inner(ebm, detail="all"):
         feature_type = ebm.feature_types_in_[i]
         feature["type"] = feature_type
 
-        if 1 <= level:
-            if unique_val_counts is not None:
-                feature["num_unique_vals"] = int(unique_val_counts[i])
+        if level >= 1 and unique_val_counts is not None:
+            feature["num_unique_vals"] = int(unique_val_counts[i])
 
-        if feature_type == "nominal" or feature_type == "ordinal":
+        if feature_type in ("nominal", "ordinal"):
             categories = []
             for bins in ebm.bins_[i]:
                 leveled_categories = []
@@ -249,7 +266,7 @@ def _to_json_inner(ebm, detail="all"):
             for bins in ebm.bins_[i]:
                 cuts.append(bins.tolist())
             feature["cuts"] = cuts
-            if 1 <= level:
+            if level >= 1:
                 if feature_bounds is not None:
                     feature_min = feature_bounds[i, 0]
                     if not isnan(feature_min):
@@ -260,11 +277,12 @@ def _to_json_inner(ebm, detail="all"):
                 if histogram_weights is not None:
                     feature_histogram_weights = histogram_weights[i]
                     if feature_histogram_weights is not None:
-                        feature[
-                            "histogram_weights"
-                        ] = feature_histogram_weights.tolist()
+                        feature["histogram_weights"] = (
+                            feature_histogram_weights.tolist()
+                        )
         else:
-            raise ValueError(f"Unsupported feature type: {feature_type}")
+            msg = f"Unsupported feature type: {feature_type}"
+            raise ValueError(msg)
 
         features.append(feature)
     j["features"] = features
@@ -281,19 +299,17 @@ def _to_json_inner(ebm, detail="all"):
             for feature_idx in ebm.term_features_[term_idx]
         ]
         term["scores"] = jsonify_lists(ebm.term_scores_[term_idx].tolist())
-        if 1 <= level:
-            if standard_deviations_all is not None:
-                standard_deviations = standard_deviations_all[term_idx]
-                if standard_deviations is not None:
-                    term["standard_deviations"] = jsonify_lists(
-                        standard_deviations.tolist()
-                    )
-        if 2 <= level:
-            if bagged_scores_all is not None:
-                bagged_scores = bagged_scores_all[term_idx]
-                if bagged_scores is not None:
-                    term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
-        if 1 <= level:
+        if level >= 1 and standard_deviations_all is not None:
+            standard_deviations = standard_deviations_all[term_idx]
+            if standard_deviations is not None:
+                term["standard_deviations"] = jsonify_lists(
+                    standard_deviations.tolist()
+                )
+        if level >= 2 and bagged_scores_all is not None:
+            bagged_scores = bagged_scores_all[term_idx]
+            if bagged_scores is not None:
+                term["bagged_scores"] = jsonify_lists(bagged_scores.tolist())
+        if level >= 1:
             term["bin_weights"] = jsonify_lists(ebm.bin_weights_[term_idx].tolist())
 
         terms.append(term)
@@ -381,18 +397,17 @@ def UNTESTED_dejsonify_lists(vals):
                 vals[idx] = np.inf
             elif val == "-inf":
                 vals[idx] = -np.inf
-        else:
-            if isinstance(val, list):
-                UNTESTED_dejsonify_lists(val)
+        elif isinstance(val, list):
+            UNTESTED_dejsonify_lists(val)
     return vals
 
 
 def UNTESTED_dejsonify_item(val):
     if val == "nan":
         return np.nan
-    elif val == "+inf":
+    if val == "+inf":
         return np.inf
-    elif val == "-inf":
+    if val == "-inf":
         return -np.inf
     return val
 
@@ -477,13 +492,13 @@ def UNTESTED_from_jsonable(ebm, jsonable):
     noise_scale_binning = jsonable.get("noise_scale_binning", None)
     noise_scale_boosting = jsonable.get("noise_scale_boosting", None)
     bag_weights = jsonable["bag_weights"]
-    breakpoint_iteration = jsonable["breakpoint_iteration"]
+    best_iteration = jsonable["best_iteration"]
 
     intercept = np.array(intercept, np.float64)
     if bagged_intercept is not None:
         bagged_intercept = np.array(bagged_intercept, np.float64)
     bag_weights = np.array(bag_weights, np.float64)
-    breakpoint_iteration = np.array(breakpoint_iteration, np.int64)
+    best_iteration = np.array(best_iteration, np.int64)
 
     if jsonable["implementation"] == "python":
         # TODO: load python parameters
@@ -607,5 +622,5 @@ def UNTESTED_from_jsonable(ebm, jsonable):
     ebm.link_ = link
     ebm.link_param_ = link_param
     ebm.bag_weights_ = bag_weights
-    ebm.breakpoint_iteration_ = breakpoint_iteration
+    ebm.best_iteration_ = best_iteration
     ebm.has_fitted_ = True

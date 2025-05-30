@@ -1,0 +1,779 @@
+# for github runner images, see: https://github.com/actions/runner-images?tab=readme-ov-file#available-images
+
+name: interpret-CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      commit_id:
+        description: 'Branch or Commit ID (optional)'
+        required: false
+        type: string
+  schedule:
+    - cron: "0 12 * * *"
+
+jobs:
+  bld:
+    strategy:
+      matrix:
+        include:
+          - name: linux_release_64
+            image: ubuntu-latest
+            options: "-release_64"
+            asm: "-asm"
+          - name: linux_debug_64
+            image: ubuntu-latest
+            options: "-debug_64"
+            asm: ""
+          - name: linux_release_arm
+            image: ubuntu-22.04-arm
+            options: "-release_arm"
+            asm: "-asm"
+          - name: linux_debug_arm
+            image: ubuntu-22.04-arm
+            options: "-debug_arm"
+            asm: ""
+          - name: mac_release_64
+            image: macos-14
+            options: "-release_64"
+            asm: "-asm"
+          - name: mac_debug_64
+            image: macos-14
+            options: "-debug_64"
+            asm: ""
+          - name: mac_release_arm
+            image: macos-14
+            options: "-release_arm"
+            asm: "-asm"
+          - name: mac_debug_arm
+            image: macos-14
+            options: "-debug_arm"
+            asm: ""
+          - name: win_release_64
+            image: windows-2022
+            options: "-release_64"
+            asm: ""
+          - name: win_debug_64
+            image: windows-2022
+            options: "-debug_64"
+            asm: ""
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Build for Windows
+        if: startsWith(matrix.image, 'windows-')
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:CudaToolkitDir = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
+          python -c "from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')"
+          ./cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "cuda_11.2.2_win10_network.exe FAILED"
+              exit 201
+          }
+          ./build.bat ${{ matrix.options }} ${{ matrix.asm }}
+      - name: Build for ManyLinux
+        if: startsWith(matrix.image, 'ubuntu-') && !endsWith(matrix.image, '-arm')
+        run: |
+          # sudo apt-get --yes update
+          # sudo apt-get --yes install nvidia-cuda-toolkit
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            -w /src \
+            quay.io/pypa/manylinux2010_x86_64 \
+            /bin/sh -c "
+              /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
+              "
+      - name: Build for macOS and LinuxARM
+        if: startsWith(matrix.image, 'macos-') || (startsWith(matrix.image, 'ubuntu-') && endsWith(matrix.image, '-arm'))
+        run: |
+          /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
+      - name: Publish shared library
+        uses: actions/upload-artifact@v4
+        with:
+          name: libebm_${{ matrix.name }}
+          path: bld/lib
+      - name: Publish assembly
+        if: ${{ matrix.asm != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asm_${{ matrix.name }}
+          path: bld/asm/
+
+  vis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - name: Build vis
+        run: |
+          cd shared/vis
+          npm install
+          npm run build-prod
+      - name: Publish interpret-inline.js library
+        uses: actions/upload-artifact@v4
+        with:
+          name: vis
+          path: shared/vis/dist
+
+  npm:
+    needs: [bdist]  # bdist is not needed but slow this step down
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - name: Build npm package
+        run: |
+          cd shared/vis
+          npm install
+          npm run build-prod
+          npm pack
+          mkdir pkg
+          cp *.tgz pkg/
+      - name: Publish npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm
+          path: shared/vis/pkg
+
+  R:
+    needs: [bdist]  # bdist is not needed but slow this step down
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Build R package
+        run: |
+          cd R
+          sudo apt-get --yes update
+          sudo apt-get --yes install texlive-latex-base texlive-fonts-extra
+          Rscript build.R
+      - name: Display errors
+        if: failure()
+        run: cat bld/tmp/R/interpret.Rcheck/00install.out
+      - name: Publish R package
+        uses: actions/upload-artifact@v4
+        with:
+          name: R
+          path: bld/R
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Build sdist package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/interpret-core
+          python setup.py sdist -d ../../bld/sdist
+          cd ../interpret
+          python setup.py sdist -d ../../bld/sdist
+      - name: Publish sdist package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: bld/sdist
+
+  docs:
+    runs-on: ubuntu-latest
+    needs: [sdist]
+    permissions:
+      checks: write
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: bld/sdist
+      - name: Build docs
+        id: build_docs
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          install_file=$(echo bld/sdist/interpret_core-*.tar.gz)
+          install_file=$(basename "$install_file" .tar.gz)
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          cd "docs/"
+          pip install -r requirements.txt
+          /bin/sh ./build.sh
+      - name: Mark step with a warning
+        if: ${{ steps.build_docs.outcome == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Failed building docs',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'neutral'
+            })
+      - name: Publish docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: docs/interpret/_build/html/
+
+  bdist:
+    runs-on: ubuntu-latest
+    needs: [bld, vis]
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Download libebm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libebm_*
+          merge-multiple: true
+          path: python/interpret-core/interpret/root/bld/lib/
+      - name: Download vis artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vis
+          path: python/interpret-core/interpret/root/bld/lib/
+      - name: Build bdist package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/interpret-core
+          python setup.py bdist_wheel -d ../../bld/bdist
+          cd ../interpret
+          python setup.py bdist_wheel -d ../../bld/bdist
+      - name: Publish bdist package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bdist
+          path: bld/bdist
+
+  powerlift:
+    needs: [bdist]  # bdist is not needed but slow this step down
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Build powerlift package
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          cd python/powerlift
+          python setup.py bdist_wheel -d ../../bld/powerlift
+      - name: Publish powerlift package
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerlift
+          path: bld/powerlift
+
+  test_powerlift:
+    needs: [powerlift]
+    strategy:
+      matrix:
+        include:
+          - name: linux_312_python
+            python_ver: "3.12"
+            image: ubuntu-latest
+          # - name: mac_312_python
+          #   python_ver: "3.12"
+          #   image: macos-latest
+          - name: win_312_python
+            python_ver: "3.12"
+            image: windows-latest
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_ver }}
+      - name: Download powerlift artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: powerlift
+          path: bld/powerlift
+      - name: pytest (non-win)
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          install_file=$(echo bld/powerlift/powerlift-*.whl)
+          install_file=$(basename "$install_file" .whl)
+          python -m pip install "bld/powerlift/$install_file.whl[datasets,docker,postgres,mssql,aci,testing]"
+          mkdir -p "tmp/zqmr/t"
+          cp -R "python/powerlift/tests/" "tmp/zqmr/t/"
+          cd "tmp/zqmr/t"
+          python -m pytest -vv -n auto --cov=powerlift --cov-report=xml
+      - name: pytest (win)
+        if: ${{ startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          $install_file = Get-ChildItem -Path "bld/powerlift" -Filter "powerlift-*.whl"
+          $install_file = $install_file.Name -replace '\.whl$', ''
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          python -m pip install "bld/powerlift/$install_file.whl[datasets,docker,postgres,mssql,aci,testing]"
+          New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
+          xcopy /E "python\powerlift\tests\*" "tmp\zqmr\t\"
+          cd "tmp/zqmr/t"
+          $env:PATH += ";$env:GeckoWebDriver"
+          python -m pytest -vv -n auto --cov=powerlift --cov-report=xml
+
+  testC:
+    needs: [bld]
+    strategy:
+      matrix:
+        include:
+          - name: linux_release_64
+            image: ubuntu-latest
+            options: "-release_64"
+            existing: "-existing_release_64"
+            scheduled: "-valgrind"
+          - name: linux_debug_64
+            image: ubuntu-latest
+            options: "-debug_64"
+            existing: "-existing_debug_64"
+            scheduled: "-valgrind"
+          - name: linux_release_32
+            image: ubuntu-latest
+            options: "-release_32"
+            existing: ""
+            scheduled: "-valgrind"
+          - name: linux_debug_32
+            image: ubuntu-latest
+            options: "-debug_32"
+            existing: ""
+            scheduled: "-valgrind"
+          - name: mac_release_64
+            image: macos-13  # macos-13 is an intel based mac
+            options: "-release_64"
+            existing: "-existing_release_64"
+            scheduled: ""
+          - name: mac_debug_64
+            image: macos-13  # macos-13 is an intel based mac
+            # don't use the existing debug library since we want to rebuild with asan
+            options: "-debug_64 -asan"
+            existing: ""
+            scheduled: ""
+          - name: mac_release_arm
+            image: macos-latest
+            options: "-release_arm"
+            existing: "-existing_release_arm"
+            scheduled: ""
+          - name: mac_debug_arm
+            image: macos-latest
+            # don't use the existing debug library since we want to rebuild with asan
+            options: "-debug_arm -asan"
+            existing: ""
+            scheduled: ""
+          - name: win_release_64
+            image: windows-latest
+            options: "-release_64"
+            existing: "-existing_release_64"
+            scheduled: "-analysis"
+          - name: win_debug_64
+            image: windows-latest
+            options: "-debug_64"
+            existing: "-existing_debug_64"
+            scheduled: ""
+          - name: win_release_32
+            image: windows-latest
+            options: "-release_32"
+            existing: ""
+            scheduled: "-analysis"
+          - name: win_debug_32
+            image: windows-latest
+            options: "-debug_32"
+            existing: ""
+            scheduled: ""
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Download libebm artifact
+        if: ${{ matrix.existing != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: libebm_${{ matrix.name }}
+          path: bld/lib
+      - name: mac test_native
+        if: ${{ startsWith(matrix.image, 'macos-') }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
+      - name: linux test_native (CI)
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name != 'schedule' }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
+      - name: linux test_native (Schedule)
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name == 'schedule' }}
+        run: |
+          /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
+      - name: win test_native (CI)
+        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name != 'schedule' }}
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
+      - name: win test_native (Schedule)
+        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
+        run: |
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
+
+  testS:
+    needs: [sdist]
+    strategy:
+      matrix:
+        include:
+          - name: linux_39_python
+            python_ver: "3.9"
+            image: ubuntu-latest
+          - name: linux_310_python
+            python_ver: "3.10"
+            image: ubuntu-latest
+          - name: linux_311_python
+            python_ver: "3.11"
+            image: ubuntu-latest
+          - name: linux_312_python
+            python_ver: "3.12"
+            image: ubuntu-latest
+          - name: linuxarm_39_python
+            python_ver: "3.9"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_310_python
+            python_ver: "3.10"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_311_python
+            python_ver: "3.11"
+            image: ubuntu-22.04-arm
+          - name: linuxarm_312_python
+            python_ver: "3.12"
+            image: ubuntu-22.04-arm
+          - name: mac_39_python
+            python_ver: "3.9"
+            image: macos-latest
+          - name: mac_310_python
+            python_ver: "3.10"
+            image: macos-latest
+          - name: mac_311_python
+            python_ver: "3.11"
+            image: macos-latest
+          - name: mac_312_python
+            python_ver: "3.12"
+            image: macos-latest
+          - name: win_39_python
+            python_ver: "3.9"
+            image: windows-latest
+          - name: win_310_python
+            python_ver: "3.10"
+            image: windows-latest
+          - name: win_311_python
+            python_ver: "3.11"
+            image: windows-latest
+          - name: win_312_python
+            python_ver: "3.12"
+            image: windows-latest
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_ver }}
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: bld/sdist
+      - name: pytest (non-win)
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          install_file=$(echo bld/sdist/interpret_core-*.tar.gz)
+          install_file=$(basename "$install_file" .tar.gz)
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          mkdir -p "tmp/zqmr/t"
+          tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
+          cd "tmp/zqmr/t"
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
+      - name: pytest (win)
+        if: ${{ startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          $install_file = Get-ChildItem -Path "bld/sdist" -Filter "interpret_core-*.tar.gz"
+          $install_file = $install_file.Name -replace '\.tar\.gz$', ''
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
+          tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
+          cd "tmp/zqmr/t"
+          $env:PATH += ";$env:GeckoWebDriver"
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
+      - name: Code coverage report
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: tmp/zqmr/t/coverage.xml
+          flags: sdist_${{ matrix.name }}
+          name: codecov_sdist_${{ matrix.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  testB:
+    needs: [bdist]
+    strategy:
+      matrix:
+        include:
+          - name: linux_39_python
+            python_ver: "3.9"
+            image: ubuntu-latest
+          - name: linux_310_python
+            python_ver: "3.10"
+            image: ubuntu-latest
+          - name: linux_311_python
+            python_ver: "3.11"
+            image: ubuntu-latest
+          - name: linux_312_python
+            python_ver: "3.12"
+            image: ubuntu-latest
+          - name: linuxarm_39_python
+            python_ver: "3.9"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_310_python
+            python_ver: "3.10"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_311_python
+            python_ver: "3.11"
+            image: ubuntu-24.04-arm
+          - name: linuxarm_312_python
+            python_ver: "3.12"
+            image: ubuntu-24.04-arm
+          - name: mac_39_python
+            python_ver: "3.9"
+            image: macos-latest
+          - name: mac_310_python
+            python_ver: "3.10"
+            image: macos-latest
+          - name: mac_311_python
+            python_ver: "3.11"
+            image: macos-latest
+          - name: mac_312_python
+            python_ver: "3.12"
+            image: macos-latest
+          - name: win_39_python
+            python_ver: "3.9"
+            image: windows-latest
+          - name: win_310_python
+            python_ver: "3.10"
+            image: windows-latest
+          - name: win_311_python
+            python_ver: "3.11"
+            image: windows-latest
+          - name: win_312_python
+            python_ver: "3.12"
+            image: windows-latest
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_ver }}
+      - name: Download bdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bdist
+          path: bld/bdist
+      - name: pytest (non-win)
+        if: ${{ !startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          install_file=$(echo bld/bdist/interpret_core-*.whl)
+          install_file=$(basename "$install_file" .whl)
+          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          mkdir -p "tmp/zqmr/t"
+          cp -R "python/interpret-core/tests/" "tmp/zqmr/t/"
+          cd "tmp/zqmr/t"
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
+      - name: pytest (win)
+        if: ${{ startsWith(matrix.image, 'windows-') }}
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          $install_file = Get-ChildItem -Path "bld/bdist" -Filter "interpret_core-*.whl"
+          $install_file = $install_file.Name -replace '\.whl$', ''
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
+          xcopy /E "python\interpret-core\tests\*" "tmp\zqmr\t\"
+          cd "tmp/zqmr/t"
+          $env:PATH += ";$env:GeckoWebDriver"
+          python -m pytest -vv -n auto --cov=interpret --cov-report=xml
+      - name: Code coverage report
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: tmp/zqmr/t/coverage.xml
+          flags: bdist_${{ matrix.name }}
+          name: codecov_bdist_${{ matrix.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  testR:
+    needs: [R]
+    strategy:
+      matrix:
+        include:
+          - name: linux
+            image: ubuntu-latest
+    runs-on: ${{ matrix.image }}
+    steps:
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'latest'
+      - name: Download R artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: R
+          path: bld/R
+      - name: R test
+        if: startsWith(matrix.image, 'ubuntu-')
+        continue-on-error: true
+        run: |
+          sudo apt-get --yes update
+          sudo apt-get --yes install texlive-latex-base texlive-fonts-extra
+          install_file=$(echo bld/R/interpret_*.tar.gz)
+          install_file=$(basename "$install_file" .tar.gz)
+          cd bld/R
+          R CMD check --as-cran "$install_file.tar.gz"
+      - name: Display results
+        run: cat bld/R/interpret.Rcheck/00check.log
+
+  format_clang:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Check C++ code formatting with clang-format
+        id: check_cpp
+        continue-on-error: true
+        run: |
+          wget -qO - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain-jammy-16.list
+          sudo apt-get --yes update
+          sudo apt-get --yes install clang-format-16
+          find shared/libebm \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" \) | xargs clang-format-16 -i -style=file
+          if ! git diff --exit-code; then
+            echo "::warning title=clang format::Files need re-formatting"
+            exit 78  # no longer works in github, but would mark action step with a warning
+          fi
+      - name: Mark step with a warning
+        if: ${{ steps.check_cpp.outcome == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Failed clang formatting check',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'neutral',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: 'clang-format found files that need formatting',
+                summary: 'Run clang formatting locally and push the changes.'
+              }
+            })
+
+  format_ruff:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Check python matches ruff format
+        id: check_python
+        continue-on-error: true
+        run: |
+          cd python
+          python -m pip install --upgrade ruff
+          if ! ruff format --check; then
+            echo "::warning title=ruff format::Files need re-formatting (run 'ruff format .' locally)"
+            exit 78  # no longer works in github, but would mark action step with a warning
+          fi
+      - name: Mark step with a warning
+        if: ${{ steps.check_python.outcome == 'failure' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Failed ruff formatting check',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'neutral',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: 'ruff found files that need formatting',
+                summary: 'Run `ruff format .` locally and push the changes.'
+              }
+            })

@@ -1,16 +1,16 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin
-from ..api.templates import FeatureValueExplanation
-from ..utils._explanation import gen_name_from_class, gen_global_selector
-
 from abc import ABC, abstractmethod
+
 import numpy as np
 
+from ..api.base import ExplainerMixin
+from ..api.templates import FeatureValueExplanation
 from ..utils._clean_x import preclean_X
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: move this to a more general location where other blackbox methods can access it
@@ -59,7 +59,7 @@ class MorrisSensitivity(ExplainerMixin):
         feature_names=None,
         feature_types=None,
         sampler=None,
-        **kwargs
+        **kwargs,
     ):
         """Initializes class.
 
@@ -77,8 +77,9 @@ class MorrisSensitivity(ExplainerMixin):
         data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes, _ = determine_classes(model, data, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass MorrisSensitivity not supported")
+        if n_classes >= 3:
+            msg = "multiclass MorrisSensitivity not supported"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data(
@@ -87,7 +88,8 @@ class MorrisSensitivity(ExplainerMixin):
 
         # SALib does not support string categoricals, and np.object_ is slower,
         # so convert to np.float64 until we implement some automatic categorical handling
-        data = data.astype(np.float64, order="C", copy=False)
+        # Fortran ordered is faster since we go by columns, so use that
+        data = data.astype(np.float64, order="F", copy=False)
 
         if sampler is None:
             sampler = MorrisSampler()
@@ -111,9 +113,9 @@ class MorrisSensitivity(ExplainerMixin):
         )
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
-        for col_idx, feature in enumerate(self.feature_names_in_):
+        for col_idx, _feature in enumerate(self.feature_names_in_):
             X_col = data[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         self.unique_val_counts_ = unique_val_counts
 
@@ -137,7 +139,7 @@ class MorrisSensitivity(ExplainerMixin):
         }
 
         specific_data_dicts = []
-        for feat_idx, feature_name in enumerate(self.feature_names_in_):
+        for feat_idx, _feature_name in enumerate(self.feature_names_in_):
             specific_data_dict = {
                 "type": "morris",
                 "mu": self.mu_[feat_idx],
@@ -192,7 +194,7 @@ class MorrisExplanation(FeatureValueExplanation):
             selector: A dataframe whose indices correspond to explanation entries.
         """
 
-        super(MorrisExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -222,11 +224,10 @@ class MorrisExplanation(FeatureValueExplanation):
             data_dict = sort_take(
                 data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
             )
-            title = "Morris Sensitivity<br>Convergence Index: {0:.3f}".format(
+            title = "Morris Sensitivity<br>Convergence Index: {:.3f}".format(
                 data_dict["convergence_index"]
             )
-            figure = plot_horizontal_bar(data_dict, start_zero=True, title=title)
-            return figure
+            return plot_horizontal_bar(data_dict, start_zero=True, title=title)
 
         if self.explanation_type == "global" and key is not None:
             multi_html_template = r"""
@@ -281,10 +282,9 @@ class MorrisExplanation(FeatureValueExplanation):
                 mu_star_conf=data_dict["mu_star_conf"],
             )
 
-            html_str = multi_html_template.format(
+            return multi_html_template.format(
                 feature_name=self.feature_names[key], analyses=analysis
             )
-            return html_str
 
         return super().visualize(key)
 
@@ -311,9 +311,8 @@ def _soft_min_max(values, soft_add=1, soft_bounds=1):
 
 def _gen_problem_from_data(data, feature_names):
     bounds = [_soft_min_max(data[:, i]) for i, _ in enumerate(feature_names)]
-    problem = {
+    return {
         "num_vars": len(feature_names),
         "names": feature_names,
         "bounds": bounds,
     }
-    return problem

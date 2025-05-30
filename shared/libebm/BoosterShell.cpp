@@ -28,15 +28,14 @@ namespace DEFINED_ZONE_NAME {
 
 struct BinBase;
 
-extern void InitializeRmseGradientsAndHessiansBoosting(
-   const unsigned char * const pDataSetShared,
-   const BagEbm direction,
-   const BagEbm * const aBag,
-   const double * const aInitScores,
-   DataSetBoosting * const pDataSet
-);
+extern void InitializeRmseGradientsAndHessiansBoosting(const unsigned char* const pDataSetShared,
+      const double intercept,
+      const BagEbm direction,
+      const BagEbm* const aBag,
+      const double* const aInitScores,
+      DataSetBoosting* const pDataSet);
 
-void BoosterShell::Free(BoosterShell * const pBoosterShell) {
+void BoosterShell::Free(BoosterShell* const pBoosterShell) {
    LOG_0(Trace_Info, "Entered BoosterShell::Free");
 
    if(nullptr != pBoosterShell) {
@@ -47,6 +46,7 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
       AlignedFree(pBoosterShell->m_aMulticlassMidwayTemp);
       AlignedFree(pBoosterShell->m_aSplitPositionsTemp);
       AlignedFree(pBoosterShell->m_aTreeNodesTemp);
+      AlignedFree(pBoosterShell->m_aTemp1);
       BoosterCore::Free(pBoosterShell->m_pBoosterCore);
 
       // before we free our memory, indicate it was freed so if our higher level language attempts to use it we have
@@ -58,10 +58,10 @@ void BoosterShell::Free(BoosterShell * const pBoosterShell) {
    LOG_0(Trace_Info, "Exited BoosterShell::Free");
 }
 
-BoosterShell * BoosterShell::Create(BoosterCore * const pBoosterCore) {
+BoosterShell* BoosterShell::Create(BoosterCore* const pBoosterCore) {
    LOG_0(Trace_Info, "Entered BoosterShell::Create");
 
-   BoosterShell * const pNew = static_cast<BoosterShell *>(malloc(sizeof(BoosterShell)));
+   BoosterShell* const pNew = static_cast<BoosterShell*>(malloc(sizeof(BoosterShell)));
    if(UNLIKELY(nullptr == pNew)) {
       LOG_0(Trace_Error, "ERROR BoosterShell::Create nullptr == pNew");
       return nullptr;
@@ -80,7 +80,7 @@ ErrorEbm BoosterShell::FillAllocations() {
    LOG_0(Trace_Info, "Entered BoosterShell::FillAllocations");
 
    const size_t cScores = m_pBoosterCore->GetCountScores();
-   if(size_t { 0 } != cScores) {
+   if(size_t{0} != cScores) {
       m_pTermUpdate = Tensor::Allocate(k_cDimensionsMax, cScores);
       if(nullptr == m_pTermUpdate) {
          goto failed_allocation;
@@ -92,24 +92,27 @@ ErrorEbm BoosterShell::FillAllocations() {
       }
 
       if(0 != m_pBoosterCore->GetCountBytesFastBins()) {
-         m_aBoostingFastBinsTemp = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesFastBins()));
+         m_aBoostingFastBinsTemp = static_cast<BinBase*>(AlignedAlloc(m_pBoosterCore->GetCountBytesFastBins()));
          if(nullptr == m_aBoostingFastBinsTemp) {
             goto failed_allocation;
          }
       }
 
       if(0 != m_pBoosterCore->GetCountBytesMainBins()) {
-         m_aBoostingMainBins = static_cast<BinBase *>(AlignedAlloc(m_pBoosterCore->GetCountBytesMainBins()));
+         m_aBoostingMainBins = static_cast<BinBase*>(AlignedAlloc(m_pBoosterCore->GetCountBytesMainBins()));
          if(nullptr == m_aBoostingMainBins) {
             goto failed_allocation;
          }
       }
 
-      if(size_t { 1 } != cScores) {
+      if(size_t{1} != cScores) {
          size_t cBytesMulticlassMidwayMax = 0;
          if(0 != GetBoosterCore()->GetTrainingSet()->GetCountSamples()) {
-            DataSubsetBoosting * pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
-            const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
+            EBM_ASSERT(1 <= GetBoosterCore()->GetTrainingSet()->GetCountSubsets());
+            DataSubsetBoosting* pSubset = GetBoosterCore()->GetTrainingSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
+            const DataSubsetBoosting* const pSubsetsEnd =
+                  pSubset + GetBoosterCore()->GetTrainingSet()->GetCountSubsets();
             do {
                const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
                const size_t cFloatBytes = pSubset->GetObjectiveWrapper()->m_cFloatBytes;
@@ -125,8 +128,11 @@ ErrorEbm BoosterShell::FillAllocations() {
          }
 
          if(0 != GetBoosterCore()->GetValidationSet()->GetCountSamples()) {
-            DataSubsetBoosting * pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
-            const DataSubsetBoosting * const pSubsetsEnd = pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
+            EBM_ASSERT(1 <= GetBoosterCore()->GetValidationSet()->GetCountSubsets());
+            DataSubsetBoosting* pSubset = GetBoosterCore()->GetValidationSet()->GetSubsets();
+            EBM_ASSERT(nullptr != pSubset);
+            const DataSubsetBoosting* const pSubsetsEnd =
+                  pSubset + GetBoosterCore()->GetValidationSet()->GetCountSubsets();
             do {
                const size_t cSIMDPack = pSubset->GetObjectiveWrapper()->m_cSIMDPack;
                const size_t cFloatBytes = pSubset->GetObjectiveWrapper()->m_cFloatBytes;
@@ -162,6 +168,7 @@ ErrorEbm BoosterShell::FillAllocations() {
          if(nullptr == m_aTreeNodesTemp) {
             goto failed_allocation;
          }
+         m_cTreeNodesTempBytes = m_pBoosterCore->GetCountBytesTreeNodes();
       }
    }
 
@@ -173,52 +180,50 @@ failed_allocation:;
    return Error_OutOfMemory;
 }
 
-EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
-   void * rng,
-   const void * dataSet,
-   const BagEbm * bag,
-   const double * initScores,
-   IntEbm countTerms,
-   const IntEbm * dimensionCounts,
-   const IntEbm * featureIndexes,
-   IntEbm countInnerBags,
-   CreateBoosterFlags flags,
-   AccelerationFlags acceleration,
-   const char * objective,
-   const double * experimentalParams,
-   BoosterHandle * boosterHandleOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered CreateBooster: "
-      "rng=%p, "
-      "dataSet=%p, "
-      "bag=%p, "
-      "initScores=%p, "
-      "countTerms=%" IntEbmPrintf ", "
-      "dimensionCounts=%p, "
-      "featureIndexes=%p, "
-      "countInnerBags=%" IntEbmPrintf ", "
-      "flags=0x%" UCreateBoosterFlagsPrintf ", "
-      "acceleration=0x%" UAccelerationFlagsPrintf ", "
-      "objective=%p, "
-      "experimentalParams=%p, "
-      "boosterHandleOut=%p"
-      ,
-      rng,
-      dataSet,
-      static_cast<const void *>(bag),
-      static_cast<const void *>(initScores),
-      countTerms,
-      static_cast<const void *>(dimensionCounts),
-      static_cast<const void *>(featureIndexes),
-      countInnerBags,
-      static_cast<UCreateBoosterFlags>(flags), // signed to unsigned conversion is defined behavior in C++
-      static_cast<UAccelerationFlags>(acceleration), // signed to unsigned conversion is defined behavior in C++
-      static_cast<const void *>(objective), // do not print the string for security reasons
-      static_cast<const void *>(experimentalParams),
-      static_cast<const void *>(boosterHandleOut)
-   );
+EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(void* rng,
+      const void* dataSet,
+      const double* intercept,
+      const BagEbm* bag,
+      const double* initScores,
+      IntEbm countTerms,
+      const IntEbm* dimensionCounts,
+      const IntEbm* featureIndexes,
+      IntEbm countInnerBags,
+      CreateBoosterFlags flags,
+      AccelerationFlags acceleration,
+      const char* objective,
+      const double* experimentalParams,
+      BoosterHandle* boosterHandleOut) {
+   LOG_N(Trace_Info,
+         "Entered CreateBooster: "
+         "rng=%p, "
+         "dataSet=%p, "
+         "intercept=%p, "
+         "bag=%p, "
+         "initScores=%p, "
+         "countTerms=%" IntEbmPrintf ", "
+         "dimensionCounts=%p, "
+         "featureIndexes=%p, "
+         "countInnerBags=%" IntEbmPrintf ", "
+         "flags=0x%" UCreateBoosterFlagsPrintf ", "
+         "acceleration=0x%" UAccelerationFlagsPrintf ", "
+         "objective=%p, "
+         "experimentalParams=%p, "
+         "boosterHandleOut=%p",
+         rng,
+         dataSet,
+         static_cast<const void*>(intercept),
+         static_cast<const void*>(bag),
+         static_cast<const void*>(initScores),
+         countTerms,
+         static_cast<const void*>(dimensionCounts),
+         static_cast<const void*>(featureIndexes),
+         countInnerBags,
+         static_cast<UCreateBoosterFlags>(flags), // signed to unsigned conversion is defined behavior in C++
+         static_cast<UAccelerationFlags>(acceleration), // signed to unsigned conversion is defined behavior in C++
+         static_cast<const void*>(objective), // do not print the string for security reasons
+         static_cast<const void*>(experimentalParams),
+         static_cast<const void*>(boosterHandleOut));
 
    ErrorEbm error;
 
@@ -228,11 +233,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    }
    *boosterHandleOut = nullptr; // set this to nullptr as soon as possible so the caller doesn't attempt to free it
 
-   if(0 != (static_cast<UCreateBoosterFlags>(flags) & static_cast<UCreateBoosterFlags>(~(
-      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DifferentialPrivacy) | 
-      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_DisableApprox) |
-      static_cast<UCreateBoosterFlags>(CreateBoosterFlags_BinaryAsMulticlass)
-   )))) {
+   if(flags &
+         ~(CreateBoosterFlags_DifferentialPrivacy | CreateBoosterFlags_UseApprox |
+               CreateBoosterFlags_BinaryAsMulticlass)) {
       LOG_0(Trace_Error, "ERROR CreateBooster flags contains unknown flags. Ignoring extras.");
    }
 
@@ -248,7 +251,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
    }
    const size_t cTerms = static_cast<size_t>(countTerms);
 
-   if(nullptr == dimensionCounts && size_t { 0 } != cTerms) {
+   if(nullptr == dimensionCounts && size_t{0} != cTerms) {
       LOG_0(Trace_Error, "ERROR CreateBooster dimensionCounts cannot be null if 0 < countTerms");
       return Error_IllegalParamVal;
    }
@@ -265,28 +268,27 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
 
    // TODO: since BoosterCore is a non-POD C++ class, we should probably move the call to new from inside
    //       BoosterCore::Create to here and wrap it with a try catch at this level and rely on standard C++ behavior
-   BoosterCore * pBoosterCore = nullptr;
-   error = BoosterCore::Create(
-      rng,
-      cTerms,
-      cInnerBags,
-      experimentalParams,
-      dimensionCounts,
-      featureIndexes,
-      static_cast<const unsigned char *>(dataSet),
-      bag,
-      initScores,
-      flags,
-      acceleration,
-      objective,
-      &pBoosterCore
-   );
+   BoosterCore* pBoosterCore = nullptr;
+   error = BoosterCore::Create(rng,
+         cTerms,
+         cInnerBags,
+         experimentalParams,
+         dimensionCounts,
+         featureIndexes,
+         static_cast<const unsigned char*>(dataSet),
+         intercept,
+         bag,
+         initScores,
+         flags,
+         acceleration,
+         objective,
+         &pBoosterCore);
    if(UNLIKELY(Error_None != error)) {
       BoosterCore::Free(pBoosterCore); // legal if nullptr.  On error we can get back a legal pBoosterCore to delete
       return error;
    }
 
-   BoosterShell * const pBoosterShell = BoosterShell::Create(pBoosterCore);
+   BoosterShell* const pBoosterShell = BoosterShell::Create(pBoosterCore);
    if(UNLIKELY(nullptr == pBoosterShell)) {
       // if the memory allocation for pBoosterShell failed then there was no place to put the pBoosterCore, so free it
       BoosterCore::Free(pBoosterCore);
@@ -299,55 +301,47 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBooster(
       return error;
    }
 
-   if(size_t { 0 } != pBoosterCore->GetCountScores()) {
+   if(size_t{0} != pBoosterCore->GetCountScores()) {
       if(!pBoosterCore->IsRmse()) {
-         error = pBoosterCore->InitializeBoosterGradientsAndHessians(
-            pBoosterShell->GetMulticlassMidwayTemp(),
-            pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
+         error = pBoosterCore->InitializeBoosterGradientsAndHessians(pBoosterShell->GetMulticlassMidwayTemp(),
+               pBoosterShell->GetTermUpdate()->GetTensorScoresPointer() // initialized to zero at this point
          );
          if(UNLIKELY(Error_None != error)) {
             BoosterShell::Free(pBoosterShell);
             return error;
          }
       } else {
-         InitializeRmseGradientsAndHessiansBoosting(
-            static_cast<const unsigned char *>(dataSet),
-            BagEbm { 1 },
-            bag,
-            initScores,
-            pBoosterCore->GetTrainingSet()
-         );
-         InitializeRmseGradientsAndHessiansBoosting(
-            static_cast<const unsigned char *>(dataSet),
-            BagEbm { -1 },
-            bag,
-            initScores,
-            pBoosterCore->GetValidationSet()
-         );
+         InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
+               nullptr == intercept ? 0.0 : *intercept,
+               BagEbm{1},
+               bag,
+               initScores,
+               pBoosterCore->GetTrainingSet());
+         InitializeRmseGradientsAndHessiansBoosting(static_cast<const unsigned char*>(dataSet),
+               nullptr == intercept ? 0.0 : *intercept,
+               BagEbm{-1},
+               bag,
+               initScores,
+               pBoosterCore->GetValidationSet());
       }
    }
 
    const BoosterHandle handle = pBoosterShell->GetHandle();
 
-   LOG_N(Trace_Info, "Exited CreateBooster: *boosterHandleOut=%p", static_cast<void *>(handle));
+   LOG_N(Trace_Info, "Exited CreateBooster: *boosterHandleOut=%p", static_cast<void*>(handle));
 
    *boosterHandleOut = handle;
    return Error_None;
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
-   BoosterHandle boosterHandle,
-   BoosterHandle * boosterHandleViewOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered CreateBoosterView: "
-      "boosterHandle=%p, "
-      "boosterHandleViewOut=%p"
-      ,
-      static_cast<void *>(boosterHandle),
-      static_cast<void *>(boosterHandleViewOut)
-   );
+      BoosterHandle boosterHandle, BoosterHandle* boosterHandleViewOut) {
+   LOG_N(Trace_Info,
+         "Entered CreateBoosterView: "
+         "boosterHandle=%p, "
+         "boosterHandleViewOut=%p",
+         static_cast<void*>(boosterHandle),
+         static_cast<void*>(boosterHandleViewOut));
 
    ErrorEbm error;
 
@@ -357,14 +351,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
    }
    *boosterHandleViewOut = nullptr; // set this as soon as possible so our caller doesn't end up freeing garbage
 
-   BoosterShell * const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   BoosterShell* const pBoosterShellOriginal = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShellOriginal) {
       // already logged
       return Error_IllegalParamVal;
    }
-   BoosterCore * const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShellOriginal->GetBoosterCore();
 
-   BoosterShell * const pBoosterShellNew = BoosterShell::Create(pBoosterCore);
+   BoosterShell* const pBoosterShellNew = BoosterShell::Create(pBoosterCore);
    if(UNLIKELY(nullptr == pBoosterShellNew)) {
       LOG_0(Trace_Warning, "WARNING CreateBooster nullptr == pBoosterShellNew");
       return Error_OutOfMemory;
@@ -385,23 +379,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CreateBoosterView(
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
-   BoosterHandle boosterHandle,
-   IntEbm indexTerm,
-   double * termScoresTensorOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered GetBestTermScores: "
-      "boosterHandle=%p, "
-      "indexTerm=%" IntEbmPrintf ", "
-      "termScoresTensorOut=%p, "
-      ,
-      static_cast<void *>(boosterHandle),
-      indexTerm,
-      static_cast<void *>(termScoresTensorOut)
-   );
+      BoosterHandle boosterHandle, IntEbm indexTerm, double* termScoresTensorOut) {
+   LOG_N(Trace_Info,
+         "Entered GetBestTermScores: "
+         "boosterHandle=%p, "
+         "indexTerm=%" IntEbmPrintf ", "
+         "termScoresTensorOut=%p, ",
+         static_cast<void*>(boosterHandle),
+         indexTerm,
+         static_cast<void*>(termScoresTensorOut));
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   BoosterShell* const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamVal;
@@ -414,15 +402,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(Trace_Error, "ERROR GetBestTermScores indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
 
-   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
-      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
-      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
+   if(size_t{0} == pBoosterCore->GetCountScores()) {
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.
+      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this
       // model as having no logits, since the number of logits can be one less than the number of target classes.
 
       LOG_0(Trace_Info, "Exited GetBestTermScores no scores");
@@ -431,10 +419,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
    EBM_ASSERT(nullptr != pBoosterCore->GetBestModel());
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
-   if(size_t { 0 } == cTensorScores) {
+   if(size_t{0} == cTensorScores) {
       // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
       // In theory it might be better to zero out the caller's tensor cells (2 ^ n_dimensions), but this condition
       // is almost an error already, so don't try reading/writing memory. We just define this situation as
@@ -452,10 +440,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
       return Error_IllegalParamVal;
    }
 
-   Tensor * const pTensor = pBoosterCore->GetBestModel()[iTerm];
+   Tensor* const pTensor = pBoosterCore->GetBestModel()[iTerm];
    EBM_ASSERT(nullptr != pTensor);
    EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatScore * const aTermScores = pTensor->GetTensorScoresPointer();
+   FloatScore* const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    Transpose<true>(pTerm, pBoosterCore->GetCountScores(), termScoresTensorOut, aTermScores);
@@ -465,23 +453,17 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetBestTermScores(
 }
 
 EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
-   BoosterHandle boosterHandle,
-   IntEbm indexTerm,
-   double * termScoresTensorOut
-) {
-   LOG_N(
-      Trace_Info,
-      "Entered GetCurrentTermScores: "
-      "boosterHandle=%p, "
-      "indexTerm=%" IntEbmPrintf ", "
-      "termScoresTensorOut=%p, "
-      ,
-      static_cast<void *>(boosterHandle),
-      indexTerm,
-      static_cast<void *>(termScoresTensorOut)
-   );
+      BoosterHandle boosterHandle, IntEbm indexTerm, double* termScoresTensorOut) {
+   LOG_N(Trace_Info,
+         "Entered GetCurrentTermScores: "
+         "boosterHandle=%p, "
+         "indexTerm=%" IntEbmPrintf ", "
+         "termScoresTensorOut=%p, ",
+         static_cast<void*>(boosterHandle),
+         indexTerm,
+         static_cast<void*>(termScoresTensorOut));
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   BoosterShell* const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    if(nullptr == pBoosterShell) {
       // already logged
       return Error_IllegalParamVal;
@@ -494,15 +476,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    }
    size_t iTerm = static_cast<size_t>(indexTerm);
 
-   BoosterCore * const pBoosterCore = pBoosterShell->GetBoosterCore();
+   BoosterCore* const pBoosterCore = pBoosterShell->GetBoosterCore();
    if(pBoosterCore->GetCountTerms() <= iTerm) {
       LOG_0(Trace_Error, "ERROR GetCurrentTermScores indexTerm above the number of terms that we have");
       return Error_IllegalParamVal;
    }
 
-   if(size_t { 0 } == pBoosterCore->GetCountScores()) {
-      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.  
-      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this 
+   if(size_t{0} == pBoosterCore->GetCountScores()) {
+      // for classification, if there is only 1 possible target class, then the probability of that class is 100%.
+      // If there were logits in this model, they'd all be infinity, but you could alternatively think of this
       // model as having no logits, since the number of logits can be one less than the number of target classes.
 
       LOG_0(Trace_Info, "Exited GetCurrentTermScores no scores");
@@ -511,10 +493,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    EBM_ASSERT(nullptr != pBoosterCore->GetCurrentModel());
    EBM_ASSERT(nullptr != pBoosterCore->GetTerms());
 
-   const Term * const pTerm = pBoosterCore->GetTerms()[iTerm];
+   const Term* const pTerm = pBoosterCore->GetTerms()[iTerm];
 
    size_t cTensorScores = pTerm->GetCountTensorBins();
-   if(size_t { 0 } == cTensorScores) {
+   if(size_t{0} == cTensorScores) {
       // If we have zero samples and one of the dimensions has 0 bins then there is no tensor, so return now
       // In theory it might be better to zero out the caller's tensor cells (2 ^ n_dimensions), but this condition
       // is almost an error already, so don't try reading/writing memory. We just define this situation as
@@ -532,10 +514,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
       return Error_IllegalParamVal;
    }
 
-   Tensor * const pTensor = pBoosterCore->GetCurrentModel()[iTerm];
+   Tensor* const pTensor = pBoosterCore->GetCurrentModel()[iTerm];
    EBM_ASSERT(nullptr != pTensor);
    EBM_ASSERT(pTensor->GetExpanded()); // the tensor should have been expanded at startup
-   FloatScore * const aTermScores = pTensor->GetTensorScoresPointer();
+   FloatScore* const aTermScores = pTensor->GetTensorScoresPointer();
    EBM_ASSERT(nullptr != aTermScores);
 
    Transpose<true>(pTerm, pBoosterCore->GetCountScores(), termScoresTensorOut, aTermScores);
@@ -544,12 +526,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION GetCurrentTermScores(
    return Error_None;
 }
 
-EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
-   BoosterHandle boosterHandle
-) {
-   LOG_N(Trace_Info, "Entered FreeBooster: boosterHandle=%p", static_cast<void *>(boosterHandle));
+EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(BoosterHandle boosterHandle) {
+   LOG_N(Trace_Info, "Entered FreeBooster: boosterHandle=%p", static_cast<void*>(boosterHandle));
 
-   BoosterShell * const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
+   BoosterShell* const pBoosterShell = BoosterShell::GetBoosterShellFromHandle(boosterHandle);
    // if the conversion above doesn't work, it'll return null, and our free will not in fact free any memory,
    // but it will not crash. We'll leak memory, but at least we'll log that.
 
@@ -559,4 +539,4 @@ EBM_API_BODY void EBM_CALLING_CONVENTION FreeBooster(
    LOG_0(Trace_Info, "Exited FreeBooster");
 }
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME

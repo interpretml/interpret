@@ -25,8 +25,8 @@ struct DataSubsetInteraction final {
 
    DataSubsetInteraction() = default; // preserve our POD status
    ~DataSubsetInteraction() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
 
    inline void SafeInitDataSubsetInteraction() {
       m_cSamples = 0;
@@ -38,16 +38,14 @@ struct DataSubsetInteraction final {
 
    void DestructDataSubsetInteraction(const size_t cFeatures);
 
-   inline size_t GetCountSamples() const {
-      return m_cSamples;
-   }
+   inline size_t GetCountSamples() const { return m_cSamples; }
 
-   inline const ObjectiveWrapper * GetObjectiveWrapper() const {
+   inline const ObjectiveWrapper* GetObjectiveWrapper() const {
       EBM_ASSERT(nullptr != m_pObjective);
       return m_pObjective;
    }
 
-   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge * const pData) {
+   inline ErrorEbm ObjectiveApplyUpdate(ApplyUpdateBridge* const pData) {
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != m_pObjective);
       EBM_ASSERT(nullptr != m_pObjective->m_pApplyUpdateC);
@@ -55,7 +53,7 @@ struct DataSubsetInteraction final {
       return (*m_pObjective->m_pApplyUpdateC)(m_pObjective, pData);
    }
 
-   inline ErrorEbm BinSumsInteraction(BinSumsInteractionBridge * const pParams) {
+   inline ErrorEbm BinSumsInteraction(BinSumsInteractionBridge* const pParams) {
       EBM_ASSERT(nullptr != pParams);
       EBM_ASSERT(nullptr != m_pObjective);
       EBM_ASSERT(nullptr != m_pObjective->m_pBinSumsInteractionC);
@@ -63,39 +61,35 @@ struct DataSubsetInteraction final {
       return (*m_pObjective->m_pBinSumsInteractionC)(m_pObjective, pParams);
    }
 
-   inline void * GetGradHess() {
+   inline void* GetGradHess() {
       EBM_ASSERT(nullptr != m_aGradHess);
       return m_aGradHess;
    }
 
-   inline const void * GetFeatureData(const size_t iFeature) const {
+   inline const void* GetFeatureData(const size_t iFeature) const {
       EBM_ASSERT(nullptr != m_aaFeatureData);
       return m_aaFeatureData[iFeature];
    }
 
-   inline const void * GetWeights() const {
-      return m_aWeights;
-   }
+   inline const void* GetWeights() const { return m_aWeights; }
 
-private:
-
+ private:
    size_t m_cSamples;
-   const ObjectiveWrapper * m_pObjective;
-   void * m_aGradHess;
-   void ** m_aaFeatureData;
-   void * m_aWeights;
+   const ObjectiveWrapper* m_pObjective;
+   void* m_aGradHess;
+   void** m_aaFeatureData;
+   void* m_aWeights;
 };
 static_assert(std::is_standard_layout<DataSubsetInteraction>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<DataSubsetInteraction>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
-
+      "We use memcpy in several places, so disallow non-trivial types in general");
 
 struct DataSetInteraction final {
    DataSetInteraction() = default; // preserve our POD status
    ~DataSetInteraction() = default; // preserve our POD status
-   void * operator new(std::size_t) = delete; // we only use malloc/free in this library
-   void operator delete (void *) = delete; // we only use malloc/free in this library
+   void* operator new(std::size_t) = delete; // we only use malloc/free in this library
+   void operator delete(void*) = delete; // we only use malloc/free in this library
 
    inline void SafeInitDataSetInteraction() {
       m_cSamples = 0;
@@ -104,65 +98,48 @@ struct DataSetInteraction final {
       m_weightTotal = 0.0;
    }
 
-   ErrorEbm InitDataSetInteraction(
-      const bool bAllocateHessians,
-      const size_t cScores,
-      const size_t cSubsetItemsMax,
-      const ObjectiveWrapper * const pObjectiveCpu,
-      const ObjectiveWrapper * const pObjectiveSIMD,
-      const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
-      const BagEbm * const aBag,
-      const size_t cIncludedSamples,
-      const size_t cWeights,
-      const size_t cFeatures
-   );
+   ErrorEbm InitDataSetInteraction(const bool bAllocateHessians,
+         const size_t cScores,
+         const size_t cSubsetItemsMax,
+         const ObjectiveWrapper* const pObjectiveCpu,
+         const ObjectiveWrapper* const pObjectiveSIMD,
+         const unsigned char* const pDataSetShared,
+         const size_t cSharedSamples,
+         const BagEbm* const aBag,
+         const size_t cIncludedSamples,
+         const size_t cWeights,
+         const size_t cFeatures);
 
    void DestructDataSetInteraction(const size_t cFeatures);
 
-   inline size_t GetCountSamples() const {
-      return m_cSamples;
-   }
-   inline size_t GetCountSubsets() const {
-      return m_cSubsets;
-   }
-   inline DataSubsetInteraction * GetSubsets() {
+   inline size_t GetCountSamples() const { return m_cSamples; }
+   inline size_t GetCountSubsets() const { return m_cSubsets; }
+   inline DataSubsetInteraction* GetSubsets() {
       EBM_ASSERT(nullptr != m_aSubsets);
       return m_aSubsets;
    }
-   inline double GetWeightTotal() const {
-      return m_weightTotal;
-   }
+   inline double GetWeightTotal() const { return m_weightTotal; }
 
-private:
+ private:
+   ErrorEbm InitGradHess(const bool bAllocateHessians, const size_t cScores);
 
-   ErrorEbm InitGradHess(
-      const bool bAllocateHessians,
-      const size_t cScores
-   );
+   ErrorEbm InitFeatureData(const unsigned char* const pDataSetShared,
+         const size_t cSharedSamples,
+         const BagEbm* const aBag,
+         const size_t cFeatures);
 
-   ErrorEbm InitFeatureData(
-      const unsigned char * const pDataSetShared,
-      const size_t cSharedSamples,
-      const BagEbm * const aBag,
-      const size_t cFeatures
-   );
-
-   ErrorEbm InitWeights(
-      const unsigned char * const pDataSetShared,
-      const BagEbm * const aBag
-   );
+   ErrorEbm InitWeights(const unsigned char* const pDataSetShared, const BagEbm* const aBag);
 
    size_t m_cSamples;
    size_t m_cSubsets;
-   DataSubsetInteraction * m_aSubsets;
+   DataSubsetInteraction* m_aSubsets;
    double m_weightTotal;
 };
 static_assert(std::is_standard_layout<DataSetInteraction>::value,
-   "We use the struct hack in several places, so disallow non-standard_layout types in general");
+      "We use the struct hack in several places, so disallow non-standard_layout types in general");
 static_assert(std::is_trivial<DataSetInteraction>::value,
-   "We use memcpy in several places, so disallow non-trivial types in general");
+      "We use memcpy in several places, so disallow non-trivial types in general");
 
-} // DEFINED_ZONE_NAME
+} // namespace DEFINED_ZONE_NAME
 
 #endif // DATA_SET_INTERACTION_HPP

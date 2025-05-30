@@ -1,32 +1,29 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import (
-    gen_name_from_class,
-    gen_local_selector,
-    gen_global_selector,
-    gen_perf_dicts,
-)
+import logging
+from abc import abstractmethod
+from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Optional
 
-from sklearn.base import ClassifierMixin, RegressorMixin
+import numpy as np
+from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
-from sklearn.base import is_classifier
-from sklearn.utils.validation import check_is_fitted
-import numpy as np
-from abc import abstractmethod
 from sklearn.tree import _tree
-from copy import deepcopy
+from sklearn.utils.validation import check_is_fitted
 
-
-from ..utils._clean_x import preclean_X
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import (
+    gen_global_selector,
+    gen_local_selector,
+    gen_name_from_class,
+    gen_perf_dicts,
+)
 from ..utils._unify_data import unify_data
-
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -123,14 +120,13 @@ class TreeExplanation(ExplanationMixin):
 
         # Handle overall graphs
         if key is None:
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 # userZoomingEnabled=False,
                 elements=data_dict["nodes"] + data_dict["edges"],
                 stylesheet=stylesheet,
             )
-            return component
 
         # Handle local instance graphs
         if self.explanation_type == "local":
@@ -138,15 +134,14 @@ class TreeExplanation(ExplanationMixin):
             nodes = data_dict["nodes"]
             new_edges = self._weight_edges(edges, data_dict["decision"])
             new_nodes = self._weight_nodes_decision(nodes, data_dict["decision"])
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 elements=new_nodes + new_edges,
                 stylesheet=stylesheet,
             )
-            return component
         # Handle global feature graphs
-        elif self.explanation_type == "global":
+        if self.explanation_type == "global":
             feature = self.feature_names[key]
             nodes = data_dict["nodes"]
 
@@ -166,22 +161,20 @@ class TreeExplanation(ExplanationMixin):
                         </style>
                         <div class='center'><h1>"{0}" is not used by this tree.</h1></div>
                     """
-                figure = figure.format(feature)
-                return figure
+                return figure.format(feature)
 
             new_nodes = self._weight_nodes_feature(nodes, feature)
             elements = new_nodes + data_dict["edges"]
-            component = cyto.Cytoscape(
+            return cyto.Cytoscape(
                 layout={"name": "breadthfirst", "roots": '[id = "1"]'},
                 style={"width": "100%", "height": "390px"},
                 elements=elements,
                 stylesheet=stylesheet,
             )
-            return component
-        else:  # pragma: no cover
-            msg = "Cannot handle type {0}".format(self.explanation_type)
-            _log.error(msg)
-            raise Exception(msg)
+        # pragma: no cover
+        msg = f"Cannot handle type {self.explanation_type}"
+        _log.error(msg)
+        raise Exception(msg)
 
     def _weight_edges(self, edges, decision_nodes):
         edges = deepcopy(edges)
@@ -228,7 +221,58 @@ class TreeExplanation(ExplanationMixin):
         return new_nodes
 
 
-class BaseShallowDecisionTree:
+@dataclass
+class TreeInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = True
+    pairwise: bool = False
+
+
+@dataclass
+class TreeTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class TreeClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class TreeRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class TreeTags:
+    estimator_type: Optional[str] = None
+    target_tags: TreeTargetTags = field(default_factory=TreeTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[TreeClassifierTags] = None
+    regressor_tags: Optional[TreeRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: TreeInputTags = field(default_factory=TreeInputTags)
+
+
+class BaseShallowDecisionTree(ExplainerMixin):
     """Shallow Decision Tree (low depth).
 
     Currently wrapper around DecisionTreeClassifier or DecisionTreeRegressor in scikit-learn.
@@ -260,12 +304,14 @@ class BaseShallowDecisionTree:
         # This method should be overriden
         return None
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None, check_input=True):
         """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
             y: Numpy array as training labels.
+            sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
+            check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
         Returns:
             Itself.
@@ -273,9 +319,11 @@ class BaseShallowDecisionTree:
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) == 0:
-            raise ValueError("y cannot have 0 samples")
+            msg = "y cannot have 0 samples"
+            raise ValueError(msg)
 
         if is_classifier(self):
             y = typify_classification(y)
@@ -285,16 +333,16 @@ class BaseShallowDecisionTree:
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         X, self.feature_names_in_, self.feature_types_in_ = unify_data(
-            X, n_samples, self.feature_names, self.feature_types, False, 0
+            X, n_samples, self.feature_names, self.feature_types, True, 0
         )
 
         model = self._model()
-        model.fit(X, y)
+        model.fit(X, y, sample_weight=sample_weight, check_input=check_input)
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx in range(len(self.feature_names_in_)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         feat_imp = model.feature_importances_
         self.global_selector_ = gen_global_selector(
@@ -401,7 +449,8 @@ class BaseShallowDecisionTree:
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             if is_classifier(self):
@@ -415,7 +464,8 @@ class BaseShallowDecisionTree:
 
         if n_samples == 0:
             # TODO: we could probably handle this case
-            raise ValueError("X has zero samples")
+            msg = "X has zero samples"
+            raise ValueError(msg)
 
         # Extract decision tree structure
         nodes, edges = self._graph_from_tree(self._model(), self.feature_names_in_)
@@ -495,19 +545,14 @@ class BaseShallowDecisionTree:
 
             counter["node"] += 1
             node_id = str(counter["node"])
-            if is_classifier(self):
-                value_str = "# Obs: "
-            else:
-                value_str = "E[Y]: "
+            value_str = "# Obs: " if is_classifier(self) else "E[Y]: "
 
             if feature is not None and threshold is not None:
                 value_str += ", ".join([str(v) for v in value[0]])
-                label_str = "{0} <= {1:.2f}\n{2}".format(feature, threshold, value_str)
+                label_str = f"{feature} <= {threshold:.2f}\n{value_str}"
             else:
                 value_str += ", ".join([str(v) for v in value[0]])
-                label_str = "Impurity: {0:.2f}\n{1}".format(
-                    tree_.impurity[i], value_str
-                )
+                label_str = f"Impurity: {tree_.impurity[i]:.2f}\n{value_str}"
 
             nodes.append(
                 {"data": {"id": node_id, "label": label_str, "feature": feature}}
@@ -548,8 +593,11 @@ class BaseShallowDecisionTree:
         recur(0)
         return nodes, edges
 
+    def __sklearn_tags__(self):
+        return TreeTags()
 
-class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
+
+class RegressionTree(RegressorMixin, BaseShallowDecisionTree):
     """Regression tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
@@ -565,27 +613,40 @@ class RegressionTree(BaseShallowDecisionTree, RegressorMixin, ExplainerMixin):
             feature_names=feature_names,
             feature_types=feature_types,
             max_depth=max_depth,
-            **kwargs
+            **kwargs,
         )
 
     def _model(self):
         return self.sk_model_
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None, check_input=True):
         """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
             y: Numpy array as training labels.
+            sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
+            check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
         Returns:
             Itself.
         """
         self.sk_model_ = SKRT(max_depth=self.max_depth, **self.kwargs)
-        return super().fit(X, y)
+        return super().fit(
+            X,
+            y,
+            sample_weight=sample_weight,
+            check_input=check_input,
+        )
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = TreeRegressorTags()
+        return tags
 
 
-class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixin):
+class ClassificationTree(ClassifierMixin, BaseShallowDecisionTree):
     """Classification tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
@@ -601,24 +662,31 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
             feature_names=feature_names,
             feature_types=feature_types,
             max_depth=max_depth,
-            **kwargs
+            **kwargs,
         )
 
     def _model(self):
         return self.sk_model_
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None, check_input=True):
         """Fits model to provided instances.
 
         Args:
             X: Numpy array for training instances.
             y: Numpy array as training labels.
+            sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
+            check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
         Returns:
             Itself.
         """
         self.sk_model_ = SKDT(max_depth=self.max_depth, **self.kwargs)
-        return super().fit(X, y)
+        return super().fit(
+            X,
+            y,
+            sample_weight=sample_weight,
+            check_input=check_input,
+        )
 
     def predict_proba(self, X):
         """Probability estimates on provided instances.
@@ -638,3 +706,9 @@ class ClassificationTree(BaseShallowDecisionTree, ClassifierMixin, ExplainerMixi
         )
 
         return self._model().predict_proba(X)
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = TreeClassifierTags()
+        return tags

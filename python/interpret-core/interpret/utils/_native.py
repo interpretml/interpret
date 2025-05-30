@@ -2,20 +2,25 @@
 # Distributed under the MIT software license
 
 # TODO: Add unit tests for internal EBM interfacing
-import platform
 import ctypes as ct
-from ctypes.util import find_library
-import numpy as np
-import os
-import struct
 import logging
-from contextlib import AbstractContextManager
+import os
+import platform
+import struct
 import sys
+import math
+from contextlib import AbstractContextManager
+from math import prod
+
+import numpy as np
 
 _log = logging.getLogger(__name__)
 
 
 class Native:
+    # see notes in libebm.h on the maximum representable int64 in float64 format
+    FLOAT64_TO_INT64_MAX = 9223372036854774784
+
     # LinkFlags
     LinkFlags_Default = 0x00000000
     LinkFlags_DifferentialPrivacy = 0x00000001
@@ -23,23 +28,32 @@ class Native:
     # CreateBoosterFlags
     CreateBoosterFlags_Default = 0x00000000
     CreateBoosterFlags_DifferentialPrivacy = 0x00000001
-    CreateBoosterFlags_DisableApprox = 0x00000002
+    CreateBoosterFlags_UseApprox = 0x00000002
 
     # TermBoostFlags
     TermBoostFlags_Default = 0x00000000
-    TermBoostFlags_DisableNewtonGain = 0x00000001
-    TermBoostFlags_DisableNewtonUpdate = 0x00000002
-    TermBoostFlags_GradientSums = 0x00000004
-    TermBoostFlags_RandomSplits = 0x00000008
+    TermBoostFlags_PurifyGain = 0x00000001
+    TermBoostFlags_DisableNewtonGain = 0x00000002
+    TermBoostFlags_DisableCategorical = 0x00000004
+    TermBoostFlags_PurifyUpdate = 0x00000008
+    TermBoostFlags_DisableNewtonUpdate = 0x00000010
+    TermBoostFlags_GradientSums = 0x00000020
+    TermBoostFlags_RandomSplits = 0x00000040
+    TermBoostFlags_MissingLow = 0x00000080
+    TermBoostFlags_MissingHigh = 0x00000100
+    TermBoostFlags_MissingSeparate = 0x00000200
+    TermBoostFlags_Corners = 0x00000400
 
     # CreateInteractionFlags
     CreateInteractionFlags_Default = 0x00000000
     CreateInteractionFlags_DifferentialPrivacy = 0x00000001
-    CreateInteractionFlags_DisableApprox = 0x00000002
+    CreateInteractionFlags_UseApprox = 0x00000002
 
     # CalcInteractionFlags
     CalcInteractionFlags_Default = 0x00000000
-    CalcInteractionFlags_Pure = 0x00000001
+    CalcInteractionFlags_Purify = 0x00000001
+    CalcInteractionFlags_DisableNewton = 0x00000002
+    CalcInteractionFlags_Full = 0x00000004
 
     # AccelerationFlags
     AccelerationFlags_NONE = 0x00000000
@@ -55,7 +69,17 @@ class Native:
     Task_Ranking = -3
     Task_Regression = -2
     Task_Unknown = -1
-    # for Task_Classification use the # of classes or 0 if unknown
+    Task_GeneralClassification = 0
+    Task_MonoClassification = 1
+    Task_BinaryClassification = 2
+    Task_MulticlassPlus = 3
+
+    # Objectives
+    Objective_Other = 0
+    Objective_MonoClassification = 1
+    Objective_LogLossBinary = 2
+    Objective_LogLossMulticlass = 3
+    Objective_Rmse = 4
 
     # TraceLevel
     _Trace_Off = 0
@@ -73,11 +97,11 @@ class Native:
         pass
 
     @staticmethod
-    def get_native_singleton(is_debug=False, simd=True):
+    def get_native_singleton(is_debug=False):
         if Native._native is None:
             _log.info("EBM lib loading.")
             native = Native()
-            native._initialize(is_debug=is_debug, simd=simd)
+            native._initialize(is_debug=is_debug)
             Native._native = native
         return Native._native
 
@@ -91,21 +115,26 @@ class Native:
 
         if array is None:
             if not is_null_allowed:  # pragma: no cover
-                raise ValueError("array cannot be None")
+                msg = "array cannot be None"
+                raise ValueError(msg)
             return None
 
         if not isinstance(array, np.ndarray):  # pragma: no cover
-            raise ValueError("array should be an ndarray")
+            msg = "array should be an ndarray"
+            raise ValueError(msg)
 
-        if array.dtype.type is not dtype:  # pragma: no cover
-            raise ValueError(f"array should be an ndarray of type {dtype}")
+        if array.dtype != dtype:  # pragma: no cover
+            msg = f"array should be an ndarray of type {dtype}, but is type {array.dtype.type}"
+            raise ValueError(msg)
 
         # if the data is transposed, Fortran ordered, or has strides, we can't use it
         if not array.flags.c_contiguous:  # pragma: no cover
-            raise ValueError("array should be a contiguous ndarray")
+            msg = "array should be a contiguous ndarray"
+            raise ValueError(msg)
 
-        if array.ndim != ndim:  # pragma: no cover
-            raise ValueError(f"array should have {ndim} dimensions")
+        if ndim is not None and array.ndim != ndim:  # pragma: no cover
+            msg = f"array should have {ndim} dimensions"
+            raise ValueError(msg)
 
         # ctypes.data will return an interor pointer when given an array that is sliced,
         # so arr[1:-1] will return a pointer to the 1st element within arr.
@@ -115,53 +144,47 @@ class Native:
     def _get_native_exception(error_code, native_function):  # pragma: no cover
         if error_code == -1:
             return Exception(f"Out of memory in {native_function}")
-        elif error_code == -2:
+        if error_code == -2:
             return Exception(f"Unexpected internal error in {native_function}")
-        elif error_code == -3:
+        if error_code == -3:
             return Exception(f"Illegal native parameter value in {native_function}")
-        elif error_code == -4:
+        if error_code == -4:
             return Exception(f"User native parameter value error in {native_function}")
-        elif error_code == -5:
+        if error_code == -5:
             return Exception(f"Thread start failed in {native_function}")
-        elif error_code == -10:
+        if error_code == -10:
             return Exception(f"Objective constructor exception in {native_function}")
-        elif error_code == -11:
+        if error_code == -11:
             return Exception("Objective parameter unknown")
-        elif error_code == -12:
+        if error_code == -12:
             return Exception("Objective parameter value malformed")
-        elif error_code == -13:
+        if error_code == -13:
             return Exception("Objective parameter value out of range")
-        elif error_code == -14:
+        if error_code == -14:
             return Exception("Objective parameter mismatch")
-        elif error_code == -15:
+        if error_code == -15:
             return Exception("Unrecognized objective type")
-        elif error_code == -16:
+        if error_code == -16:
             return Exception("Illegal objective registration name")
-        elif error_code == -17:
+        if error_code == -17:
             return Exception("Illegal objective parameter name")
-        elif error_code == -18:
+        if error_code == -18:
             return Exception("Duplicate objective parameter name")
-        elif error_code == -19:
+        if error_code == -19:
             return Exception("Differential Privacy not supported by the objective")
-        elif error_code == -20:
+        if error_code == -20:
             return Exception(
                 "Differential Privacy not supported by an objective parameter value"
             )
-        elif error_code == -21:
+        if error_code == -21:
             return Exception("Illegal value in y for the objective")
-        else:
-            return Exception(
-                f"Unrecognized native return code {error_code} in {native_function}"
-            )
+        return Exception(
+            f"Unrecognized native return code {error_code} in {native_function}"
+        )
 
     @staticmethod
     def get_count_scores_c(n_classes):
-        if n_classes < 0 or n_classes == 2:
-            return 1
-        elif 2 < n_classes:
-            return n_classes
-        else:
-            return 0
+        return n_classes if n_classes >= Native.Task_MulticlassPlus else 1
 
     def set_logging(self, level=None):
         # NOTE: Not part of code coverage. It runs in tests, but isn't registered for some reason.
@@ -217,11 +240,124 @@ class Native:
         )
         return val_array[0]
 
+    def safe_sum(self, in_tensor, out_tensor, axis):
+        shape = in_tensor.shape
+        n_distant = prod(shape[:axis])
+        n_close = prod(shape[axis + 1 :])
+
+        if prod(out_tensor.shape) != n_distant * n_close:
+            msg = f"in {in_tensor.shape} and out {out_tensor.shape} tensors must have a reducible shape along axis {axis}."
+            raise Exception(msg)
+
+        return_code = self._unsafe.SafeSum(
+            n_distant,
+            shape[axis],
+            n_close,
+            Native._make_pointer(in_tensor, np.float64, None, False),
+            Native._make_pointer(out_tensor, np.float64, None, False),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeSum")
+
+    def flat_mean(self, vals, weights=None):
+        if weights is not None:
+            if vals.shape != weights.shape:
+                msg = "vals and weights must have the same shape to call flat_mean."
+                raise Exception(msg)
+
+        n_tensor_bins = prod(vals.shape)
+
+        mean_result = ct.c_double(np.nan)
+
+        return_code = self._unsafe.SafeMean(
+            n_tensor_bins,
+            1,
+            Native._make_pointer(vals, np.float64, None),
+            Native._make_pointer(weights, np.float64, None, True),
+            ct.byref(mean_result),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeMean")
+
+        return mean_result
+
+    def safe_mean(self, tensor, weights=None):
+        n_bags = tensor.shape[0]
+        if weights is not None:
+            if weights.ndim != 1:
+                msg = (
+                    f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
+                )
+                raise Exception(msg)
+            if len(weights) != n_bags:
+                msg = "weights must contain the same number of items as there are bags in tensor."
+                raise Exception(msg)
+
+        n_tensor_bins = 1
+        for n_bins in tensor.shape[1:]:
+            n_tensor_bins *= n_bins
+
+        mean_result = np.empty(tensor.shape[1:] if tensor.ndim > 1 else 1, np.float64)
+
+        return_code = self._unsafe.SafeMean(
+            n_bags,
+            n_tensor_bins,
+            Native._make_pointer(tensor, np.float64, None),
+            Native._make_pointer(weights, np.float64, is_null_allowed=True),
+            Native._make_pointer(mean_result, np.float64, None),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeMean")
+
+        return mean_result
+
+    def safe_stddev(self, tensor, weights=None):
+        n_bags = tensor.shape[0]
+        if weights is not None:
+            if weights.ndim != 1:
+                msg = (
+                    f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
+                )
+                raise Exception(msg)
+            if len(weights) != n_bags:
+                msg = "weights must contain the same number of items as there are bags in tensor."
+                raise Exception(msg)
+
+        n_tensor_bins = 1
+        for n_bins in tensor.shape[1:]:
+            n_tensor_bins *= n_bins
+
+        stddev_result = np.empty(tensor.shape[1:] if tensor.ndim > 1 else 1, np.float64)
+
+        return_code = self._unsafe.SafeStandardDeviation(
+            n_bags,
+            n_tensor_bins,
+            Native._make_pointer(tensor, np.float64, None),
+            Native._make_pointer(weights, np.float64, is_null_allowed=True),
+            Native._make_pointer(stddev_result, np.float64, None),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "SafeStandardDeviation")
+
+        return stddev_result
+
+    def safe_exp(self, vals):
+        self._unsafe.SafeExp(
+            prod(vals.shape),
+            Native._make_pointer(vals, np.float64, None),
+        )
+
+    def safe_log(self, vals):
+        self._unsafe.SafeLog(
+            prod(vals.shape),
+            Native._make_pointer(vals, np.float64, None),
+        )
+
     def create_rng(self, random_state):
         if random_state is None:
             return None  # non-deterministic
 
-        if random_state < -2147483648 or 2147483647 < random_state:
+        if random_state < -2147483648 or random_state > 2147483647:
             msg = f'random_state of "{random_state}" must be cleaned to be a 32-bit signed integer before calling create_rng'
             _log.error(msg)
             raise Exception(msg)
@@ -282,6 +418,132 @@ class Native:
 
         return random_numbers
 
+    def shuffle(self, rng, vals):
+        return_code = self._unsafe.Shuffle(
+            Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
+            len(vals),
+            Native._make_pointer(vals, np.int64),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "Shuffle")
+
+    def measure_impurity(self, scores, weights):
+        shape_all = scores.shape
+        shape_classless = scores.shape
+        n_multi_scores = 1
+        if len(shape_all) == len(weights.shape) + 1:
+            # multiclass
+            n_multi_scores = shape_all[-1]
+            shape_classless = shape_all[:-1]
+
+        if shape_classless != weights.shape:
+            msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            raise Exception(msg)
+
+        if not scores.flags.c_contiguous:
+            scores = scores.copy()
+
+        if not weights.flags.c_contiguous:
+            weights = weights.copy()
+
+        shape_array = np.array(tuple(reversed(shape_classless)), np.int64)
+        impurities = np.empty(n_multi_scores, np.float64)
+
+        for i in range(n_multi_scores):
+            impurity = self._unsafe.MeasureImpurity(
+                n_multi_scores,
+                i,
+                len(shape_classless),
+                Native._make_pointer(shape_array, np.int64),
+                Native._make_pointer(weights, np.float64, None),
+                Native._make_pointer(scores, np.float64, None),
+            )
+
+            if impurity < 0.0:  # pragma: no cover
+                raise Native._get_native_exception(int(impurity), "MeasureImpurity")
+
+            impurities[i] = impurity
+
+        return impurities
+
+    def purify(self, scores, weights, tolerance, is_randomized):
+        if np.isnan(tolerance) or tolerance < 0.0 or tolerance >= 1.0:
+            msg = (
+                f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
+            )
+            raise Exception(msg)
+
+        if is_randomized is not True and is_randomized is not False:
+            msg = "is_randomized must be True or False."
+            raise Exception(msg)
+
+        shape_all = scores.shape
+        shape_classless = scores.shape
+        n_multi_scores = 1
+        if len(shape_all) == len(weights.shape) + 1:
+            # multiclass
+            n_multi_scores = shape_all[-1]
+            shape_classless = shape_all[:-1]
+
+        if shape_classless != weights.shape:
+            msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
+            raise Exception(msg)
+
+        intercept = np.zeros(n_multi_scores, np.float64)
+
+        impurity = None
+        if len(shape_classless) >= 2:
+            n_tensor = 1
+            for n_bins in shape_classless:
+                n_tensor *= n_bins
+
+            if n_tensor == 0:
+                return [
+                    np.zeros(shape_all[:i] + shape_all[i + 1 :], np.float64)
+                    for i in range(len(shape_classless) - 1, -1, -1)
+                ], intercept
+
+            n_impurity_scores = 0
+            for n_bins in shape_classless:
+                n_impurity_scores += n_tensor // n_bins
+            n_impurity_scores *= n_multi_scores
+            impurity = np.empty(n_impurity_scores, np.float64)
+        shape_array = np.array(tuple(reversed(shape_classless)), np.int64)
+
+        is_multiclass_normalization = True
+
+        return_code = self._unsafe.Purify(
+            tolerance,
+            is_randomized,
+            is_multiclass_normalization,
+            n_multi_scores,
+            len(shape_classless),
+            Native._make_pointer(shape_array, np.int64),
+            Native._make_pointer(weights, np.float64, None),
+            Native._make_pointer(scores, np.float64, None),
+            Native._make_pointer(impurity, np.float64, is_null_allowed=True),
+            Native._make_pointer(intercept, np.float64),
+        )
+
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "Purify")
+
+        impurities = []
+        if len(shape_classless) >= 2:
+            base_idx = 0
+            for exclude_idx in range(len(shape_classless) - 1, -1, -1):
+                count = n_tensor // shape_classless[exclude_idx]
+                count *= n_multi_scores
+                impure_shape = list(shape_all)
+                del impure_shape[exclude_idx]
+                impurities.append(
+                    impurity[base_idx : base_idx + count].reshape(tuple(impure_shape))
+                )
+                base_idx += count
+
+        return impurities, intercept
+
     def get_histogram_cut_count(self, X_col):
         return self._unsafe.GetHistogramCutCount(
             X_col.shape[0], Native._make_pointer(X_col, np.float64)
@@ -289,7 +551,8 @@ class Native:
 
     def cut_uniform(self, X_col, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = self._unsafe.CutUniform(
@@ -302,7 +565,8 @@ class Native:
 
     def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -321,7 +585,8 @@ class Native:
 
     def cut_winsorized(self, X_col, max_cuts):
         if max_cuts < 0:
-            raise Exception(f"max_cuts can't be negative: {max_cuts}.")
+            msg = f"max_cuts can't be negative: {max_cuts}."
+            raise Exception(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -356,8 +621,8 @@ class Native:
         high_graph_bound = ct.c_double(np.nan)
         return_code = self._unsafe.SuggestGraphBounds(
             len(cuts),
-            cuts[0] if 0 < len(cuts) else np.nan,
-            cuts[-1] if 0 < len(cuts) else np.nan,
+            cuts[0] if len(cuts) > 0 else np.nan,
+            cuts[-1] if len(cuts) > 0 else np.nan,
             min_feature_val,
             max_feature_val,
             ct.byref(low_graph_bound),
@@ -389,11 +654,11 @@ class Native:
             raise Native._get_native_exception(n_bytes, "MeasureDataSetHeader")
         return n_bytes
 
-    def measure_feature(self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes):
+    def measure_feature(self, n_bins, is_missing, is_unseen, is_nominal, bin_indexes):
         n_bytes = self._unsafe.MeasureFeature(
             n_bins,
             is_missing,
-            is_unknown,
+            is_unseen,
             is_nominal,
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
@@ -442,12 +707,12 @@ class Native:
             raise Native._get_native_exception(return_code, "FillDataSetHeader")
 
     def fill_feature(
-        self, n_bins, is_missing, is_unknown, is_nominal, bin_indexes, dataset
+        self, n_bins, is_missing, is_unseen, is_nominal, bin_indexes, dataset
     ):
         return_code = self._unsafe.FillFeature(
             n_bins,
             is_missing,
-            is_unknown,
+            is_unseen,
             is_nominal,
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
@@ -514,6 +779,21 @@ class Native:
 
         return n_samples.value, n_features.value, n_weights.value, n_targets.value
 
+    def extract_nominals(self, dataset):
+        _, n_features, _, _ = self.extract_dataset_header(dataset)
+
+        nominals = np.empty(n_features, np.int32, order="C")
+
+        return_code = self._unsafe.ExtractNominals(
+            Native._make_pointer(dataset, np.ubyte),
+            n_features,
+            Native._make_pointer(nominals, np.int32),
+        )
+        if return_code:  # pragma: no cover
+            raise Native._get_native_exception(return_code, "ExtractNominals")
+
+        return nominals.astype(np.bool_)
+
     def extract_bin_counts(self, dataset, n_features):
         bin_counts = np.empty(n_features, dtype=np.int64, order="C")
 
@@ -565,9 +845,8 @@ class Native:
         count_samples = count_training_samples + count_validation_samples
 
         if len(targets) != count_samples:
-            raise ValueError(
-                "count_training_samples + count_validation_samples should be equal to len(targets)"
-            )
+            msg = "count_training_samples + count_validation_samples should be equal to len(targets)"
+            raise ValueError(msg)
 
         bag = np.empty(count_samples, dtype=np.int8, order="C")
 
@@ -592,7 +871,7 @@ class Native:
         return bag
 
     def determine_task(self, objective):
-        task = ct.c_int64(0)
+        task = ct.c_int64(Native.Task_Unknown)
 
         return_code = self._unsafe.DetermineTask(
             objective.encode("ascii"),
@@ -610,6 +889,7 @@ class Native:
         return task.decode("ascii")
 
     def determine_link(self, flags, objective, n_classes):
+        objective_code = ct.c_int32(Native.Objective_Other)
         link = ct.c_int32(0)
         link_param = ct.c_double(np.nan)
 
@@ -617,6 +897,7 @@ class Native:
             flags,
             objective.encode("ascii"),
             n_classes,
+            ct.byref(objective_code),
             ct.byref(link),
             ct.byref(link_param),
         )
@@ -629,7 +910,7 @@ class Native:
             _log.error(msg)
             raise Exception(msg)
 
-        return (link.decode("ascii"), link_param.value)
+        return (objective_code.value, link.decode("ascii"), link_param.value)
 
     @staticmethod
     def _get_ebm_lib_path(debug=False):
@@ -673,13 +954,15 @@ class Native:
                     # first check for the general name
                     lib_file = os.path.join(lib_path, "libebm" + extension)
                     if os.path.isfile(lib_file):
-                        _log.info(f"Loading EBM library {str(lib_file)}")
+                        _log.info(f"Loading EBM library {lib_file!s}")
                         return lib_file
 
                     # next check for a specific platform
                     lib_file = None
                     if plat == "Linux" and machine == "x86_64" and is_64_bit:
                         lib_file = "libebm_linux_x64"
+                    elif plat == "Linux" and machine == "aarch64":
+                        lib_file = "libebm_linux_arm"
                     elif plat == "Windows" and machine == "AMD64" and is_64_bit:
                         lib_file = "libebm_win_x64"
                     elif plat == "Darwin" and machine == "x86_64" and is_64_bit:
@@ -690,7 +973,7 @@ class Native:
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
         else:
             # root should at least contain the visualization javascript. If root does
@@ -705,13 +988,15 @@ class Native:
                         # first check for the general name
                         lib_file = os.path.join(lib_path, "libebm" + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
 
                     # next check for a specific platform
                     lib_file = None
                     if plat == "Linux" and machine == "x86_64" and is_64_bit:
                         lib_file = "libebm_linux_x64"
+                    elif plat == "Linux" and machine == "aarch64":
+                        lib_file = "libebm_linux_arm"
                     elif plat == "Windows" and machine == "AMD64" and is_64_bit:
                         lib_file = "libebm_win_x64"
                     elif plat == "Darwin" and machine == "x86_64" and is_64_bit:
@@ -722,7 +1007,7 @@ class Native:
                     if lib_file is not None:
                         lib_file = os.path.join(lib_path, lib_file + extension)
                         if os.path.isfile(lib_file):
-                            _log.info(f"Loading EBM library {str(lib_file)}")
+                            _log.info(f"Loading EBM library {lib_file!s}")
                             return lib_file
 
             # TODO: if the library does not exists, build it using build.sh or build.bat
@@ -744,7 +1029,7 @@ class Native:
         if lib_path is not None:
             lib_file = os.path.join(lib_path, "libebm" + extension)
             if os.path.isfile(lib_file):
-                _log.info(f"Loading EBM library {str(lib_file)}")
+                _log.info(f"Loading EBM library {lib_file!s}")
                 return lib_file
 
         if debug:
@@ -754,12 +1039,9 @@ class Native:
         _log.error(msg)
         raise Exception(msg)
 
-    def _initialize(self, is_debug, simd):
+    def _initialize(self, is_debug):
         self.is_debug = is_debug
-        self.acceleration = (
-            Native.AccelerationFlags_ALL if simd else Native.AccelerationFlags_NONE
-        )
-        self.approximates = True
+        self.approximates = False
 
         self._log_callback_func = None
         self._unsafe = ct.cdll.LoadLibrary(Native._get_ebm_lib_path(debug=is_debug))
@@ -783,6 +1065,64 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.CleanFloats.restype = None
+
+        self._unsafe.SafeSum.argtypes = [
+            # int64_t countDistant
+            ct.c_int64,
+            # int64_t countAxis
+            ct.c_int64,
+            # int64_t countClose
+            ct.c_int64,
+            # double * in
+            ct.c_void_p,
+            # double * out
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeSum.restype = ct.c_int32
+
+        self._unsafe.SafeMean.argtypes = [
+            # int64_t countBags
+            ct.c_int64,
+            # int64_t countTensorBins
+            ct.c_int64,
+            # double * vals
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * tensorOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeMean.restype = ct.c_int32
+
+        self._unsafe.SafeStandardDeviation.argtypes = [
+            # int64_t countBags
+            ct.c_int64,
+            # int64_t countTensorBins
+            ct.c_int64,
+            # double * vals
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * tensorOut
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeStandardDeviation.restype = ct.c_int32
+
+        self._unsafe.SafeExp.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * inout
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeExp.restype = None
+
+        self._unsafe.SafeLog.argtypes = [
+            # int64_t count
+            ct.c_int64,
+            # double * inout
+            ct.c_void_p,
+        ]
+        self._unsafe.SafeLog.restype = None
 
         self._unsafe.MeasureRNG.argtypes = []
         self._unsafe.MeasureRNG.restype = ct.c_int64
@@ -830,6 +1170,56 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.GenerateGaussianRandom.restype = ct.c_int32
+
+        self._unsafe.Shuffle.argtypes = [
+            # void * rng
+            ct.c_void_p,
+            # int64_t count
+            ct.c_int64,
+            # int64_t * randomOut
+            ct.c_void_p,
+        ]
+        self._unsafe.Shuffle.restype = ct.c_int32
+
+        self._unsafe.MeasureImpurity.argtypes = [
+            # int64_t countMultiScores
+            ct.c_int64,
+            # int64_t indexMultiScore
+            ct.c_int64,
+            # int64_t countDimensions
+            ct.c_int64,
+            # int64_t * dimensionLengths
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * scores
+            ct.c_void_p,
+        ]
+        self._unsafe.MeasureImpurity.restype = ct.c_double
+
+        self._unsafe.Purify.argtypes = [
+            # double tolerance
+            ct.c_double,
+            # int32_t isRandomized
+            ct.c_int32,
+            # int32_t isMulticlassNormalization
+            ct.c_int32,
+            # int64_t countMultiScores
+            ct.c_int64,
+            # int64_t countDimensions
+            ct.c_int64,
+            # int64_t * dimensionLengths
+            ct.c_void_p,
+            # double * weights
+            ct.c_void_p,
+            # double * scoresInOut
+            ct.c_void_p,
+            # double * impuritiesOut
+            ct.c_void_p,
+            # double * interceptOut
+            ct.c_void_p,
+        ]
+        self._unsafe.Purify.restype = ct.c_int32
 
         self._unsafe.GetHistogramCutCount.argtypes = [
             # int64_t countSamples
@@ -926,7 +1316,7 @@ class Native:
             ct.c_int64,
             # int32_t isMissing
             ct.c_int32,
-            # int32_t isUnknown
+            # int32_t isUnseen
             ct.c_int32,
             # int32_t isNominal
             ct.c_int32,
@@ -982,7 +1372,7 @@ class Native:
             ct.c_int64,
             # int32_t isMissing
             ct.c_int32,
-            # int32_t isUnknown
+            # int32_t isUnseen
             ct.c_int32,
             # int32_t isNominal
             ct.c_int32,
@@ -1057,6 +1447,16 @@ class Native:
         ]
         self._unsafe.ExtractDataSetHeader.restype = ct.c_int32
 
+        self._unsafe.ExtractNominals.argtypes = [
+            # void * dataSet
+            ct.c_void_p,
+            # int64_t countFeaturesVerify
+            ct.c_int64,
+            # int32_t * nominalsOut
+            ct.c_void_p,
+        ]
+        self._unsafe.ExtractNominals.restype = ct.c_int32
+
         self._unsafe.ExtractBinCounts.argtypes = [
             # void * dataSet
             ct.c_void_p,
@@ -1126,6 +1526,8 @@ class Native:
             ct.c_char_p,
             # int64_t countClasses
             ct.c_int64,
+            # int32_t * objectiveOut
+            ct.c_void_p,
             # int32_t * linkOut
             ct.c_void_p,
             # double * linkParamOut
@@ -1143,6 +1545,8 @@ class Native:
             # void * rng
             ct.c_void_p,
             # void * dataSet
+            ct.c_void_p,
+            # double * intercept
             ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
@@ -1188,7 +1592,25 @@ class Native:
             ct.c_double,
             # int64_t minSamplesLeaf
             ct.c_int64,
+            # double minHessian
+            ct.c_double,
+            # double regAlpha
+            ct.c_double,
+            # double regLambda
+            ct.c_double,
+            # double maxDeltaStep
+            ct.c_double,
+            # int64_t minCategorySamples
+            ct.c_int64,
+            # double categoricalSmoothing
+            ct.c_double,
+            # int64_t maxCategoricalThreshold
+            ct.c_int64,
+            # double categoricalInclusionPercent
+            ct.c_double,
             # int64_t * leavesMax
+            ct.c_void_p,
+            # MonotoneDirection * direction
             ct.c_void_p,
             # double * avgGainOut
             ct.POINTER(ct.c_double),
@@ -1256,6 +1678,8 @@ class Native:
         self._unsafe.CreateInteractionDetector.argtypes = [
             # void * dataSet
             ct.c_void_p,
+            # double * intercept
+            ct.c_void_p,
             # int8_t * bag
             ct.c_void_p,
             # double * initScores
@@ -1292,6 +1716,14 @@ class Native:
             ct.c_int64,
             # int64_t minSamplesLeaf
             ct.c_int64,
+            # double minHessian
+            ct.c_double,
+            # double regAlpha
+            ct.c_double,
+            # double regLambda
+            ct.c_double,
+            # double maxDeltaStep
+            ct.c_double,
             # double * avgInteractionStrengthOut
             ct.POINTER(ct.c_double),
         ]
@@ -1304,6 +1736,7 @@ class Booster(AbstractContextManager):
     def __init__(
         self,
         dataset,
+        intercept,
         bag,
         init_scores,
         term_features,
@@ -1311,12 +1744,14 @@ class Booster(AbstractContextManager):
         rng,
         create_booster_flags,
         objective,
+        acceleration,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
 
         Args:
             dataset: binned data in a compressed native form
+            intercept: initial intercept
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
@@ -1329,6 +1764,7 @@ class Booster(AbstractContextManager):
         """
 
         self.dataset = dataset
+        self.intercept = intercept
         self.bag = bag
         self.init_scores = init_scores
         self.term_features = term_features
@@ -1336,10 +1772,11 @@ class Booster(AbstractContextManager):
         self.rng = rng
         self.create_booster_flags = create_booster_flags
         self.objective = objective
+        self.acceleration = acceleration
         self.experimental_params = experimental_params
 
         # start off with an invalid _term_idx
-        self._term_idx = -1
+        self._term_idx = -2
 
     def __enter__(self):
         _log.info("Booster allocation start")
@@ -1352,7 +1789,7 @@ class Booster(AbstractContextManager):
         dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
         for term_idx, feature_idxs in enumerate(self.term_features):
-            dimension_counts.itemset(term_idx, len(feature_idxs))
+            dimension_counts[term_idx] = len(feature_idxs)
             feature_indexes.extend(feature_idxs)
         feature_indexes = np.array(feature_indexes, ct.c_int64)
 
@@ -1362,23 +1799,26 @@ class Booster(AbstractContextManager):
             self.dataset
         )
 
-        if n_weights != 0 and n_weights != 1:  # pragma: no cover
-            raise ValueError("n_weights must be 0 or 1")
+        if n_weights not in (0, 1):  # pragma: no cover
+            msg = "n_weights must be 0 or 1"
+            raise ValueError(msg)
 
         if n_targets != 1:  # pragma: no cover
-            raise ValueError("n_targets must be 1")
+            msg = "n_targets must be 1"
+            raise ValueError(msg)
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum(
             Native.get_count_scores_c(n_classes) for n_classes in class_counts
         )
+        self._n_class_scores = n_class_scores
 
         bin_counts = native.extract_bin_counts(self.dataset, n_features)
         self._term_shapes = []
         for feature_idxs in self.term_features:
             dimensions = [bin_counts[feature_idx] for feature_idx in feature_idxs]
 
-            # multiclass and mono-classification need a second dimension
+            # multiclass needs a second dimension
             if n_class_scores != 1:
                 dimensions.append(n_class_scores)
 
@@ -1387,7 +1827,8 @@ class Booster(AbstractContextManager):
         n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
-                raise ValueError("bag should be len(n_samples)")
+                msg = "bag should be len(n_samples)"
+                raise ValueError(msg)
             n_bagged_samples = np.count_nonzero(self.bag)
 
         init_scores = self.init_scores
@@ -1397,44 +1838,55 @@ class Booster(AbstractContextManager):
                 init_scores = init_scores.copy()
 
             if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
-                raise ValueError(
-                    "init_scores should have the same length as the number of non-zero bag entries"
-                )
+                msg = "init_scores should have the same length as the number of non-zero bag entries"
+                raise ValueError(msg)
 
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        f"init_scores should have ndim == 1 for regression or binary classification"
-                    )
+                    msg = "init_scores should have ndim == 1 for regression or binary classification"
+                    raise ValueError(msg)
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        f"init_scores should have ndim == 2 for multiclass"
-                    )
+                    msg = "init_scores should have ndim == 2 for multiclass"
+                    raise ValueError(msg)
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
+                    msg = f"init_scores should have {n_class_scores} scores"
+                    raise ValueError(msg)
+
+        intercept = self.intercept
+        if intercept is not None:
+            if len(intercept) != n_class_scores:  # pragma: no cover
+                msg = f"intercept should have {n_class_scores} scores"
+                raise ValueError(msg)
+
+            if not intercept.flags.c_contiguous:
+                # intercept could be a slice that has a stride.  We need contiguous for caling into C
+                intercept = intercept.copy()
 
         flags = self.create_booster_flags
-        if not native.approximates:
-            flags |= Native.CreateBoosterFlags_DisableApprox
+        if native.approximates:
+            flags |= Native.CreateBoosterFlags_UseApprox
 
         # Allocate external resources
         booster_handle = ct.c_void_p(0)
         return_code = native._unsafe.CreateBooster(
             Native._make_pointer(self.rng, np.ubyte, is_null_allowed=True),
             Native._make_pointer(self.dataset, np.ubyte),
-            Native._make_pointer(self.bag, np.int8, 1, True),
+            Native._make_pointer(intercept, np.float64, 1, True),
+            Native._make_pointer(self.bag, np.int8, is_null_allowed=True),
             Native._make_pointer(
-                init_scores, np.float64, 1 if 1 == n_class_scores else 2, True
+                init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             len(dimension_counts),
             Native._make_pointer(dimension_counts, np.int64),
             Native._make_pointer(feature_indexes, np.int64),
             self.n_inner_bags,
             flags,
-            native.acceleration,
+            self.acceleration,
             self.objective.encode("ascii"),
-            Native._make_pointer(self.experimental_params, np.float64, 1, True),
+            Native._make_pointer(
+                self.experimental_params, np.float64, is_null_allowed=True
+            ),
             ct.byref(booster_handle),
         )
         if return_code:  # pragma: no cover
@@ -1467,7 +1919,16 @@ class Booster(AbstractContextManager):
         term_boost_flags,
         learning_rate,
         min_samples_leaf,
+        min_hessian,
+        reg_alpha,
+        reg_lambda,
+        max_delta_step,
+        min_cat_samples,
+        cat_smooth,
+        max_cat_threshold,
+        cat_include,
         max_leaves,
+        monotone_constraints,
     ):
         """Generates a boosting step update per feature
             by growing a shallow decision tree.
@@ -1477,7 +1938,16 @@ class Booster(AbstractContextManager):
             term_boost_flags: C interface options
             learning_rate: Learning rate as a float.
             min_samples_leaf: Min observations required to split.
+            min_hessian: Min hessian required to split.
+            reg_alpha: L1 regularization.
+            reg_lambda: L2 regularization.
+            max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
+            min_cat_samples: Min samples to consider category independently
+            cat_smooth: Parameter used to determine which categories are included each boosting round and ordering.
+            max_cat_threshold: max number of categories to include each boosting round
+            cat_include: percentage of categories to include in each boosting round
             max_leaves: Max leaf nodes on feature step.
+            monotone_constraints: monotone constraints (1=increasing, 0=none, -1=decreasing)
 
         Returns:
             gain for the generated boosting step.
@@ -1485,13 +1955,29 @@ class Booster(AbstractContextManager):
 
         # _log.debug("Boosting step start")
 
-        self._term_idx = -1
+        self._term_idx = -2
 
         native = Native.get_native_singleton()
 
         avg_gain = ct.c_double(0.0)
-        n_features = len(self.term_features[term_idx])
-        max_leaves_arr = np.full(n_features, max_leaves, dtype=ct.c_int64, order="C")
+
+        if term_idx <= -2:
+            msg = f"term_idx cannot be -2 or less. -1 would mean intercept boosting."
+            raise ValueError(msg)
+        elif term_idx == -1:
+            if monotone_constraints is not None:
+                msg = f"monotone_constraints should be None for intercept boosting."
+                raise ValueError(msg)
+            max_leaves_arr = None
+        else:
+            n_features = len(self.term_features[term_idx])
+            if monotone_constraints is not None:
+                if len(monotone_constraints) != n_features:
+                    msg = f"monotone_constraints should have the same length {len(monotone_constraints)} as the number of features {n_features}."
+                    raise ValueError(msg)
+            max_leaves_arr = np.full(
+                n_features, max_leaves, dtype=ct.c_int64, order="C"
+            )
 
         return_code = native._unsafe.GenerateTermUpdate(
             Native._make_pointer(rng, np.ubyte, is_null_allowed=True),
@@ -1500,7 +1986,16 @@ class Booster(AbstractContextManager):
             term_boost_flags,
             learning_rate,
             min_samples_leaf,
-            Native._make_pointer(max_leaves_arr, np.int64),
+            min_hessian,
+            reg_alpha,
+            reg_lambda,
+            max_delta_step,
+            min_cat_samples,
+            cat_smooth,
+            max_cat_threshold,
+            cat_include,
+            Native._make_pointer(max_leaves_arr, np.int64, is_null_allowed=True),
+            Native._make_pointer(monotone_constraints, np.int32, is_null_allowed=True),
             ct.byref(avg_gain),
         )
         if return_code:  # pragma: no cover
@@ -1521,7 +2016,11 @@ class Booster(AbstractContextManager):
         """
         # _log.debug("Boosting step start")
 
-        self._term_idx = -1
+        if self._term_idx <= -2:
+            msg = f"The update needs to be set prior to calling apply_term_update."
+            raise ValueError(msg)
+
+        self._term_idx = -2
 
         native = Native.get_native_singleton()
 
@@ -1554,14 +2053,16 @@ class Booster(AbstractContextManager):
         return model
 
     def get_term_update_splits(self):
-        if self._term_idx < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._term_idx")
-
         splits = []
-        feature_idxs = self.term_features[self._term_idx]
-        for dimension_idx in range(len(feature_idxs)):
-            splits_dimension = self._get_term_update_splits_dimension(dimension_idx)
-            splits.append(splits_dimension)
+        if self._term_idx != -1:
+            if self._term_idx <= -2:  # pragma: no cover
+                msg = "invalid internal self._term_idx"
+                raise RuntimeError(msg)
+
+            feature_idxs = self.term_features[self._term_idx]
+            for dimension_idx in range(len(feature_idxs)):
+                splits_dimension = self._get_term_update_splits_dimension(dimension_idx)
+                splits.append(splits_dimension)
 
         return splits
 
@@ -1579,12 +2080,12 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        term_scores = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetBestTermScores(
             self._booster_handle,
             term_idx,
-            Native._make_pointer(term_scores, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetBestTermScores")
@@ -1605,12 +2106,12 @@ class Booster(AbstractContextManager):
         native = Native.get_native_singleton()
 
         shape = self._term_shapes[term_idx]
-        term_scores = np.empty(shape, dtype=np.float64, order="C")
+        term_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetCurrentTermScores(
             self._booster_handle,
             term_idx,
-            Native._make_pointer(term_scores, np.float64, len(shape)),
+            Native._make_pointer(term_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetCurrentTermScores")
@@ -1635,21 +2136,23 @@ class Booster(AbstractContextManager):
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetTermUpdateSplits")
 
-        splits = splits[: count_splits.value]
-        return splits
+        return splits[: count_splits.value]
 
     def get_term_update(self):
-        if self._term_idx < 0:  # pragma: no cover
-            raise RuntimeError("invalid internal self._term_idx")
+        if self._term_idx <= -2:  # pragma: no cover
+            msg = "invalid internal self._term_idx"
+            raise RuntimeError(msg)
 
         native = Native.get_native_singleton()
 
-        shape = self._term_shapes[self._term_idx]
-        update_scores = np.empty(shape, dtype=np.float64, order="C")
+        shape = self._n_class_scores
+        if self._term_idx != -1:
+            shape = self._term_shapes[self._term_idx]
+        update_scores = np.full(shape, -np.inf, np.float64, "C")
 
         return_code = native._unsafe.GetTermUpdate(
             self._booster_handle,
-            Native._make_pointer(update_scores, np.float64, len(shape)),
+            Native._make_pointer(update_scores, np.float64, None),
         )
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "GetTermUpdate")
@@ -1657,12 +2160,15 @@ class Booster(AbstractContextManager):
         return update_scores
 
     def set_term_update(self, term_idx, update_scores):
-        self._term_idx = -1
+        self._term_idx = -2
 
-        shape = self._term_shapes[term_idx]
+        shape = self._n_class_scores
+        if term_idx != -1:
+            shape = self._term_shapes[term_idx]
 
         if shape != update_scores.shape:  # pragma: no cover
-            raise ValueError("incorrect tensor shape in call to set_term_update")
+            msg = "incorrect tensor shape in call to set_term_update"
+            raise ValueError(msg)
 
         native = Native.get_native_singleton()
         return_code = native._unsafe.SetTermUpdate(
@@ -1675,8 +2181,6 @@ class Booster(AbstractContextManager):
 
         self._term_idx = term_idx
 
-        return
-
 
 class InteractionDetector(AbstractContextManager):
     """Lightweight wrapper for EBM C interaction code."""
@@ -1684,16 +2188,19 @@ class InteractionDetector(AbstractContextManager):
     def __init__(
         self,
         dataset,
+        intercept,
         bag,
         init_scores,
         create_interaction_flags,
         objective,
+        acceleration,
         experimental_params,
     ):
         """Initializes internal wrapper for EBM C code.
 
         Args:
             dataset: binned data in a compressed native form
+            intercept: prediction shift
             bag: definition of what data is included. 1 = training, -1 = validation, 0 = not included
             init_scores: predictions from a prior predictor
                 that this class will boost on top of.  For regression
@@ -1704,10 +2211,12 @@ class InteractionDetector(AbstractContextManager):
         """
 
         self.dataset = dataset
+        self.intercept = intercept
         self.bag = bag
         self.init_scores = init_scores
         self.create_interaction_flags = create_interaction_flags
         self.objective = objective
+        self.acceleration = acceleration
         self.experimental_params = experimental_params
 
     def __enter__(self):
@@ -1724,11 +2233,13 @@ class InteractionDetector(AbstractContextManager):
             self.dataset
         )
 
-        if n_weights != 0 and n_weights != 1:  # pragma: no cover
-            raise ValueError("n_weights must be 0 or 1")
+        if n_weights not in (0, 1):  # pragma: no cover
+            msg = "n_weights must be 0 or 1"
+            raise ValueError(msg)
 
         if n_targets != 1:  # pragma: no cover
-            raise ValueError("n_targets must be 1")
+            msg = "n_targets must be 1"
+            raise ValueError(msg)
 
         class_counts = native.extract_target_classes(self.dataset, n_targets)
         n_class_scores = sum(
@@ -1738,7 +2249,8 @@ class InteractionDetector(AbstractContextManager):
         n_bagged_samples = n_samples
         if self.bag is not None:
             if self.bag.shape[0] != n_samples:  # pragma: no cover
-                raise ValueError("bag should be len(n_samples)")
+                msg = "bag should be len(n_samples)"
+                raise ValueError(msg)
             n_bagged_samples = np.count_nonzero(self.bag)
 
         init_scores = self.init_scores
@@ -1748,38 +2260,47 @@ class InteractionDetector(AbstractContextManager):
                 init_scores = init_scores.copy()
 
             if init_scores.shape[0] != n_bagged_samples:  # pragma: no cover
-                raise ValueError(
-                    "init_scores should have the same length as the number of non-zero bag entries"
-                )
+                msg = "init_scores should have the same length as the number of non-zero bag entries"
+                raise ValueError(msg)
 
             if n_class_scores == 1:
                 if init_scores.ndim != 1:  # pragma: no cover
-                    raise ValueError(
-                        f"init_scores should have ndim == 1 for regression or binary classification"
-                    )
+                    msg = "init_scores should have ndim == 1 for regression or binary classification"
+                    raise ValueError(msg)
             else:
                 if init_scores.ndim != 2:  # pragma: no cover
-                    raise ValueError(
-                        f"init_scores should have ndim == 2 for multiclass"
-                    )
+                    msg = "init_scores should have ndim == 2 for multiclass"
+                    raise ValueError(msg)
                 if init_scores.shape[1] != n_class_scores:  # pragma: no cover
-                    raise ValueError(f"init_scores should have {n_class_scores} scores")
+                    msg = f"init_scores should have {n_class_scores} scores"
+                    raise ValueError(msg)
+
+        intercept = self.intercept
+        if intercept is not None:
+            if len(intercept) != n_class_scores:  # pragma: no cover
+                msg = f"intercept should have {n_class_scores} scores"
+                raise ValueError(msg)
+
+            if not intercept.flags.c_contiguous:
+                # intercept could be a slice that has a stride.  We need contiguous for caling into C
+                intercept = intercept.copy()
 
         flags = self.create_interaction_flags
-        if not native.approximates:
-            flags |= Native.CreateInteractionFlags_DisableApprox
+        if native.approximates:
+            flags |= Native.CreateInteractionFlags_UseApprox
 
         # Allocate external resources
         interaction_handle = ct.c_void_p(0)
 
         return_code = native._unsafe.CreateInteractionDetector(
             Native._make_pointer(self.dataset, np.ubyte),
+            Native._make_pointer(intercept, np.float64, 1, True),
             Native._make_pointer(self.bag, np.int8, 1, True),
             Native._make_pointer(
                 init_scores, np.float64, 1 if n_class_scores == 1 else 2, True
             ),
             flags,
-            native.acceleration,
+            self.acceleration,
             self.objective.encode("ascii"),
             Native._make_pointer(self.experimental_params, np.float64, 1, True),
             ct.byref(interaction_handle),
@@ -1808,7 +2329,15 @@ class InteractionDetector(AbstractContextManager):
         _log.info("Deallocation interaction end")
 
     def calc_interaction_strength(
-        self, feature_idxs, calc_interaction_flags, max_cardinality, min_samples_leaf
+        self,
+        feature_idxs,
+        calc_interaction_flags,
+        max_cardinality,
+        min_samples_leaf,
+        min_hessian,
+        reg_alpha,
+        reg_lambda,
+        max_delta_step,
     ):
         """Provides a strength measurement of a feature interaction. Higher is better."""
         _log.info("Fast interaction strength start")
@@ -1825,6 +2354,10 @@ class InteractionDetector(AbstractContextManager):
             calc_interaction_flags,
             max_cardinality,
             min_samples_leaf,
+            min_hessian,
+            reg_alpha,
+            reg_lambda,
+            max_delta_step,
             ct.byref(strength),
         )
         if return_code:  # pragma: no cover

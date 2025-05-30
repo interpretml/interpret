@@ -5,12 +5,20 @@ EXPORTS
   SetTraceLevel
   GetTraceLevelString
   CleanFloats
+  SafeSum
+  SafeMean
+  SafeStandardDeviation
+  SafeExp
+  SafeLog
   MeasureRNG
   InitRNG
   CopyRNG
   BranchRNG
   GenerateSeed
   GenerateGaussianRandom
+  Shuffle
+  MeasureImpurity
+  Purify
   GetHistogramCutCount
   CutUniform
   CutQuantile
@@ -29,6 +37,7 @@ EXPORTS
   FillRegressionTarget
   CheckDataSet
   ExtractDataSetHeader
+  ExtractNominals
   ExtractBinCounts
   ExtractTargetClasses
   SampleWithoutReplacement

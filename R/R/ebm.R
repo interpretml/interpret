@@ -51,7 +51,7 @@ ebm_classify <- function(
    early_stopping_rounds = 50, 
    early_stopping_tolerance = 1e-4, 
    max_rounds = 5000, 
-   min_samples_leaf = 2, 
+   min_hessian = 1e-3, 
    max_leaves = 3, 
    random_state = 42
 ) {
@@ -104,7 +104,7 @@ ebm_classify <- function(
          terms,
          inner_bags,
          learning_rate,
-         min_samples_leaf, 
+         min_hessian, 
          max_leaves, 
          early_stopping_rounds, 
          early_stopping_tolerance,
@@ -119,7 +119,7 @@ ebm_classify <- function(
       term_scores[[col_name]] <- term_scores[[col_name]] / outer_bags
       # for now, zero all missing values
       term_scores[[col_name]][1] <- 0
-      # for now, zero all unknown values
+      # for now, zero all unseen values
       term_scores[[col_name]][length(term_scores[[col_name]])] <- 0
    }
 
@@ -190,7 +190,7 @@ ebm_show <- function (model, name) {
    }
 
    x <- append(append(low_val, rep(cuts, each = 2)), high_val)
-   # remove the missing bin at the start and remove the unknown bin at the end
+   # remove the missing bin at the start and remove the unseen bin at the end
    y <- rep(term_scores[2:(length(term_scores) - 1)], each = 2)
 
    graphics::plot(x, y, type = "l", lty = 1, main = name, xlab="", ylab="score")

@@ -5,7 +5,7 @@
 NATIVEDIR=./libebm
 
 CXX_STD = CXX17
-PKG_CPPFLAGS= -I$(NATIVEDIR)/pch -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/unzoned -I$(NATIVEDIR)/bridge -I$(NATIVEDIR) -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/objectives -I$(NATIVEDIR)/compute/metrics -DLIBEBM_R -DZONE_cpu
+PKG_CPPFLAGS= -I$(NATIVEDIR)/pch -I$(NATIVEDIR)/inc -I$(NATIVEDIR)/unzoned -I$(NATIVEDIR)/bridge -I$(NATIVEDIR) -I$(NATIVEDIR)/compute -I$(NATIVEDIR)/compute/objectives -I$(NATIVEDIR)/compute/metrics -DLIBEBM_R
 # TODO test adding the g++/clang flags to PKG_CXXFLAGS.  I think -g0 and -O3 won't work though since the R compile flags already include -g and -O2:
 PKG_CXXFLAGS=$(CXX_VISIBILITY) 
 
@@ -21,6 +21,7 @@ OBJECTS = \
    $(NATIVEDIR)/CutWinsorized.o \
    $(NATIVEDIR)/dataset_shared.o \
    $(NATIVEDIR)/DataSetBoosting.o \
+   $(NATIVEDIR)/DataSetInnerBag.o \
    $(NATIVEDIR)/DataSetInteraction.o \
    $(NATIVEDIR)/DetermineLinkFunction.o \
    $(NATIVEDIR)/debug_ebm.o \
@@ -33,14 +34,18 @@ OBJECTS = \
    $(NATIVEDIR)/interpretable_numerics.o \
    $(NATIVEDIR)/PartitionOneDimensionalBoosting.o \
    $(NATIVEDIR)/PartitionRandomBoosting.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalBoosting.o \
-   $(NATIVEDIR)/PartitionTwoDimensionalInteraction.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalCorner.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalFull.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalTree.o \
+   $(NATIVEDIR)/PartitionMultiDimensionalStraight.o \
+   $(NATIVEDIR)/Purify.o \
    $(NATIVEDIR)/RandomDeterministic.o \
    $(NATIVEDIR)/random.o \
    $(NATIVEDIR)/sampling.o \
-   $(NATIVEDIR)/InnerBag.o \
+   $(NATIVEDIR)/SubsetInnerBag.o \
    $(NATIVEDIR)/Tensor.o \
    $(NATIVEDIR)/TensorTotalsBuild.o \
+   $(NATIVEDIR)/TermInnerBag.o \
    $(NATIVEDIR)/unzoned/logging.o \
    $(NATIVEDIR)/unzoned/unzoned.o \
    $(NATIVEDIR)/compute/cpu_ebm/cpu_64.o \

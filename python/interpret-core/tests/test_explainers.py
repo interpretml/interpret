@@ -3,14 +3,16 @@
 
 import warnings
 
+# from interpret.blackbox import PermutationImportance
+import pytest
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-from .tutils import synthetic_classification, get_all_explainers
-from .tutils import assert_valid_explanation, assert_valid_model_explainer
-
-# from interpret.blackbox import PermutationImportance
-
-import pytest
+from .tutils import (
+    assert_valid_explanation,
+    assert_valid_model_explainer,
+    get_all_explainers,
+    synthetic_classification,
+)
 
 
 @pytest.mark.slow
@@ -26,18 +28,13 @@ def test_spec_synthetic():
     regression_model.fit(data["train"]["X"], data["train"]["y"])
 
     for explainer_class, is_classification in all_explainers:
-        # if explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
-        #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
-        if explainer_class.explainer_type == "blackbox":
-            if is_classification:
-                explainer = explainer_class(binary_model, data["train"]["X"])
-            else:
-                explainer = explainer_class(regression_model, data["train"]["X"])
-        elif explainer_class.explainer_type == "model":
+        if explainer_class.explainer_type == "model":
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
             assert_valid_model_explainer(explainer, data["test"]["X"].head())
-        elif explainer_class.explainer_type == "specific":
+        # elif explainer_class == PermutationImportance:  # TODO should true labels be passed in the constructor here?
+        #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
+        elif explainer_class.explainer_type in ("blackbox", "specific"):
             if is_classification:
                 explainer = explainer_class(binary_model, data["train"]["X"])
             else:
@@ -50,7 +47,8 @@ def test_spec_synthetic():
             else:
                 explainer = explainer_class(regression_model)
         else:
-            raise Exception("Not supported explainer type.")
+            msg = "Not supported explainer type."
+            raise Exception(msg)
 
         if "local" in explainer.available_explanations:
             # With labels

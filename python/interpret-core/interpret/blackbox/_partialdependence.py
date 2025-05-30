@@ -1,13 +1,13 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
 import numpy as np
-from ..utils._explanation import gen_name_from_class, gen_global_selector
 
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_x import preclean_X
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 def _unique_grid_points(values):
@@ -18,8 +18,7 @@ def _unique_grid_points(values):
 
 def _percentile_grid_points(values, num_points=10):
     percentiles = np.linspace(0, 100, num=num_points)
-    grid_points = np.percentile(values, percentiles)
-    return grid_points
+    return np.percentile(values, percentiles)
 
 
 # def _equal_spaced_grid_points(values, num_points=10):
@@ -37,11 +36,7 @@ def _gen_pdp(
     num_ice_samples=10,
 ):
     num_uniq_vals = len(np.unique(X[:, col_idx]))
-    if (
-        feature_type == "nominal"
-        or feature_type == "ordinal"
-        or num_uniq_vals <= num_points
-    ):
+    if feature_type in ("nominal", "ordinal") or num_uniq_vals <= num_points:
         grid_points = _unique_grid_points(X[:, col_idx])
         values, counts = np.unique(X[:, col_idx], return_counts=True)
     else:
@@ -108,17 +103,21 @@ class PartialDependence(ExplainerMixin):
         data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes, _ = determine_classes(model, data, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass PDP not supported")
+        if n_classes >= 3:
+            msg = "multiclass PDP not supported"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data(
             data, n_samples, feature_names, feature_types, False, 0
         )
 
+        # Fortran ordered float data is faster since we go by columns, so use that
+        data = data.astype(np.float64, order="F", copy=False)
+
         pdps = []
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
-        for col_idx, feature in enumerate(self.feature_names_in_):
+        for col_idx, _feature in enumerate(self.feature_names_in_):
             feature_type = self.feature_types_in_[col_idx]
             pdp = _gen_pdp(
                 data,
@@ -131,7 +130,7 @@ class PartialDependence(ExplainerMixin):
             pdps.append(pdp)
 
             X_col = data[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         # TODO: we can probably extract the data in pdps_ to be less opaque
         # to this class and construct the JSONable data later
@@ -153,7 +152,7 @@ class PartialDependence(ExplainerMixin):
         data_dicts = []
         feature_list = []
         density_list = []
-        for col_idx, feature in enumerate(self.feature_names_in_):
+        for col_idx, _feature in enumerate(self.feature_names_in_):
             pdp = self.pdps_[col_idx]
             feature_dict = {
                 "feature_values": pdp["values"],
@@ -246,7 +245,7 @@ class PDPExplanation(ExplanationMixin):
         Returns:
             A Plotly figure.
         """
-        from ..visual.plot import plot_line, plot_bar
+        from ..visual.plot import plot_bar, plot_line
 
         data_dict = self.data(key)
         if data_dict is None:
@@ -256,10 +255,11 @@ class PDPExplanation(ExplanationMixin):
         feature_name = self.feature_names[key]
         if feature_type == "continuous":
             figure = plot_line(data_dict, title=feature_name)
-        elif feature_type == "nominal" or feature_type == "ordinal":
+        elif feature_type in ("nominal", "ordinal"):
             figure = plot_bar(data_dict, title=feature_name)
         else:
-            raise Exception("Feature type {0} is not supported.".format(feature_type))
+            msg = f"Feature type {feature_type} is not supported."
+            raise Exception(msg)
 
         figure["layout"]["yaxis1"].update(title="Average Response")
         return figure

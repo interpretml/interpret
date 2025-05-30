@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 import numpy as np
-
 from interpret.utils._clean_simple import clean_dimensions
 
 

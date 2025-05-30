@@ -1,18 +1,18 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import subprocess
-import os
 import glob
+import os
 import shutil
-from distutils.command.build import build
-from distutils.command.install import install
+import subprocess
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
+from setuptools.command.build import build
+from setuptools.command.install import install
 from setuptools.command.sdist import sdist
 
 # NOTE: Version is replaced by a regex script.
-version = "0.5.0"
+version = "0.6.10"
 
 
 def _copy_native_code_to_setup():
@@ -33,11 +33,9 @@ def _copy_native_code_to_setup():
             shutil.copy(
                 os.path.join(root_path, file_name), os.path.join(sym_path, file_name)
             )
-    else:  # Otherwise, ensure that native code exists for setup.py.
-        if not os.path.exists(target_shared_path):
-            raise Exception(
-                "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
-            )
+    elif not os.path.exists(target_shared_path):
+        msg = "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
+        raise Exception(msg)
 
 
 def build_libebm():
@@ -92,7 +90,9 @@ def build_vis_if_needed():
 
     # JavaScript compile
     js_path = os.path.join(script_path, "..", "..", "shared", "vis")
-    subprocess.run("npm install && npm run build-prod", cwd=js_path, shell=True)
+    subprocess.run(
+        "npm install && npm run build-prod", cwd=js_path, shell=True, check=False
+    )
 
     js_bundle_src = os.path.join(js_path, "dist", "interpret-inline.js")
     os.makedirs(os.path.dirname(js_bundle_dest), exist_ok=True)
@@ -193,6 +193,8 @@ https://github.com/interpretml/interpret
             "root/bld/lib/libebm_win_x64_debug.pdb",
             "root/bld/lib/libebm_linux_x64.so",
             "root/bld/lib/libebm_linux_x64_debug.so",
+            "root/bld/lib/libebm_linux_arm.so",
+            "root/bld/lib/libebm_linux_arm_debug.so",
             "root/bld/lib/libebm_mac_x64.dylib",
             "root/bld/lib/libebm_mac_x64_debug.dylib",
             "root/bld/lib/libebm_mac_arm.dylib",
@@ -207,11 +209,10 @@ https://github.com/interpretml/interpret
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
@@ -238,8 +239,7 @@ https://github.com/interpretml/interpret
         ],
     },
     install_requires=[
-        "numpy>=1.11.1",
-        "scipy>=0.18.1",
+        "numpy>=1.25",
         "pandas>=0.19.2",
         "scikit-learn>=0.18.1",
         "joblib>=0.11",
@@ -258,26 +258,25 @@ https://github.com/interpretml/interpret
         "linear": [],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
+        "aplr": ["aplr>=10.6.1"],
         # Dash
         "dash": [
-            # dash 2.* removed the dependencies on: dash-html-components, dash-core-components, dash-table
-            "dash>=1.0.0",
-            "dash-core-components>=1.0.0",  # dash 2.* removes the need for this dependency
-            "dash-html-components>=1.0.0",  # dash 2.* removes the need for this dependency
-            "dash-table>=4.1.0",  # dash 2.* removes the need for this dependency
+            "dash>=2.0.0,<3.0.0",
             "dash-cytoscape>=0.1.1",
             "gevent>=1.3.6",
             "requests>=2.19.0",
         ],
         # Testing
         "testing": [
+            "scipy>=0.18.1",
+            "scikit-learn>=1.0.0",
             "pytest>=4.3.0",
             "pytest-runner>=4.4",
             "pytest-xdist>=1.29",
             "nbconvert>=5.4.1",
             "selenium>=3.141.0",
             "pytest-cov>=2.6.1",
-            "flake8>=3.7.7",
+            "ruff>=0.1.2",
             "jupyter>=1.0.0",
             "ipywidgets>=7.4.2",
         ],

@@ -19,11 +19,27 @@ check_install() {
    l1_tmp_path_unsanitized="$1"
    l1_package="$2"
    
+   SUDO_CMD=""
+   if [ "$(id -u)" -ne 0 ]; then
+      SUDO_CMD="sudo"
+   fi
+
+   if command -v apt-get >/dev/null; then
+      PM_UPDATE="$SUDO_CMD apt-get --yes update"
+      PM_INSTALL="$SUDO_CMD apt-get --yes install"
+   elif command -v dnf >/dev/null; then
+      g_is_updated=1
+      PM_INSTALL="$SUDO_CMD dnf -y install"
+   else
+      echo "No supported package manager found!"
+      exit 1
+   fi
+
    if [ ! -f "$l1_tmp_path_unsanitized/$l1_package.chk" ]; then
       printf "%s\n" "Installing $l1_package"
 
       if [ "$g_is_updated" -eq 0 ]; then 
-         sudo apt --yes update
+         $PM_UPDATE
          l1_ret_code=$?
          if [ $l1_ret_code -ne 0 ]; then 
             exit $l1_ret_code
@@ -32,7 +48,7 @@ check_install() {
          g_is_updated=1
       fi
 
-      sudo apt --yes install "$l1_package"
+      $PM_INSTALL "$l1_package"
       l1_ret_code=$?
       if [ $l1_ret_code -ne 0 ]; then 
          exit $l1_ret_code
@@ -329,6 +345,7 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/CutWinsorized.cpp" -o "$tmp_path/CutWinsorized.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/dataset_shared.cpp" -o "$tmp_path/dataset_shared.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetBoosting.cpp" -o "$tmp_path/DataSetBoosting.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInnerBag.cpp" -o "$tmp_path/DataSetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DataSetInteraction.cpp" -o "$tmp_path/DataSetInteraction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/DetermineLinkFunction.cpp" -o "$tmp_path/DetermineLinkFunction.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/debug_ebm.cpp" -o "$tmp_path/debug_ebm.o"
@@ -341,14 +358,18 @@ if [ $is_conda -eq 1 ]; then
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/interpretable_numerics.cpp" -o "$tmp_path/interpretable_numerics.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionOneDimensionalBoosting.cpp" -o "$tmp_path/PartitionOneDimensionalBoosting.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionRandomBoosting.cpp" -o "$tmp_path/PartitionRandomBoosting.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalBoosting.cpp" -o "$tmp_path/PartitionTwoDimensionalBoosting.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionTwoDimensionalInteraction.cpp" -o "$tmp_path/PartitionTwoDimensionalInteraction.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalCorner.cpp" -o "$tmp_path/PartitionMultiDimensionalCorner.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalFull.cpp" -o "$tmp_path/PartitionMultiDimensionalFull.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalTree.cpp" -o "$tmp_path/PartitionMultiDimensionalTree.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/PartitionMultiDimensionalStraight.cpp" -o "$tmp_path/PartitionMultiDimensionalStraight.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Purify.cpp" -o "$tmp_path/Purify.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/RandomDeterministic.cpp" -o "$tmp_path/RandomDeterministic.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/random.cpp" -o "$tmp_path/random.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/sampling.cpp" -o "$tmp_path/sampling.o"
-   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/InnerBag.cpp" -o "$tmp_path/InnerBag.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/SubsetInnerBag.cpp" -o "$tmp_path/SubsetInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/Tensor.cpp" -o "$tmp_path/Tensor.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TensorTotalsBuild.cpp" -o "$tmp_path/TensorTotalsBuild.o"
+   ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/TermInnerBag.cpp" -o "$tmp_path/TermInnerBag.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/unzoned/logging.cpp" -o "$tmp_path/logging.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/unzoned/unzoned.cpp" -o "$tmp_path/unzoned.o"
    ${CXX} -c ${CPPFLAGS} ${CXXFLAGS} ${extras} "$code_path/compute/cpu_ebm/cpu_64.cpp" -o "$tmp_path/cpu_64.o"
@@ -365,6 +386,7 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/CutWinsorized.o" \
    "$tmp_path/dataset_shared.o" \
    "$tmp_path/DataSetBoosting.o" \
+   "$tmp_path/DataSetInnerBag.o" \
    "$tmp_path/DataSetInteraction.o" \
    "$tmp_path/DetermineLinkFunction.o" \
    "$tmp_path/debug_ebm.o" \
@@ -377,14 +399,18 @@ if [ $is_conda -eq 1 ]; then
    "$tmp_path/interpretable_numerics.o" \
    "$tmp_path/PartitionOneDimensionalBoosting.o" \
    "$tmp_path/PartitionRandomBoosting.o" \
-   "$tmp_path/PartitionTwoDimensionalBoosting.o" \
-   "$tmp_path/PartitionTwoDimensionalInteraction.o" \
+   "$tmp_path/PartitionMultiDimensionalCorner.o" \
+   "$tmp_path/PartitionMultiDimensionalFull.o" \
+   "$tmp_path/PartitionMultiDimensionalTree.o" \
+   "$tmp_path/PartitionMultiDimensionalStraight.o" \
+   "$tmp_path/Purify.o" \
    "$tmp_path/RandomDeterministic.o" \
    "$tmp_path/random.o" \
    "$tmp_path/sampling.o" \
-   "$tmp_path/InnerBag.o" \
+   "$tmp_path/SubsetInnerBag.o" \
    "$tmp_path/Tensor.o" \
    "$tmp_path/TensorTotalsBuild.o" \
+   "$tmp_path/TermInnerBag.o" \
    "$tmp_path/logging.o" \
    "$tmp_path/unzoned.o" \
    "$tmp_path/cpu_64.o" \
@@ -407,7 +433,7 @@ all_args="$all_args -Wformat=2"
 all_args="$all_args -Wno-format-nonliteral"
 all_args="$all_args -Wno-parentheses"
 all_args="$all_args -fvisibility=hidden -fvisibility-inlines-hidden"
-all_args="$all_args -fno-math-errno -fno-trapping-math"
+all_args="$all_args -fno-math-errno -fno-trapping-math -fno-fast-math -ffp-contract=off"
 # TODO: once we have highly efficient tightly looped code, try no -fpic and see if that makes better code.  The compiler can save a register in this case. See https://akkadia.org/drepper/dsohowto.pdf
 # TODO: check no-plt compiler option
 all_args="$all_args -fpic"
@@ -472,13 +498,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/default/libebm"
       bin_file="libebm.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_default_build_log.txt"
-      specific_args="$all_args -DNDEBUG -O3 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -DNDEBUG -O3"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
@@ -497,13 +522,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/x64/libebm"
       bin_file="libebm_linux_x64.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_x64_build_log.txt"
-      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -DNDEBUG -O3 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" "$is_asm"
@@ -524,13 +548,12 @@ if [ "$os_type" = "Linux" ]; then
       bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/x64/libebm"
       bin_file="libebm_linux_x64_debug.so"
       g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_x64_build_log.txt"
-      specific_args="$all_args -march=core2 -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32 -Wl,--wrap=memcpy -Wl,--wrap=exp -Wl,--wrap=log -Wl,--wrap=log2,--wrap=pow,--wrap=expf,--wrap=logf"
+      specific_args="$all_args -march=core2 -m64 -O1 -DBRIDGE_AVX2_32 -DBRIDGE_AVX512F_32"
    
       g_all_object_files_sanitized=""
       g_compile_out_full=""
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0
@@ -557,7 +580,6 @@ if [ "$os_type" = "Linux" ]; then
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0
@@ -584,11 +606,57 @@ if [ "$os_type" = "Linux" ]; then
 
       make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
       check_install "$tmp_path_unsanitized" "g++-multilib"
-      compile_file "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized"/special/linux_wrap_functions.cpp "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx2 -mfma" "$src_path_unsanitized/compute/avx2_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $compute_args -mavx512f" "$src_path_unsanitized/compute/avx512f_ebm" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
+      link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+   fi
+
+   if [ $release_arm -eq 1 ]; then
+      ########################## Linux release|arm
+
+      printf "%s\n" "Compiling libebm with $cpp_compiler for Linux release|arm"
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/release/linux/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/release/linux/arm/libebm"
+      bin_file="libebm_linux_arm.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_release_linux_arm_build_log.txt"
+      specific_args="$all_args -DNDEBUG -O3"
+      
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" "$is_asm"
+      compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" "$is_asm"
+      link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
+      printf "%s\n" "$g_compile_out_full"
+      printf "%s\n" "$g_compile_out_full" > "$g_log_file_unsanitized"
+      copy_bin_files "$bin_path_unsanitized" "$bin_file" "$staging_path_unsanitized"
+      copy_asm_files "$obj_path_unsanitized" "$bld_path_unsanitized" "$staging_path_unsanitized/$bin_file" "linux_arm_release" "$is_asm"
+   fi
+
+   if [ $debug_arm -eq 1 ]; then
+      ########################## Linux debug|arm
+      printf "%s\n" "Compiling libebm with $cpp_compiler for Linux debug|arm"
+
+      obj_path_unsanitized="$tmp_path_unsanitized/gcc/obj/debug/linux/arm/libebm"
+      bin_path_unsanitized="$tmp_path_unsanitized/gcc/bin/debug/linux/arm/libebm"
+      bin_file="libebm_linux_arm_debug.so"
+      g_log_file_unsanitized="$obj_path_unsanitized/libebm_debug_linux_arm_build_log.txt"
+      specific_args="$all_args -O1"
+      
+      g_all_object_files_sanitized=""
+      g_compile_out_full=""
+
+      make_paths "$obj_path_unsanitized" "$bin_path_unsanitized"
+      compile_directory "$cpp_compiler" "$specific_args $unzoned_args" "$src_path_unsanitized/unzoned" "$obj_path_unsanitized" 0
+      compile_directory "$cpp_compiler" "$specific_args $compute_args" "$src_path_unsanitized/compute/cpu_ebm" "$obj_path_unsanitized" 0
       compile_directory "$cpp_compiler" "$specific_args $main_args" "$src_path_unsanitized" "$obj_path_unsanitized" 0
       link_file "$cpp_compiler" "$link_args $specific_args" "$bin_path_unsanitized" "$bin_file"
       printf "%s\n" "$g_compile_out_full"

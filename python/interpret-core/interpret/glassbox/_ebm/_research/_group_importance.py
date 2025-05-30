@@ -5,6 +5,7 @@ features or terms and append them to Global Explanations.
 
 A term denotes both single features and interactions (pairs).
 """
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -35,18 +36,21 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
             try:
                 term_group_indices.append(ebm_term_names.index(term))
             except ValueError:
-                raise ValueError(f"Term '{term}' not found.")
+                msg = f"Term '{term}' not found."
+                raise ValueError(msg)
         elif isinstance(term, int) and 0 <= term < len(ebm_term_names):
             term_group_indices.append(term)
         else:
-            raise ValueError(f"Term '{term}' is not a string or a valid integer.")
+            msg = f"Term '{term}' is not a string or a valid integer."
+            raise ValueError(msg)
 
     if len(term_group_indices) == 0:
-        raise ValueError("term_list does not contain any valid terms.")
+        msg = "term_list does not contain any valid terms."
+        raise ValueError(msg)
 
     # For multiclass we take the average of contributions per class
     # TODO this is consistent to what Interpret is doing but might be changed
-    if hasattr(ebm, "classes_") and 2 < len(ebm.classes_):
+    if hasattr(ebm, "classes_") and len(ebm.classes_) > 2:
         contributions = np.average(np.abs(contributions), axis=-1)
 
     abs_sum_per_row = np.empty(len(contributions), np.float64)
@@ -78,7 +82,8 @@ def _get_group_name(term_list, ebm_term_names):
                 ebm_term_names[term] if len(name) == 0 else ", " + ebm_term_names[term]
             )
         else:
-            raise ValueError(f"Term '{term}' is not a string or a valid integer.")
+            msg = f"Term '{term}' is not a string or a valid integer."
+            raise ValueError(msg)
     return name
 
 
@@ -114,16 +119,15 @@ def append_group_importance(
 
     if global_exp is not None:
         if global_exp.explanation_type != "global":
-            raise ValueError(
-                f"The provided explanation is {global_exp.explanation_type} but a global explanation is expected."
-            )
-        elif (
+            msg = f"The provided explanation is {global_exp.explanation_type} but a global explanation is expected."
+            raise ValueError(msg)
+        if (
             global_exp._internal_obj is None
             or global_exp._internal_obj["overall"] is None
         ):
-            raise ValueError("The global explanation object is incomplete.")
-        else:
-            global_explanation = global_exp
+            msg = "The global explanation object is incomplete."
+            raise ValueError(msg)
+        global_explanation = global_exp
     else:
         global_explanation = ebm.explain_global(global_exp_name)
 
@@ -131,9 +135,8 @@ def append_group_importance(
         group_name = _get_group_name(term_list, ebm.term_names_)
 
     if group_name in global_explanation._internal_obj["overall"]["names"]:
-        raise ValueError(
-            f"The group {group_name} is already in the global explanation."
-        )
+        msg = f"The group {group_name} is already in the global explanation."
+        raise ValueError(msg)
 
     group_importance = compute_group_importance(term_list, ebm, X, contributions)
 
@@ -160,9 +163,11 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
        a dict where each entry is in the form 'term_name: term_importance'
     """
     if not isinstance(term_groups_list, list):
-        raise ValueError("term_groups_list should be a list.")
-    elif len(term_groups_list) == 0:
-        raise ValueError("term_groups_list should be a non-empty list.")
+        msg = "term_groups_list should be a list."
+        raise ValueError(msg)
+    if len(term_groups_list) == 0:
+        msg = "term_groups_list should be a non-empty list."
+        raise ValueError(msg)
 
     if contributions is None:
         contributions = ebm.eval_terms(X)
@@ -185,10 +190,9 @@ def get_group_and_individual_importances(term_groups_list, ebm, X, contributions
                 term_group, ebm, X, contributions
             )
 
-    sorted_dict = {
+    return {
         k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)
     }
-    return sorted_dict
 
 
 def get_individual_importances(ebm, X, contributions=None):
@@ -211,10 +215,9 @@ def get_individual_importances(ebm, X, contributions=None):
     for term in ebm.term_names_:
         dict[term] = compute_group_importance([term], ebm, X, contributions)
 
-    sorted_dict = {
+    return {
         k: v for k, v in sorted(dict.items(), key=lambda item: item[1], reverse=True)
     }
-    return sorted_dict
 
 
 def get_importance_per_top_groups(ebm, X):
@@ -241,7 +244,7 @@ def get_importance_per_top_groups(ebm, X):
     # Create groups of terms starting with the most important and adding each subsequent term
     groups_list = []
     temp_group = []
-    for key in individual_importances.keys():
+    for key in individual_importances:
         if len(temp_group) > 0:
             temp_group = list(groups_list[-1])
         temp_group.append(key)
@@ -255,15 +258,13 @@ def get_importance_per_top_groups(ebm, X):
         output_dict[group_name] = compute_group_importance(group, ebm, X, contributions)
         group_index += 1
 
-    df = pd.DataFrame(
+    return pd.DataFrame(
         {
             "groups": output_dict.keys(),
             "terms_per_group": groups_list,
             "importances": output_dict.values(),
         }
     )
-
-    return df
 
 
 def plot_importance_per_top_groups(ebm, X):

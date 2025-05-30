@@ -4,154 +4,138 @@
 import logging
 
 import numpy as np
+from itertools import repeat
+from operator import itemgetter, is_not
 
+from ...utils._clean_x import unify_columns, categorical_encode
 from ...utils._native import Native
-from ...utils._clean_x import unify_columns
 
 _log = logging.getLogger(__name__)
 
 
 _none_list = [None]
-_none_ndarray = np.array(None)
+_repeat_none = repeat(None)
+_slice_remove_last = slice(None, -1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-    # called under: predict
+    # TODO: modify this function to do a single sweep of the term_features where
+    # we cache extracting the raw data from the dataframe and also cache the discretized
+    # values using a dict with keys (feature_index, id(feature_bins)).
 
-    # prior to calling this function, call deduplicate_bins which will eliminate extra work in this function
+    # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
 
-    # this generator function returns data in whatever order it thinks is most efficient.  Normally for
+    # This generator function returns data as the feature data within terms gets read.  Normally for
     # mains it returns them in order, but pairs will be returned as their data completes and they can
     # be mixed in with mains.  So, if we request data for [(0), (1), (2), (3), (4), (1, 3)] the return sequence
-    # could be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
+    # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
     # For additive models the results can be processed in any order, so this imposes no penalities on us.
 
-    _log.info("eval_terms")
-
-    requests = []
-    waiting = dict()
+    waiting = {}
+    # term_features are guaranteed to be ordered by: len(feature_idxes), sorted(feature_idxes)
+    # Which typically means that the mains are processed in order first
+    # by feature_idx.
     for term_idx, feature_idxs in enumerate(term_features):
         # the first len(feature_idxs) items hold the binned data that we get back as it arrives
-        requirements = _none_list * (len(feature_idxs) + 1)
+        num_features = len(feature_idxs)
+        requirements = _none_list * (num_features + 1)
         requirements[-1] = term_idx
         for feature_idx in feature_idxs:
-            bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), len(feature_idxs)) - 1]
-            if isinstance(feature_bins, dict):
-                # categorical feature
-                request = (feature_idx, feature_bins)
-                key = (feature_idx, id(feature_bins))
-            else:
-                # continuous feature
-                request = (feature_idx, None)
-                key = feature_idx
-            waiting_list = waiting.get(key, None)
+            waiting_list = waiting.get(feature_idx)
             if waiting_list is None:
-                requests.append(request)
-                waiting[key] = [requirements]
+                waiting[feature_idx] = [requirements]
             else:
                 waiting_list.append(requirements)
 
     native = Native.get_native_singleton()
 
-    for (column_feature_idx, _), (_, X_col, column_categories, bad) in zip(
-        requests,
-        unify_columns(X, requests, feature_names_in, feature_types_in, None, True),
-    ):
-        if n_samples != len(X_col):
-            msg = "The columns of X are mismatched in the number of of samples"
-            _log.error(msg)
-            raise ValueError(msg)
+    get_col = unify_columns(
+        X, n_samples, feature_names_in, feature_types_in, None, False, True
+    )
+    # rely on the guarantee that iterating over dict is by insertion order
+    for column_feature_idx, all_requirements in waiting.items():
+        _, nonmissings, uniques, X_col, bad = get_col(column_feature_idx)
 
-        if column_categories is None:
+        bin_levels = bins[column_feature_idx]
+        max_level = len(bin_levels)
+        binning_completed = _none_list * max_level
+
+        if uniques is None:
             # continuous feature
 
-            if bad is not None:
-                # TODO: we could pass out a bool array instead of objects for this function only
-                bad = bad != _none_ndarray
+            for requirements in all_requirements:
+                term_idx = requirements[-1]
+                feature_idxs = term_features[term_idx]
+                level_idx = min(max_level, len(feature_idxs)) - 1
+                bin_indexes = binning_completed[level_idx]
+                if bin_indexes is None:
+                    bin_indexes = native.discretize(X_col, bin_levels[level_idx])
+                    if bad is not None:
+                        bin_indexes[bad] = -1
+                    binning_completed[level_idx] = bin_indexes
+                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
+                    # TODO: consider making it illegal to duplicate features in terms
+                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
+                    if term_feature_idx == column_feature_idx:
+                        requirements[dimension_idx] = bin_indexes
 
-            if not X_col.flags.c_contiguous:
-                # we requrested this feature, so at some point we're going to call discretize,
-                # which requires contiguous memory
-                X_col = X_col.copy()
-
-            bin_levels = bins[column_feature_idx]
-            max_level = len(bin_levels)
-            binning_completed = _none_list * max_level
-            for requirements in waiting[column_feature_idx]:
-                if len(requirements) != 0:
-                    term_idx = requirements[-1]
-                    feature_idxs = term_features[term_idx]
-                    is_done = True
-                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                        if term_feature_idx == column_feature_idx:
-                            level_idx = min(max_level, len(feature_idxs)) - 1
-                            bin_indexes = binning_completed[level_idx]
-                            if bin_indexes is None:
-                                cuts = bin_levels[level_idx]
-                                bin_indexes = native.discretize(X_col, cuts)
-                                if bad is not None:
-                                    bin_indexes[bad] = -1
-                                binning_completed[level_idx] = bin_indexes
-                            requirements[dimension_idx] = bin_indexes
-                        elif requirements[dimension_idx] is None:
-                            is_done = False
-
-                    if is_done:
-                        yield term_idx, requirements[:-1]
-                        # clear references so that the garbage collector can free them
-                        requirements.clear()
+                if all(map(is_not, requirements, _repeat_none)):
+                    yield term_idx, requirements[_slice_remove_last]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
         else:
             # categorical feature
 
-            if bad is not None:
-                # TODO: we could pass out a single bool (not an array) if these aren't continuous convertible
-                pass  # TODO: improve this handling
+            for requirements in all_requirements:
+                term_idx = requirements[-1]
+                feature_idxs = term_features[term_idx]
+                level_idx = min(max_level, len(feature_idxs)) - 1
+                bin_indexes = binning_completed[level_idx]
+                if bin_indexes is None:
+                    bin_indexes = categorical_encode(
+                        uniques, X_col, nonmissings, bin_levels[level_idx]
+                    )
+                    binning_completed[level_idx] = bin_indexes
+                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
+                    # TODO: consider making it illegal to duplicate features in terms
+                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
+                    if term_feature_idx == column_feature_idx:
+                        requirements[dimension_idx] = bin_indexes
 
-            for requirements in waiting[(column_feature_idx, id(column_categories))]:
-                if len(requirements) != 0:
-                    term_idx = requirements[-1]
-                    feature_idxs = term_features[term_idx]
-                    is_done = True
-                    for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                        if term_feature_idx == column_feature_idx:
-                            # "term_categories is column_categories" since any term in the waiting_list must have
-                            # one of it's elements match this (feature_idx, categories) index, and all items in this
-                            # term need to have the same categories since they came from the same bin_level
-                            requirements[dimension_idx] = X_col
-                        elif requirements[dimension_idx] is None:
-                            is_done = False
-
-                    if is_done:
-                        yield term_idx, requirements[:-1]
-                        # clear references so that the garbage collector can free them
-                        requirements.clear()
+                if all(map(is_not, requirements, _repeat_none)):
+                    yield term_idx, requirements[_slice_remove_last]
+                    # clear references so that the garbage collector can free them
+                    requirements.clear()
 
 
 def ebm_predict_scores(
     X,
     n_samples,
+    init_score,
     feature_names_in,
     feature_types_in,
     bins,
     intercept,
     term_scores,
     term_features,
-    init_score=None,
 ):
-    shape = n_samples
-    if not isinstance(intercept, float) and len(intercept) != 1:
-        shape = (n_samples, len(intercept))
-    sample_scores = np.full(shape, intercept, dtype=np.float64)
+    sample_scores = (
+        np.full(
+            n_samples
+            if isinstance(intercept, float) or len(intercept) == 1
+            else (n_samples, len(intercept)),
+            intercept,
+            np.float64,
+        )
+        if init_score is None
+        else init_score + intercept
+    )
 
-    if 0 < n_samples:
+    if n_samples > 0:
         for term_idx, bin_indexes in eval_terms(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):
             sample_scores += term_scores[term_idx][tuple(bin_indexes)]
-
-    if init_score is not None:
-        sample_scores += init_score
 
     return sample_scores
 
@@ -166,13 +150,15 @@ def ebm_eval_terms(
     term_scores,
     term_features,
 ):
-    if n_scores == 1:
-        shape = (n_samples, len(term_features))
-    else:
-        shape = (n_samples, len(term_features), n_scores)
-    explanations = np.empty(shape, dtype=np.float64)
+    explanations = np.empty(
+        (n_samples, len(term_features))
+        if n_scores == 1
+        else (n_samples, len(term_features), n_scores),
+        np.float64,
+        "F",
+    )
 
-    if 0 < n_samples:
+    if n_samples > 0:
         for term_idx, bin_indexes in eval_terms(
             X, n_samples, feature_names_in, feature_types_in, bins, term_features
         ):

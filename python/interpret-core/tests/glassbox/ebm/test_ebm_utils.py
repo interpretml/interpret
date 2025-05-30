@@ -1,127 +1,88 @@
-from math import ceil, floor
-from interpret.glassbox._ebm._utils import (
-    make_bag,
-    convert_categorical_to_continuous,
-    _create_proportional_tensor,
-    deduplicate_bins,
-)
-from ...tutils import synthetic_regression, adult_classification
-
 import numpy as np
 import pytest
+from interpret.glassbox._ebm._utils import (
+    _create_proportional_tensor,
+    convert_categorical_to_continuous,
+    convert_to_cuts,
+    convert_to_intervals,
+    remove_extra_bins,
+    make_bag,
+)
 
 
-def test_deduplicate_bins():
+def test_remove_extra_bins():
     bins = [
         [{"a": 1, "b": 2}, {"a": 2, "b": 1}, {"b": 2, "a": 1}, {"b": 2, "a": 1}],
         [
-            np.array([1, 2, 3], dtype=np.float64),
             np.array([1, 3, 2], dtype=np.float64),
             np.array([1, 2, 3], dtype=np.float64),
+            np.array([1, 2, 3], dtype=np.float64),
         ],
+        [
+            np.array([9, 8, 7], dtype=np.float64),
+        ],
+        [{"m": 1, "q": 2}],
+        [{"r": 7, "t": 8}, {"r": 7, "t": 8}],
+        [{"one": 1, "two": 2}],
+        [{"never_used": 1, "never_ever": 2}],
+        [],
     ]
 
-    deduplicate_bins(bins)
+    remove_extra_bins([(0, 1, 2, 3, 4), (5,)], bins)
 
     assert len(bins[0]) == 3
-    assert id(bins[0][0]) != id(bins[0][1])
-    assert id(bins[0][0]) == id(bins[0][2])
-    assert id(bins[0][1]) != id(bins[0][2])
+    assert len(bins[1]) == 2
+    assert len(bins[2]) == 1
+    assert len(bins[3]) == 1
+    assert len(bins[4]) == 1
+    assert len(bins[5]) == 1
+    assert len(bins[6]) == 0
+    assert len(bins[7]) == 0
 
-    assert len(bins[1]) == 3
-    assert id(bins[1][0]) != id(bins[1][1])
-    assert id(bins[1][0]) == id(bins[1][2])
-    assert id(bins[1][1]) != id(bins[1][2])
 
-
-@pytest.mark.skip(reason="make_bag test needs to be updated")
-def test_make_bag_regression():
-    data = synthetic_regression()
-
-    X_orig = data["full"]["X"]
-    y_orig = data["full"]["y"]
-
-    X = np.array(X_orig)
-    y = np.array(y_orig)
-
-    w = np.ones_like(y, dtype=np.float64)
-
-    test_size = 0.20
-
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = make_bag(
-        X, y, w, test_size=test_size, random_state=1, is_classification=False
-    )
-
-    num_samples = X.shape[0]
-    num_features = X.shape[1]
-    num_test_expected = ceil(test_size * num_samples)
-    num_train_expected = num_samples - num_test_expected
-
-    assert X_train.shape == (num_features, num_train_expected)
-    assert X_val.shape == (num_features, num_test_expected)
-    assert y_train.shape == (num_train_expected,)
-    assert y_val.shape == (num_test_expected,)
-    assert w_train.shape == (num_train_expected,)
-    assert w_val.shape == (num_test_expected,)
-
-    X_all = np.concatenate((X_train.T, X_val.T))
-    np.array_equal(np.sort(X, axis=0), np.sort(X_all, axis=0))
+def test_conversion_cut_intervals():
+    """Minimal test with roundtrip."""
+    # cuts -> intervals -> cuts
+    for cuts, intervals in [
+        ([1, 2], [(float("-inf"), 1.0), (1.0, 2.0), (2.0, float("inf"))]),
+        ([], [(float("-inf"), float("inf"))]),
+    ]:
+        to_interval = convert_to_intervals(cuts)
+        assert to_interval == intervals
+        cut_rountrip = convert_to_cuts(to_interval)
+        assert cut_rountrip == cuts
 
 
 @pytest.mark.skip(reason="make_bag test needs to be updated")
-def test_make_bag_classification():
-    data = adult_classification()
+def test_make_bag():
+    # TODO: write this test
+    make_bag(y, test_size=0.25, rng=1, is_stratified=False)
 
-    X_orig = data["full"]["X"]
-    y_orig = data["full"]["y"]
 
-    X = np.array(X_orig)
-    y = np.array(y_orig)
+@pytest.mark.skip(reason="make_bag test needs to be updated")
+def test_make_bag_stratified():
+    # TODO: write this test
+    make_bag(y, test_size=0.25, rng=1, is_stratified=True)
 
-    w = np.ones_like(y, dtype=np.float64)
 
-    test_size = 0.20
-
-    X_train, X_val, y_train, y_val, w_train, w_val, _, _ = make_bag(
-        X, y, w, test_size=test_size, random_state=1, is_classification=True
+def test_convert_categorical_to_continuous_none():
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
+        {"ABCD": 1, "EFGH": 2, "IJKL": 1}
     )
+    assert len(cuts) == 0
+    assert mapping == [[0], [], [1, 2, 3]]
+    assert np.isnan(old_min)
+    assert np.isnan(old_max)
 
-    num_samples = X.shape[0]
-    num_features = X.shape[1]
-    num_test_expected = ceil(test_size * num_samples)
-    num_train_expected = num_samples - num_test_expected
 
-    # global guarantee: correct number of overall train/val/weights returned
-    assert X_train.shape == (num_features, num_train_expected)
-    assert X_val.shape == (num_features, num_test_expected)
-    assert y_train.shape == (num_train_expected,)
-    assert y_val.shape == (num_test_expected,)
-    assert w_train.shape == (num_train_expected,)
-    assert w_val.shape == (num_test_expected,)
-
-    X_all = np.concatenate((X_train.T, X_val.T))
-    np.array_equal(np.sort(X, axis=0), np.sort(X_all, axis=0))
-
-    # per class guarantee: train/val count should be no more than one away from ideal
-    class_counts = np.bincount(y)
-    train_class_counts = np.bincount(y_train)
-    val_class_counts = np.bincount(y_val)
-    ideal_training = num_train_expected / num_samples
-    ideal_val = num_test_expected / num_samples
-    for label in set(y):
-        ideal_training_count = ideal_training * class_counts[label]
-        ideal_val_count = ideal_val * class_counts[label]
-
-        assert (
-            train_class_counts[label] == ceil(ideal_training_count)
-            or train_class_counts[label] == floor(ideal_training_count)
-            or train_class_counts[label] == ideal_training_count
-        )
-        assert (
-            val_class_counts[label] == ceil(ideal_val_count)
-            or val_class_counts[label] == floor(ideal_val_count)
-            or val_class_counts[label] == ideal_val_count
-        )
+def test_convert_categorical_to_continuous_single():
+    cuts, mapping, old_min, old_max = convert_categorical_to_continuous(
+        {"10": 1, "+10": 2, "30": 1}
+    )
+    assert len(cuts) == 0
+    assert mapping == [[0], [1, 2], [3]]
+    assert old_min == 10
+    assert old_max == 30
 
 
 def test_convert_categorical_to_continuous_easy():

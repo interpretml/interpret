@@ -1,29 +1,27 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import os
+import tempfile
+
+import pytest
+import requests
 from interpret import (
-    set_show_addr,
     get_show_addr,
+    get_visualize_provider,
+    init_show_server,
+    preserve,
+    set_show_addr,
+    set_visualize_provider,
+    show,
+    show_link,
     shutdown_show_server,
     status_show_server,
 )
-from interpret import (
-    show,
-    init_show_server,
-    preserve,
-    get_visualize_provider,
-    set_visualize_provider,
-)
-from ..tutils import synthetic_classification
 from interpret.glassbox import LogisticRegression
-from interpret import show_link
-
-import requests
-import os
-import tempfile
-import pytest
-
 from interpret.provider import PreserveProvider
+
+from ..tutils import synthetic_classification
 
 
 def test_provider_properties():
@@ -43,8 +41,7 @@ def explanation():
     clf = LogisticRegression()
     clf.fit(data["train"]["X"], data["train"]["y"])
 
-    global_exp = clf.explain_global()
-    return global_exp
+    return clf.explain_global()
 
 
 # TODO: Re-enable on skoperules working with latest scikit learn.
@@ -127,7 +124,7 @@ def test_status_show_server():
 def test_init_show_server(explanation):
     port = 7004
     target_addr = ("127.0.0.1", port)
-    base_url = "proxy/{0}".format(port)
+    base_url = f"proxy/{port}"
 
     init_show_server(addr=target_addr, base_url=base_url, use_relative_links=False)
     show(explanation)
@@ -159,7 +156,7 @@ def test_show_link(explanation):
     actual_url = show_link(explanation)
     expected_id = str(id(explanation))
     status = status_show_server()
-    expected_url = "http://127.0.0.1:{0}/{1}/".format(status["addr"][1], expected_id)
+    expected_url = "http://127.0.0.1:{}/{}/".format(status["addr"][1], expected_id)
 
     assert actual_url == expected_url
 

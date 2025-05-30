@@ -1,16 +1,14 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import pytest
+from itertools import chain, count, repeat
+
 import numpy as np
-
-from itertools import count, repeat, chain
-
-from interpret.utils._preprocessor import construct_bins
-
+import pytest
 from interpret.utils._clean_simple import clean_dimensions, typify_classification
 from interpret.utils._clean_x import preclean_X
 from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimension
+from interpret.utils._preprocessor import construct_bins
 
 
 @pytest.mark.skip(reason="skip this until we have support for missing values")

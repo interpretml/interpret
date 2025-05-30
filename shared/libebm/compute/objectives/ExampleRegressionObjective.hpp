@@ -6,13 +6,12 @@
 
 // TFloat is a wrapper that could hold a double, float, or SIMD intrinsic type. It can also expose GPU operations.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
-template<typename TFloat>
-struct ExampleRegressionObjective : RegressionObjective {
+template<typename TFloat> struct ExampleRegressionObjective : RegressionObjective {
    // Parameters for the OBJECTIVE_BOILERPLATE are:
    //   - this class type
    //   - MINIMIZE_METRIC or MAXIMIZE_METRIC determines which direction the metric should go for early stopping
    //   - Link function type. See libebm.h for a list of available link functions
-   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Link_identity)
+   OBJECTIVE_BOILERPLATE(ExampleRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_identity, true)
 
    // member variables should be of type TFloat
    TFloat m_param0;
@@ -21,8 +20,9 @@ struct ExampleRegressionObjective : RegressionObjective {
    // constexpr values should be static and type double
    static constexpr double Two = 2.0;
 
-   // The constructor parameters following config must match the RegisterObjective parameters in objective_registrations.hpp
-   inline ExampleRegressionObjective(const Config & config, const double param0, const double param1) {
+   // The constructor parameters following config must match the RegisterObjective parameters in
+   // objective_registrations.hpp
+   inline ExampleRegressionObjective(const Config& config, const double param0, const double param1) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }
@@ -78,13 +78,13 @@ struct ExampleRegressionObjective : RegressionObjective {
       return metricSum; // return MSE in this example, but if we wanted to return RMSE we would take the sqrt here
    }
 
-   GPU_DEVICE inline TFloat CalcMetric(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcMetric(const TFloat& score, const TFloat& target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       return error * error;
    }
 
-   GPU_DEVICE inline TFloat CalcGradient(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline TFloat CalcGradient(const TFloat& score, const TFloat& target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factor could be moved to GradientConstant()
@@ -93,7 +93,8 @@ struct ExampleRegressionObjective : RegressionObjective {
    }
 
    // If the loss function doesn't have a second derivative, then delete the CalcGradientHessian function.
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(const TFloat & score, const TFloat & target) const noexcept {
+   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(
+         const TFloat& score, const TFloat& target) const noexcept {
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       // Alternatively, the 2.0 factors could be moved to GradientConstant() and HessianConstant()

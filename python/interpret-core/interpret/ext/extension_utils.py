@@ -1,13 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import sys
 import logging
-from importlib.metadata import entry_points
 import re
-from warnings import warn
+import sys
 import traceback
-
+from importlib.metadata import entry_points
+from warnings import warn
 
 _log = logging.getLogger(__name__)
 
@@ -24,11 +23,12 @@ def _validate_class_name(proposed_class_name):
     # TODO: Support other languages
     match = re.match(r"[a-zA-Z_][a-zA-Z_0-9]+", proposed_class_name)
     if match is None or match.group(0) != proposed_class_name:
-        raise ValueError(
-            "Invalid class name {}. Class names must start with a "
+        msg = (
+            f"Invalid class name {proposed_class_name}. Class names must start with a "
             "letter or an underscore and can continue with letters, "
-            "numbers, and underscores.".format(proposed_class_name)
+            "numbers, and underscores."
         )
+        raise ValueError(msg)
 
 
 def load_class_extensions(current_module, extension_key, extension_class_validator):
@@ -48,26 +48,22 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
         entry_points_group = entry_points_result.select(group=extension_key)
 
     for entrypoint in entry_points_group:
-        _log.debug("processing entrypoint {}".format(extension_key))
+        _log.debug(f"processing entrypoint {extension_key}")
         try:
             extension_class_name = entrypoint.name
             extension_class = entrypoint.load()
             _log.debug(
-                "loading entrypoint key {} with name {} with object {}".format(
-                    extension_key, extension_class_name, extension_class
-                )
+                f"loading entrypoint key {extension_key} with name {extension_class_name} with object {extension_class}"
             )
             _validate_class_name(extension_class_name)
 
             if not extension_class_validator(extension_class):
-                raise ValueError("class {} failed validation.".format(extension_class))
+                msg = f"class {extension_class} failed validation."
+                raise ValueError(msg)
 
             if getattr(current_module, extension_class_name, None) is not None:
-                raise ValueError(
-                    "class name {} already exists for module {}.".format(
-                        extension_class_name, current_module.__name__
-                    )
-                )
+                msg = f"class name {extension_class_name} already exists for module {current_module.__name__}."
+                raise ValueError(msg)
 
             setattr(current_module, extension_class_name, extension_class)
 

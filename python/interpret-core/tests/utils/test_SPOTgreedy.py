@@ -1,7 +1,6 @@
 import numpy as np
-from numpy import random
 from interpret.utils import SPOT_GreedySubsetSelection
-
+from numpy import random
 
 n = 1000
 # source samples
@@ -16,21 +15,14 @@ targetmarginal = np.ones(C.shape[1]) / C.shape[1]
 # uniform target distribution
 
 prototypeIndices, prototypeWeights = SPOT_GreedySubsetSelection(C, targetmarginal, k)
-print("Prototype indices: ", prototypeIndices)
-print("Prototype weights: ", prototypeWeights)
 
-assert (
-    prototypeIndices.shape[0] == k
-), "The number of prototypes chosen is different from argument provided"
-print("Number of chosen prototypes: ", prototypeIndices.shape[0])
-assert (
-    prototypeIndices.shape[0] == prototypeWeights.shape[0]
-), "The prototypes and weights vectors are of different size"
+assert prototypeIndices.shape[0] == k, (
+    "The number of prototypes chosen is different from argument provided"
+)
+assert prototypeIndices.shape[0] == prototypeWeights.shape[0], (
+    "The prototypes and weights vectors are of different size"
+)
 
-assert (
-    np.abs(np.sum(prototypeWeights) - 1) < 1e-10
-), "There is an issue with prototypes weights"
-print(
-    "prototypeWeights corresponds to the weights for each prototype and its sum should be 1. Its sum is ",
-    np.sum(prototypeWeights),
+assert np.abs(np.sum(prototypeWeights) - 1) < 1e-10, (
+    "There is an issue with prototypes weights"
 )

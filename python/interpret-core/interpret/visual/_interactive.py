@@ -1,9 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import sys
 import logging
-from ..provider import AutoVisualizeProvider, PreserveProvider, DashProvider
+import sys
+
+from ..provider import AutoVisualizeProvider, DashProvider, PreserveProvider
 
 _log = logging.getLogger(__name__)
 
@@ -32,9 +33,8 @@ def set_visualize_provider(provider):
     if provider is None or has_render_method:
         _current_module.visualize_provider = provider
     else:  # pragma: no cover
-        raise ValueError(
-            "Object of type {} is not a visualize provider.".format(type(provider))
-        )
+        msg = f"Object of type {type(provider)} is not a visualize provider."
+        raise ValueError(msg)
 
 
 def set_show_addr(addr):
@@ -55,13 +55,11 @@ def get_show_addr():
         Address tuple (ip, port).
     """
     if isinstance(_current_module.visualize_provider, DashProvider):
-        addr = (
+        return (
             _current_module.visualize_provider.app_runner.ip,
             _current_module.visualize_provider.app_runner.port,
         )
-        return addr
-    else:
-        return None
+    return None
 
 
 def shutdown_show_server():
@@ -108,9 +106,7 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
         shutdown_show_server()
 
     _log.info(
-        "Replacing visualize provider: {} with {}".format(
-            type(_current_module.visualize_provider), type(DashProvider)
-        )
+        f"Replacing visualize provider: {type(_current_module.visualize_provider)} with {type(DashProvider)}"
     )
     set_visualize_provider(
         DashProvider.from_address(
@@ -123,14 +119,15 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
         _current_module.visualize_provider.app_runner.ip,
         _current_module.visualize_provider.app_runner.port,
     )
-    _log.info("Running dash provider at {}".format(addr))
+    _log.info(f"Running dash provider at {addr}")
 
 
 def _get_integer_key(key, explanation):
     if key is not None and not isinstance(key, int):
         series = explanation.selector[explanation.selector.columns[0]]
         if key not in series.values:  # pragma: no cover
-            raise ValueError("Key {} not in explanation's selector".format(key))
+            msg = f"Key {key} not in explanation's selector"
+            raise ValueError(msg)
         key = series[series == key].index[0]
 
     return key
@@ -188,8 +185,7 @@ def show_link(explanation, share_tables=None):
     )
 
     try:
-        url = _current_module.visualize_provider.app_runner.display_link(explanation)
-        return url
+        return _current_module.visualize_provider.app_runner.display_link(explanation)
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e
@@ -220,7 +216,7 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         _current_module._preserve_provider.render(
             explanation, key=key, file_name=file_name, **kwargs
         )
-        return None
+        return
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e

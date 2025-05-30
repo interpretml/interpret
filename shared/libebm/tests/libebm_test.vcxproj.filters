@@ -18,6 +18,7 @@
     <ClCompile Include="libebm_test.cpp">
       <Filter>non_tests</Filter>
     </ClCompile>
+    <ClCompile Include="PurifyTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch_test.hpp">

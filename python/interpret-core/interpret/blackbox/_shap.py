@@ -1,13 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
-from ..utils._shap_common import shap_explain_local
+import numpy as np
 
 from ..api.base import ExplainerMixin
-
-import numpy as np
 from ..utils._clean_x import preclean_X
-from ..utils._unify_predict import determine_classes, unify_predict_fn
+from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
+from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 class ShapKernel(ExplainerMixin):
@@ -38,8 +37,9 @@ class ShapKernel(ExplainerMixin):
         data, n_samples = preclean_X(data, feature_names, feature_types)
 
         predict_fn, n_classes, _ = determine_classes(model, data, n_samples)
-        if 3 <= n_classes:
-            raise Exception("multiclass SHAP not supported")
+        if n_classes >= 3:
+            msg = "multiclass SHAP not supported"
+            raise Exception(msg)
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data(

@@ -1,0 +1,229 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.31.92.45157",
+      "templateHash": "8158637657994107736"
+    }
+  },
+  "parameters": {
+    "containerCount": {
+      "type": "int",
+      "defaultValue": 500
+    },
+    "batchSize": {
+      "type": "int",
+      "defaultValue": 100
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "containerImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/azuredocs/aci-helloworld"
+    },
+    "startupScript": {
+      "type": "string"
+    },
+    "experimentId": {
+      "type": "string"
+    },
+    "dbUrl": {
+      "type": "securestring"
+    },
+    "timeout": {
+      "type": "int"
+    },
+    "resourceGroupName": {
+      "type": "string"
+    },
+    "subscriptionId": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "numBatches": "[add(int(div(parameters('containerCount'), parameters('batchSize'))), if(greater(mod(parameters('containerCount'), parameters('batchSize')), 0), 1, 0))]"
+  },
+  "resources": [
+    {
+      "copy": {
+        "name": "containerBatch",
+        "count": "[length(range(0, variables('numBatches')))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('containerBatch-{0}', range(0, variables('numBatches'))[copyIndex()])]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "startIndex": {
+            "value": "[mul(range(0, variables('numBatches'))[copyIndex()], parameters('batchSize'))]"
+          },
+          "endIndex": {
+            "value": "[min(mul(add(range(0, variables('numBatches'))[copyIndex()], 1), parameters('batchSize')), parameters('containerCount'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "containerImage": {
+            "value": "[parameters('containerImage')]"
+          },
+          "startupScript": {
+            "value": "[parameters('startupScript')]"
+          },
+          "experimentId": {
+            "value": "[parameters('experimentId')]"
+          },
+          "dbUrl": {
+            "value": "[parameters('dbUrl')]"
+          },
+          "timeout": {
+            "value": "[parameters('timeout')]"
+          },
+          "resourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          },
+          "subscriptionId": {
+            "value": "[parameters('subscriptionId')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.31.92.45157",
+              "templateHash": "14659000046467544549"
+            }
+          },
+          "parameters": {
+            "startIndex": {
+              "type": "int"
+            },
+            "endIndex": {
+              "type": "int"
+            },
+            "containerImage": {
+              "type": "string"
+            },
+            "location": {
+              "type": "string"
+            },
+            "startupScript": {
+              "type": "string"
+            },
+            "experimentId": {
+              "type": "string"
+            },
+            "dbUrl": {
+              "type": "securestring"
+            },
+            "timeout": {
+              "type": "int"
+            },
+            "resourceGroupName": {
+              "type": "string"
+            },
+            "subscriptionId": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "containerGroup",
+                "count": "[length(range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex'))))]"
+              },
+              "type": "Microsoft.ContainerInstance/containerGroups",
+              "apiVersion": "2023-05-01",
+              "name": "[format('containerGroup-{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()])]",
+              "location": "[parameters('location')]",
+              "tags": {
+                "environment": "dev"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "containers": [
+                  {
+                    "name": "[format('container-{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()])]",
+                    "properties": {
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "requests": {
+                          "cpu": 4,
+                          "memoryInGB": 16
+                        }
+                      },
+                      "environmentVariables": [
+                        {
+                          "name": "EXPERIMENT_ID",
+                          "value": "[parameters('experimentId')]"
+                        },
+                        {
+                          "name": "RUNNER_ID",
+                          "value": "[format('{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()])]"
+                        },
+                        {
+                          "name": "DB_URL",
+                          "secureValue": "[parameters('dbUrl')]"
+                        },
+                        {
+                          "name": "TIMEOUT",
+                          "value": "[format('{0}', parameters('timeout'))]"
+                        },
+                        {
+                          "name": "RESOURCE_GROUP_NAME",
+                          "value": "[parameters('resourceGroupName')]"
+                        },
+                        {
+                          "name": "CONTAINER_GROUP_NAME",
+                          "value": "[format('containerGroup-{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()])]"
+                        },
+                        {
+                          "name": "SUBSCRIPTION_ID",
+                          "value": "[parameters('subscriptionId')]"
+                        }
+                      ],
+                      "command": [
+                        "/bin/sh",
+                        "-c",
+                        "[parameters('startupScript')]"
+                      ]
+                    }
+                  }
+                ],
+                "restartPolicy": "Never",
+                "osType": "Linux"
+              }
+            },
+            {
+              "copy": {
+                "name": "roleAssignment",
+                "count": "[length(range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex'))))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, 'containerGroup', format('{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()]), 'delete-role-assignment')]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', format('containerGroup-{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[sub(range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()], parameters('startIndex'))])), '2023-05-01', 'full').identity.principalId]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ContainerInstance/containerGroups', format('containerGroup-{0}', range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[sub(range(parameters('startIndex'), sub(parameters('endIndex'), parameters('startIndex')))[copyIndex()], parameters('startIndex'))]))]"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,30 +1,81 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+from abc import abstractmethod
+from dataclasses import dataclass, field
+from typing import Optional
+
+import numpy as np
+from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
+from sklearn.linear_model import LinearRegression as SKLinear
+from sklearn.linear_model import LogisticRegression as SKLogistic
+from sklearn.utils.validation import check_is_fitted
+
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
+from ..utils._clean_simple import clean_dimensions, typify_classification
+from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
-    gen_name_from_class,
     gen_global_selector,
     gen_local_selector,
+    gen_name_from_class,
+    gen_perf_dicts,
 )
-from ..utils._explanation import gen_perf_dicts
-
-from abc import abstractmethod
-from sklearn.base import is_classifier
-from sklearn.utils.validation import check_is_fitted
-import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin
-from sklearn.linear_model import LogisticRegression as SKLogistic
-from sklearn.linear_model import LinearRegression as SKLinear
-
-from ..utils._clean_x import preclean_X
-from ..utils._clean_simple import clean_dimensions, typify_classification
-
 from ..utils._unify_data import unify_data
 
 
-class BaseLinear:
+@dataclass
+class LinearInputTags:
+    one_d_array: bool = False
+    two_d_array: bool = True
+    three_d_array: bool = False
+    sparse: bool = True
+    categorical: bool = False
+    string: bool = True
+    dict: bool = True
+    positive_only: bool = False
+    allow_nan: bool = False
+    pairwise: bool = False
+
+
+@dataclass
+class LinearTargetTags:
+    required: bool = True
+    one_d_labels: bool = False
+    two_d_labels: bool = False
+    positive_only: bool = False
+    multi_output: bool = False
+    single_output: bool = True
+
+
+@dataclass
+class LinearClassifierTags:
+    poor_score: bool = False
+    multi_class: bool = True
+    multi_label: bool = False
+
+
+@dataclass
+class LinearRegressorTags:
+    poor_score: bool = False
+
+
+@dataclass
+class LinearTags:
+    estimator_type: Optional[str] = None
+    target_tags: LinearTargetTags = field(default_factory=LinearTargetTags)
+    transformer_tags: None = None
+    classifier_tags: Optional[LinearClassifierTags] = None
+    regressor_tags: Optional[LinearRegressorTags] = None
+    array_api_support: bool = True
+    no_validation: bool = False
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    _skip_test: bool = False
+    input_tags: LinearInputTags = field(default_factory=LinearInputTags)
+
+
+class BaseLinear(ExplainerMixin):
     """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -70,9 +121,11 @@ class BaseLinear:
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) == 0:
-            raise ValueError("y cannot have 0 samples")
+            msg = "y cannot have 0 samples"
+            raise ValueError(msg)
 
         if is_classifier(self):
             y = typify_classification(y)
@@ -97,13 +150,13 @@ class BaseLinear:
         self.categorical_uniq_ = {}
 
         for i, feature_type in enumerate(self.feature_types_in_):
-            if feature_type == "nominal" or feature_type == "ordinal":
-                self.categorical_uniq_[i] = list(sorted(set(X[:, i])))
+            if feature_type in ("nominal", "ordinal"):
+                self.categorical_uniq_[i] = sorted(set(X[:, i]))
 
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
         for col_idx in range(len(self.feature_names_in_)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         self.global_selector_ = gen_global_selector(
             len(self.feature_names_in_),
@@ -159,7 +212,8 @@ class BaseLinear:
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                raise ValueError("y must be 1 dimensional")
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
             n_samples = len(y)
 
             if is_classifier(self):
@@ -173,7 +227,8 @@ class BaseLinear:
 
         if n_samples == 0:
             # TODO: we could probably handle this case
-            raise ValueError("X has zero samples")
+            msg = "X has zero samples"
+            raise ValueError(msg)
 
         X, _, _ = unify_data(
             X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
@@ -287,7 +342,7 @@ class BaseLinear:
         }
 
         specific_data_dicts = []
-        for index, feature in enumerate(self.feature_names_in_):
+        for index, _feature in enumerate(self.feature_names_in_):
             feat_min = self.X_mins_[index]
             feat_max = self.X_maxs_[index]
             feat_coef = coef[index]
@@ -332,6 +387,9 @@ class BaseLinear:
             selector=self.global_selector_,
         )
 
+    def __sklearn_tags__(self):
+        return LinearTags()
+
 
 class LinearExplanation(FeatureValueExplanation):
     """Visualizes specifically for Linear methods."""
@@ -358,7 +416,7 @@ class LinearExplanation(FeatureValueExplanation):
             selector: A dataframe whose indices correspond to explanation entries.
         """
 
-        super(LinearExplanation, self).__init__(
+        super().__init__(
             explanation_type,
             internal_obj,
             feature_names=feature_names,
@@ -379,18 +437,18 @@ class LinearExplanation(FeatureValueExplanation):
             A Plotly figure.
         """
         from ..visual.plot import (
-            sort_take,
-            mli_sort_take,
-            get_sort_indexes,
             get_explanation_index,
-            plot_horizontal_bar,
+            get_sort_indexes,
             mli_plot_horizontal_bar,
+            mli_sort_take,
+            plot_horizontal_bar,
+            sort_take,
         )
 
         if isinstance(key, tuple) and len(key) == 2:
             provider, key = key
             if (
-                "mli" == provider
+                provider == "mli"
                 and "mli" in self.data(-1)
                 and self.explanation_type == "global"
             ):
@@ -413,26 +471,25 @@ class LinearExplanation(FeatureValueExplanation):
                     sorted_names,
                     title="Overall Importance:<br>Coefficients",
                 )
-            else:  # pragma: no cover
-                raise RuntimeError("Visual provider {} not supported".format(provider))
-        else:
-            data_dict = self.data(key)
-            if data_dict is None:
-                return None
+            # pragma: no cover
+            msg = f"Visual provider {provider} not supported"
+            raise RuntimeError(msg)
+        data_dict = self.data(key)
+        if data_dict is None:
+            return None
 
-            if self.explanation_type == "global" and key is None:
-                data_dict = sort_take(
-                    data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
-                )
-                figure = plot_horizontal_bar(
-                    data_dict, title="Overall Importance:<br>Coefficients"
-                )
-                return figure
+        if self.explanation_type == "global" and key is None:
+            data_dict = sort_take(
+                data_dict, sort_fn=lambda x: -abs(x), top_n=15, reverse_results=True
+            )
+            return plot_horizontal_bar(
+                data_dict, title="Overall Importance:<br>Coefficients"
+            )
 
         return super().visualize(key)
 
 
-class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
+class LinearRegression(RegressorMixin, BaseLinear):
     """Linear regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
@@ -467,8 +524,14 @@ class LinearRegression(BaseLinear, RegressorMixin, ExplainerMixin):
         self.sk_model_ = self.linear_class(**self.kwargs)
         return super().fit(X, y)
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = LinearRegressorTags()
+        return tags
 
-class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
+
+class LogisticRegression(ClassifierMixin, BaseLinear):
     """Logistic regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
@@ -522,6 +585,12 @@ class LogisticRegression(BaseLinear, ClassifierMixin, ExplainerMixin):
 
         return self._model().predict_proba(X)
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = LinearClassifierTags()
+        return tags
+
 
 def _hist_per_column(arr, feature_types=None):
     counts = []
@@ -533,7 +602,7 @@ def _hist_per_column(arr, feature_types=None):
                 count, bin_edge = np.histogram(arr[:, i], bins="doane")
                 counts.append(count)
                 bin_edges.append(bin_edge)
-            elif feat_type == "nominal" or feat_type == "ordinal":
+            elif feat_type in ("nominal", "ordinal"):
                 # Todo: check if this call
                 bin_edge, count = np.unique(arr[:, i], return_counts=True)
                 counts.append(count)

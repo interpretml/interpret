@@ -1,15 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import ExplainerMixin, ExplanationMixin
-from ..utils._explanation import gen_name_from_class, gen_global_selector
-
 import numpy as np
-from scipy.stats import pearsonr
 
-from ..utils._clean_x import preclean_X
+from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
-
+from ..utils._clean_x import preclean_X
+from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
 
 
@@ -52,7 +49,8 @@ class Marginal(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         try:
             y = y.astype(np.float64, copy=False)
@@ -72,7 +70,7 @@ class Marginal(ExplainerMixin):
         unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
         for col_idx in range(len(feature_names)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         global_selector = gen_global_selector(
             len(feature_names),
@@ -92,23 +90,25 @@ class Marginal(ExplainerMixin):
         }
 
         # Sample down
-        n_samples = (
-            self.max_scatter_samples if len(y) > self.max_scatter_samples else len(y)
-        )
+        n_samples = min(len(y), self.max_scatter_samples)
         idx = np.random.choice(np.arange(len(y)), n_samples, replace=False)
         X_sample = X[idx, :]
         y_sample = y[idx]
         specific_dicts = []
-        for feat_idx, feature_name in enumerate(feature_names):
+        for feat_idx, _feature_name in enumerate(feature_names):
             feature_type = feature_types[feat_idx]
             if feature_type == "continuous":
                 counts, values = np.histogram(X[:, feat_idx], bins="doane")
-                corr = pearsonr(X[:, feat_idx], y)[0]
-            elif feature_type == "nominal" or feature_type == "ordinal":
+                corr = np.corrcoef(X[:, feat_idx].astype(np.float64, copy=False), y)[
+                    0, 1
+                ]
+
+            elif feature_type in ("nominal", "ordinal"):
                 values, counts = np.unique(X[:, feat_idx], return_counts=True)
                 corr = None
             else:
-                raise Exception("Cannot support type: {0}".format(feature_type))
+                msg = f"Cannot support type: {feature_type}"
+                raise Exception(msg)
 
             feat_density_data_dict = {"names": values, "scores": counts}
             specific_dict = {
@@ -192,18 +192,18 @@ class MarginalExplanation(ExplanationMixin):
         Returns:
             A Plotly figure.
         """
-        from ..visual.plot import plot_density
         import plotly.graph_objs as go
+
+        from ..visual.plot import plot_density
 
         data_dict = self.data(key)
         if data_dict is None:
             return None
 
         if key is None:
-            figure = plot_density(
+            return plot_density(
                 data_dict["density"], title="Response", ytitle="Density"
             )
-            return figure
 
         # Show feature graph
         density_dict = data_dict["feature_density"]
@@ -221,11 +221,11 @@ class MarginalExplanation(ExplanationMixin):
                 name="x density",
                 yaxis="y2",
                 autobinx=False,
-                xbins=dict(
-                    start=density_dict["names"][0],
-                    end=density_dict["names"][-1],
-                    size=bin_size,
-                ),
+                xbins={
+                    "start": density_dict["names"][0],
+                    "end": density_dict["names"][-1],
+                    "size": bin_size,
+                },
             )
         data = []
         resp_density_dict = data_dict["response_density"]
@@ -236,11 +236,11 @@ class MarginalExplanation(ExplanationMixin):
             name="y density",
             xaxis="x2",
             autobiny=False,
-            ybins=dict(
-                start=resp_density_dict["names"][0],
-                end=resp_density_dict["names"][-1],
-                size=resp_bin_size,
-            ),
+            ybins={
+                "start": resp_density_dict["names"][0],
+                "end": resp_density_dict["names"][-1],
+                "size": resp_bin_size,
+            },
         )
         data.append(trace1)
         data.append(trace2)
@@ -252,7 +252,7 @@ class MarginalExplanation(ExplanationMixin):
                 y=y,
                 mode="markers",
                 name="points",
-                marker=dict(size=5, opacity=0.5),
+                marker={"size": 5, "opacity": 0.5},
             )
             data.append(trace3)
         else:
@@ -265,25 +265,25 @@ class MarginalExplanation(ExplanationMixin):
         layout = go.Layout(
             showlegend=False,
             autosize=True,
-            xaxis=dict(
-                title=self.feature_names[key],
-                type="category" if is_categorical else "-",
-                domain=[0, do_hi],
-                showgrid=False,
-                zeroline=False,
-            ),
-            yaxis=dict(
-                title="Response", domain=[0, do_lo], showgrid=False, zeroline=False
-            ),
+            xaxis={
+                "title": self.feature_names[key],
+                "type": "category" if is_categorical else "-",
+                "domain": [0, do_hi],
+                "showgrid": False,
+                "zeroline": False,
+            },
+            yaxis={
+                "title": "Response",
+                "domain": [0, do_lo],
+                "showgrid": False,
+                "zeroline": False,
+            },
             hovermode="closest",
-            xaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
-            yaxis2=dict(domain=[do_hi, 1], showgrid=False, zeroline=False),
-            title="Pearson Correlation: {0:.3f}".format(corr)
-            if corr is not None
-            else "",
+            xaxis2={"domain": [do_hi, 1], "showgrid": False, "zeroline": False},
+            yaxis2={"domain": [do_hi, 1], "showgrid": False, "zeroline": False},
+            title=(f"Pearson Correlation: {corr:.3f}" if corr is not None else ""),
         )
-        fig = go.Figure(data=data, layout=layout)
-        return fig
+        return go.Figure(data=data, layout=layout)
 
 
 class ClassHistogram(ExplainerMixin):
@@ -318,7 +318,8 @@ class ClassHistogram(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            raise ValueError("y must be 1 dimensional")
+            msg = "y must be 1 dimensional"
+            raise ValueError(msg)
 
         try:
             y = y.astype(np.float64, copy=False)
@@ -338,7 +339,7 @@ class ClassHistogram(ExplainerMixin):
         unique_val_counts = np.zeros(len(feature_names), dtype=np.int64)
         for col_idx in range(len(feature_names)):
             X_col = X[:, col_idx]
-            unique_val_counts.itemset(col_idx, len(np.unique(X_col)))
+            unique_val_counts[col_idx] = len(np.unique(X_col))
 
         global_selector = gen_global_selector(
             len(feature_names),
@@ -423,8 +424,9 @@ class ClassHistogramExplanation(ExplanationMixin):
         Returns:
             A Plotly figure.
         """
-        from ..visual.plot import plot_density, COLORS
         import plotly.graph_objs as go
+
+        from ..visual.plot import COLORS, plot_density
 
         data_dict = self.data(key)
         if data_dict is None:
@@ -439,10 +441,9 @@ class ClassHistogramExplanation(ExplanationMixin):
             layout = go.Layout(
                 title="Response Distribution",
                 showlegend=False,
-                xaxis=dict(type="category"),
+                xaxis={"type": "category"},
             )
-            fig = go.Figure(data=[trace1, trace2], layout=layout)
-            return fig
+            return go.Figure(data=[trace1, trace2], layout=layout)
 
         # Show feature graph
         x = data_dict["x"]
@@ -450,7 +451,7 @@ class ClassHistogramExplanation(ExplanationMixin):
 
         column_name = self.feature_names[key]
 
-        classes = list(sorted(set(y)))
+        classes = sorted(set(y))
         data = []
         is_categorical = (
             self.feature_types[key] == "nominal" or self.feature_types[key] == "ordinal"

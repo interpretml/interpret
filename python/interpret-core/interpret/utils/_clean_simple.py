@@ -1,14 +1,17 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+
 import numpy as np
-import numpy.ma as ma
+from numpy import ma
 from sklearn.base import is_classifier, is_regressor
 
 from ._clean_x import preclean_X
 from ._link import link_func
 
-import logging
+from ._misc import safe_isinstance
+
 
 _log = logging.getLogger(__name__)
 
@@ -19,31 +22,20 @@ try:
 except ImportError:
     _pandas_installed = False
 
-try:
-    import scipy as sp
-
-    _scipy_installed = True
-except ImportError:
-    _scipy_installed = False
-
-
-_none_list = [None]
 _none_ndarray = np.array(None)
 
 
 def _remove_extra_dimensions(arr):
+    arr = arr.squeeze()
     shape = arr.shape
     if len(shape) == 0 or 0 in shape:
-        # 0 dimensional items exist, but are weird/unexpected. len fails, shape is length 0.
-        # arrays with dimension having 0 length exist, but cannot contain anything
-        return np.empty(0, arr.dtype)
-
-    shape = [x for x in arr.shape if x != 1]
-    if len(shape) == 0:
-        shape = (1,)
-
-    # reshape returns a view
-    return arr.reshape(shape)
+        # 0 dimensional items exist, but are weird/unexpected. len fails, shape is
+        # length 0, and they contain a single scalar, so they are similar to an array
+        # of length 1.  In this case make it 1D array with 1 element.
+        # If any dimension is length 0 then the array cannot contain anything. ravel
+        # turns it into a 1D array of length 0, which is what we want.
+        arr = arr.ravel()
+    return arr
 
 
 def clean_dimensions(data, param_name):
@@ -58,11 +50,10 @@ def clean_dimensions(data, param_name):
         if isinstance(data, ma.masked_array):
             # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
             mask = data.mask
-            if mask is not ma.nomask:
-                if mask.any():
-                    msg = f"{param_name} cannot contain missing values"
-                    _log.error(msg)
-                    raise ValueError(msg)
+            if mask is not ma.nomask and mask.any():
+                msg = f"{param_name} cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
             data = data.data
         elif isinstance(data, np.ndarray):
             pass
@@ -87,16 +78,18 @@ def clean_dimensions(data, param_name):
             else:
                 # can be a non-numpy datatype, but has enough conformance for us to work on it
                 data = data.astype(np.object_, copy=False).values
-        elif _scipy_installed and isinstance(data, sp.sparse.spmatrix):
+        elif safe_isinstance(data, "scipy.sparse.spmatrix") or safe_isinstance(
+            data, "scipy.sparse.sparray"
+        ):
             data = data.toarray()
-        elif isinstance(data, list) or isinstance(data, tuple):
+        elif isinstance(data, (list, tuple)):
             data = np.array(data, np.object_)
         elif callable(getattr(data, "__array__", None)):
             data = data.__array__()
         elif isinstance(data, str):
             # we have just 1 item, so re-pack it and return
             ret = np.empty(1, np.object_)
-            ret.itemset(0, data)
+            ret[0] = data
             return ret
         else:
             try:
@@ -104,7 +97,7 @@ def clean_dimensions(data, param_name):
             except TypeError:
                 # we have just 1 item, so re-pack it and return
                 ret = np.empty(1, np.object_)
-                ret.itemset(0, data)
+                ret[0] = data
                 return ret
             data = np.array(data, np.object_)
 
@@ -115,12 +108,12 @@ def clean_dimensions(data, param_name):
             return data
 
         if data.dtype.type is not np.object_:
-            if 3 <= data.ndim:
+            if data.ndim >= 3:
                 msg = f"{param_name} cannot have 3rd dimension"
                 _log.error(msg)
                 raise TypeError(msg)
-            if issubclass(data.dtype.type, np.floating) and np.isnan(data).any():
-                msg = f"{param_name} cannot contain missing values"
+            if issubclass(data.dtype.type, np.floating) and not np.isfinite(data).all():
+                msg = f"{param_name} cannot contain missing values or infinites"
                 _log.error(msg)
                 raise ValueError(msg)
             return data
@@ -212,7 +205,7 @@ def clean_dimensions(data, param_name):
     if n_second_dim == 0:
         return np.empty(0, np.object_)
 
-    data = np.array(data, np.object_, copy=False)  # in case it was converted to list
+    data = np.asarray(data, np.object_)  # in case it was converted to list
 
     if _pandas_installed:
         # pandas also has the pd.NA value that indicates missing.  If Pandas is available though
@@ -221,12 +214,10 @@ def clean_dimensions(data, param_name):
             msg = f"{param_name} cannot contain missing values"
             _log.error(msg)
             raise ValueError(msg)
-    else:
-        # data != data is a check for nan that works even with mixed types, since nan != nan
-        if (data == _none_ndarray).any() or (data != data).any():
-            msg = f"{param_name} cannot contain missing values"
-            _log.error(msg)
-            raise ValueError(msg)
+    elif (data == _none_ndarray).any() or (data != data).any():
+        msg = f"{param_name} cannot contain missing values"
+        _log.error(msg)
+        raise ValueError(msg)
 
     return data
 
@@ -249,31 +240,33 @@ def typify_classification(vec):
     elif issubclass(vec.dtype.type, np.object_):
         types = set(map(type, vec))
         if all(
-            one_type is int or issubclass(one_type, np.integer) for one_type in types
+            issubclass(one_type, int) or issubclass(one_type, np.integer)
+            for one_type in types
         ):
             # the vec.astype call below can fail if we're passed an unsigned np.uint64
             # array with big values, but we don't want to surprise anyone by converting to
             # strings in that special case, so throw if we're presented this unusual type
             dtype = np.int64
         elif all(
-            one_type is bool or issubclass(one_type, np.bool_) for one_type in types
+            issubclass(one_type, bool) or issubclass(one_type, np.bool_)
+            for one_type in types
         ):
             dtype = np.bool_
         else:
-            dtype = np.unicode_
+            dtype = np.str_
     else:
-        dtype = np.unicode_
+        dtype = np.str_
 
     return vec.astype(dtype, copy=False)
 
 
-def clean_init_score_and_X(
-    link,
-    link_param,
-    init_score,
+def clean_X_and_init_score(
     X,
+    init_score,
     feature_names,
     feature_types,
+    link,
+    link_param,
     n_samples=None,
     sample_source="y",
 ):
@@ -281,7 +274,7 @@ def clean_init_score_and_X(
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source
         )
-        return None, X, n_samples
+        return X, n_samples, None
 
     if is_classifier(init_score):
         probs = clean_dimensions(init_score.predict_proba(X), "init_score")
@@ -296,12 +289,12 @@ def clean_init_score_and_X(
             if probs.shape[0] <= 1:  # 0 or 1 means 1 class
                 # only 1 class to predict means perfect prediction, and no scores for EBMs
                 # do not check if probs are all one in case there is floating point noise
-                return np.empty((1, 0), np.float64), X, n_samples
-            probs = probs.reshape([1] + probs.shape)
+                return X, n_samples, np.empty((1, 0), np.float64)
+            probs = probs.reshape([1, *probs.shape])
         else:
             if probs.shape[0] == 0:
                 # having any dimension as zero length probably means 1 class, so treat it that way
-                return np.empty((n_samples, 0), np.float64), X, n_samples
+                return X, n_samples, np.empty((n_samples, 0), np.float64)
             if probs.shape[0] != n_samples:
                 msg = "init_score.predict_proba(X) returned inconsistent number of samples compared to X"
                 _log.error(msg)
@@ -309,11 +302,11 @@ def clean_init_score_and_X(
             if probs.ndim == 1:
                 # only 1 class to predict means perfect prediction, and no scores for EBMs
                 # do not check if probs are all one in case there is floating point noise
-                return np.empty((n_samples, 0), np.float64), X, n_samples
+                return X, n_samples, np.empty((n_samples, 0), np.float64)
         probs = probs.astype(np.float64, copy=False)
         init_score = link_func(probs, link, link_param)
-        return init_score, X, n_samples
-    elif is_regressor(init_score):
+        return X, n_samples, init_score
+    if is_regressor(init_score):
         predictions = clean_dimensions(init_score.predict(X), "init_score")
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source
@@ -328,7 +321,7 @@ def clean_init_score_and_X(
             raise ValueError(msg)
         predictions = predictions.astype(np.float64, copy=False)
         init_score = link_func(predictions, link, link_param)
-        return init_score, X, n_samples
+        return X, n_samples, init_score
 
     init_score = clean_dimensions(init_score, "init_score")
     X, n_samples = preclean_X(X, feature_names, feature_types, n_samples, sample_source)
@@ -338,14 +331,14 @@ def clean_init_score_and_X(
             _log.error(msg)
             raise ValueError(msg)
         if init_score.shape[0] != 1:
-            init_score = init_score.reshape([1] + init_score.shape)
+            init_score = init_score.reshape([1, *init_score.shape])
     else:
         if init_score.shape[0] == 0:
-            # must be a 1 class problem
-            return np.empty((n_samples, 0), np.float64), X, n_samples
+            # must be a 1 class problem. We use 1 score, but others might use 0.
+            return X, n_samples, np.full(n_samples, -np.inf, np.float64)
         if init_score.shape[0] != n_samples:
             msg = "init_score has an inconsistent number of samples compared to X"
             _log.error(msg)
             raise ValueError(msg)
     init_score = init_score.astype(np.float64, copy=False)
-    return init_score, X, n_samples
+    return X, n_samples, init_score

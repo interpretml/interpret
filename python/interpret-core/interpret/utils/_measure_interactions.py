@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-""" FAST - Interaction Detection
+"""FAST - Interaction Detection
 
 This module exposes a method called FAST [1] to measure and rank the strengths
 of the interaction of all pairs of features in a dataset.
@@ -10,25 +10,21 @@ of the interaction of all pairs of features in a dataset.
 """
 
 import logging
+from itertools import combinations, count
 
-from itertools import count
+from .. import develop
 import numpy as np
-from itertools import combinations
-
-from sklearn.utils.multiclass import type_of_target
 from sklearn.base import is_classifier, is_regressor
+from sklearn.utils.multiclass import type_of_target
 
-from ._clean_x import preclean_X
 from ._clean_simple import (
     clean_dimensions,
+    clean_X_and_init_score,
     typify_classification,
-    clean_init_score_and_X,
 )
-
-from ._preprocessor import construct_bins
-from ._native import Native
 from ._compressed_dataset import bin_native_by_dimension
-
+from ._native import Native
+from ._preprocessor import construct_bins
 from ._rank_interactions import rank_interactions
 
 _log = logging.getLogger(__name__)
@@ -42,8 +38,12 @@ def measure_interactions(
     sample_weight=None,
     feature_names=None,
     feature_types=None,
-    max_interaction_bins=32,
-    min_samples_leaf=2,
+    max_interaction_bins=64,
+    min_samples_leaf=4,
+    min_hessian=1e-4,
+    reg_alpha=0.0,
+    reg_lambda=0.0,
+    max_delta_step=0.0,
     objective=None,
 ):
     """Run the FAST algorithm and return the ranked interactions and their strengths as a dictionary.
@@ -61,6 +61,10 @@ def measure_interactions(
         feature_types: List of feature types, for example "continuous" or "nominal"
         max_interaction_bins: Max number of bins per interaction terms
         min_samples_leaf: Minimum number of samples for tree splits used when calculating gain
+        min_hessian: Minimum hessian required to consider a potential split valid
+        reg_alpha: L1 regularization.
+        reg_lambda: L2 regularization.
+        max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
             "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
             "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
@@ -113,47 +117,48 @@ def measure_interactions(
 
         if task is None:
             task = "classification"
-            link, link_param = native.determine_link(flags, "log_loss", len(classes))
+            _, link, link_param = native.determine_link(flags, "log_loss", len(classes))
         elif task == "classification":
-            link, link_param = native.determine_link(flags, objective, len(classes))
+            _, link, link_param = native.determine_link(flags, objective, len(classes))
         else:
-            raise ValueError(
-                f"init_score is a classifier, but the objective is: {objective}"
-            )
+            msg = f"init_score is a classifier, but the objective is: {objective}"
+            raise ValueError(msg)
     elif is_regressor(init_score):
         if task is None:
             task = "regression"
-            link, link_param = native.determine_link(flags, "rmse", -1)
-        elif task == "regression":
-            link, link_param = native.determine_link(flags, objective, -1)
-        else:
-            raise ValueError(
-                f"init_score is a regressor, but the objective is: {objective}"
+            _, link, link_param = native.determine_link(
+                flags, "rmse", Native.Task_Regression
             )
+        elif task == "regression":
+            _, link, link_param = native.determine_link(
+                flags, objective, Native.Task_Regression
+            )
+        else:
+            msg = f"init_score is a regressor, but the objective is: {objective}"
+            raise ValueError(msg)
     elif task == "classification":
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
         classes, y = np.unique(y, return_inverse=True)
-        link, link_param = native.determine_link(flags, objective, len(classes))
+        _, link, link_param = native.determine_link(flags, objective, len(classes))
 
-    init_score, X, n_samples = clean_init_score_and_X(
-        link, link_param, init_score, X, feature_names, feature_types, len(y)
+    X, n_samples, init_score = clean_X_and_init_score(
+        X, init_score, feature_names, feature_types, link, link_param, len(y)
     )
     if init_score is not None and init_score.ndim == 2:
         # it must be multiclass, or mono-classification
         if task is None:
             task = "classification"
         elif task != "classification":
-            raise ValueError(
-                f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
-            )
+            msg = f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
+            raise ValueError(msg)
 
     if task is None:
         # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
         except (TypeError, ValueError):
-            y_discard = y.astype(dtype=np.unicode_, copy=False)
+            y_discard = y.astype(dtype=np.str_, copy=False)
 
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
@@ -169,7 +174,8 @@ def measure_interactions(
             else:
                 task = "classification"
         else:
-            raise ValueError("unrecognized target type in y")
+            msg = "unrecognized target type in y"
+            raise ValueError(msg)
 
     if task == "classification":
         if classes is None:
@@ -190,33 +196,30 @@ def measure_interactions(
         raise ValueError(msg)
 
     if init_score is not None:
-        if n_classes == 2 or n_classes < 0:
-            if init_score.ndim != 1:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
-        elif 3 <= n_classes:
-            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
-        else:  # 1 class
+        if n_classes == Native.Task_MonoClassification:
             # what the init_score should be for mono-classifiction is somewhat abiguous,
             # so allow either 0 or 1 (which means the dimension is eliminated)
-            if init_score.ndim == 2 and 2 <= init_score.shape[1]:
-                raise ValueError(
-                    "diagreement between the number of classes in y and in the init_score shape"
-                )
+            if init_score.ndim == 2 and init_score.shape[1] >= 2:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
             init_score = None
+        elif n_classes >= Native.Task_MulticlassPlus:
+            if init_score.ndim != 2 or init_score.shape[1] != n_classes:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
+        else:
+            if init_score.ndim != 1:
+                msg = "diagreement between the number of classes in y and in the init_score shape"
+                raise ValueError(msg)
 
     if sample_weight is not None:
         sample_weight = clean_dimensions(sample_weight, "sample_weight")
         if sample_weight.ndim != 1:
-            raise ValueError("sample_weight must be 1 dimensional")
+            msg = "sample_weight must be 1 dimensional"
+            raise ValueError(msg)
         if len(y) != len(sample_weight):
-            raise ValueError(
-                f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
-            )
+            msg = f"y has {len(y)} samples and sample_weight has {len(sample_weight)} samples"
+            raise ValueError(msg)
         sample_weight = sample_weight.astype(np.float64, copy=False)
 
     binning_result = construct_bins(
@@ -247,6 +250,10 @@ def measure_interactions(
         feature_types_in=feature_types_in,
     )
 
+    interaction_flags = Native.CalcInteractionFlags_Default
+    if develop.get_option("full_interaction"):
+        interaction_flags |= Native.CalcInteractionFlags_Full
+
     if isinstance(interactions, int):
         n_output_interactions = interactions
         iter_term_features = combinations(range(n_features_in), 2)
@@ -259,19 +266,29 @@ def measure_interactions(
 
     ranked_interactions = rank_interactions(
         dataset=dataset,
+        intercept=None,
         bag=None,
         init_scores=init_score,
         iter_term_features=iter_term_features,
         exclude=set(),
-        calc_interaction_flags=Native.CalcInteractionFlags_Pure,
+        exclude_features=set(),
+        calc_interaction_flags=interaction_flags,
         max_cardinality=max_cardinality,
         min_samples_leaf=min_samples_leaf,
-        create_interaction_flags=Native.CreateInteractionFlags_DifferentialPrivacy
-        if is_differential_privacy
-        else Native.CreateInteractionFlags_Default,
+        min_hessian=min_hessian,
+        reg_alpha=reg_alpha,
+        reg_lambda=reg_lambda,
+        max_delta_step=max_delta_step,
+        create_interaction_flags=(
+            Native.CreateInteractionFlags_DifferentialPrivacy
+            if is_differential_privacy
+            else Native.CreateInteractionFlags_Default
+        ),
         objective=objective,
+        acceleration=develop.get_option("acceleration"),
         experimental_params=None,
         n_output_interactions=n_output_interactions,
+        develop_options=develop._develop_options,
     )
 
     if isinstance(ranked_interactions, Exception):

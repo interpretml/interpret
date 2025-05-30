@@ -1,20 +1,18 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import logging
+
 import dash
-from dash import html
-from dash import dcc
-from dash import dash_table as dt
+import dash.development.base_component as dash_base
 
 # NOTE: Even though this isn't used here, it has to be imported to work.
 import dash_cytoscape as cyto  # noqa: F401
-
+from dash import dash_table as dt
+from dash import dcc, html
 from dash.dependencies import Input, Output
-import dash.development.base_component as dash_base
 from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
-
-import logging
 
 _log = logging.getLogger(__name__)
 
@@ -31,14 +29,14 @@ class UDash(dash.Dash):
         super().__init__(*args, **kwargs)
 
 
-DATA_TABLE_DEFAULTS = dict(
-    fixed_rows={"headers": True, "data": 0},
-    filter_action="native",
-    sort_action="native",
-    virtualization=True,
-    editable=False,
-    style_table={"height": "250px", "overflowX": "auto", "overflowY": "auto"},
-    css=[
+DATA_TABLE_DEFAULTS = {
+    "fixed_rows": {"headers": True, "data": 0},
+    "filter_action": "native",
+    "sort_action": "native",
+    "virtualization": True,
+    "editable": False,
+    "style_table": {"height": "250px", "overflowX": "auto", "overflowY": "auto"},
+    "css": [
         {
             "selector": ".dash-cell div.dash-cell-value",
             "rule": "display: inline; white-space: inherit; overflow: inherit;",
@@ -49,7 +47,7 @@ DATA_TABLE_DEFAULTS = dict(
             "rule": "transform: scale(1.5);",
         },
     ],
-    style_cell={
+    "style_cell": {
         "textAlign": "right",
         "paddingTop": "5px",
         "paddingBottom": "5px",
@@ -60,15 +58,17 @@ DATA_TABLE_DEFAULTS = dict(
         "overflow": "hidden",
         "maxWidth": 0,
     },
-    style_data=[{"backgroundColor": "white"}],
-    style_data_conditional=[{"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"}],
-    style_header={
+    "style_data": [{"backgroundColor": "white"}],
+    "style_data_conditional": [
+        {"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"}
+    ],
+    "style_header": {
         "fontWeight": "bold",
         # 'fontSize': '1.25em',
         "backgroundColor": "#eaeaea",
         # 'color': 'white'
     },
-)
+}
 
 
 # Dash app for a single explanation only
@@ -113,13 +113,11 @@ def generate_app_mini(
             col_strs = []
             for col_idx in range(min(3, len(selector.columns))):
                 col_strs.append(
-                    "{0} ({1})".format(
-                        selector.columns[col_idx], selector.iloc[i, col_idx]
-                    )
+                    f"{selector.columns[col_idx]} ({selector.iloc[i, col_idx]})"
                 )
 
             label_str = " | ".join(col_strs)
-            label_str = "{0} : {1}".format(i, label_str)
+            label_str = f"{i} : {label_str}"
             options_list.append({"label": label_str, "value": i})
         data_options.extend(options_list)
     else:
@@ -193,7 +191,7 @@ def generate_app_mini(
 def gen_overall_plot(exp, model_idx):
     figure = exp.visualize(key=None)
     if figure is None:
-        _log.info("No overall plot to display: {0}|{1}".format(model_idx, exp.name))
+        _log.info(f"No overall plot to display: {model_idx}|{exp.name}")
         # Provide default 'no overall' graph
         figure = r"""
                 <style>
@@ -224,7 +222,7 @@ def gen_overall_plot(exp, model_idx):
                     filter_action="naive",
                     sort_action="naive",
                     editable=False,
-                    id="overall-graph-{0}".format(model_idx),
+                    id=f"overall-graph-{model_idx}",
                 )
             ]
         )
@@ -232,7 +230,7 @@ def gen_overall_plot(exp, model_idx):
         output_graph = html.Div(
             [
                 html.Iframe(
-                    id="overall-graph-{0}".format(model_idx),
+                    id=f"overall-graph-{model_idx}",
                     sandbox="",
                     srcDoc=figure,
                     style={"border": "0", "width": "100%", "height": "390px"},
@@ -241,30 +239,30 @@ def gen_overall_plot(exp, model_idx):
         )
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
-            id="overall-graph-{0}".format(model_idx),
+            id=f"overall-graph-{model_idx}",
             figure=figure,
             config={"displayModeBar": "hover"},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = "overall-graph-{0}".format(model_idx)
+        output_graph.id = f"overall-graph-{model_idx}"
     else:  # pragma: no cover
         _type = type(figure)
-        _log.warning("Visualization type not supported: {0}".format(_type))
-        raise Exception("Not supported visualization type: {0}".format(_type))
+        _log.warning(f"Visualization type not supported: {_type}")
+        msg = f"Not supported visualization type: {_type}"
+        raise Exception(msg)
 
     name = exp.name
-    output_div = html.Div(
+    return html.Div(
         [
             html.Div(
-                html.Div("{0} (Overall)".format(name), className="card-title"),
+                html.Div(f"{name} (Overall)", className="card-title"),
                 className="card-header",
             ),
             html.Div(output_graph, className="card-body card-figure"),
         ],
         className="card",
     )
-    return output_div
 
 
 def gen_plot(exp, picker, model_idx, counter):
@@ -279,14 +277,14 @@ def gen_plot(exp, picker, model_idx, counter):
         output_graph = dt.DataTable(
             data=records,
             columns=columns,
-            id="graph-{0}-{1}".format(model_idx, counter),
+            id=f"graph-{model_idx}-{counter}",
             **DATA_TABLE_DEFAULTS,
         )
     elif isinstance(figure, str):
         output_graph = html.Div(
             [
                 html.Iframe(
-                    id="graph-{0}-{1}".format(model_idx, counter),
+                    id=f"graph-{model_idx}-{counter}",
                     sandbox="",
                     srcDoc=figure,
                     style={"border": "0", "width": "100%", "height": "390px"},
@@ -295,36 +293,36 @@ def gen_plot(exp, picker, model_idx, counter):
         )
     elif isinstance(figure, go.Figure):
         output_graph = dcc.Graph(
-            id="graph-{0}-{1}".format(model_idx, counter),
+            id=f"graph-{model_idx}-{counter}",
             figure=figure,
             config={"displayModeBar": "hover"},
         )
     elif isinstance(figure, dash_base.Component):
         output_graph = figure
-        output_graph.id = "graph-{0}-{1}".format(model_idx, counter)
+        output_graph.id = f"graph-{model_idx}-{counter}"
     else:  # pragma: no cover
         _type = type(figure)
-        _log.warning("Visualization type not supported: {0}".format(_type))
-        raise Exception("Not supported visualization type: {0}".format(_type))
+        _log.warning(f"Visualization type not supported: {_type}")
+        msg = f"Not supported visualization type: {_type}"
+        raise Exception(msg)
 
     idx_str = str(picker)
     name = exp.name
-    output_div = html.Div(
+    return html.Div(
         [
             html.Div(
-                html.Div("{0} [{1}]".format(name, idx_str), className="card-title"),
+                html.Div(f"{name} [{idx_str}]", className="card-title"),
                 className="card-header",
             ),
             html.Div(output_graph, className="card-body card-figure"),
         ],
         className="card",
     )
-    return output_div
 
 
 # Dash app code
 # TODO: Consider reducing complexity of this function.
-def generate_app_full(  # noqa: C901
+def generate_app_full(
     url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None
 ):
     """Generates the Dash application including callbacks.
@@ -474,7 +472,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(cards)
 
     def gen_tab(explanation_type):
-        _log.debug("Generating tab: {0}".format(explanation_type))
+        _log.debug(f"Generating tab: {explanation_type}")
         ctx = app.ctx
         options = app.options
         data_options = [
@@ -485,7 +483,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         indices = html.Div(
             [
                 html.Div(
-                    id="{0}-instance-idx-{1}".format(explanation_type, str(i)),
+                    id=f"{explanation_type}-instance-idx-{i!s}",
                     className="hdn",
                 )
                 for i in range(MAX_NUM_PANES)
@@ -494,25 +492,25 @@ The explanations available are split into tabs, each covering an aspect of the p
         specific_indices = html.Div(
             [
                 html.Div(
-                    id="{0}-specific-idx-{1}".format(explanation_type, str(i)),
+                    id=f"{explanation_type}-specific-idx-{i!s}",
                     className="hdn",
                 )
                 for i in range(MAX_NUM_PANES)
             ]
         )
         shared_indices = html.Div(
-            [html.Div(id="{0}-shared-idx".format(explanation_type), className="hdn")]
+            [html.Div(id=f"{explanation_type}-shared-idx", className="hdn")]
         )
 
         # NOTE: Don't question this. It was written in blood.
         shared_value = options["share_tables"].get(explanation_type, False)
         shared_value = "True" if shared_value is True else None
         is_shared = html.Div(
-            id="{0}-is-shared".format(explanation_type),
+            id=f"{explanation_type}-is-shared",
             children=shared_value,
             className="hdn",
         )
-        _log.debug("Tab {0} is_shared: {1}".format(explanation_type, shared_value))
+        _log.debug(f"Tab {explanation_type} is_shared: {shared_value}")
         return html.Div(
             [
                 html.Div(
@@ -524,7 +522,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                         html.Div(
                             [
                                 dcc.Dropdown(
-                                    id="{0}-model-drop".format(explanation_type),
+                                    id=f"{explanation_type}-model-drop",
                                     options=data_options,
                                     multi=True,
                                 )
@@ -538,8 +536,8 @@ The explanations available are split into tabs, each covering an aspect of the p
                 indices,
                 shared_indices,
                 specific_indices,
-                html.Div(id="{0}-shared-table-container".format(explanation_type)),
-                html.Div(id="{0}-tabs-container".format(explanation_type)),
+                html.Div(id=f"{explanation_type}-shared-table-container"),
+                html.Div(id=f"{explanation_type}-tabs-container"),
             ]
         )
 
@@ -547,11 +545,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def register_pane_cb(explanation_type):
         def output_callback(value, is_shared):
-            _log.debug(
-                "Registering pane: {0}|{1}|{2}".format(
-                    explanation_type, value, is_shared
-                )
-            )
+            _log.debug(f"Registering pane: {explanation_type}|{value}|{is_shared}")
             if value is None:
                 return None
 
@@ -575,7 +569,7 @@ The explanations available are split into tabs, each covering an aspect of the p
                         instance_table = dt.DataTable(
                             data=records,
                             columns=columns,
-                            id="{0}-instance-table-{1}".format(explanation_type, s_i),
+                            id=f"{explanation_type}-instance-table-{s_i}",
                             row_selectable="multi",
                             **DATA_TABLE_DEFAULTS,
                         )
@@ -600,30 +594,22 @@ The explanations available are split into tabs, each covering an aspect of the p
                             [
                                 component,
                                 html.Div(
-                                    id="{0}-plots-container-{1}".format(
-                                        explanation_type, s_i
-                                    )
+                                    id=f"{explanation_type}-plots-container-{s_i}"
                                 ),
                                 html.Div(
-                                    id="{0}-overall-plot-container-{1}".format(
-                                        explanation_type, s_i
-                                    )
+                                    id=f"{explanation_type}-overall-plot-container-{s_i}"
                                 ),
                             ],
                             className="gr-col",
                         )
                     )
                 else:
-                    _log.info(
-                        "No df provided in pane cb for model idx: {0}".format(model_idx)
-                    )
+                    _log.info(f"No df provided in pane cb for model idx: {model_idx}")
                     components.append(
                         html.Div(
                             [
                                 html.Div(
-                                    id="{0}-overall-plot-container-{1}".format(
-                                        explanation_type, s_i
-                                    )
+                                    id=f"{explanation_type}-overall-plot-container-{s_i}"
                                 )
                             ],
                             className="gr-col",
@@ -647,10 +633,8 @@ The explanations available are split into tabs, each covering an aspect of the p
     def register_update_idx_cb():
         def output_callback(data, derived_virtual_selected_row_ids):
             if derived_virtual_selected_row_ids is None:
-                output = None
-                return output
-            output = [data[i]["id"] for i in derived_virtual_selected_row_ids]
-            return output
+                return None
+            return [data[i]["id"] for i in derived_virtual_selected_row_ids]
 
         return output_callback
 
@@ -658,8 +642,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         def output_callback(is_shared, shared_indices, specific_indices):
             if is_shared is not None:
                 return shared_indices
-            else:
-                return specific_indices
+            return specific_indices
 
         return output_callback
 
@@ -667,12 +650,10 @@ The explanations available are split into tabs, each covering an aspect of the p
         def output_callback(model_idx, instance_idx):
             if pane_idx >= len(model_idx):  # pragma: no cover
                 _log.warning(
-                    "Pane index {} larger than selected explanations.".format(pane_idx)
+                    f"Pane index {pane_idx} larger than selected explanations."
                 )
                 return None
-            _log.debug(
-                "Updating plots: {0}|{1}|{2}".format(pane_idx, model_idx, instance_idx)
-            )
+            _log.debug(f"Updating plots: {pane_idx}|{model_idx}|{instance_idx}")
             return gen_plots_container(model_idx[pane_idx], instance_idx)
 
         return output_callback
@@ -681,10 +662,10 @@ The explanations available are split into tabs, each covering an aspect of the p
         def output_callback(model_idx, empty):
             if pane_idx >= len(model_idx):  # pragma: no cover
                 _log.warning(
-                    "Pane index {} larger than selected explanations.".format(pane_idx)
+                    f"Pane index {pane_idx} larger than selected explanations."
                 )
                 return None
-            _log.debug("Updating overall plots: {0}".format(model_idx))
+            _log.debug(f"Updating overall plots: {model_idx}")
             return gen_overall_plot_container(model_idx[pane_idx])
 
         return output_callback
@@ -693,64 +674,62 @@ The explanations available are split into tabs, each covering an aspect of the p
     tab_list = ["data", "perf", "global", "local"]
     for tab in tab_list:
         app.callback(
-            Output("{0}-tabs-container".format(tab), "children"),
+            Output(f"{tab}-tabs-container", "children"),
             [
-                Input("{0}-model-drop".format(tab), "value"),
-                Input("{0}-is-shared".format(tab), "children"),
+                Input(f"{tab}-model-drop", "value"),
+                Input(f"{tab}-is-shared", "children"),
             ],
         )(register_pane_cb(tab))
 
         for i in range(MAX_NUM_PANES):
             s_i = str(i)
             app.callback(
-                Output("{0}-plots-container-{1}".format(tab, s_i), "children"),
+                Output(f"{tab}-plots-container-{s_i}", "children"),
                 [
-                    Input("{0}-model-drop".format(tab), "value"),
-                    Input("{0}-instance-idx-{1}".format(tab, s_i), "children"),
+                    Input(f"{tab}-model-drop", "value"),
+                    Input(f"{tab}-instance-idx-{s_i}", "children"),
                 ],
             )(register_update_plots_cb(i))
             app.callback(
-                Output("{0}-overall-plot-container-{1}".format(tab, s_i), "children"),
+                Output(f"{tab}-overall-plot-container-{s_i}", "children"),
                 [
-                    Input("{0}-model-drop".format(tab), "value"),
+                    Input(f"{tab}-model-drop", "value"),
                     # NOTE: Fixes concurrency bug for panes. Find better solution.
-                    Input("{0}-instance-idx-{1}".format(tab, s_i), "children"),
+                    Input(f"{tab}-instance-idx-{s_i}", "children"),
                 ],
             )(register_update_overall_plot_cb(i))
 
         app.callback(
-            Output("{0}-shared-table-container".format(tab), "children"),
+            Output(f"{tab}-shared-table-container", "children"),
             [
-                Input("{0}-model-drop".format(tab), "value"),
-                Input("{0}-is-shared".format(tab), "children"),
+                Input(f"{tab}-model-drop", "value"),
+                Input(f"{tab}-is-shared", "children"),
             ],
         )(register_update_share_table_cb(tab))
 
         app.callback(
-            Output("{0}-shared-idx".format(tab), "children"),
+            Output(f"{tab}-shared-idx", "children"),
             [
-                Input("{0}-shared-table".format(tab), "data"),
-                Input(
-                    "{0}-shared-table".format(tab), "derived_virtual_selected_row_ids"
-                ),
+                Input(f"{tab}-shared-table", "data"),
+                Input(f"{tab}-shared-table", "derived_virtual_selected_row_ids"),
             ],
         )(register_update_idx_cb())
         for i in range(MAX_NUM_PANES):
             s_i = str(i)
             app.callback(
-                Output("{0}-instance-idx-{1}".format(tab, s_i), "children"),
+                Output(f"{tab}-instance-idx-{s_i}", "children"),
                 [
-                    Input("{0}-is-shared".format(tab), "children"),
-                    Input("{0}-shared-idx".format(tab), "children"),
-                    Input("{0}-specific-idx-{1}".format(tab, s_i), "children"),
+                    Input(f"{tab}-is-shared", "children"),
+                    Input(f"{tab}-shared-idx", "children"),
+                    Input(f"{tab}-specific-idx-{s_i}", "children"),
                 ],
             )(register_update_instance_idx_cb())
             app.callback(
-                Output("{0}-specific-idx-{1}".format(tab, s_i), "children"),
+                Output(f"{tab}-specific-idx-{s_i}", "children"),
                 [
-                    Input("{0}-instance-table-{1}".format(tab, s_i), "data"),
+                    Input(f"{tab}-instance-table-{s_i}", "data"),
                     Input(
-                        "{0}-instance-table-{1}".format(tab, s_i),
+                        f"{tab}-instance-table-{s_i}",
                         "derived_virtual_selected_row_ids",
                     ),
                 ],
@@ -758,9 +737,7 @@ The explanations available are split into tabs, each covering an aspect of the p
 
     def gen_share_table_container(model_idxs, explanation_type):
         _log.debug(
-            "Generating shared table container: {0}|{1}".format(
-                model_idxs, explanation_type
-            )
+            f"Generating shared table container: {model_idxs}|{explanation_type}"
         )
 
         # Since tables are shared (identical in content), we take the first.
@@ -777,11 +754,11 @@ The explanations available are split into tabs, each covering an aspect of the p
             instance_table = dt.DataTable(
                 data=records,
                 columns=columns,
-                id="{0}-shared-table".format(explanation_type),
+                id=f"{explanation_type}-shared-table",
                 row_selectable="multi",
                 **DATA_TABLE_DEFAULTS,
             )
-            component = html.Div(
+            return html.Div(
                 [
                     html.Div(
                         html.Div("Select Components to Graph", className="card-title"),
@@ -793,15 +770,13 @@ The explanations available are split into tabs, each covering an aspect of the p
                 ],
                 className="card",
             )
-            return component
-        else:
-            return None
+        return None
 
     def gen_plots_container(model_idx, picker_idx):
         if model_idx is None or not picker_idx:
             return None
 
-        _log.debug("Generating plots: {0}|{1}".format(model_idx, picker_idx))
+        _log.debug(f"Generating plots: {model_idx}|{picker_idx}")
 
         ctx = app.ctx
         exp = ctx[model_idx][0]
@@ -815,7 +790,7 @@ The explanations available are split into tabs, each covering an aspect of the p
         return html.Div(output)
 
     def gen_overall_plot_container(model_idx):
-        _log.debug("Generating overall plots: {0}".format(model_idx))
+        _log.debug(f"Generating overall plots: {model_idx}")
 
         ctx = app.ctx
         exp = ctx[model_idx][0]
@@ -873,7 +848,7 @@ def _expand_ctx_item(item):
 
     if selector is not None:
         df = selector.copy()
-        df.reset_index(inplace=True, drop=True)
+        df = df.reset_index(drop=True)
         df["id"] = df.index
         df *= 1
     else:
@@ -892,13 +867,12 @@ def generate_app(
     # If we are passed a single explanation as a scalar, generate mini app.
     if not isinstance(ctx, list):
         new_item = _expand_ctx_item(ctx)
-        app = generate_app_mini(
+        return generate_app_mini(
             new_item,
             url_base_pathname=url_base_pathname,
             requests_pathname_prefix=requests_pathname_prefix,
             routes_pathname_prefix=routes_pathname_prefix,
         )
-        return app
 
     app = generate_app_full(
         requests_pathname_prefix=requests_pathname_prefix,
@@ -915,14 +889,14 @@ def generate_app(
     new_options = options.copy()
     share_tables = new_options["share_tables"]
     supported_types = ["data", "perf", "global", "local"]
-    _log.debug("PRE shared_tables: {0}".format(share_tables))
+    _log.debug(f"PRE shared_tables: {share_tables}")
     if share_tables is None:
         # TODO: Revisit when we support custom tabs from users.
         shared_frames = {supported_type: True for supported_type in supported_types}
         first_dfs = {}
         for expl, df in new_ctx:
             expl_type = expl.explanation_type
-            if first_dfs.get(expl_type, None) is None:
+            if first_dfs.get(expl_type) is None:
                 first_dfs[expl_type] = df
 
             if df is None or not df.equals(first_dfs[expl_type]):
@@ -934,10 +908,11 @@ def generate_app(
     elif isinstance(share_tables, dict):
         shared_frames = share_tables
     else:  # pragma: no cover
-        raise Exception("share_tables option must be True|False|None or dict.")
+        msg = "share_tables option must be True|False|None or dict."
+        raise Exception(msg)
 
     new_options["share_tables"] = shared_frames
-    _log.debug("POST shared_tables: {0}".format(shared_frames))
+    _log.debug(f"POST shared_tables: {shared_frames}")
 
     app.ctx = new_ctx
     app.options = new_options

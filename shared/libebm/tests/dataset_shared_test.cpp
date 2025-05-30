@@ -39,7 +39,7 @@ TEST_CASE("dataset_shared, zero features, three samples, regression") {
    ErrorEbm error;
 
    static constexpr IntEbm k_cSamples = 3;
-   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double targets[k_cSamples]{0.3, 0.2, 0.1};
 
    part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -59,7 +59,6 @@ TEST_CASE("dataset_shared, zero features, three samples, regression") {
 
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
-
 
 TEST_CASE("dataset_shared, two features, zero samples, regression") {
    IntEbm sum = 0;
@@ -102,8 +101,8 @@ TEST_CASE("dataset_shared, two features, 3 samples, regression") {
    IntEbm part;
    ErrorEbm error;
    static constexpr IntEbm k_cSamples = 3;
-   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
-   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   IntEbm binIndexes[k_cSamples]{2, 1, 0};
+   double targets[k_cSamples]{0.3, 0.2, 0.1};
 
    part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -166,7 +165,7 @@ TEST_CASE("dataset_shared, zero features, three samples, classification") {
    ErrorEbm error;
 
    static constexpr IntEbm k_cSamples = 3;
-   IntEbm targets[k_cSamples] { 2, 1, 0 };
+   IntEbm targets[k_cSamples]{2, 1, 0};
 
    part = MeasureDataSetHeader(0, 0, 1);
    CHECK(0 <= part);
@@ -228,8 +227,8 @@ TEST_CASE("dataset_shared, two features, 3 samples, classification") {
    IntEbm part;
    ErrorEbm error;
    static constexpr IntEbm k_cSamples = 3;
-   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
-   IntEbm targets[k_cSamples] { 2, 1, 0 };
+   IntEbm binIndexes[k_cSamples]{2, 1, 0};
+   IntEbm targets[k_cSamples]{2, 1, 0};
 
    part = MeasureDataSetHeader(2, 0, 1);
    CHECK(0 <= part);
@@ -262,8 +261,7 @@ TEST_CASE("dataset_shared, two features, 3 samples, classification") {
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
 
-
-// weights 
+// weights
 
 TEST_CASE("dataset_shared, zero features, zero samples, weights, regression") {
    IntEbm sum = 0;
@@ -301,8 +299,8 @@ TEST_CASE("dataset_shared, zero features, three samples, weights, regression") {
    ErrorEbm error;
 
    static constexpr IntEbm k_cSamples = 3;
-   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   double weights[k_cSamples]{0.31, 0.21, 0.11};
+   double targets[k_cSamples]{0.3, 0.2, 0.1};
 
    part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -328,7 +326,6 @@ TEST_CASE("dataset_shared, zero features, three samples, weights, regression") {
 
    CHECK(99 == buffer[static_cast<size_t>(sum)]);
 }
-
 
 TEST_CASE("dataset_shared, two features, zero samples, weights, regression") {
    IntEbm sum = 0;
@@ -377,9 +374,9 @@ TEST_CASE("dataset_shared, two features, 3 samples, weights, regression") {
    IntEbm part;
    ErrorEbm error;
    static constexpr IntEbm k_cSamples = 3;
-   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
-   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   double targets[k_cSamples] { 0.3, 0.2, 0.1 };
+   IntEbm binIndexes[k_cSamples]{2, 1, 0};
+   double weights[k_cSamples]{0.31, 0.21, 0.11};
+   double targets[k_cSamples]{0.3, 0.2, 0.1};
 
    part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);
@@ -454,8 +451,8 @@ TEST_CASE("dataset_shared, zero features, three samples, weights, classification
    ErrorEbm error;
 
    static constexpr IntEbm k_cSamples = 3;
-   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   IntEbm targets[k_cSamples] { 2, 1, 0 };
+   double weights[k_cSamples]{0.31, 0.21, 0.11};
+   IntEbm targets[k_cSamples]{2, 1, 0};
 
    part = MeasureDataSetHeader(0, 1, 1);
    CHECK(0 <= part);
@@ -529,9 +526,9 @@ TEST_CASE("dataset_shared, two features, 3 samples, weights, classification") {
    IntEbm part;
    ErrorEbm error;
    static constexpr IntEbm k_cSamples = 3;
-   IntEbm binIndexes[k_cSamples] { 2, 1, 0 };
-   double weights[k_cSamples] { 0.31, 0.21, 0.11 };
-   IntEbm targets[k_cSamples] { 2, 1, 0 };
+   IntEbm binIndexes[k_cSamples]{2, 1, 0};
+   double weights[k_cSamples]{0.31, 0.21, 0.11};
+   IntEbm targets[k_cSamples]{2, 1, 0};
 
    part = MeasureDataSetHeader(2, 1, 1);
    CHECK(0 <= part);

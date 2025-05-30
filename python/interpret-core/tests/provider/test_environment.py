@@ -13,4 +13,5 @@ def test_environment_detector():
     # Check if assertion succeeds
     detector.checks["always_true"] = lambda: True
     envs = detector.detect()
-    assert len(envs) == 1 and envs[0] == "always_true"
+    assert len(envs) == 1
+    assert envs[0] == "always_true"
