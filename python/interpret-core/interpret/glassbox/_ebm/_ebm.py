@@ -1694,6 +1694,40 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
+    def to_excel_exportable(self, file):
+        """Converts the model to an Excel exportable representation.
+
+        Args:
+
+        Returns:
+            An xlsxwriter.Workbook object with an Excel representation of the model.
+            This Workbook can be modified and then exported as any xlsxwriter object
+            for advanced usages when custom export is required.
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        from ._excel import UNTESTED_to_excel_exportable
+
+        assert isinstance(self, ExplainableBoostingClassifier)
+
+        workbook = UNTESTED_to_excel_exportable(self, file)
+
+        return workbook
+
+    def to_excel(self, file):
+        """Exports the model to an Excel workbook.
+
+        Args:
+            file: a path-like object (str or os.PathLike),
+                or a file-like object implementing .write().
+        """
+
+        check_is_fitted(self, "has_fitted_")
+
+        workbook = self.to_excel_exportable(file)
+        workbook.close()
+
     def _predict_score(self, X, init_score=None):
         """Predict scores on provided samples.
 

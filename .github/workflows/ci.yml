@@ -224,7 +224,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/sdist/interpret_core-*.tar.gz)
           install_file=$(basename "$install_file" .tar.gz)
-          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           cd "docs/"
           pip install -r requirements.txt
           /bin/sh ./build.sh
@@ -540,7 +540,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/sdist/interpret_core-*.tar.gz)
           install_file=$(basename "$install_file" .tar.gz)
-          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           mkdir -p "tmp/zqmr/t"
           tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
           cd "tmp/zqmr/t"
@@ -552,7 +552,7 @@ jobs:
           $install_file = Get-ChildItem -Path "bld/sdist" -Filter "interpret_core-*.tar.gz"
           $install_file = $install_file.Name -replace '\.tar\.gz$', ''
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
-          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
           tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
           cd "tmp/zqmr/t"
@@ -641,7 +641,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           install_file=$(echo bld/bdist/interpret_core-*.whl)
           install_file=$(basename "$install_file" .whl)
-          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           mkdir -p "tmp/zqmr/t"
           cp -R "python/interpret-core/tests/" "tmp/zqmr/t/"
           cd "tmp/zqmr/t"
@@ -653,7 +653,7 @@ jobs:
           $install_file = Get-ChildItem -Path "bld/bdist" -Filter "interpret_core-*.whl"
           $install_file = $install_file.Name -replace '\.whl$', ''
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
-          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,testing]"
+          python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
           xcopy /E "python\interpret-core\tests\*" "tmp\zqmr\t\"
           cd "tmp/zqmr/t"

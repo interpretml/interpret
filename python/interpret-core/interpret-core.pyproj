@@ -56,6 +56,7 @@
     <Compile Include="interpret\glassbox\_decisiontree.py" />
     <Compile Include="interpret\glassbox\_ebm\_bin.py" />
     <Compile Include="interpret\glassbox\_ebm\_ebm.py" />
+    <Compile Include="interpret\glassbox\_ebm\_excel.py" />
     <Compile Include="interpret\glassbox\_ebm\_json.py" />
     <Compile Include="interpret\glassbox\_ebm\_multiclass.py" />
     <Compile Include="interpret\glassbox\_ebm\_research\_group_importance.py" />
