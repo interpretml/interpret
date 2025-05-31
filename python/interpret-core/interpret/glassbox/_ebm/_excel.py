@@ -145,7 +145,6 @@ options = dotsi.fy(_global_config)
 
 
 class Format:
-
     """
     A class to represent an workbook format.
     Simply stores it as a dict.
@@ -208,7 +207,6 @@ Formats = dotsi.fy({})
 
 
 class Worksheet:
-
     """
     A class to represent a worksheet within the export.
     Allows to simplify worksheet configuration on top of Xlsxwriter.
@@ -312,7 +310,6 @@ class Worksheet:
 
 
 class OverviewWorksheet(Worksheet):
-
     """A class to build the Overview sheet."""
 
     def register_formats(self):
@@ -432,7 +429,6 @@ class OverviewWorksheet(Worksheet):
             )
 
     def __model_description(self):
-
         # Text field
         self.worksheet.merge_range("B6:F6", "")
         self.worksheet.set_row(
@@ -536,7 +532,6 @@ class OverviewWorksheet(Worksheet):
 
 
 class VariablesWorksheet(Worksheet):
-
     """A class to build the Variables sheets."""
 
     def register_formats(self):
@@ -726,7 +721,6 @@ class VariablesWorksheet(Worksheet):
 
 
 class VariablesDataWorksheet(Worksheet):
-
     """A class to build the hidden sheet storing Features data."""
 
     def provide_data(self, *args, **kwargs):
@@ -1002,7 +996,6 @@ class VariablesDataWorksheet(Worksheet):
 
 
 class ShapePlotsWorksheet(Worksheet):
-
     """A class to build shape plots of each variable."""
 
     def register_formats(self):
@@ -1301,7 +1294,6 @@ class ShapePlotsWorksheet(Worksheet):
 
 
 class EvaluationWorksheet(Worksheet):
-
     """A class to build the Evaluation sheet."""
 
     def register_formats(self):
@@ -1876,7 +1868,6 @@ class EvaluationWorksheet(Worksheet):
 
 
 class ExportableEBMModel:
-
     """
     A class to represent an exportable EBM model.
 

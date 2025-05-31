@@ -250,7 +250,12 @@ https://github.com/interpretml/interpret
         # Plotly (required if .visualize is ever called)
         "plotly": ["plotly>=3.8.1"],
         # Export
-       "excel": ["Xlsxwriter>=3.0.1", "dotsi>=0.0.3", "seaborn>=0.13.2", "matplotlib>=3.9.1"],
+        "excel": [
+            "Xlsxwriter>=3.0.1",
+            "dotsi>=0.0.3",
+            "seaborn>=0.13.2",
+            "matplotlib>=3.9.1",
+        ],
         # Explainers
         "lime": ["lime>=0.1.1.33"],
         "sensitivity": ["SALib>=1.3.3"],
