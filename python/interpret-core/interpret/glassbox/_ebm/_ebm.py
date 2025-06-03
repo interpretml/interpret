@@ -1181,16 +1181,39 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                 if n_classes >= Native.Task_MulticlassPlus:
                     warn(
-                        "Detected multiclass problem. Forcing interactions to 0. "
-                        "Multiclass interactions only have local explanations. "
-                        "They are not currently displayed in the global explanation "
-                        "visualizations. Set interactions=0 to disable this warning. "
-                        "If you still want multiclass interactions, this API accepts "
-                        "a list, and the measure_interactions function can be used to "
-                        "detect them.",
-                        stacklevel=1,
+                        "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
                     )
-                    break
+
+                # at this point interactions will be a positive, nonzero integer
+            elif isinstance(interactions, str):
+                interactions = interactions.strip()
+
+                if not interactions.lower().endswith("x"):
+                    raise ValueError(
+                        "If passing a string for interactions, it must end in an 'x' character."
+                    )
+
+                interactions = interactions[:-1]
+                try:
+                    interactions = float(interactions)
+                except ValueError:
+                    raise ValueError(
+                        f"'{interactions}' is not a valid floating-point number."
+                    )
+
+                if interactions <= 0.0:
+                    if interactions == 0.0:
+                        break
+                    msg = "interactions cannot be negative"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                if n_classes >= Native.Task_MulticlassPlus:
+                    warn(
+                        "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
+                    )
+
+                interactions = int(ceil(n_features_in * interactions))
 
                 # at this point interactions will be a positive, nonzero integer
             elif len(interactions) == 0:
