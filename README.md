@@ -712,6 +712,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Artificial Intelligence in Job Recommendation Systems](http://essay.utwente.nl/96974/1/Tran_MA_EEMCS.pdf)
 - [Diagnosis uncertain models for medical risk prediction](https://arxiv.org/pdf/2306.17337.pdf)
 - [Extending Explainable Boosting Machines to Scientific Image Data](https://arxiv.org/pdf/2305.16526.pdf)
+- [Exploring explanation deficits in subclinical mastitis detection with explainable boosting machines](https://link.springer.com/article/10.1007/s44279-025-00246-z)
 - [Pest Presence Prediction Using Interpretable Machine Learning](https://arxiv.org/pdf/2205.07723.pdf)
 - [Key Thresholds and Relative Contributions of Knee Geometry, Anteroposterior Laxity, and Body Weight as Risk Factors for Noncontact ACL Injury](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10184233/pdf/10.1177_23259671231163627.pdf)
 - [A clinical prediction model for 10-year risk of self-reported osteoporosis diagnosis in pre- and perimenopausal women](https://pubmed.ncbi.nlm.nih.gov/37273115/)

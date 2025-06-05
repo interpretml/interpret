@@ -227,19 +227,27 @@ jobs:
           python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           cd "docs/"
           pip install -r requirements.txt
-          /bin/sh ./build.sh
+          if ! /bin/sh ./build.sh; then
+            echo "::warning title=docs build::Building of docs failed"
+            exit 78  # no longer works in github, but would mark action step with a warning
+          fi
       - name: Mark step with a warning
         if: ${{ steps.build_docs.outcome == 'failure' }}
         uses: actions/github-script@v6
         with:
           script: |
-            github.rest.checks.create({
+            await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               name: 'Failed building docs',
               head_sha: context.sha,
               status: 'completed',
-              conclusion: 'neutral'
+              conclusion: 'neutral',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: 'Failed building docs',
+                summary: 'Failed building docs.'
+              }
             })
       - name: Publish docs
         uses: actions/upload-artifact@v4
