@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v0.6.11] - 2025-06-05
+### Changed
+- increased max_rounds to 50,000
+- possibly faster prediction in some scenarios (unverified)
+- remove obsolete dash components from requirements
+
 ## [v0.6.10] - 2025-03-26
 ### Added
 - reorder_classes function which allows reordering of the classes after fitting
