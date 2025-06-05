@@ -46,6 +46,11 @@ jobs:
           echo "Commit ID: ${commit_id}"
           workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs?status=success" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'" and .name == "interpret-CI")) | sort_by(.created_at) | reverse | .[0]')
           run_id=$(echo "$workflow_runs" | jq -r '.id')
+          if [[ -z "$run_id" || "$run_id" == "null" ]]; then
+            echo "No successful run found – looking for the last failed run."
+            workflow_runs=$(gh api -X GET "/repos/${{ github.repository }}/actions/runs" -q '.workflow_runs | map(select(.head_commit.id == "'"${commit_id}"'" and .name == "interpret-CI")) | sort_by(.created_at) | reverse | .[0]')
+            run_id=$(echo "$workflow_runs" | jq -r '.id')
+          fi
           echo "Run ID: ${run_id}"
           echo "run_id=${run_id}" >> $GITHUB_ENV
         env:
