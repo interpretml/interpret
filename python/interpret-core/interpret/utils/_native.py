@@ -15,6 +15,8 @@ import numpy as np
 
 _log = logging.getLogger(__name__)
 
+_boolebm_t = np.int32
+
 
 class Native:
     # see notes in libebm.h on the maximum representable int64 in float64 format
