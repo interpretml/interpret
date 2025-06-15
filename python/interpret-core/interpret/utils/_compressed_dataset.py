@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 
-from ._clean_x import unify_columns, categorical_encode
+from ._clean_x import categorical_encode, unify_columns
 from ._native import Native
 
 _log = logging.getLogger(__name__)
