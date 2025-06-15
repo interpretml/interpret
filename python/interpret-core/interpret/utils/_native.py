@@ -8,13 +8,14 @@ import os
 import platform
 import struct
 import sys
-import math
 from contextlib import AbstractContextManager
 from math import prod
 
 import numpy as np
 
 _log = logging.getLogger(__name__)
+
+_boolebm_t = np.int32
 
 
 class Native:
