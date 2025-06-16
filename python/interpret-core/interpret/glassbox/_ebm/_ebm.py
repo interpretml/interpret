@@ -1170,14 +1170,15 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
 
-                if interactions < 1.0:
-                    interactions = int(ceil(n_features_in * interactions))
-                elif isinstance(interactions, float):
-                    if not interactions.is_integer():
+                if isinstance(interactions, float):
+                    if interactions < 1.0 or develop.get_option(
+                        "allow_float_interactions"
+                    ):
+                        interactions = int(ceil(n_features_in * interactions))
+                    else:
                         msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
                         _log.error(msg)
                         raise ValueError(msg)
-                    interactions = int(interactions)
 
                 if n_classes >= Native.Task_MulticlassPlus:
                     warn(

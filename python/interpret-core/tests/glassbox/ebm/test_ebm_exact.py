@@ -58,7 +58,7 @@ def test_identical_ebm():
 
             seed += 1
 
-    expected = 3.293830243001898e+19
+    expected = 3.293830243001898e19
 
     assert fingerprint == expected
 
