@@ -27,13 +27,11 @@ hyperparameters: [0.0025, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2]
 guidance: The conventional wisdom is that a lower learning rate is generally better, but we have found the relationship to be more complex for EBMs. In general, regression seems to prefer a higher learning rate, binary classification seems to prefer a lower learning rate, and multiclass is in-between.
 
 ## interactions
-default: 0.9
+default: "3x" (classification), "5x" (regression)
 
-ideal: As many as possible within interpretability limits.
+hyperparameters: [0, "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "3.5x", "4x", "4.5x", "5x", "6x", "7x", "8x", "9x", "10x", "15x", "20x", "25x"]
 
-hyperparameters: [0.0, 0.9, 0.95, 0.99, 100, 250, 500]
-
-guidance: Generally, this parameter should be chosen based on interpretability considerations as having too many interactions makes the model less interpretable. A reasonable stragegy is to initially include more interactions than desired, then drop the less important interactions in post processing after fitting. See the [remove_terms](./python/api/ExplainableBoostingClassifier.ipynb) function. In terms of model performance, introducing more interactions tends to improve model accuracy. Values between 0 and LESS than 1 are interpreted as percentages of the number of features. For example, a dataset with 100 features and an interactions value of 0.7 will automatically detect and use 70 interactions. Values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50.
+guidance: Generally, this parameter should be chosen based on interpretability considerations as having too many interactions makes the model less interpretable. A reasonable strategy is to initially include more interactions than desired, then drop the less important interactions. In terms of model performance, introducing more interactions tends to improve model accuracy. String values that begin with a float and have a trailing "x" are interpreted as multiples of the number of features. For example, a dataset with 100 features and an interactions value of "1.5x" will automatically detect and use 150 interactions. Integer values of 1 or higher indicate the exact number of interactions to be detected, so for example 1 would create 1 interaction term, and 50 would create 50. For classification "3.5x" seems to be a good average multiple. For regression "25x" to "50x"seems to be a good average multiple in terms of model performance, however that many interactions would usually be too many for interpretability reasons.
 
 ## inner_bags
 default: 0
