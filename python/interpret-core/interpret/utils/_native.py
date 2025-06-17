@@ -15,7 +15,13 @@ import numpy as np
 
 _log = logging.getLogger(__name__)
 
-_boolebm_t = np.int32
+
+def _boolebm(val):
+    """Convert `bool` to `np.int32` used by libebm to represents `bool`."""
+    if not isinstance(val, (bool, np.bool_)):
+        msg = f"Native EBM functions expect boolean, got f{type(val)}"
+        raise TypeError(msg)
+    return np.int32(val)
 
 
 class Native:
@@ -575,7 +581,7 @@ class Native:
             X_col.shape[0],
             Native._make_pointer(X_col, np.float64),
             min_samples_bin,
-            is_rounded,
+            _boolebm(is_rounded),
             ct.byref(count_cuts),
             Native._make_pointer(cuts, np.float64),
         )
@@ -658,9 +664,9 @@ class Native:
     def measure_feature(self, n_bins, is_missing, is_unseen, is_nominal, bin_indexes):
         n_bytes = self._unsafe.MeasureFeature(
             n_bins,
-            is_missing,
-            is_unseen,
-            is_nominal,
+            _boolebm(is_missing),
+            _boolebm(is_unseen),
+            _boolebm(is_nominal),
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
         )
@@ -712,9 +718,9 @@ class Native:
     ):
         return_code = self._unsafe.FillFeature(
             n_bins,
-            is_missing,
-            is_unseen,
-            is_nominal,
+            _boolebm(is_missing),
+            _boolebm(is_unseen),
+            _boolebm(is_nominal),
             len(bin_indexes),
             Native._make_pointer(bin_indexes, np.int64),
             dataset.nbytes,

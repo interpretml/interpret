@@ -6,7 +6,7 @@ import logging
 import numpy as np
 
 from ._clean_x import categorical_encode, unify_columns
-from ._native import Native, _boolebm_t
+from ._native import Native
 
 _log = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def bin_native(
 
         n_bytes += native.measure_feature(
             n_bins,
-            _boolebm_t(np.count_nonzero(X_col) != len(X_col)),
+            np.count_nonzero(X_col) != len(X_col),
             bad is not None,
             feature_type == "nominal",
             X_col,
@@ -134,7 +134,7 @@ def bin_native(
 
         native.fill_feature(
             n_bins,
-            _boolebm_t(np.count_nonzero(X_col) != len(X_col)),
+            np.count_nonzero(X_col) != len(X_col),
             bad is not None,
             feature_type == "nominal",
             X_col,
