@@ -479,9 +479,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux_39_python
-            python_ver: "3.9"
-            image: ubuntu-latest
           - name: linux_310_python
             python_ver: "3.10"
             image: ubuntu-latest
@@ -491,9 +488,9 @@ jobs:
           - name: linux_312_python
             python_ver: "3.12"
             image: ubuntu-latest
-          - name: linuxarm_39_python
-            python_ver: "3.9"
-            image: ubuntu-22.04-arm
+          - name: linux_313_python
+            python_ver: "3.13"
+            image: ubuntu-latest
           - name: linuxarm_310_python
             python_ver: "3.10"
             image: ubuntu-22.04-arm
@@ -503,9 +500,9 @@ jobs:
           - name: linuxarm_312_python
             python_ver: "3.12"
             image: ubuntu-22.04-arm
-          - name: mac_39_python
-            python_ver: "3.9"
-            image: macos-latest
+          - name: linuxarm_313_python
+            python_ver: "3.13"
+            image: ubuntu-22.04-arm
           - name: mac_310_python
             python_ver: "3.10"
             image: macos-latest
@@ -515,9 +512,9 @@ jobs:
           - name: mac_312_python
             python_ver: "3.12"
             image: macos-latest
-          - name: win_39_python
-            python_ver: "3.9"
-            image: windows-latest
+          - name: mac_313_python
+            python_ver: "3.13"
+            image: macos-latest
           - name: win_310_python
             python_ver: "3.10"
             image: windows-latest
@@ -526,6 +523,9 @@ jobs:
             image: windows-latest
           - name: win_312_python
             python_ver: "3.12"
+            image: windows-latest
+          - name: win_313_python
+            python_ver: "3.13"
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
@@ -580,9 +580,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux_39_python
-            python_ver: "3.9"
-            image: ubuntu-latest
           - name: linux_310_python
             python_ver: "3.10"
             image: ubuntu-latest
@@ -592,9 +589,9 @@ jobs:
           - name: linux_312_python
             python_ver: "3.12"
             image: ubuntu-latest
-          - name: linuxarm_39_python
-            python_ver: "3.9"
-            image: ubuntu-24.04-arm
+          - name: linux_313_python
+            python_ver: "3.13"
+            image: ubuntu-latest
           - name: linuxarm_310_python
             python_ver: "3.10"
             image: ubuntu-24.04-arm
@@ -604,9 +601,9 @@ jobs:
           - name: linuxarm_312_python
             python_ver: "3.12"
             image: ubuntu-24.04-arm
-          - name: mac_39_python
-            python_ver: "3.9"
-            image: macos-latest
+          - name: linuxarm_313_python
+            python_ver: "3.13"
+            image: ubuntu-24.04-arm
           - name: mac_310_python
             python_ver: "3.10"
             image: macos-latest
@@ -616,9 +613,9 @@ jobs:
           - name: mac_312_python
             python_ver: "3.12"
             image: macos-latest
-          - name: win_39_python
-            python_ver: "3.9"
-            image: windows-latest
+          - name: mac_313_python
+            python_ver: "3.13"
+            image: macos-latest
           - name: win_310_python
             python_ver: "3.10"
             image: windows-latest
@@ -627,6 +624,9 @@ jobs:
             image: windows-latest
           - name: win_312_python
             python_ver: "3.12"
+            image: windows-latest
+          - name: win_313_python
+            python_ver: "3.13"
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
