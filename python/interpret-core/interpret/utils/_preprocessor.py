@@ -48,10 +48,10 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
 
     if processing == "quantile":
         # one bin for missing, one bin for unseen, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 0, max_bins - 3)
+        cuts = native.cut_quantile(X_col, min_samples_bin, False, max_bins - 3)
     elif processing == "rounded_quantile":
         # one bin for missing, one bin for unseen, and # of cuts is one less again
-        cuts = native.cut_quantile(X_col, min_samples_bin, 1, max_bins - 3)
+        cuts = native.cut_quantile(X_col, min_samples_bin, True, max_bins - 3)
     elif processing == "uniform":
         # one bin for missing, one bin for unseen, and # of cuts is one less again
         cuts = native.cut_uniform(X_col, max_bins - 3)

@@ -522,8 +522,8 @@ class Native:
 
         return_code = self._unsafe.Purify(
             tolerance,
-            is_randomized,
-            is_multiclass_normalization,
+            _boolebm(is_randomized),
+            _boolebm(is_multiclass_normalization),
             n_multi_scores,
             len(shape_classless),
             Native._make_pointer(shape_array, np.int64),
