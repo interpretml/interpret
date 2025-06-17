@@ -1170,14 +1170,15 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
 
-                if interactions < 1.0:
-                    interactions = int(ceil(n_features_in * interactions))
-                elif isinstance(interactions, float):
-                    if not interactions.is_integer():
+                if isinstance(interactions, float):
+                    if interactions < 1.0 or develop.get_option(
+                        "allow_float_interactions"
+                    ):
+                        interactions = int(ceil(n_features_in * interactions))
+                    else:
                         msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
                         _log.error(msg)
                         raise ValueError(msg)
-                    interactions = int(interactions)
 
                 if n_classes >= Native.Task_MulticlassPlus:
                     warn(
@@ -2784,12 +2785,13 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=0.9
+    interactions : int, float, str, or list of tuples of feature indices, default="3x"
 
         Interaction terms to be included in the model. Options are:
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
+            - String with format (float + "x"): Determine the integer count of interactions by multiplying the number of features by the float value.
             - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
               the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
               the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
@@ -3017,8 +3019,8 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.9,
+            Union[int, float, str, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
+        ] = "3x",
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
@@ -3284,12 +3286,13 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         Max number of bins per feature for the main effects stage.
     max_interaction_bins : int, default=64
         Max number of bins per feature for interaction terms.
-    interactions : int, float, or list of tuples of feature indices, default=0.9
+    interactions : int, float, str, or list of tuples of feature indices, default="5x"
 
         Interaction terms to be included in the model. Options are:
 
             - Integer (1 <= interactions): Count of interactions to be automatically selected
             - Percentage (interactions < 1.0): Determine the integer count of interactions by multiplying the number of features by this percentage
+            - String with format (float + "x"): Determine the integer count of interactions by multiplying the number of features by the float value.
             - List of tuples: The tuples contain the indices of the features within each additive term. In addition to pairs,
               the interactions parameter accepts higher order interactions. It also accepts univariate terms which will cause
               the algorithm to boost the main terms at the same time as the interactions. When boosting mains at the same time
@@ -3517,8 +3520,8 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         max_interaction_bins: int = 64,
         # Stages
         interactions: Optional[
-            Union[int, float, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = 0.9,
+            Union[int, float, str, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
+        ] = "5x",
         exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
         # Ensemble
         validation_size: Optional[Union[int, float]] = 0.15,
