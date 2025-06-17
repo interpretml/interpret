@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v0.6.12] - 2025-06-17
+### Changed
+- support for numpy 2.3.x
+- increased default number of interaction terms
+
 ## [v0.6.11] - 2025-06-05
 ### Changed
 - increased max_rounds to 50,000
