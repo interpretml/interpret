@@ -13,6 +13,9 @@ _log = logging.getLogger(__name__)
 
 
 def boost(
+    stop_flag,
+    bag_idx,
+    callback,
     dataset,
     intercept_rounds,
     intercept_learning_rate,
@@ -53,6 +56,7 @@ def boost(
     try:
         develop._develop_options = develop_options  # restore these in this process
         step_idx = 0
+        cur_metric = np.nan
 
         _log.info("Start boosting")
         native = Native.get_native_singleton()
@@ -134,12 +138,10 @@ def boost(
                     make_progress = False
                     if cyclic_state >= 1.0 or smoothing_rounds > 0:
                         # if cyclic_state is above 1.0 we make progress
-                        step_idx += 1
                         make_progress = True
                 else:
                     # greedy
                     make_progress = True
-                    step_idx += 1
                     _, _, term_idx = heapq.heappop(heap)
 
                 contains_nominals = any(nominals[i] for i in term_features[term_idx])
@@ -253,6 +255,8 @@ def boost(
                     booster.set_term_update(term_idx, noisy_update_tensor)
 
                 if make_progress:
+                    step_idx += 1
+
                     cur_metric = booster.apply_term_update()
                     # if early_stopping_tolerance is negative then keep accepting
                     # model updates as they get worse past the minimum. We might
@@ -293,6 +297,16 @@ def boost(
 
                         if min_prev_metric - modified_tolerance <= circular.min():
                             break
+
+                if stop_flag is not None and stop_flag.value:
+                    break
+ 
+                if callback is not None:
+                    is_done = callback(bag_idx, step_idx, make_progress, cur_metric)
+                    if is_done:
+                        if stop_flag is not None:
+                            stop_flag.value = True
+                        break
 
                 state_idx = state_idx + 1
                 if len(term_features) <= state_idx:

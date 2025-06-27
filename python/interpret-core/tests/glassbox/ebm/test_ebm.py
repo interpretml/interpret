@@ -1302,3 +1302,25 @@ def test_reorder_classes_strings():
     pred_reordered = ebm.predict_proba(X)
 
     assert np.allclose(pred[:, [1, 2, 0]], pred_reordered)
+
+def test_callbacks():
+    def callback_generator(minutes):
+        import time
+        end_time = None
+        def callback(bag_index, step_index, progress, metric):
+            nonlocal end_time
+            if end_time is None:
+                end_time = time.monotonic() + minutes * 60.0
+                return False
+            else:
+                return time.monotonic() > end_time
+        return callback
+
+    X, y, names, types = make_synthetic(output_type="float", n_samples=10000)
+
+    ebm = ExplainableBoostingClassifier(names, types, callback=callback_generator(0.25))
+    ebm.fit(X, y)
+
+    # print(ebm.best_iteration_)
+
+    pred = ebm.predict_proba(X)

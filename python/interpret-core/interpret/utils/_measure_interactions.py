@@ -265,6 +265,8 @@ def measure_interactions(
         iter_term_features = interactions
 
     ranked_interactions = rank_interactions(
+        None,
+        0,
         dataset=dataset,
         intercept=None,
         bag=None,

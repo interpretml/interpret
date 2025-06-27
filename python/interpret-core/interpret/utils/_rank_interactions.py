@@ -16,6 +16,8 @@ from .. import develop
 
 
 def rank_interactions(
+    stop_flag,
+    bag_idx,
     dataset,
     intercept,
     bag,
@@ -73,6 +75,9 @@ def rank_interactions(
                     heapq.heappushpop(interaction_strengths, item)
                 else:
                     heapq.heappush(interaction_strengths, item)
+
+                if stop_flag is not None and stop_flag.value:
+                    break
 
         interaction_strengths.sort(reverse=True)
         return interaction_strengths
