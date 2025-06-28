@@ -1170,6 +1170,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 rngs.append(bagged_rng)
 
             while True:  # this isn't for looping. Just for break statements to exit
+                if stop_flag.value:
+                    break
+
                 if interactions is None:
                     break
 
