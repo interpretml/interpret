@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v0.6.13] - 2025-06-28
+### Added
+- support for early termination of EBM training using a callback mechanism
+
 ## [v0.6.12] - 2025-06-17
 ### Changed
 - support for numpy 2.3.x
