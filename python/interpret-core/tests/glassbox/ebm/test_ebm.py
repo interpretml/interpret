@@ -1305,16 +1305,17 @@ def test_reorder_classes_strings():
 
 def test_callbacks():
     def callback_generator(minutes):
-        import time
-        end_time = None
-        def callback(bag_index, step_index, progress, metric):
-            nonlocal end_time
-            if end_time is None:
-                end_time = time.monotonic() + minutes * 60.0
-                return False
-            else:
-                return time.monotonic() > end_time
-        return callback
+        class Callback:
+            def __init__(self, minutes):
+                self.minutes = minutes
+            def __call__(self, bag_index, step_index, progress, metric):
+                import time
+                if not hasattr(self, 'end_time'):
+                    self.end_time = time.monotonic() + self.minutes * 60.0
+                    return False
+                else:
+                    return time.monotonic() > self.end_time
+        return Callback(minutes)
 
     X, y, names, types = make_synthetic(output_type="float", n_samples=10000)
 
