@@ -1076,7 +1076,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         )
 
         with multiprocessing.Manager() as manager:
-            stop_flag = manager.Value('b', False)
+            stop_flag = manager.Value("b", False)
 
             parallel_args = []
             for idx in range(self.outer_bags):
@@ -1329,7 +1329,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         )
                         for rank, indices in enumerate(interaction_indices):
                             old_mean = pair_ranks.get(indices, 0)
-                            pair_ranks[indices] = old_mean + ((rank - old_mean) / (n + 1))
+                            pair_ranks[indices] = old_mean + (
+                                (rank - old_mean) / (n + 1)
+                            )
 
                     final_ranks = []
                     total_interactions = 0
@@ -1385,7 +1387,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                         max_dimensions = max(max_dimensions, len(feature_idxs))
                         sorted_tuple = tuple(sorted(feature_idxs))
-                        if sorted_tuple not in uniquifier and sorted_tuple not in exclude:
+                        if (
+                            sorted_tuple not in uniquifier
+                            and sorted_tuple not in exclude
+                        ):
                             uniquifier.add(sorted_tuple)
                             boost_groups.append(feature_idxs)
 
@@ -1459,7 +1464,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 results = provider.parallel(boost, parallel_args)
 
                 # allow python to reclaim these big memory items via reference counting
-                del parallel_args  # this holds references to dataset, scores_bags, and bags
+                # this holds references to dataset, scores_bags, and bags
+                del parallel_args
                 del scores_bags
 
                 best_iteration.append([])
@@ -2876,8 +2882,8 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         the ensemble as a whole.
     callback : Optional[Callable[[int, int, bool, float], bool]], default=None
         A user-defined function that is invoked at the end of each boosting step to determine
-        whether to terminate boosting or continue. If it returns True, the boosting loop is 
-        stopped immediately. By default, no callback is used and training proceeds according 
+        whether to terminate boosting or continue. If it returns True, the boosting loop is
+        stopped immediately. By default, no callback is used and training proceeds according
         to the early stopping settings.  The callback function receives:
         (1) the bag index, (2) the number of boosting steps completed,
         (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
@@ -3386,8 +3392,8 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         the ensemble as a whole.
     callback : Optional[Callable[[int, int, bool, float], bool]], default=None
         A user-defined function that is invoked at the end of each boosting step to determine
-        whether to terminate boosting or continue. If it returns True, the boosting loop is 
-        stopped immediately. By default, no callback is used and training proceeds according 
+        whether to terminate boosting or continue. If it returns True, the boosting loop is
+        stopped immediately. By default, no callback is used and training proceeds according
         to the early stopping settings.  The callback function receives:
         (1) the bag index, (2) the number of boosting steps completed,
         (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.

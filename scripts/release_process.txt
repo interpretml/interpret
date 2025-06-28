@@ -194,16 +194,16 @@ set_visualize_provider(InlineProvider())
       https://pypi.org/project/interpret/#files
 
 - test PyPI release on colab:
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/custom-interactions.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/differential-privacy.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-classifiers.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/explain-blackbox-regressors.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/group-importances.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-classification.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-regression-synthetic.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/merge-ebms.ipynb
-  - https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/prototype-selection.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/custom-interactions.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/differential-privacy.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/explain-blackbox-classifiers.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/explain-blackbox-regressors.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/group-importances.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/interpretable-classification.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/interpretable-regression.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/interpretable-regression-synthetic.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/merge-ebms.ipynb
+  - https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/prototype-selection.ipynb
 
 - test PyPI release locally:
   - open anaconda console window
@@ -235,7 +235,7 @@ set_visualize_provider(InlineProvider())
 
 - in github:
   - maybe wait a day or two to see if any issues come up before advertizing the release this way
-  - select the "develop" branch
+  - select the "main" branch
   - in the main code window, click on "tags" next to the branch
   - click on "releases"
   - click on "Draft a new release"
@@ -251,10 +251,6 @@ set_visualize_provider(InlineProvider())
   - click "publish release".  Github will automatically attach the source code .zip and .tar.gz files
 - in your local git
   - pull/fetch to get the "v0.x.x" tag that github added to the repo
-  - switch to the "main" branch
-  - merge "develop" into "main" (this will also cary along with it the tag)
-  - push the "main" branch
-- verify main and develop branch have been updated in github
 
 
 

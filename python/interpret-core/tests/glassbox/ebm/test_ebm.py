@@ -1303,23 +1303,27 @@ def test_reorder_classes_strings():
 
     assert np.allclose(pred[:, [1, 2, 0]], pred_reordered)
 
+
 def test_callbacks():
-    def callback_generator(minutes):
+    def callback_generator(seconds):
         class Callback:
-            def __init__(self, minutes):
-                self.minutes = minutes
+            def __init__(self, seconds):
+                self.seconds = seconds
+
             def __call__(self, bag_index, step_index, progress, metric):
                 import time
-                if not hasattr(self, 'end_time'):
-                    self.end_time = time.monotonic() + self.minutes * 60.0
+
+                if not hasattr(self, "end_time"):
+                    self.end_time = time.monotonic() + self.seconds
                     return False
                 else:
                     return time.monotonic() > self.end_time
-        return Callback(minutes)
+
+        return Callback(seconds)
 
     X, y, names, types = make_synthetic(output_type="float", n_samples=10000)
 
-    ebm = ExplainableBoostingClassifier(names, types, callback=callback_generator(0.25))
+    ebm = ExplainableBoostingClassifier(names, types, callback=callback_generator(30.0))
     ebm.fit(X, y)
 
     # print(ebm.best_iteration_)
