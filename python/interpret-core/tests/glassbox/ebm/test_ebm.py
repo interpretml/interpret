@@ -1304,26 +1304,57 @@ def test_reorder_classes_strings():
     assert np.allclose(pred[:, [1, 2, 0]], pred_reordered)
 
 
-def test_callbacks():
+def test_callbacks_short():
     def callback_generator(seconds):
         class Callback:
             def __init__(self, seconds):
-                self.seconds = seconds
+                self._seconds = seconds
 
             def __call__(self, bag_index, step_index, progress, metric):
                 import time
 
-                if not hasattr(self, "end_time"):
-                    self.end_time = time.monotonic() + self.seconds
+                if not hasattr(self, "_end_time"):
+                    self._end_time = time.monotonic() + self._seconds
                     return False
                 else:
-                    return time.monotonic() > self.end_time
+                    return time.monotonic() > self._end_time
 
         return Callback(seconds)
 
-    X, y, names, types = make_synthetic(output_type="float", n_samples=10000)
+    X, y, names, types = make_synthetic(seed=42, output_type="float", n_samples=10000)
 
-    ebm = ExplainableBoostingClassifier(names, types, callback=callback_generator(30.0))
+    # run for half a second
+    ebm = ExplainableBoostingClassifier(names, types, callback=callback_generator(0.5))
+    ebm.fit(X, y)
+
+    # print(ebm.best_iteration_)
+
+    pred = ebm.predict_proba(X)
+
+
+def test_callbacks_long():
+    def callback_generator(seconds):
+        class Callback:
+            def __init__(self, seconds):
+                self._seconds = seconds
+
+            def __call__(self, bag_index, step_index, progress, metric):
+                import time
+
+                if not hasattr(self, "_end_time"):
+                    self._end_time = time.monotonic() + self._seconds
+                    return False
+                else:
+                    return time.monotonic() > self._end_time
+
+        return Callback(seconds)
+
+    X, y, names, types = make_synthetic(seed=42, output_type="float", n_samples=10000)
+
+    # run for half a second
+    ebm = ExplainableBoostingClassifier(
+        names, types, callback=callback_generator(500000000.0)
+    )
     ebm.fit(X, y)
 
     # print(ebm.best_iteration_)

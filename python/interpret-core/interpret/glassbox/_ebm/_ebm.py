@@ -12,9 +12,9 @@ from math import ceil, isnan
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union, Callable
 from warnings import warn
 from dataclasses import dataclass, field
-import multiprocessing
-
+from multiprocessing import shared_memory
 import numpy as np
+
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -1075,12 +1075,15 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             feature_types_in,
         )
 
-        manager = None
-        stop_flag = None
+        shm = None
         try:
+            stop_flag = None
+            shm_name = None
             if callback is not None:
-                manager = multiprocessing.Manager()
-                stop_flag = manager.Value("b", False)
+                shm = shared_memory.SharedMemory(create=True, size=1, name=None)
+                shm_name = shm.name
+                stop_flag = np.ndarray((1,), dtype=np.bool_, buffer=shm.buf)
+                stop_flag[0] = False
 
             parallel_args = []
             for idx in range(self.outer_bags):
@@ -1103,7 +1106,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                 parallel_args.append(
                     (
-                        stop_flag,
+                        shm_name,
                         idx,
                         callback,
                         dataset,
@@ -1174,7 +1177,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 rngs.append(bagged_rng)
 
             while True:  # this isn't for looping. Just for break statements to exit
-                if stop_flag is not None and stop_flag.value:
+                if stop_flag is not None and stop_flag[0]:
                     break
 
                 if interactions is None:
@@ -1281,7 +1284,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         # TODO: the combinations below should be selected from the non-excluded features
                         parallel_args.append(
                             (
-                                stop_flag,
+                                shm_name,
                                 idx,
                                 dataset,
                                 bagged_intercept[idx],
@@ -1406,7 +1409,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             stacklevel=1,
                         )
 
-                if stop_flag is not None and stop_flag.value:
+                if stop_flag is not None and stop_flag[0]:
                     break
 
                 parallel_args = []
@@ -1419,7 +1422,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                     parallel_args.append(
                         (
-                            stop_flag,
+                            shm_name,
                             idx,
                             callback,
                             dataset,
@@ -1493,8 +1496,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 break  # do not loop!
 
         finally:
-            if manager is not None:
-                manager.shutdown()
+            if shm is not None:
+                shm.close()
+                shm.unlink()
 
         best_iteration = np.array(best_iteration, np.int64)
 
