@@ -1075,8 +1075,12 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             feature_types_in,
         )
 
-        with multiprocessing.Manager() as manager:
-            stop_flag = manager.Value("b", False)
+        manager = None
+        stop_flag = None
+        try:
+            if callback is not None:
+                manager = multiprocessing.Manager()
+                stop_flag = manager.Value("b", False)
 
             parallel_args = []
             for idx in range(self.outer_bags):
@@ -1170,7 +1174,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 rngs.append(bagged_rng)
 
             while True:  # this isn't for looping. Just for break statements to exit
-                if stop_flag.value:
+                if stop_flag is not None and stop_flag.value:
                     break
 
                 if interactions is None:
@@ -1402,7 +1406,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             stacklevel=1,
                         )
 
-                if stop_flag.value:
+                if stop_flag is not None and stop_flag.value:
                     break
 
                 parallel_args = []
@@ -1487,6 +1491,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 term_features.extend(boost_groups)
 
                 break  # do not loop!
+
+        finally:
+            if manager is not None:
+                manager.shutdown()
 
         best_iteration = np.array(best_iteration, np.int64)
 
