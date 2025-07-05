@@ -1077,13 +1077,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         shm = None
         try:
-            stop_flag = None
-            shm_name = None
-            if callback is not None:
-                shm = shared_memory.SharedMemory(create=True, size=1, name=None)
-                shm_name = shm.name
-                stop_flag = np.ndarray((1,), dtype=np.bool_, buffer=shm.buf)
-                stop_flag[0] = False
+            shm = shared_memory.SharedMemory(create=True, size=1, name=None)
+            shm_name = shm.name
+            stop_flag = np.ndarray((1,), dtype=np.bool_, buffer=shm.buf)
+            stop_flag[0] = False
 
             parallel_args = []
             for idx in range(self.outer_bags):
