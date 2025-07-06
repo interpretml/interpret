@@ -26,6 +26,7 @@ from ._compressed_dataset import bin_native_by_dimension
 from ._native import Native
 from ._preprocessor import construct_bins
 from ._rank_interactions import rank_interactions
+from ._shared_dataset import SharedDataset
 
 _log = logging.getLogger(__name__)
 
@@ -239,59 +240,61 @@ def measure_interactions(
     bins = binning_result[2]
     n_features_in = len(bins)
 
-    dataset = bin_native_by_dimension(
-        n_classes=n_classes,
-        n_dimensions=2,
-        bins=bins,
-        X=X,
-        y=y,
-        sample_weight=sample_weight,
-        feature_names_in=feature_names_in,
-        feature_types_in=feature_types_in,
-    )
+    with SharedDataset() as shared:
+        bin_native_by_dimension(
+            n_classes=n_classes,
+            n_dimensions=2,
+            bins=bins,
+            X=X,
+            y=y,
+            sample_weight=sample_weight,
+            feature_names_in=feature_names_in,
+            feature_types_in=feature_types_in,
+            shared=shared,
+        )
 
-    interaction_flags = Native.CalcInteractionFlags_Default
-    if develop.get_option("full_interaction"):
-        interaction_flags |= Native.CalcInteractionFlags_Full
+        interaction_flags = Native.CalcInteractionFlags_Default
+        if develop.get_option("full_interaction"):
+            interaction_flags |= Native.CalcInteractionFlags_Full
 
-    if isinstance(interactions, int):
-        n_output_interactions = interactions
-        iter_term_features = combinations(range(n_features_in), 2)
-    elif interactions is None:
-        n_output_interactions = 0
-        iter_term_features = combinations(range(n_features_in), 2)
-    else:
-        n_output_interactions = 0
-        iter_term_features = interactions
+        if isinstance(interactions, int):
+            n_output_interactions = interactions
+            iter_term_features = combinations(range(n_features_in), 2)
+        elif interactions is None:
+            n_output_interactions = 0
+            iter_term_features = combinations(range(n_features_in), 2)
+        else:
+            n_output_interactions = 0
+            iter_term_features = interactions
 
-    ranked_interactions = rank_interactions(
-        None,
-        0,
-        dataset=dataset,
-        intercept=None,
-        bag=None,
-        init_scores=init_score,
-        iter_term_features=iter_term_features,
-        exclude=set(),
-        exclude_features=set(),
-        calc_interaction_flags=interaction_flags,
-        max_cardinality=max_cardinality,
-        min_samples_leaf=min_samples_leaf,
-        min_hessian=min_hessian,
-        reg_alpha=reg_alpha,
-        reg_lambda=reg_lambda,
-        max_delta_step=max_delta_step,
-        create_interaction_flags=(
-            Native.CreateInteractionFlags_DifferentialPrivacy
-            if is_differential_privacy
-            else Native.CreateInteractionFlags_Default
-        ),
-        objective=objective,
-        acceleration=develop.get_option("acceleration"),
-        experimental_params=None,
-        n_output_interactions=n_output_interactions,
-        develop_options=develop._develop_options,
-    )
+        ranked_interactions = rank_interactions(
+            None,
+            0,
+            dataset_name=shared.name,
+            intercept=None,
+            bag=None,
+            init_scores=init_score,
+            iter_term_features=iter_term_features,
+            exclude=set(),
+            exclude_features=set(),
+            calc_interaction_flags=interaction_flags,
+            max_cardinality=max_cardinality,
+            min_samples_leaf=min_samples_leaf,
+            min_hessian=min_hessian,
+            reg_alpha=reg_alpha,
+            reg_lambda=reg_lambda,
+            max_delta_step=max_delta_step,
+            create_interaction_flags=(
+                Native.CreateInteractionFlags_DifferentialPrivacy
+                if is_differential_privacy
+                else Native.CreateInteractionFlags_Default
+            ),
+            objective=objective,
+            acceleration=develop.get_option("acceleration"),
+            experimental_params=None,
+            n_output_interactions=n_output_interactions,
+            develop_options=develop._develop_options,
+        )
 
     if isinstance(ranked_interactions, Exception):
         raise ranked_interactions

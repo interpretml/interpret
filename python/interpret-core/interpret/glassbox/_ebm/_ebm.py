@@ -71,6 +71,7 @@ from ._utils import (
     process_terms,
     remove_extra_bins,
 )
+from ...utils._shared_dataset import SharedDataset
 
 _log = logging.getLogger(__name__)
 
@@ -1064,374 +1065,60 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         probs /= total
                         bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
-        dataset = bin_native_by_dimension(
-            n_classes,
-            1,
-            bins,
-            X,
-            y,
-            sample_weight,
-            feature_names_in,
-            feature_types_in,
-        )
+        with SharedDataset() as shared:
+            bin_native_by_dimension(
+                n_classes,
+                1,
+                bins,
+                X,
+                y,
+                sample_weight,
+                feature_names_in,
+                feature_types_in,
+                shared,
+            )
 
-        shm = None
-        try:
-            stop_flag = None
-            shm_name = None
-            if callback is not None:
-                shm = shared_memory.SharedMemory(create=True, size=1, name=None)
-                shm_name = shm.name
-                stop_flag = np.ndarray((1,), dtype=np.bool_, buffer=shm.buf)
-                stop_flag[0] = False
-
-            parallel_args = []
-            for idx in range(self.outer_bags):
-                early_stopping_rounds_local = early_stopping_rounds
-                bag = internal_bags[idx]
-                if bag is None or (bag >= 0).all():
-                    # if there are no validation samples, turn off early stopping
-                    # because the validation metric cannot improve each round
-                    early_stopping_rounds_local = 0
-
-                init_score_local = init_score
-                if (
-                    init_score_local is not None
-                    and bag is not None
-                    and np.count_nonzero(bag) != len(bag)
-                ):
-                    # TODO: instead of making these copies we should
-                    # put init_score into the native shared dataframe
-                    init_score_local = init_score_local[bag != 0]
-
-                parallel_args.append(
-                    (
-                        shm_name,
-                        idx,
-                        callback,
-                        dataset,
-                        n_intercept_rounds,
-                        develop.get_option("intercept_learning_rate"),
-                        bagged_intercept[idx],
-                        bag,
-                        init_score_local,
-                        term_features,
-                        inner_bags,
-                        term_boost_flags,
-                        self.learning_rate,
-                        min_samples_leaf,
-                        min_hessian,
-                        reg_alpha,
-                        reg_lambda,
-                        max_delta_step,
-                        gain_scale,
-                        min_cat_samples,
-                        cat_smooth,
-                        missing,
-                        self.max_leaves,
-                        monotone_constraints,
-                        greedy_ratio,
-                        cyclic_progress,
-                        smoothing_rounds,
-                        nominal_smoothing,
-                        self.max_rounds,
-                        early_stopping_rounds_local,
-                        early_stopping_tolerance,
-                        noise_scale_boosting,
-                        bin_data_weights,
-                        rngs[idx],
-                        (
-                            Native.CreateBoosterFlags_DifferentialPrivacy
-                            if is_differential_privacy
-                            else Native.CreateBoosterFlags_Default
-                        ),
-                        objective,
-                        develop.get_option("acceleration"),
-                        None,
-                        develop._develop_options,
-                    )
-                )
-
-            results = provider.parallel(boost, parallel_args)
-
-            # let python reclaim the dataset memory via reference counting
-            # parallel_args holds references to dataset, so must be deleted
-            del parallel_args
-
-            best_iteration = [[]]
-            models = []
-            rngs = []
-            for idx in range(self.outer_bags):
-                exception = results[idx][0]
-                intercept_update = results[idx][1]
-                model = results[idx][2]
-                bag_best_iteration = results[idx][3]
-                bagged_rng = results[idx][4]
-
-                if exception is not None:
-                    raise exception
-                bagged_intercept[idx, :] = intercept_update
-                best_iteration[-1].append(bag_best_iteration)
-                models.append(model)
-                # retrieve our rng state since this was used outside of our process
-                rngs.append(bagged_rng)
-
-            while True:  # this isn't for looping. Just for break statements to exit
-                if stop_flag is not None and stop_flag[0]:
-                    break
-
-                if interactions is None:
-                    break
-
-                if isinstance(interactions, (float, int)):
-                    if interactions <= 0:
-                        if interactions == 0:
-                            break
-                        msg = "interactions cannot be negative"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    if isinstance(interactions, float):
-                        if interactions < 1.0 or develop.get_option(
-                            "allow_float_interactions"
-                        ):
-                            interactions = int(ceil(n_features_in * interactions))
-                        else:
-                            msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
-                            _log.error(msg)
-                            raise ValueError(msg)
-
-                    if n_classes >= Native.Task_MulticlassPlus:
-                        warn(
-                            "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
-                        )
-
-                    # at this point interactions will be a positive, nonzero integer
-                elif isinstance(interactions, str):
-                    interactions = interactions.strip()
-
-                    if not interactions.lower().endswith("x"):
-                        raise ValueError(
-                            "If passing a string for interactions, it must end in an 'x' character."
-                        )
-
-                    interactions = interactions[:-1]
-                    try:
-                        interactions = float(interactions)
-                    except ValueError:
-                        raise ValueError(
-                            f"'{interactions}' is not a valid floating-point number."
-                        )
-
-                    if interactions <= 0.0:
-                        if interactions == 0.0:
-                            break
-                        msg = "interactions cannot be negative"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                    if n_classes >= Native.Task_MulticlassPlus:
-                        warn(
-                            "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
-                        )
-
-                    interactions = int(ceil(n_features_in * interactions))
-
-                    # at this point interactions will be a positive, nonzero integer
-                elif len(interactions) == 0:
-                    break
-
-                # at this point we know we will be making a new one, so delete it now
-                del dataset
-
-                # we pass the bagged intercept into the rank_interactions and boost functions below, so do not include twice
-                initial_intercept = np.zeros(n_scores, np.float64)
-                scores_bags = []
-                for model, bag in zip(models, internal_bags):
-                    # TODO: instead of going back to the original data in X, we
-                    # could use the compressed and already binned data in dataset
-                    scores = ebm_predict_scores(
-                        X,
-                        n_samples,
-                        init_score,
-                        feature_names_in,
-                        feature_types_in,
-                        bins,
-                        initial_intercept,
-                        model,
-                        term_features,
-                    )
-                    if bag is not None and np.count_nonzero(bag) != len(bag):
-                        scores = scores[bag != 0]
-                    scores_bags.append(scores)
-
-                dataset = bin_native_by_dimension(
-                    n_classes,
-                    2,
-                    bins,
-                    X,
-                    y,
-                    sample_weight,
-                    feature_names_in,
-                    feature_types_in,
-                )
-
-                if isinstance(interactions, int):
-                    _log.info("Estimating with FAST")
-
-                    parallel_args = []
-                    for idx in range(self.outer_bags):
-                        # TODO: the combinations below should be selected from the non-excluded features
-                        parallel_args.append(
-                            (
-                                shm_name,
-                                idx,
-                                dataset,
-                                bagged_intercept[idx],
-                                internal_bags[idx],
-                                scores_bags[idx],
-                                combinations(range(n_features_in), 2),
-                                exclude,
-                                exclude_features,
-                                interaction_flags,
-                                max_cardinality,
-                                min_samples_leaf,
-                                min_hessian,
-                                reg_alpha,
-                                reg_lambda,
-                                max_delta_step,
-                                (
-                                    Native.CreateInteractionFlags_DifferentialPrivacy
-                                    if is_differential_privacy
-                                    else Native.CreateInteractionFlags_Default
-                                ),
-                                objective,
-                                develop.get_option("acceleration"),
-                                None,
-                                0,
-                                develop._develop_options,
-                            )
-                        )
-
-                    bagged_ranked_interaction = provider.parallel(
-                        rank_interactions, parallel_args
-                    )
-
-                    # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
-                    del parallel_args
-
-                    # Select merged pairs
-                    pair_ranks = {}
-                    for n, interaction_strengths_and_indices in enumerate(
-                        bagged_ranked_interaction
-                    ):
-                        if isinstance(interaction_strengths_and_indices, Exception):
-                            raise interaction_strengths_and_indices
-
-                        interaction_indices = list(
-                            map(
-                                itemgetter(1),
-                                interaction_strengths_and_indices,
-                            )
-                        )
-                        for rank, indices in enumerate(interaction_indices):
-                            old_mean = pair_ranks.get(indices, 0)
-                            pair_ranks[indices] = old_mean + (
-                                (rank - old_mean) / (n + 1)
-                            )
-
-                    final_ranks = []
-                    total_interactions = 0
-                    for indices in pair_ranks:
-                        heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                        total_interactions += 1
-
-                    n_interactions = min(interactions, total_interactions)
-                    boost_groups = [
-                        heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
-                    ]
-                else:
-                    # Check and remove duplicate interaction terms
-                    uniquifier = set()
-                    boost_groups = []
-                    max_dimensions = 0
-
-                    for features in interactions:
-                        feature_idxs = []
-                        for feature in features:
-                            if isinstance(feature, float):
-                                if not feature.is_integer():
-                                    msg = f"interaction feature index {feature} is not an integer."
-                                    _log.error(msg)
-                                    raise ValueError(msg)
-                                feature = int(feature)  # noqa: PLW2901
-
-                            if isinstance(feature, int):
-                                if feature < 0:
-                                    feature_idx = len(feature_map) + feature
-                                    if feature_idx < 0:
-                                        msg = f"interaction feature index {feature} out of range of the features."
-                                        _log.error(msg)
-                                        raise ValueError(msg)
-                                elif feature < len(feature_map):
-                                    feature_idx = feature
-                                else:
-                                    msg = f"interaction feature index {feature} out of range of the features."
-                                    _log.error(msg)
-                                    raise ValueError(msg)
-                            elif isinstance(feature, str):
-                                feature_idx = feature_map.get(feature)
-                                if feature_idx is None:
-                                    msg = f'interaction feature "{feature}" not in the list of feature names.'
-                                    _log.error(msg)
-                                    raise ValueError(msg)
-                            else:
-                                msg = f'interaction feature "{feature}" has unsupported type {type(feature)}.'
-                                _log.error(msg)
-                                raise ValueError(msg)
-                            feature_idxs.append(feature_idx)
-                        feature_idxs = tuple(feature_idxs)
-
-                        max_dimensions = max(max_dimensions, len(feature_idxs))
-                        sorted_tuple = tuple(sorted(feature_idxs))
-                        if (
-                            sorted_tuple not in uniquifier
-                            and sorted_tuple not in exclude
-                        ):
-                            uniquifier.add(sorted_tuple)
-                            boost_groups.append(feature_idxs)
-
-                    if max_dimensions > 2:
-                        warn(
-                            "Interactions with 3 or more terms are not graphed in "
-                            "global explanations. Local explanations are still "
-                            "available and exact.",
-                            stacklevel=1,
-                        )
-
-                if stop_flag is not None and stop_flag[0]:
-                    break
+            shm = None
+            try:
+                stop_flag = None
+                shm_name = None
+                if callback is not None:
+                    shm = shared_memory.SharedMemory(create=True, size=1, name=None)
+                    shm_name = shm.name
+                    stop_flag = np.ndarray(1, dtype=np.bool_, buffer=shm.buf)
+                    stop_flag[0] = False
 
                 parallel_args = []
                 for idx in range(self.outer_bags):
                     early_stopping_rounds_local = early_stopping_rounds
-                    if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
+                    bag = internal_bags[idx]
+                    if bag is None or (bag >= 0).all():
                         # if there are no validation samples, turn off early stopping
                         # because the validation metric cannot improve each round
                         early_stopping_rounds_local = 0
+
+                    init_score_local = init_score
+                    if (
+                        init_score_local is not None
+                        and bag is not None
+                        and np.count_nonzero(bag) != len(bag)
+                    ):
+                        # TODO: instead of making these copies we should
+                        # put init_score into the native shared dataframe
+                        init_score_local = init_score_local[bag != 0]
 
                     parallel_args.append(
                         (
                             shm_name,
                             idx,
                             callback,
-                            dataset,
-                            0,  # intercept should already be close for pairs
-                            0.0,  # intercept should already be close for pairs
+                            shared.name,
+                            n_intercept_rounds,
+                            develop.get_option("intercept_learning_rate"),
                             bagged_intercept[idx],
-                            internal_bags[idx],
-                            scores_bags[idx],
-                            boost_groups,
+                            bag,
+                            init_score_local,
+                            term_features,
                             inner_bags,
                             term_boost_flags,
                             self.learning_rate,
@@ -1448,7 +1135,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             monotone_constraints,
                             greedy_ratio,
                             cyclic_progress,
-                            interaction_smoothing_rounds,
+                            smoothing_rounds,
                             nominal_smoothing,
                             self.max_rounds,
                             early_stopping_rounds_local,
@@ -1470,13 +1157,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                 results = provider.parallel(boost, parallel_args)
 
-                # allow python to reclaim these big memory items via reference counting
-                # this holds references to dataset, scores_bags, and bags
+                # let python reclaim the dataset memory via reference counting
+                # parallel_args holds references to dataset, so must be deleted
                 del parallel_args
-                del scores_bags
 
-                best_iteration.append([])
-
+                best_iteration = [[]]
+                models = []
+                rngs = []
                 for idx in range(self.outer_bags):
                     exception = results[idx][0]
                     intercept_update = results[idx][1]
@@ -1488,135 +1175,451 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         raise exception
                     bagged_intercept[idx, :] = intercept_update
                     best_iteration[-1].append(bag_best_iteration)
-                    models[idx].extend(model)
-                    rngs[idx] = bagged_rng
+                    models.append(model)
+                    # retrieve our rng state since this was used outside of our process
+                    rngs.append(bagged_rng)
 
-                term_features.extend(boost_groups)
+                while True:  # this isn't for looping. Just for break statements to exit
+                    if stop_flag is not None and stop_flag[0]:
+                        break
 
-                break  # do not loop!
+                    if interactions is None:
+                        break
 
-        finally:
-            if shm is not None:
-                shm.close()
-                shm.unlink()
+                    if isinstance(interactions, (float, int)):
+                        if interactions <= 0:
+                            if interactions == 0:
+                                break
+                            msg = "interactions cannot be negative"
+                            _log.error(msg)
+                            raise ValueError(msg)
 
-        best_iteration = np.array(best_iteration, np.int64)
+                        if isinstance(interactions, float):
+                            if interactions < 1.0 or develop.get_option(
+                                "allow_float_interactions"
+                            ):
+                                interactions = int(ceil(n_features_in * interactions))
+                            else:
+                                msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
+                                _log.error(msg)
+                                raise ValueError(msg)
 
-        remove_extra_bins(term_features, bins)
+                        if n_classes >= Native.Task_MulticlassPlus:
+                            warn(
+                                "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
+                            )
 
-        bagged_scores = (
-            np.array([model[idx] for model in models], np.float64)
-            for idx in range(len(term_features))
-        )
+                        # at this point interactions will be a positive, nonzero integer
+                    elif isinstance(interactions, str):
+                        interactions = interactions.strip()
 
-        term_features, bagged_scores = order_terms(term_features, bagged_scores)
+                        if not interactions.lower().endswith("x"):
+                            raise ValueError(
+                                "If passing a string for interactions, it must end in an 'x' character."
+                            )
 
-        if is_differential_privacy:
-            # for now we only support mains for DP models
-            bin_weights = [
-                main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
-            ]
-        else:
-            histogram_edges = make_all_histogram_edges(
-                feature_bounds, histogram_weights
-            )
-            bin_weights = make_bin_weights(
-                X,
-                n_samples,
-                sample_weight,
-                feature_names_in,
-                feature_types_in,
-                bins,
-                term_features,
-            )
+                        interactions = interactions[:-1]
+                        try:
+                            interactions = float(interactions)
+                        except ValueError:
+                            raise ValueError(
+                                f"'{interactions}' is not a valid floating-point number."
+                            )
 
-        if bagged_intercept.shape[1] == 1:
-            bagged_intercept = bagged_intercept.ravel()
+                        if interactions <= 0.0:
+                            if interactions == 0.0:
+                                break
+                            msg = "interactions cannot be negative"
+                            _log.error(msg)
+                            raise ValueError(msg)
 
-        intercept, term_scores, standard_deviations = process_terms(
-            bagged_intercept, bagged_scores, bin_weights, bag_weights
-        )
+                        if n_classes >= Native.Task_MulticlassPlus:
+                            warn(
+                                "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
+                            )
 
-        if not is_differential_privacy:
-            scores = ebm_predict_scores(
-                X,
-                n_samples,
-                init_score,
-                feature_names_in,
-                feature_types_in,
-                bins,
-                intercept,
-                term_scores,
-                term_features,
-            )
+                        interactions = int(ceil(n_features_in * interactions))
 
-            if objective_code == Native.Objective_MonoClassification:
-                pass
-            elif objective_code == Native.Objective_Rmse:
-                correction = native.flat_mean(y - scores, sample_weight)
-                intercept += correction
-                bagged_intercept += correction
-            else:
-                exception, intercept_change, _, _, rng = boost(
-                    None,
-                    0,
-                    None,
-                    dataset,
-                    develop.get_option("n_intercept_rounds_final"),
-                    develop.get_option("intercept_learning_rate"),
-                    np.zeros(n_scores, np.float64),
-                    None,
-                    scores,
-                    [],
-                    0,
-                    term_boost_flags,
-                    self.learning_rate,
-                    0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    1.0,
-                    min_cat_samples,
-                    cat_smooth,
-                    missing,
-                    1,
-                    None,
-                    greedy_ratio,
-                    cyclic_progress,
-                    0,
-                    nominal_smoothing,
-                    0,
-                    0,
-                    early_stopping_tolerance,
-                    noise_scale_boosting,
-                    bin_data_weights,
-                    rng,
-                    (
-                        Native.CreateBoosterFlags_DifferentialPrivacy
-                        if is_differential_privacy
-                        else Native.CreateBoosterFlags_Default
-                    ),
-                    objective,
-                    Native.AccelerationFlags_NONE,
-                    None,
-                    develop._develop_options,
-                )
-                if exception is not None:
-                    raise exception
+                        # at this point interactions will be a positive, nonzero integer
+                    elif len(interactions) == 0:
+                        break
 
-                bagged_intercept += intercept_change
-                intercept += intercept_change
+                    # at this point we know we will be making a new one, so delete it now
+                    shared.reset()
 
-                if bagged_intercept.ndim == 2:
-                    # multiclass
-                    # pick the class that we're going to zero
-                    zero_index = np.argmax(intercept)
-                    intercept -= intercept[zero_index]
-                    bagged_intercept -= np.expand_dims(
-                        bagged_intercept[..., zero_index], -1
+                    # we pass the bagged intercept into the rank_interactions and boost functions below, so do not include twice
+                    initial_intercept = np.zeros(n_scores, np.float64)
+                    scores_bags = []
+                    for model, bag in zip(models, internal_bags):
+                        # TODO: instead of going back to the original data in X, we
+                        # could use the compressed and already binned data in dataset
+                        scores = ebm_predict_scores(
+                            X,
+                            n_samples,
+                            init_score,
+                            feature_names_in,
+                            feature_types_in,
+                            bins,
+                            initial_intercept,
+                            model,
+                            term_features,
+                        )
+                        if bag is not None and np.count_nonzero(bag) != len(bag):
+                            scores = scores[bag != 0]
+                        scores_bags.append(scores)
+
+                    bin_native_by_dimension(
+                        n_classes,
+                        2,
+                        bins,
+                        X,
+                        y,
+                        sample_weight,
+                        feature_names_in,
+                        feature_types_in,
+                        shared,
                     )
-        del dataset
+
+                    if isinstance(interactions, int):
+                        _log.info("Estimating with FAST")
+
+                        parallel_args = []
+                        for idx in range(self.outer_bags):
+                            # TODO: the combinations below should be selected from the non-excluded features
+                            parallel_args.append(
+                                (
+                                    shm_name,
+                                    idx,
+                                    shared.name,
+                                    bagged_intercept[idx],
+                                    internal_bags[idx],
+                                    scores_bags[idx],
+                                    combinations(range(n_features_in), 2),
+                                    exclude,
+                                    exclude_features,
+                                    interaction_flags,
+                                    max_cardinality,
+                                    min_samples_leaf,
+                                    min_hessian,
+                                    reg_alpha,
+                                    reg_lambda,
+                                    max_delta_step,
+                                    (
+                                        Native.CreateInteractionFlags_DifferentialPrivacy
+                                        if is_differential_privacy
+                                        else Native.CreateInteractionFlags_Default
+                                    ),
+                                    objective,
+                                    develop.get_option("acceleration"),
+                                    None,
+                                    0,
+                                    develop._develop_options,
+                                )
+                            )
+
+                        bagged_ranked_interaction = provider.parallel(
+                            rank_interactions, parallel_args
+                        )
+
+                        # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
+                        del parallel_args
+
+                        # Select merged pairs
+                        pair_ranks = {}
+                        for n, interaction_strengths_and_indices in enumerate(
+                            bagged_ranked_interaction
+                        ):
+                            if isinstance(interaction_strengths_and_indices, Exception):
+                                raise interaction_strengths_and_indices
+
+                            interaction_indices = list(
+                                map(
+                                    itemgetter(1),
+                                    interaction_strengths_and_indices,
+                                )
+                            )
+                            for rank, indices in enumerate(interaction_indices):
+                                old_mean = pair_ranks.get(indices, 0)
+                                pair_ranks[indices] = old_mean + (
+                                    (rank - old_mean) / (n + 1)
+                                )
+
+                        final_ranks = []
+                        total_interactions = 0
+                        for indices in pair_ranks:
+                            heapq.heappush(final_ranks, (pair_ranks[indices], indices))
+                            total_interactions += 1
+
+                        n_interactions = min(interactions, total_interactions)
+                        boost_groups = [
+                            heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
+                        ]
+                    else:
+                        # Check and remove duplicate interaction terms
+                        uniquifier = set()
+                        boost_groups = []
+                        max_dimensions = 0
+
+                        for features in interactions:
+                            feature_idxs = []
+                            for feature in features:
+                                if isinstance(feature, float):
+                                    if not feature.is_integer():
+                                        msg = f"interaction feature index {feature} is not an integer."
+                                        _log.error(msg)
+                                        raise ValueError(msg)
+                                    feature = int(feature)  # noqa: PLW2901
+
+                                if isinstance(feature, int):
+                                    if feature < 0:
+                                        feature_idx = len(feature_map) + feature
+                                        if feature_idx < 0:
+                                            msg = f"interaction feature index {feature} out of range of the features."
+                                            _log.error(msg)
+                                            raise ValueError(msg)
+                                    elif feature < len(feature_map):
+                                        feature_idx = feature
+                                    else:
+                                        msg = f"interaction feature index {feature} out of range of the features."
+                                        _log.error(msg)
+                                        raise ValueError(msg)
+                                elif isinstance(feature, str):
+                                    feature_idx = feature_map.get(feature)
+                                    if feature_idx is None:
+                                        msg = f'interaction feature "{feature}" not in the list of feature names.'
+                                        _log.error(msg)
+                                        raise ValueError(msg)
+                                else:
+                                    msg = f'interaction feature "{feature}" has unsupported type {type(feature)}.'
+                                    _log.error(msg)
+                                    raise ValueError(msg)
+                                feature_idxs.append(feature_idx)
+                            feature_idxs = tuple(feature_idxs)
+
+                            max_dimensions = max(max_dimensions, len(feature_idxs))
+                            sorted_tuple = tuple(sorted(feature_idxs))
+                            if (
+                                sorted_tuple not in uniquifier
+                                and sorted_tuple not in exclude
+                            ):
+                                uniquifier.add(sorted_tuple)
+                                boost_groups.append(feature_idxs)
+
+                        if max_dimensions > 2:
+                            warn(
+                                "Interactions with 3 or more terms are not graphed in "
+                                "global explanations. Local explanations are still "
+                                "available and exact.",
+                                stacklevel=1,
+                            )
+
+                    if stop_flag is not None and stop_flag[0]:
+                        break
+
+                    parallel_args = []
+                    for idx in range(self.outer_bags):
+                        early_stopping_rounds_local = early_stopping_rounds
+                        if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
+                            # if there are no validation samples, turn off early stopping
+                            # because the validation metric cannot improve each round
+                            early_stopping_rounds_local = 0
+
+                        parallel_args.append(
+                            (
+                                shm_name,
+                                idx,
+                                callback,
+                                shared.name,
+                                0,  # intercept should already be close for pairs
+                                0.0,  # intercept should already be close for pairs
+                                bagged_intercept[idx],
+                                internal_bags[idx],
+                                scores_bags[idx],
+                                boost_groups,
+                                inner_bags,
+                                term_boost_flags,
+                                self.learning_rate,
+                                min_samples_leaf,
+                                min_hessian,
+                                reg_alpha,
+                                reg_lambda,
+                                max_delta_step,
+                                gain_scale,
+                                min_cat_samples,
+                                cat_smooth,
+                                missing,
+                                self.max_leaves,
+                                monotone_constraints,
+                                greedy_ratio,
+                                cyclic_progress,
+                                interaction_smoothing_rounds,
+                                nominal_smoothing,
+                                self.max_rounds,
+                                early_stopping_rounds_local,
+                                early_stopping_tolerance,
+                                noise_scale_boosting,
+                                bin_data_weights,
+                                rngs[idx],
+                                (
+                                    Native.CreateBoosterFlags_DifferentialPrivacy
+                                    if is_differential_privacy
+                                    else Native.CreateBoosterFlags_Default
+                                ),
+                                objective,
+                                develop.get_option("acceleration"),
+                                None,
+                                develop._develop_options,
+                            )
+                        )
+
+                    results = provider.parallel(boost, parallel_args)
+
+                    # allow python to reclaim these big memory items via reference counting
+                    # this holds references to dataset, scores_bags, and bags
+                    del parallel_args
+                    del scores_bags
+
+                    best_iteration.append([])
+
+                    for idx in range(self.outer_bags):
+                        exception = results[idx][0]
+                        intercept_update = results[idx][1]
+                        model = results[idx][2]
+                        bag_best_iteration = results[idx][3]
+                        bagged_rng = results[idx][4]
+
+                        if exception is not None:
+                            raise exception
+                        bagged_intercept[idx, :] = intercept_update
+                        best_iteration[-1].append(bag_best_iteration)
+                        models[idx].extend(model)
+                        rngs[idx] = bagged_rng
+
+                    term_features.extend(boost_groups)
+
+                    break  # do not loop!
+
+            finally:
+                if shm is not None:
+                    shm.close()
+                    shm.unlink()
+
+            best_iteration = np.array(best_iteration, np.int64)
+
+            remove_extra_bins(term_features, bins)
+
+            bagged_scores = (
+                np.array([model[idx] for model in models], np.float64)
+                for idx in range(len(term_features))
+            )
+
+            term_features, bagged_scores = order_terms(term_features, bagged_scores)
+
+            if is_differential_privacy:
+                # for now we only support mains for DP models
+                bin_weights = [
+                    main_bin_weights[feature_idxs[0]] for feature_idxs in term_features
+                ]
+            else:
+                histogram_edges = make_all_histogram_edges(
+                    feature_bounds, histogram_weights
+                )
+                bin_weights = make_bin_weights(
+                    X,
+                    n_samples,
+                    sample_weight,
+                    feature_names_in,
+                    feature_types_in,
+                    bins,
+                    term_features,
+                )
+
+            if bagged_intercept.shape[1] == 1:
+                bagged_intercept = bagged_intercept.ravel()
+
+            intercept, term_scores, standard_deviations = process_terms(
+                bagged_intercept, bagged_scores, bin_weights, bag_weights
+            )
+
+            if not is_differential_privacy:
+                scores = ebm_predict_scores(
+                    X,
+                    n_samples,
+                    init_score,
+                    feature_names_in,
+                    feature_types_in,
+                    bins,
+                    intercept,
+                    term_scores,
+                    term_features,
+                )
+
+                if objective_code == Native.Objective_MonoClassification:
+                    pass
+                elif objective_code == Native.Objective_Rmse:
+                    correction = native.flat_mean(y - scores, sample_weight)
+                    intercept += correction
+                    bagged_intercept += correction
+                else:
+                    exception, intercept_change, _, _, rng = boost(
+                        None,
+                        0,
+                        None,
+                        shared.name,
+                        develop.get_option("n_intercept_rounds_final"),
+                        develop.get_option("intercept_learning_rate"),
+                        np.zeros(n_scores, np.float64),
+                        None,
+                        scores,
+                        [],
+                        0,
+                        term_boost_flags,
+                        self.learning_rate,
+                        0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0,
+                        min_cat_samples,
+                        cat_smooth,
+                        missing,
+                        1,
+                        None,
+                        greedy_ratio,
+                        cyclic_progress,
+                        0,
+                        nominal_smoothing,
+                        0,
+                        0,
+                        early_stopping_tolerance,
+                        noise_scale_boosting,
+                        bin_data_weights,
+                        rng,
+                        (
+                            Native.CreateBoosterFlags_DifferentialPrivacy
+                            if is_differential_privacy
+                            else Native.CreateBoosterFlags_Default
+                        ),
+                        objective,
+                        Native.AccelerationFlags_NONE,
+                        None,
+                        develop._develop_options,
+                    )
+                    if exception is not None:
+                        raise exception
+
+                    bagged_intercept += intercept_change
+                    intercept += intercept_change
+
+                    if bagged_intercept.ndim == 2:
+                        # multiclass
+                        # pick the class that we're going to zero
+                        zero_index = np.argmax(intercept)
+                        intercept -= intercept[zero_index]
+                        bagged_intercept -= np.expand_dims(
+                            bagged_intercept[..., zero_index], -1
+                        )
 
         if n_classes < Native.Task_GeneralClassification:
             # scikit-learn requires intercept to be float for RegressorMixin, not numpy

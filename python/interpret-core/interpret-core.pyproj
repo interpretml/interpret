@@ -94,6 +94,7 @@
     <Compile Include="interpret\utils\_preprocessor.py" />
     <Compile Include="interpret\utils\_privacy.py" />
     <Compile Include="interpret\utils\_seed.py" />
+    <Compile Include="interpret\utils\_shared_dataset.py" />
     <Compile Include="interpret\utils\_synthetic.py" />
     <Compile Include="interpret\utils\_unify_predict.py" />
     <Compile Include="interpret\utils\_unify_data.py" />

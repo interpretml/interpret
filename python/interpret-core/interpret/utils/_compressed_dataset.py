@@ -7,6 +7,7 @@ import numpy as np
 
 from ._clean_x import categorical_encode, unify_columns
 from ._native import Native
+from multiprocessing import shared_memory
 
 _log = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ def bin_native(
     sample_weight,
     feature_names_in,
     feature_types_in,
+    shared,
 ):
     # called under: fit
 
@@ -99,7 +101,12 @@ def bin_native(
         _log.error(msg)
         raise ValueError(msg)
 
-    dataset = np.empty(n_bytes, np.ubyte)  # joblib loky doesn't support RawArray
+    shared_mem = shared_memory.SharedMemory(create=True, size=n_bytes, name=None)
+    shared.shared_memory = shared_mem
+    shared.name = shared_mem.name
+
+    dataset = np.ndarray(n_bytes, dtype=np.ubyte, buffer=shared_mem.buf)
+    shared.dataset = dataset
 
     native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
 
@@ -153,8 +160,6 @@ def bin_native(
         _log.error(msg)
         raise ValueError(msg)
 
-    return dataset
-
 
 def bin_native_by_dimension(
     n_classes,
@@ -165,6 +170,7 @@ def bin_native_by_dimension(
     sample_weight,
     feature_names_in,
     feature_types_in,
+    shared,
 ):
     # called under: fit
 
@@ -175,7 +181,7 @@ def bin_native_by_dimension(
         feature_bins = bin_levels[min(len(bin_levels), n_dimensions) - 1]
         bins_iter.append(feature_bins)
 
-    return bin_native(
+    bin_native(
         n_classes,
         feature_idxs,
         bins_iter,
@@ -184,4 +190,5 @@ def bin_native_by_dimension(
         sample_weight,
         feature_names_in,
         feature_types_in,
+        shared,
     )

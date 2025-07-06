@@ -9,7 +9,7 @@ from interpret.utils._clean_simple import clean_dimensions, typify_classificatio
 from interpret.utils._clean_x import preclean_X
 from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimension
 from interpret.utils._preprocessor import construct_bins
-
+from interpret.utils._shared_dataset import SharedDataset
 
 @pytest.mark.skip(reason="skip this until we have support for missing values")
 def test_bin_native():
@@ -79,19 +79,27 @@ def test_bin_native():
         feature_idxs.append(feature_idx)
         bins_iter.append(feature_bins)
 
-    shared_dataset = bin_native(
-        n_classes,
-        feature_idxs,
-        bins_iter,
-        X,
-        y,
-        sample_weight,
-        feature_names_in,
-        feature_types_in,
-    )
-    assert shared_dataset is not None
+    with SharedDataset() as shared:
+        bin_native(
+            n_classes,
+            feature_idxs,
+            bins_iter,
+            X,
+            y,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+            shared,
+        )
+        assert shared.shared_memory is not None
+        assert shared.dataset is not None
+        assert shared.name is not None
 
-    shared_dataset = bin_native_by_dimension(
-        n_classes, 1, bins, X, y, sample_weight, feature_names_in, feature_types_in
-    )
-    assert shared_dataset is not None
+    with SharedDataset() as shared:
+        bin_native_by_dimension(
+            n_classes, 1, bins, X, y, sample_weight, feature_names_in, feature_types_in,
+                shared,
+        )
+        assert shared.shared_memory is not None
+        assert shared.dataset is not None
+        assert shared.name is not None
