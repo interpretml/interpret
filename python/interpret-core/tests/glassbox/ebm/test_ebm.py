@@ -1360,3 +1360,15 @@ def test_callbacks_long():
     # print(ebm.best_iteration_)
 
     pred = ebm.predict_proba(X)
+
+
+def test_estimate_mem():
+    X, _, names, types = make_synthetic(seed=42, output_type="float", n_samples=10000)
+
+    ebm = ExplainableBoostingClassifier(names, types, interactions=[])
+    n_bytes = ebm.estimate_mem(X)
+    # print(n_bytes)
+
+    ebm = ExplainableBoostingClassifier(names, types)
+    n_bytes = ebm.estimate_mem(X)
+    # print(n_bytes)

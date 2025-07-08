@@ -329,6 +329,60 @@ class EbmTags:
     input_tags: EbmInputTags = field(default_factory=EbmInputTags)
 
 
+def clean_interactions(interactions, n_features_in):
+    if interactions is None:
+        return 0
+
+    if isinstance(interactions, (float, int)):
+        if interactions <= 0:
+            if interactions == 0:
+                return 0
+            msg = "interactions cannot be negative"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        if isinstance(interactions, float):
+            if interactions < 1.0 or develop.get_option("allow_float_interactions"):
+                interactions = int(ceil(n_features_in * interactions))
+            else:
+                msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
+                _log.error(msg)
+                raise ValueError(msg)
+
+        # at this point interactions will be a positive, nonzero integer
+        return interactions
+    elif isinstance(interactions, str):
+        interactions = interactions.strip()
+
+        if not interactions.lower().endswith("x"):
+            raise ValueError(
+                "If passing a string for interactions, it must end in an 'x' character."
+            )
+
+        interactions = interactions[:-1]
+        try:
+            interactions = float(interactions)
+        except ValueError:
+            raise ValueError(f"'{interactions}' is not a valid floating-point number.")
+
+        if interactions <= 0.0:
+            if interactions == 0.0:
+                return 0
+            msg = "interactions cannot be negative"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        interactions = int(ceil(n_features_in * interactions))
+
+        # at this point interactions will be a positive, nonzero integer
+        return interactions
+    elif len(interactions) == 0:
+        return 0
+    else:
+        # if it's a list then just return it
+        return interactions
+
+
 class EBMModel(ExplainerMixin, BaseEstimator):
     """Base class for all EBMs."""
 
@@ -1183,66 +1237,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     if stop_flag is not None and stop_flag[0]:
                         break
 
-                    if interactions is None:
+                    interactions = clean_interactions(interactions, n_features_in)
+                    if interactions == 0:  # works if interactions is a list
                         break
 
-                    if isinstance(interactions, (float, int)):
-                        if interactions <= 0:
-                            if interactions == 0:
-                                break
-                            msg = "interactions cannot be negative"
-                            _log.error(msg)
-                            raise ValueError(msg)
-
-                        if isinstance(interactions, float):
-                            if interactions < 1.0 or develop.get_option(
-                                "allow_float_interactions"
-                            ):
-                                interactions = int(ceil(n_features_in * interactions))
-                            else:
-                                msg = "interactions above 1 cannot be a float percentage and need to be an int instead"
-                                _log.error(msg)
-                                raise ValueError(msg)
-
-                        if n_classes >= Native.Task_MulticlassPlus:
-                            warn(
-                                "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
-                            )
-
-                        # at this point interactions will be a positive, nonzero integer
-                    elif isinstance(interactions, str):
-                        interactions = interactions.strip()
-
-                        if not interactions.lower().endswith("x"):
-                            raise ValueError(
-                                "If passing a string for interactions, it must end in an 'x' character."
-                            )
-
-                        interactions = interactions[:-1]
-                        try:
-                            interactions = float(interactions)
-                        except ValueError:
-                            raise ValueError(
-                                f"'{interactions}' is not a valid floating-point number."
-                            )
-
-                        if interactions <= 0.0:
-                            if interactions == 0.0:
-                                break
-                            msg = "interactions cannot be negative"
-                            _log.error(msg)
-                            raise ValueError(msg)
-
-                        if n_classes >= Native.Task_MulticlassPlus:
-                            warn(
-                                "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
-                            )
-
-                        interactions = int(ceil(n_features_in * interactions))
-
-                        # at this point interactions will be a positive, nonzero integer
-                    elif len(interactions) == 0:
-                        break
+                    if n_classes >= Native.Task_MulticlassPlus:
+                        warn(
+                            "For multiclass we cannot currently visualize pairs and they will be stripped from the global explanations. Set interactions=0 to generate a fully interpretable glassbox model."
+                        )
 
                     # at this point we know we will be making a new one, so delete it now
                     shared.reset()
@@ -1690,6 +1692,92 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         self.has_fitted_ = True
 
         return self
+
+    def estimate_mem(self, X):
+        """Estimate memory usage of the model.
+        Args:
+            X: dataset
+        Returns:
+            Estimated memory usage in bytes.
+            The estimate does not include the memory from the
+            caller's copy of X, nor the process's code or other data.
+        """
+
+        # number of classes does not affect memory much, so choose a sensible default
+        n_classes = Native.Task_Regression
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, None, None)
+
+        bin_levels = [self.max_bins, self.max_interaction_bins]
+
+        binning_result = construct_bins(
+            X=X,
+            y=None,
+            sample_weight=None,
+            feature_names_given=self.feature_names,
+            feature_types_given=self.feature_types,
+            max_bins_leveled=bin_levels,
+        )
+        feature_names_in = binning_result[0]
+        feature_types_in = binning_result[1]
+        bins = binning_result[2]
+
+        # create a dummy y array (simulate regression)
+        y = np.zeros(n_samples, dtype=np.float64)
+
+        n_bytes_mains = bin_native_by_dimension(
+            n_classes,
+            1,
+            bins,
+            X,
+            y,
+            None,
+            feature_names_in,
+            feature_types_in,
+            None,
+        )
+
+        # One shared memory copy of the data mapped into all processes, plus a copy of
+        # the test and train data for each outer bag. Assume all processes are started
+        # at some point and are eating up memory.
+
+        max_bytes = n_bytes_mains + n_bytes_mains * self.outer_bags
+
+        n_features_in = len(bins)
+
+        interactions = clean_interactions(self.interactions, n_features_in)
+        if not isinstance(interactions, int):
+            interactions = len(interactions)
+
+        if interactions != 0:
+            n_bytes_pairs = bin_native_by_dimension(
+                n_classes,
+                2,
+                bins,
+                X,
+                y,
+                None,
+                feature_names_in,
+                feature_types_in,
+                None,
+            )
+
+            # each outer bag makes a copy of the features. Only the training features
+            # are kept for interaction detection, but don't estimate that for now.
+            interaction_detection_bytes = (
+                n_bytes_pairs + n_bytes_pairs * self.outer_bags
+            )
+
+            max_bytes = max(max_bytes, interaction_detection_bytes)
+
+            interaction_multiple = float(interactions) / float(n_features_in)
+            interaction_boosting_bytes = n_bytes_pairs + int(
+                n_bytes_pairs * interaction_multiple * self.outer_bags
+            )
+
+            max_bytes = max(max_bytes, interaction_boosting_bytes)
+
+        return max_bytes
 
     def to_jsonable(self, detail="all"):
         """Convert the model to a JSONable representation.
