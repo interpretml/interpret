@@ -3,6 +3,7 @@
 
 from contextlib import AbstractContextManager
 
+
 class SharedDataset(AbstractContextManager):
     def __init__(self):
         self.shared_memory = None

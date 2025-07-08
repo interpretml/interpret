@@ -1419,7 +1419,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     parallel_args = []
                     for idx in range(self.outer_bags):
                         early_stopping_rounds_local = early_stopping_rounds
-                        if internal_bags[idx] is None or (internal_bags[idx] >= 0).all():
+                        if (
+                            internal_bags[idx] is None
+                            or (internal_bags[idx] >= 0).all()
+                        ):
                             # if there are no validation samples, turn off early stopping
                             # because the validation metric cannot improve each round
                             early_stopping_rounds_local = 0

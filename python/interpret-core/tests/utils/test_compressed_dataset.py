@@ -11,6 +11,7 @@ from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimens
 from interpret.utils._preprocessor import construct_bins
 from interpret.utils._shared_dataset import SharedDataset
 
+
 @pytest.mark.skip(reason="skip this until we have support for missing values")
 def test_bin_native():
     X = np.array(
@@ -97,8 +98,15 @@ def test_bin_native():
 
     with SharedDataset() as shared:
         bin_native_by_dimension(
-            n_classes, 1, bins, X, y, sample_weight, feature_names_in, feature_types_in,
-                shared,
+            n_classes,
+            1,
+            bins,
+            X,
+            y,
+            sample_weight,
+            feature_names_in,
+            feature_types_in,
+            shared,
         )
         assert shared.shared_memory is not None
         assert shared.dataset is not None

@@ -128,7 +128,9 @@ def boost(
                     state_idx = 0
 
                     nominals = native.extract_nominals(dataset)
-                    random_cyclic_ordering = np.arange(len(term_features), dtype=np.int64)
+                    random_cyclic_ordering = np.arange(
+                        len(term_features), dtype=np.int64
+                    )
 
                     while step_idx < max_steps:
                         if state_idx >= 0:
@@ -142,7 +144,9 @@ def boost(
                                     and develop.get_option(
                                         "randomize_initial_feature_order"
                                     )
-                                    or develop.get_option("randomize_greedy_feature_order")
+                                    or develop.get_option(
+                                        "randomize_greedy_feature_order"
+                                    )
                                     and greedy_steps > 0
                                     or develop.get_option("randomize_feature_order")
                                 ):
@@ -169,7 +173,10 @@ def boost(
                         if contains_nominals:
                             reg_lambda_local += develop.get_option("cat_l2")
 
-                            if develop.get_option("min_samples_leaf_nominal") is not None:
+                            if (
+                                develop.get_option("min_samples_leaf_nominal")
+                                is not None
+                            ):
                                 min_samples_leaf_local = develop.get_option(
                                     "min_samples_leaf_nominal"
                                 )
@@ -179,7 +186,9 @@ def boost(
                         elif missing == "high":
                             term_boost_flags_local |= Native.TermBoostFlags_MissingHigh
                         elif missing == "separate":
-                            term_boost_flags_local |= Native.TermBoostFlags_MissingSeparate
+                            term_boost_flags_local |= (
+                                Native.TermBoostFlags_MissingSeparate
+                            )
                         elif missing != "gain":
                             msg = f"Unrecognized missing option {missing}."
                             raise Exception(msg)
@@ -219,7 +228,9 @@ def boost(
                                 max_delta_step=max_delta_step,
                                 min_cat_samples=min_cat_samples,
                                 cat_smooth=cat_smooth,
-                                max_cat_threshold=develop.get_option("max_cat_threshold"),
+                                max_cat_threshold=develop.get_option(
+                                    "max_cat_threshold"
+                                ),
                                 cat_include=develop.get_option("cat_include"),
                                 max_leaves=max_leaves,
                                 monotone_constraints=term_monotone,
@@ -260,7 +271,9 @@ def boost(
                             for f, s, noise in zip(
                                 splits_iter[:-1], splits_iter[1:], noises
                             ):
-                                noisy_update_tensor[f:s] = term_update_tensor[f:s] + noise
+                                noisy_update_tensor[f:s] = (
+                                    term_update_tensor[f:s] + noise
+                                )
 
                                 # Native code will be returning sums of residuals in slices, not averages.
                                 # Compute noisy average by dividing noisy sum by noisy bin weights
@@ -292,7 +305,9 @@ def boost(
                                 min(abs(min_metric), abs(min_prev_metric))
                                 * early_stopping_tolerance
                             )
-                            if np.isnan(modified_tolerance) or np.isinf(modified_tolerance):
+                            if np.isnan(modified_tolerance) or np.isinf(
+                                modified_tolerance
+                            ):
                                 modified_tolerance = 0.0
 
                             if cur_metric <= min_metric - min(0.0, modified_tolerance):
@@ -319,14 +334,19 @@ def boost(
                                 circular_idx = (circular_idx + 1) % len(circular)
                                 min_prev_metric = min(toss, min_prev_metric)
 
-                                if min_prev_metric - modified_tolerance <= circular.min():
+                                if (
+                                    min_prev_metric - modified_tolerance
+                                    <= circular.min()
+                                ):
                                     break
 
                         if stop_flag is not None and stop_flag[0]:
                             break
 
                         if callback is not None:
-                            is_done = callback(bag_idx, step_idx, make_progress, cur_metric)
+                            is_done = callback(
+                                bag_idx, step_idx, make_progress, cur_metric
+                            )
                             if is_done:
                                 if stop_flag is not None:
                                     stop_flag[0] = True
