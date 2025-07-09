@@ -102,11 +102,15 @@ def bin_native(
         raise ValueError(msg)
 
     if shared is not None:
-        shared_mem = shared_memory.SharedMemory(create=True, size=n_bytes, name=None)
-        shared.shared_memory = shared_mem
-        shared.name = shared_mem.name
+        # shared_mem = shared_memory.SharedMemory(create=True, size=n_bytes, name=None)
+        # shared.shared_memory = shared_mem
+        # shared.name = shared_mem.name
+        # dataset = np.ndarray(n_bytes, dtype=np.ubyte, buffer=shared_mem.buf)
 
-        dataset = np.ndarray(n_bytes, dtype=np.ubyte, buffer=shared_mem.buf)
+        # Large amounts of shared memory cannot be allocated inside docker images
+        # so for now allocate a normal numpy array.
+        dataset = np.empty(n_bytes, np.ubyte)
+
         shared.dataset = dataset
 
         native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)

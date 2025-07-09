@@ -270,7 +270,7 @@ def measure_interactions(
         ranked_interactions = rank_interactions(
             None,
             0,
-            dataset_name=shared.name,
+            dataset=shared.name if shared.name is not None else shared.dataset,
             intercept=None,
             bag=None,
             init_scores=init_score,

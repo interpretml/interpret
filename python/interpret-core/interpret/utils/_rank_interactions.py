@@ -20,7 +20,7 @@ from multiprocessing import shared_memory
 def rank_interactions(
     shm_name,
     bag_idx,
-    dataset_name,
+    dataset,
     intercept,
     bag,
     init_scores,
@@ -44,10 +44,12 @@ def rank_interactions(
     try:
         develop._develop_options = develop_options  # restore these in this process
 
+        shared_dataset = None
         try:
-            shared_dataset = shared_memory.SharedMemory(name=dataset_name)
-            # we do not know the length of the dataset, so we create a 1-element array
-            dataset = np.ndarray(1, dtype=np.ubyte, buffer=shared_dataset.buf)
+            if isinstance(dataset, str):  # if str it is shared memory
+                shared_dataset = shared_memory.SharedMemory(name=dataset)
+                # we do not know the length of the dataset, so we create a 1-element array
+                dataset = np.ndarray(1, dtype=np.ubyte, buffer=shared_dataset.buf)
 
             shm = None
             try:
@@ -100,6 +102,7 @@ def rank_interactions(
                 if shm is not None:
                     shm.close()
         finally:
-            shared_dataset.close()
+            if shared_dataset is not None:
+                shared_dataset.close()
     except Exception as e:
         return e

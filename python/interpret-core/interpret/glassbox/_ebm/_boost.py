@@ -17,7 +17,7 @@ def boost(
     shm_name,
     bag_idx,
     callback,
-    dataset_name,
+    dataset,
     intercept_rounds,
     intercept_learning_rate,
     intercept,
@@ -56,10 +56,12 @@ def boost(
 ):
     try:
         develop._develop_options = develop_options  # restore these in this process
+        shared_dataset = None
         try:
-            shared_dataset = shared_memory.SharedMemory(name=dataset_name)
-            # we do not know the length of the dataset, so we create a 1-element array
-            dataset = np.ndarray(1, dtype=np.ubyte, buffer=shared_dataset.buf)
+            if isinstance(dataset, str):  # if str it is shared memory
+                shared_dataset = shared_memory.SharedMemory(name=dataset)
+                # we do not know the length of the dataset, so we create a 1-element array
+                dataset = np.ndarray(1, dtype=np.ubyte, buffer=shared_dataset.buf)
 
             shm = None
             try:
@@ -372,6 +374,7 @@ def boost(
                 if shm is not None:
                     shm.close()
         finally:
-            shared_dataset.close()
+            if shared_dataset is not None:
+                shared_dataset.close()
     except Exception as e:
         return e, None, None, None, None
