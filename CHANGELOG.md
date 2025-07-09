@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.16] - 2025-07-09
+### Fixed
+- removed the use of large blocks of shared memory since it is not available in docker containers
 
 ## [v0.6.15] - 2025-07-08
 ### Added
