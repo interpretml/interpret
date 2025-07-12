@@ -97,13 +97,12 @@ def measure_interactions(
 
     native = Native.get_native_singleton()
 
-    task = None
+    n_classes = Native.Task_Unknown
     if objective is not None:
         if len(objective.strip()) == 0:
             objective = None
         else:
-            # "classification" or "regression"
-            task = native.determine_task(objective)
+            n_classes = native.determine_task(objective)
 
     classes = None
     link = None
@@ -116,28 +115,28 @@ def measure_interactions(
         invert_classes = dict(zip(classes, count()))
         y = np.array([invert_classes[el] for el in y], dtype=np.int64)
 
-        if task is None:
-            task = "classification"
+        if n_classes == Native.Task_Unknown:
+            n_classes = Native.Task_GeneralClassification
             _, link, link_param = native.determine_link(flags, "log_loss", len(classes))
-        elif task == "classification":
+        elif Native.Task_GeneralClassification <= n_classes:
             _, link, link_param = native.determine_link(flags, objective, len(classes))
         else:
             msg = f"init_score is a classifier, but the objective is: {objective}"
             raise ValueError(msg)
     elif is_regressor(init_score):
-        if task is None:
-            task = "regression"
+        if n_classes == Native.Task_Unknown:
+            n_classes = Native.Task_Regression
             _, link, link_param = native.determine_link(
                 flags, "rmse", Native.Task_Regression
             )
-        elif task == "regression":
+        elif n_classes == Native.Task_Regression:
             _, link, link_param = native.determine_link(
                 flags, objective, Native.Task_Regression
             )
         else:
             msg = f"init_score is a regressor, but the objective is: {objective}"
             raise ValueError(msg)
-    elif task == "classification":
+    elif Native.Task_GeneralClassification <= n_classes:
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
         classes, y = np.unique(y, return_inverse=True)
@@ -148,13 +147,13 @@ def measure_interactions(
     )
     if init_score is not None and init_score.ndim == 2:
         # it must be multiclass, or mono-classification
-        if task is None:
-            task = "classification"
-        elif task != "classification":
+        if n_classes == Native.Task_Unknown:
+            n_classes = Native.Task_GeneralClassification
+        elif n_classes < Native.Task_GeneralClassification:
             msg = f"init_score has 2 dimensions so it is a multiclass model, but the objective is: {objective}"
             raise ValueError(msg)
 
-    if task is None:
+    if n_classes == Native.Task_Unknown:
         # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
@@ -163,22 +162,22 @@ def measure_interactions(
 
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
-            task = "regression"
+            n_classes = Native.Task_Regression
         elif target_type == "binary":
-            task = "classification"
+            n_classes = Native.Task_GeneralClassification
         elif target_type == "multiclass":
             if init_score is not None:
                 # type_of_target is guessing the model type. if init_score was multiclass then it
                 # should have a 2nd dimension, but it does not, so the guess made by type_of_target was wrong.
                 # The only other option is for it to be regression, so force that.
-                task = "regression"
+                n_classes = Native.Task_Regression
             else:
-                task = "classification"
+                n_classes = Native.Task_GeneralClassification
         else:
             msg = "unrecognized target type in y"
             raise ValueError(msg)
 
-    if task == "classification":
+    if Native.Task_GeneralClassification <= n_classes:
         if classes is None:
             y = typify_classification(y)
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
@@ -186,9 +185,8 @@ def measure_interactions(
         n_classes = len(classes)
         if objective is None:
             objective = "log_loss"
-    elif task == "regression":
+    elif n_classes == Native.Task_Regression:
         y = y.astype(np.float64, copy=False)
-        n_classes = Native.Task_Regression
         if objective is None:
             objective = "rmse"
     else:

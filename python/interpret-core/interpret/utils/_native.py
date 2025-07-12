@@ -887,13 +887,7 @@ class Native:
         if return_code:  # pragma: no cover
             raise Native._get_native_exception(return_code, "DetermineTask")
 
-        task = self._unsafe.GetTaskStr(task.value)
-        if not task:  # pragma: no cover
-            msg = "internal error in call to GetTaskStr"
-            _log.error(msg)
-            raise Exception(msg)
-
-        return task.decode("ascii")
+        return task.value
 
     def determine_link(self, flags, objective, n_classes):
         objective_code = ct.c_int32(Native.Objective_Other)
@@ -1519,12 +1513,6 @@ class Native:
             ct.c_void_p,
         ]
         self._unsafe.DetermineTask.restype = ct.c_int32
-
-        self._unsafe.GetTaskStr.argtypes = [
-            # int64_t task
-            ct.c_int64,
-        ]
-        self._unsafe.GetTaskStr.restype = ct.c_char_p
 
         self._unsafe.DetermineLinkFunction.argtypes = [
             # LinkFlags flags

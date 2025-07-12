@@ -686,31 +686,30 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         native = Native.get_native_singleton()
 
         objective = self.objective
-        task = None
+        n_classes = Native.Task_Unknown
         if objective is not None:
             if len(objective.strip()) == 0:
                 objective = None
             else:
-                # "classification" or "regression"
-                task = native.determine_task(objective)
+                n_classes = native.determine_task(objective)
 
         if is_classifier(self):
-            if task is None:
-                task = "classification"
-            elif task != "classification":
+            if n_classes == Native.Task_Unknown:
+                n_classes = Native.Task_GeneralClassification
+            elif n_classes < Native.Task_GeneralClassification:
                 msg = f"classifier cannot have objective {self.objective}"
                 _log.error(msg)
                 raise ValueError(msg)
 
         if is_regressor(self):
-            if task is None:
-                task = "regression"
-            elif task != "regression":
+            if n_classes == Native.Task_Unknown:
+                n_classes = Native.Task_Regression
+            elif n_classes != Native.Task_Regression:
                 msg = f"regressor cannot have objective {self.objective}"
                 _log.error(msg)
                 raise ValueError(msg)
 
-        if task == "classification":
+        if Native.Task_GeneralClassification <= n_classes:
             y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
             # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
@@ -719,11 +718,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             n_classes = len(classes)
             if objective is None:
                 objective = "log_loss"
-        elif task == "regression":
+        elif n_classes == Native.Task_Regression:
             y = y.astype(np.float64, copy=False)
             min_target = y.min()
             max_target = y.max()
-            n_classes = Native.Task_Regression
             if objective is None:
                 objective = "rmse"
         else:
