@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.0] - 2025-07-13
+### Breaking Changes
+- the shape of the bags parameter has been changed from (n\_outer\_bags, n\_samples) to (n\_samples, n\_outer\_bags)
+  in order to better match the format of the X parameter which has shape (n\_samples, n\_features)
+  In this release if bags is passed in as (n\_outer\_bags, n\_samples), then a warning is issued and the shape
+  is accepted using the old format.
+
 ## [v0.6.16] - 2025-07-09
 ### Fixed
 - removed the use of large blocks of shared memory since it is not available in docker containers
