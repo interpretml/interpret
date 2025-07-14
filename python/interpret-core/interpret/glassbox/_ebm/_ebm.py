@@ -499,8 +499,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             X: NumPy array for training samples.
             y: NumPy array as training labels.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
-            bags: Optional bag definitions. The first dimension should have length equal to the number of outer_bags.
-                The second dimension should have length equal to the number of samples. The contents should be
+            bags: Optional bag definitions. The first dimension should have length equal to the number of samples.
+                The second dimension should have length equal to the number of outer_bags. The contents should be
                 +1 for training, -1 for validation, and 0 if not included in the bag. Numbers other than 1 indicate
                 how many times to include the sample in the training or validation sets.
             init_score: Optional. Either a model that can generate scores or per-sample initialization score.
@@ -532,10 +532,11 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        if (bags is not None) and len(bags) != self.outer_bags:
-            msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
-            _log.error(msg)
-            raise ValueError(msg)
+        # TODO: restore
+        # if (bags is not None) and len(bags) != self.outer_bags:
+        #     msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
+        #     _log.error(msg)
+        #     raise ValueError(msg)
 
         if not isinstance(self.validation_size, int) and not isinstance(
             self.validation_size, float
@@ -914,7 +915,12 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     and not is_differential_privacy,
                 )
             else:
-                bag = bags[idx]
+                if len(bags) == self.outer_bags:
+                    # TODO: hack to avoid breaking callers on the shape of the bags param
+                    warn("The bags param shape has been changed to (n_samples, n_bag).")
+                    bag = bags[idx]
+                else:
+                    bag = bags[:, idx]
                 if not isinstance(bag, np.ndarray):
                     bag = np.array(bag)
                 if bag.ndim != 1:

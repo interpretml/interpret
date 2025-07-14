@@ -681,6 +681,29 @@ def test_ebm_sample_weight():
     assert not np.array_equal(ebm.predict_proba(X), changed.predict_proba(X))
 
 
+def test_ebm_explicit_bags():
+    n_samples = 100
+    X, y, names, types = make_synthetic(
+        classes=2, n_samples=n_samples, output_type="float"
+    )
+
+    bags = np.full((n_samples, 3), 1, np.int8)
+    bags[1, 0] = -1
+    bags[2, 1] = -1
+    bags[3, 2] = -1
+
+    bags[4, 0] = 2
+    bags[5, 1] = 2
+    bags[6, 2] = 2
+
+    bags[7, 0] = 0
+    bags[8, 1] = 0
+    bags[9, 2] = 0
+
+    ebm = ExplainableBoostingClassifier(names, types, max_rounds=1, outer_bags=3)
+    ebm.fit(X, y, bags=bags)
+
+
 @pytest.mark.visual
 @pytest.mark.slow
 def test_ebm_iris():
