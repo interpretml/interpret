@@ -532,11 +532,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        # TODO: restore
-        # if (bags is not None) and len(bags) != self.outer_bags:
-        #     msg = f"bags has {len(bags)} bags and self.outer_bags is {self.outer_bags} bags"
-        #     _log.error(msg)
-        #     raise ValueError(msg)
+        if (bags is not None) and bags.shape[1] != self.outer_bags:
+            msg = f"bags has {bags.shape[1]} bags and self.outer_bags is {self.outer_bags} bags"
+            _log.error(msg)
+            raise ValueError(msg)
 
         if not isinstance(self.validation_size, int) and not isinstance(
             self.validation_size, float
@@ -915,12 +914,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     and not is_differential_privacy,
                 )
             else:
-                if len(bags) == self.outer_bags:
-                    # TODO: hack to avoid breaking callers on the shape of the bags param
-                    warn("The bags param shape has been changed to (n_samples, n_bag).")
-                    bag = bags[idx]
-                else:
-                    bag = bags[:, idx]
+                bag = bags[:, idx]
                 if not isinstance(bag, np.ndarray):
                     bag = np.array(bag)
                 if bag.ndim != 1:
