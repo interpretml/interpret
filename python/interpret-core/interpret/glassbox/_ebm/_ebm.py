@@ -1695,7 +1695,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         return self
 
-    def estimate_mem(self, X):
+    def estimate_mem(self, X, y=None):
         """Estimate memory usage of the model.
         Args:
             X: dataset
@@ -1706,8 +1706,63 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             The estimate will be more accurate for larger datasets.
         """
 
-        # number of classes does not affect memory much, so choose a sensible default
-        n_classes = Native.Task_Regression
+        if y is not None:
+            n_classes = Native.Task_Unknown
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                msg = "y must be 1 dimensional"
+                _log.error(msg)
+                raise ValueError(msg)
+            if len(y) == 0:
+                msg = "y cannot have 0 samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            native = Native.get_native_singleton()
+
+            objective = self.objective
+            n_classes = Native.Task_Unknown
+            if objective is not None:
+                if len(objective.strip()) == 0:
+                    objective = None
+                else:
+                    n_classes = native.determine_task(objective)
+
+            if is_classifier(self):
+                if n_classes == Native.Task_Unknown:
+                    n_classes = Native.Task_GeneralClassification
+                elif n_classes < Native.Task_GeneralClassification:
+                    msg = f"classifier cannot have objective {self.objective}"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+            if is_regressor(self):
+                if n_classes == Native.Task_Unknown:
+                    n_classes = Native.Task_Regression
+                elif n_classes != Native.Task_Regression:
+                    msg = f"regressor cannot have objective {self.objective}"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+            if Native.Task_GeneralClassification <= n_classes:
+                y = typify_classification(y)
+                # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
+                # but that could lead to a lot of bugs if the # of categories is close and we flip the ordering
+                # in two separate runs, which would flip the ordering of the classes within our score tensors.
+                classes, y = np.unique(y, return_inverse=True)
+                n_classes = len(classes)
+            elif n_classes == Native.Task_Regression:
+                y = y.astype(np.float64, copy=False)
+            else:
+                msg = f"Unrecognized objective {self.objective}"
+                _log.error(msg)
+                raise ValueError(msg)
+        else:
+            n_classes = Native.Task_Regression
+            # create a dummy y array (simulate regression)
+            y = np.zeros(n_samples, dtype=np.float64)
+
+        n_scores = Native.get_count_scores_c(n_classes)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, None, None)
 
@@ -1725,9 +1780,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         feature_types_in = binning_result[1]
         bins = binning_result[2]
 
-        # create a dummy y array (simulate regression)
-        y = np.zeros(n_samples, dtype=np.float64)
-
         n_bytes_mains = bin_native_by_dimension(
             n_classes,
             1,
@@ -1740,12 +1792,22 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             None,
         )
 
+        bin_lengths = [
+            len(x[0]) + 2 if isinstance(x[0], dict) else len(x[0]) + 3 for x in bins
+        ]
+        n_tensor_bytes = sum(bin_lengths) * np.float64().nbytes * self.outer_bags * 2
+
         # One shared memory copy of the data mapped into all processes, plus a copy of
         # the test and train data for each outer bag. Assume all processes are started
         # at some point and are eating up memory.
         # When we cannot use shared memory the parent has a copy of the dataset and
         # all the children share one copy.
-        max_bytes = n_bytes_mains + n_bytes_mains + n_bytes_mains * self.outer_bags
+        max_bytes = (
+            n_bytes_mains
+            + n_bytes_mains
+            + n_bytes_mains * self.outer_bags
+            + n_tensor_bytes
+        )
 
         n_features_in = len(bins)
 
@@ -1774,13 +1836,26 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             max_bytes = max(max_bytes, interaction_detection_bytes)
 
-            interaction_multiple = float(interactions) / float(n_features_in)
+            bin_lengths.sort()
+            n_bad_case_bins = bin_lengths[len(bin_lengths) // 4 * 3]
+            interaction_boosting_bytes = (
+                n_bad_case_bins
+                * n_bad_case_bins
+                * np.float64().nbytes
+                * self.outer_bags
+                * interactions
+                * 2
+            )
+
             # We merge the interactions together to make a combined interaction
             # dataset, so if feature1 takes 4 bits and feature2 takes 10 bits
             # then the resulting data storage should take approx 14 bits in total,
-            # so as a loose approximation we can add the bits in a pair.
-            interaction_multiple *= 2.0
-            interaction_boosting_bytes = (
+            # so as a loose approximation we can add the bits in a pair, which means
+            # roughtly multiply by 2.0 for pairs.  Multiply by another 2.0 just because
+            # we might get unlucky and the pairs used are biased towards the ones
+            # that have more bins.
+            interaction_multiple = 4.0 * float(interactions) / float(n_features_in)
+            interaction_boosting_bytes += (
                 n_bytes_pairs
                 + n_bytes_pairs
                 + int(n_bytes_pairs * interaction_multiple * self.outer_bags)
