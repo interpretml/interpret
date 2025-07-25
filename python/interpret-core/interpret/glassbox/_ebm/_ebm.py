@@ -1721,7 +1721,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             native = Native.get_native_singleton()
 
             objective = self.objective
-            n_classes = Native.Task_Unknown
             if objective is not None:
                 if len(objective.strip()) == 0:
                     objective = None
@@ -1757,14 +1756,18 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 msg = f"Unrecognized objective {self.objective}"
                 _log.error(msg)
                 raise ValueError(msg)
-        else:
+
+        n_samples = None if y is None else len(y)
+        X, n_samples = preclean_X(
+            X, self.feature_names, self.feature_types, n_samples, "y"
+        )
+
+        if y is None:
             n_classes = Native.Task_Regression
             # create a dummy y array (simulate regression)
             y = np.zeros(n_samples, dtype=np.float64)
 
         n_scores = Native.get_count_scores_c(n_classes)
-
-        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, None, None)
 
         bin_levels = [self.max_bins, self.max_interaction_bins]
 
