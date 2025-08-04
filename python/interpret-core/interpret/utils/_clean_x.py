@@ -650,7 +650,7 @@ def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, process
         _log.error(msg)
         raise ValueError(msg)
     else:
-        if isinstance(processing, str):
+        if isinstance(processing, (str, bytes)):
             # isinstance(, str) also works for np.str_
 
             # don't allow strings to get to the for loop below
@@ -1133,7 +1133,7 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
             raise ValueError(msg)
     elif isinstance(X_col, _list_tuple_types):
         X_col = np.array(X_col, np.object_)
-    elif isinstance(X_col, str):
+    elif isinstance(X_col, (str, bytes)):
         # isinstance(, str) also works for np.str_
 
         # don't allow strings to get to the np.array conversion below
@@ -1814,7 +1814,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
         msg = "X cannot be None"
         _log.error(msg)
         raise TypeError(msg)
-    elif isinstance(X, str):
+    elif isinstance(X, (str, bytes)):
         # str objects are iterable, so don't allow them to get to the list() conversion below
         # isinstance(, str) also works for np.str_
         msg = "X cannot be a str type"
@@ -1900,7 +1900,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 is_copied = True
                 X = list(X)
             X[idx] = _reshape_1D_if_possible(sample)
-        elif isinstance(sample, str):
+        elif isinstance(sample, (str, bytes)):
             # isinstance(, str) also works for np.str_
             break  # this only legal if we have one sample
         else:

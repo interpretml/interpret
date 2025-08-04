@@ -1386,12 +1386,13 @@ def test_callbacks_long():
 
 
 def test_estimate_mem():
-    X, y, names, types = make_synthetic(seed=42, output_type="float", n_samples=10000)
+    for t in ["object", "pandas", "str", "float", "csc_matrix", "csc_array"]:
+        X, y, names, types = make_synthetic(seed=42, output_type=t, n_samples=10000)
 
-    ebm = ExplainableBoostingClassifier(names, types, interactions=[])
-    n_bytes = ebm.estimate_mem(X, y)
-    # print(n_bytes)
+        ebm = ExplainableBoostingClassifier(names, types, interactions=[])
+        n_bytes_classifier = ebm.estimate_mem(X, y, 1.0)
 
-    ebm = ExplainableBoostingClassifier(names, types)
-    n_bytes = ebm.estimate_mem(X, y)
-    # print(n_bytes)
+        ebm = ExplainableBoostingClassifier(names, types)
+        n_bytes_regressor = ebm.estimate_mem(X, y, 1.0)
+
+        # print(f"datatype={t}, bytes_classifier[mains]={n_bytes_classifier}, bytes_regressor[+interactions]={n_bytes_regressor}")

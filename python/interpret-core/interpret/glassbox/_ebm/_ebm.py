@@ -72,6 +72,7 @@ from ._utils import (
     remove_extra_bins,
 )
 from ...utils._shared_dataset import SharedDataset
+from ...utils._measure_mem import total_bytes
 
 _log = logging.getLogger(__name__)
 
@@ -496,8 +497,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         """Fit model to provided samples.
 
         Args:
-            X: NumPy array for training samples.
-            y: NumPy array as training labels.
+            X: {array-like, sparse matrix} of shape (n_samples, n_features). Training data.
+            y: array-like of shape (n_samples,). Target values.
             sample_weight: Optional array of weights per sample. Should be same length as X and y.
             bags: Optional bag definitions. The first dimension should have length equal to the number of samples.
                 The second dimension should have length equal to the number of outer_bags. The contents should be
@@ -1695,10 +1696,18 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         return self
 
-    def estimate_mem(self, X, y=None):
+    def estimate_mem(self, X, y=None, data_multiplier=0.0):
         """Estimate memory usage of the model.
         Args:
-            X: dataset
+            X: {array-like, sparse matrix} of shape (n_samples, n_features). Training data.
+            y: array-like of shape (n_samples,). Target values.
+            data_multiplier: The data in X needs to be allocated by the caller.
+                If data_multiplier is set to 0.0 then this function only estimates the additional
+                memory consumed by the fit function. If data_multiplier is set to 1.0 then
+                it will include the memory allocated to X by the caller. Often the caller will make
+                copies of X before calling fit, and in that case the data_multiplier could be set to a
+                value above 1.0 if the caller would like this function to include that in the memory estimate.
+
         Returns:
             Estimated memory usage in bytes.
             The estimate does not include the memory from the
@@ -1706,7 +1715,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             The estimate will be more accurate for larger datasets.
         """
 
+        n_bytes = total_bytes(X)
         if y is not None:
+            n_bytes += total_bytes(y)
+
+        n_bytes = int(n_bytes * data_multiplier)
+
+        if y is not None:
+            y_id = id(y)
             n_classes = Native.Task_Unknown
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
@@ -1757,10 +1773,18 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
+            if y_id != id(y):
+                # in fit we'll also make a copy of y that cannot be deleted until the end
+                n_bytes += total_bytes(y)
+
         n_samples = None if y is None else len(y)
+        X_id = id(X)
         X, n_samples = preclean_X(
             X, self.feature_names, self.feature_types, n_samples, "y"
         )
+        if X_id != id(X):
+            # a copy was made, and we'll need to also do this on fit, so add the new memory too
+            n_bytes += total_bytes(X)
 
         if y is None:
             n_classes = Native.Task_Regression
@@ -1794,11 +1818,19 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             feature_types_in,
             None,
         )
-
-        bin_lengths = [
-            len(x[0]) + 2 if isinstance(x[0], dict) else len(x[0]) + 3 for x in bins
-        ]
-        n_tensor_bytes = sum(bin_lengths) * np.float64().nbytes * self.outer_bags * 2
+        # first calculate the number of cells in the mains for all features
+        n_tensor_bytes = sum(
+            2
+            if len(x[0]) == 0
+            else max(x[0].values()) + 2
+            if isinstance(x[0], dict)
+            else len(x[0]) + 3
+            for x in bins
+            if len(x) != 0
+        )
+        # We have 2 copies of the upate tensors in C++ (current and best) and we extract
+        # one more in python for the update before tearning down the C++ data.
+        n_tensor_bytes = n_tensor_bytes * np.float64().nbytes * self.outer_bags * 3
 
         # One shared memory copy of the data mapped into all processes, plus a copy of
         # the test and train data for each outer bag. Assume all processes are started
@@ -1831,6 +1863,19 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 None,
             )
 
+            bin_lengths = [x[0] if len(x) == 1 else x[1] for x in bins if len(x) != 0]
+            bin_lengths = [
+                2
+                if len(x) == 0
+                else max(x.values()) + 2
+                if isinstance(x, dict)
+                else len(x) + 3
+                for x in bin_lengths
+            ]
+            bin_lengths.sort()
+            # we use the 75th percentile bin length to estimate the number of bins
+            n_bad_case_bins = bin_lengths[len(bin_lengths) // 4 * 3]
+
             # each outer bag makes a copy of the features. Only the training features
             # are kept for interaction detection, but don't estimate that for now.
             interaction_detection_bytes = (
@@ -1839,15 +1884,15 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             max_bytes = max(max_bytes, interaction_detection_bytes)
 
-            bin_lengths.sort()
-            n_bad_case_bins = bin_lengths[len(bin_lengths) // 4 * 3]
+            # We have 2 copies of the upate tensors in C++ (current and best) and we extract
+            # one more in python for the update before tearning down the C++ data.
             interaction_boosting_bytes = (
                 n_bad_case_bins
                 * n_bad_case_bins
                 * np.float64().nbytes
                 * self.outer_bags
                 * interactions
-                * 2
+                * 3
             )
 
             # We merge the interactions together to make a combined interaction
@@ -1866,7 +1911,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             max_bytes = max(max_bytes, interaction_boosting_bytes)
 
-        return max_bytes
+        return int(n_bytes + max_bytes)
 
     def to_jsonable(self, detail="all"):
         """Convert the model to a JSONable representation.

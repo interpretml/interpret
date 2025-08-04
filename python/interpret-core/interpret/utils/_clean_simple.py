@@ -86,7 +86,7 @@ def clean_dimensions(data, param_name):
             data = np.array(data, np.object_)
         elif callable(getattr(data, "__array__", None)):
             data = data.__array__()
-        elif isinstance(data, str):
+        elif isinstance(data, (str, bytes)):
             # we have just 1 item, so re-pack it and return
             ret = np.empty(1, np.object_)
             ret[0] = data
@@ -131,7 +131,7 @@ def clean_dimensions(data, param_name):
     while idx < n:
         item = data[idx]
 
-        if isinstance(item, str):
+        if isinstance(item, (str, bytes)):
             if n_second_dim is not None and n_second_dim != 1:
                 msg = (
                     f"{param_name} is not consistent in length for the second dimension"
@@ -180,7 +180,7 @@ def clean_dimensions(data, param_name):
         while sub_idx < n_items:
             subitem = item[sub_idx]
 
-            if isinstance(subitem, str):
+            if isinstance(subitem, (str, bytes)):
                 sub_idx = sub_idx + 1
                 continue
 

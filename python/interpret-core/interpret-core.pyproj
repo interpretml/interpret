@@ -84,6 +84,7 @@
     <Compile Include="interpret\utils\_compressed_dataset.py" />
     <Compile Include="interpret\utils\_histogram.py" />
     <Compile Include="interpret\utils\_link.py" />
+    <Compile Include="interpret\utils\_measure_mem.py" />
     <Compile Include="interpret\utils\_misc.py" />
     <Compile Include="interpret\utils\_purify.py" />
     <Compile Include="interpret\utils\_rank_interactions.py" />
