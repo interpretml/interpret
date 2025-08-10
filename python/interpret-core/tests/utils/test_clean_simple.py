@@ -43,6 +43,26 @@ def test_typify_classification_float64_non_integers():
     assert np.array_equal(result, ['0.5', '1.5', '0.2'])
 
 
+def test_typify_classification_edge_cases():
+    """Test edge cases for typify_classification with floating-point values"""
+    # Test with NaN values - should fall back to string
+    y_with_nan = np.array([0.0, 1.0, np.nan], dtype=np.float64)
+    result = typify_classification(y_with_nan)
+    assert result.dtype.kind == 'U'  # Unicode string
+    
+    # Test with negative integer floats
+    y_negative = np.array([-1.0, 0.0, 1.0], dtype=np.float64)
+    result = typify_classification(y_negative)
+    assert result.dtype == np.int64
+    assert np.array_equal(result, [-1, 0, 1])
+    
+    # Test with large integer floats
+    y_large = np.array([1e10, 2e10], dtype=np.float64)
+    result = typify_classification(y_large)
+    assert result.dtype == np.int64
+    assert np.array_equal(result, [10000000000, 20000000000])
+
+
 def test_typify_classification_existing_types():
     """Test typify_classification with existing supported types"""
     # Test integers
