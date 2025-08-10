@@ -237,6 +237,15 @@ def typify_classification(vec):
         # this also handles pandas BooleanDtype
         # JSON has a boolean datatype, so we can preserve this information in JSON!
         dtype = np.bool_
+    elif issubclass(vec.dtype.type, np.floating):
+        # Handle floating-point classification labels (e.g., 0.0, 1.0 for binary classification)
+        # Check if all values are integer-like (whole numbers)
+        if np.all(np.equal(np.mod(vec, 1), 0)):
+            # All values are whole numbers, convert to int64
+            dtype = np.int64
+        else:
+            # Non-integer floating-point values, fall back to string representation
+            dtype = np.str_
     elif issubclass(vec.dtype.type, np.object_):
         types = set(map(type, vec))
         if all(
