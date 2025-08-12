@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
+from sklearn.base import is_classifier
 
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -53,7 +54,9 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     X = X.astype(np.float64, order="C", copy=False)
 
     if y is not None:
-        if n_classes >= 0:
+        # Use the model's type to determine if this is classification
+        # This is more reliable than checking n_classes, especially for float labels
+        if is_classifier(explainer.model):
             y = typify_classification(y)
         else:
             y = y.astype(np.float64, copy=False)
@@ -74,7 +77,13 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
-    perf_dicts = gen_perf_dicts(predictions, y, False, classes)
+    # Convert model classes to strings the same way as y values for consistency
+    model_is_classifier = is_classifier(explainer.model)
+    if model_is_classifier and classes is not None:
+        # Apply the same typify_classification to classes as we do to y
+        classes = typify_classification(classes)
+    
+    perf_dicts = gen_perf_dicts(predictions, y, model_is_classifier, classes)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
         perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
@@ -115,7 +124,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
             "value": {"dataset_x": X, "dataset_y": y},
         }
     )
-    selector = gen_local_selector(data_dicts, is_classification=False)
+    selector = gen_local_selector(data_dicts, is_classification=model_is_classifier)
 
     return FeatureValueExplanation(
         "local",
