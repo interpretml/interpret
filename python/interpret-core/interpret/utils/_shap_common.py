@@ -53,8 +53,6 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     X = X.astype(np.float64, order="C", copy=False)
 
     if y is not None:
-        # Use n_classes >= 0 to determine if this is classification
-        # n_classes >= 0 indicates classification, n_classes < 0 indicates regression
         if n_classes >= 0:
             y = typify_classification(y)
         else:
