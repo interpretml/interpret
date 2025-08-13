@@ -1698,21 +1698,21 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
     def estimate_mem(self, X, y=None, data_multiplier=0.0):
         """Estimate memory usage of the model.
+
         Args:
-            X: {array-like, sparse matrix} of shape (n_samples, n_features). Training data.
-            y: array-like of shape (n_samples,). Target values.
-            data_multiplier: The data in X needs to be allocated by the caller.
-                If data_multiplier is set to 0.0 then this function only estimates the additional
-                memory consumed by the fit function. If data_multiplier is set to 1.0 then
-                it will include the memory allocated to X by the caller. Often the caller will make
-                copies of X before calling fit, and in that case the data_multiplier could be set to a
-                value above 1.0 if the caller would like this function to include that in the memory estimate.
+            X (array-like or sparse matrix): Shape (n_samples, n_features). Training data.
+            y (array-like, optional): Shape (n_samples,). Target values.
+            data_multiplier (float): Controls inclusion of X's memory.
+                If set to 0.0, this function only estimates the additional
+                memory consumed by the fit function. If set to 1.0, it includes
+                the memory allocated to X by the caller. Set above 1.0 to account
+                for extra copies made before calling fit.
 
         Returns:
-            Estimated memory usage in bytes.
-            The estimate does not include the memory from the
-            caller's copy of X, nor the process's code or other data.
-            The estimate will be more accurate for larger datasets.
+            int: Estimated memory usage in bytes.
+                The estimate excludes the memory from the caller's copy of X,
+                and the process's code or other unrelated data. The estimate
+                is more accurate for larger datasets.
         """
 
         n_bytes = total_bytes(X)
