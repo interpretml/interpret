@@ -79,7 +79,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     if model_is_classifier and classes is not None:
         # Apply the same typify_classification to classes as we do to y
         classes = typify_classification(classes)
-    
+
     perf_dicts = gen_perf_dicts(predictions, y, model_is_classifier, classes)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
