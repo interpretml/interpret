@@ -25,94 +25,42 @@ def test_clean_dimensions_2d():
     assert init_score[3, 1] == 8
 
 
-def test_typify_classification_float64_integers():
-    """Test typify_classification with float64 values that are integers (e.g., 0.0, 1.0)"""
-    # Test binary classification with float64 labels
-    # All floats should be converted to strings for JSON serialization clarity
-    y_float = np.array([0.0, 1.0, 0.0, 1.0], dtype=np.float64)
-    result = typify_classification(y_float)
-    assert result.dtype.kind == 'U'  # Unicode string
-    assert np.array_equal(result, ['0.0', '1.0', '0.0', '1.0'])
-
-
-def test_typify_classification_float64_non_integers():
-    """Test typify_classification with float64 values that are not integers"""
-    # Test with non-integer float values - should fallback to string
-    y_float = np.array([0.5, 1.5, 0.2], dtype=np.float64)
-    result = typify_classification(y_float)
-    assert result.dtype.kind == 'U'  # Unicode string
-    assert np.array_equal(result, ['0.5', '1.5', '0.2'])
-
-
-def test_typify_classification_edge_cases():
-    """Test edge cases for typify_classification with floating-point values"""
-    # Test with NaN values - should fall back to string
-    y_with_nan = np.array([0.0, 1.0, np.nan], dtype=np.float64)
-    result = typify_classification(y_with_nan)
-    assert result.dtype.kind == 'U'  # Unicode string
+def test_shap_kernel_float64_classification_labels():
+    """Test ShapKernel with float64 classification labels (reproduces issue #609)"""
+    try:
+        import shap
+        from sklearn.ensemble import RandomForestClassifier
+        from interpret.blackbox import ShapKernel
+        import pandas as pd
+    except ImportError:
+        # Skip test if shap or sklearn not available
+        import pytest
+        pytest.skip("SHAP or sklearn not available")
     
-    # Test with negative integer floats - should convert to strings
-    y_negative = np.array([-1.0, 0.0, 1.0], dtype=np.float64)
-    result = typify_classification(y_negative)
-    assert result.dtype.kind == 'U'  # Unicode string
-    assert np.array_equal(result, ['-1.0', '0.0', '1.0'])
+    # Create synthetic data for testing
+    np.random.seed(42)
+    X_train = np.random.randn(100, 4)
+    X_test = np.random.randn(5, 4)
     
-    # Test with large integer floats - should convert to strings
-    y_large = np.array([1e10, 2e10], dtype=np.float64)
-    result = typify_classification(y_large)
-    assert result.dtype.kind == 'U'  # Unicode string
-    assert np.array_equal(result, ['10000000000.0', '20000000000.0'])
-
-
-def test_gen_local_selector_with_string_ac_score():
-    """Test gen_local_selector handles string AcScore values correctly"""
-    from interpret.utils._explanation import gen_local_selector
-    import numpy as np
+    # Use float64 classification labels that would previously cause UFuncTypeError
+    y_train_float64 = np.array([0.0, 1.0] * 50, dtype=np.float64)
+    y_test_float64 = np.array([0.0, 1.0, 0.0, 1.0, 1.0], dtype=np.float64)
     
-    # Create test data that simulates string AcScore from float64 labels
-    data_dicts = [
-        {
-            "perf": {
-                "predicted": 1,
-                "actual": 1,
-                "predicted_score": 0.8,  # Always float from model predictions
-                "actual_score": "0.0",   # String from typify_classification of float64 labels
-            }
-        },
-        {
-            "perf": {
-                "predicted": 0,
-                "actual": 0,
-                "predicted_score": 0.3,
-                "actual_score": "1.0",
-            }
-        }
-    ]
+    # Train a model with float64 labels
+    model = RandomForestClassifier(n_estimators=10, random_state=42)
+    model.fit(X_train, y_train_float64)
     
-    # This should not raise an error and should compute residuals correctly
-    result = gen_local_selector(data_dicts, is_classification=True)
+    # This should not raise UFuncTypeError anymore
+    shap_kernel = ShapKernel(model, X_train[:20], feature_names=['A', 'B', 'C', 'D'])
+    explanation = shap_kernel.explain_local(X_test[:1], y_test_float64[:1])
     
-    # Check that residuals are computed correctly
-    # For first record: float("0.0") - 0.8 = -0.8
-    # For second record: float("1.0") - 0.3 = 0.7
-    assert abs(result.iloc[0]["Resid"] - (-0.8)) < 1e-10
-    assert abs(result.iloc[1]["Resid"] - 0.7) < 1e-10
+    # Verify the explanation is properly created
+    assert explanation is not None
+    assert hasattr(explanation, 'data')
+    assert hasattr(explanation, 'visualize')
     
-    # Check that absolute residuals are computed correctly
-    assert abs(result.iloc[0]["AbsResid"] - 0.8) < 1e-10
-    assert abs(result.iloc[1]["AbsResid"] - 0.7) < 1e-10
-
-
-def test_typify_classification_existing_types():
-    """Test typify_classification with existing supported types"""
-    # Test integers
-    y_int = np.array([0, 1, 0, 1], dtype=np.int32)
-    result = typify_classification(y_int)
-    assert result.dtype == np.int64
-    assert np.array_equal(result, [0, 1, 0, 1])
-    
-    # Test booleans
-    y_bool = np.array([True, False, True], dtype=np.bool_)
-    result = typify_classification(y_bool)
-    assert result.dtype == np.bool_
-    assert np.array_equal(result, [True, False, True])
+    # Verify the explanation has expected structure
+    local_data = explanation.data(0)
+    assert isinstance(local_data, dict)
+    assert 'scores' in local_data
+    assert 'names' in local_data

@@ -137,20 +137,7 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
         record["Predicted"] = perf_dict["predicted"]
         record["Actual"] = perf_dict["actual"]
 
-        # Handle case where AcScore might be string (from typify_classification of float labels)
-        # while PrScore is always numeric (from model predictions)
-        ac_score = record["AcScore"]
-        pr_score = record["PrScore"]
-        
-        # Convert AcScore to float if it's a string for arithmetic operations
-        if isinstance(ac_score, (str, np.str_)):
-            try:
-                ac_score = float(ac_score)
-            except (ValueError, TypeError):
-                # If conversion fails, use NaN for residual calculation
-                ac_score = np.nan
-        
-        record["Resid"] = ac_score - pr_score
+        record["Resid"] = record["AcScore"] - record["PrScore"]
         record["AbsResid"] = abs(record["Resid"])
 
         records.append(record)
