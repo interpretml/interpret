@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from interpret.utils._clean_simple import clean_dimensions, typify_classification
+from interpret.utils._clean_simple import clean_dimensions
 
 
 def test_clean_dimensions_2d():
