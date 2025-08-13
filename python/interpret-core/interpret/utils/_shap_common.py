@@ -74,7 +74,13 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     data_dicts = []
     scores_list = all_shap_values
     perf_list = []
-    perf_dicts = gen_perf_dicts(predictions, y, False, classes)
+    # Convert model classes to strings the same way as y values for consistency
+    model_is_classifier = n_classes >= 0
+    if classes is not None:
+        # Apply the same typify_classification to classes as we do to y
+        classes = typify_classification(classes)
+
+    perf_dicts = gen_perf_dicts(predictions, y, model_is_classifier, classes)
     for i, instance in enumerate(X):
         shap_values = all_shap_values[i]
         perf_dict_obj = None if perf_dicts is None else perf_dicts[i]
@@ -115,7 +121,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
             "value": {"dataset_x": X, "dataset_y": y},
         }
     )
-    selector = gen_local_selector(data_dicts, is_classification=False)
+    selector = gen_local_selector(data_dicts, is_classification=model_is_classifier)
 
     return FeatureValueExplanation(
         "local",
