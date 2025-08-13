@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from sklearn.base import is_classifier
 
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -54,9 +53,9 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     X = X.astype(np.float64, order="C", copy=False)
 
     if y is not None:
-        # Use the model's type to determine if this is classification
-        # This is more reliable than checking n_classes, especially for float labels
-        if is_classifier(explainer.model):
+        # Use n_classes >= 0 to determine if this is classification
+        # n_classes >= 0 indicates classification, n_classes < 0 indicates regression
+        if n_classes >= 0:
             y = typify_classification(y)
         else:
             y = y.astype(np.float64, copy=False)
@@ -78,7 +77,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     scores_list = all_shap_values
     perf_list = []
     # Convert model classes to strings the same way as y values for consistency
-    model_is_classifier = is_classifier(explainer.model)
+    model_is_classifier = n_classes >= 0
     if model_is_classifier and classes is not None:
         # Apply the same typify_classification to classes as we do to y
         classes = typify_classification(classes)
