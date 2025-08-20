@@ -4,17 +4,17 @@
 import heapq
 import json
 import logging
-from operator import itemgetter
 import os
 from copy import deepcopy
+from dataclasses import dataclass, field
 from itertools import combinations, count
 from math import ceil, isnan
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union, Callable
-from warnings import warn
-from dataclasses import dataclass, field
 from multiprocessing import shared_memory
-import numpy as np
+from operator import itemgetter
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from warnings import warn
 
+import numpy as np
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -44,6 +44,7 @@ from ...utils._explanation import (
 )
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import inv_link, link_func
+from ...utils._measure_mem import total_bytes
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._native import Native
 from ...utils._preprocessor import construct_bins
@@ -54,6 +55,7 @@ from ...utils._privacy import (
 )
 from ...utils._rank_interactions import rank_interactions
 from ...utils._seed import normalize_seed
+from ...utils._shared_dataset import SharedDataset
 from ...utils._unify_data import unify_data
 from ._bin import (
     ebm_eval_terms,
@@ -71,8 +73,6 @@ from ._utils import (
     process_terms,
     remove_extra_bins,
 )
-from ...utils._shared_dataset import SharedDataset
-from ...utils._measure_mem import total_bytes
 
 _log = logging.getLogger(__name__)
 
