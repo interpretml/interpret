@@ -1697,7 +1697,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         return self
 
     def estimate_mem(self, X, y=None, data_multiplier=0.0):
-        """Estimate memory usage of the model.
+        """Estimate the amount of memory required during the call to the fit
+            function. This estimate does not include the code or data memory used
+            by the calling process, or the amount of code or non-EBM data memory
+            allocated by any child processes started by joblib.  If these need to be
+            included, it is recommended to fit a toy EBM model first with n_jobs
+            and outer_bags set to the numbers that will be used in the final fit and
+            add that value to the estimate provided by this function.
 
         Args:
             X (array-like or sparse matrix): Shape (n_samples, n_features). Training data.
@@ -1797,7 +1803,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         binning_result = construct_bins(
             X=X,
-            y=None,
+            y=y,
             sample_weight=None,
             feature_names_given=self.feature_names,
             feature_types_given=self.feature_types,
@@ -1818,11 +1824,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             feature_types_in,
             None,
         )
+
         # first calculate the number of cells in the mains for all features
         n_tensor_bytes = sum(
-            2
-            if len(x[0]) == 0
-            else max(x[0].values()) + 2
+            (2 if len(x[0]) == 0 else max(x[0].values()) + 2)
             if isinstance(x[0], dict)
             else len(x[0]) + 3
             for x in bins
@@ -1830,7 +1835,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         )
         # We have 2 copies of the upate tensors in C++ (current and best) and we extract
         # one more in python for the update before tearning down the C++ data.
-        n_tensor_bytes = n_tensor_bytes * np.float64().nbytes * self.outer_bags * 3
+        n_tensor_bytes *= n_scores * self.outer_bags * 3 * np.float64().nbytes
 
         # One shared memory copy of the data mapped into all processes, plus a copy of
         # the test and train data for each outer bag. Assume all processes are started
@@ -1863,20 +1868,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 None,
             )
 
-            bin_lengths = [x[0] if len(x) == 1 else x[1] for x in bins if len(x) != 0]
-            bin_lengths = [
-                2
-                if len(x) == 0
-                else max(x.values()) + 2
-                if isinstance(x, dict)
-                else len(x) + 3
-                for x in bin_lengths
-            ]
-            bin_lengths.sort()
-            # we use the 75th percentile bin length to estimate the number of bins
-            n_bad_case_bins = bin_lengths[len(bin_lengths) // 4 * 3]
+            # INTERACTION DETECTION
 
-            # each outer bag makes a copy of the features. Only the training features
+            # Each outer bag makes a copy of the features. Only the training features
             # are kept for interaction detection, but don't estimate that for now.
             interaction_detection_bytes = (
                 n_bytes_pairs + n_bytes_pairs + n_bytes_pairs * self.outer_bags
@@ -1884,15 +1878,31 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             max_bytes = max(max_bytes, interaction_detection_bytes)
 
-            # We have 2 copies of the upate tensors in C++ (current and best) and we extract
+            # PAIR BOOSTING
+
+            # find which bins will be selected for each feature when dealing with pairs
+            bin_lengths = [x[0] if len(x) == 1 else x[1] for x in bins if len(x) != 0]
+            bin_lengths = [
+                (2 if len(x) == 0 else max(x.values()) + 2)
+                if isinstance(x, dict)
+                else len(x) + 3
+                for x in bin_lengths
+            ]
+            bin_lengths.sort()
+            # We don't know which features will be selected for interactions, so
+            # use the 75th percentile bin length to estimate the number of bins
+            n_bad_case_bins = bin_lengths[len(bin_lengths) // 4 * 3]
+
+            # We have 2 copies of the update tensors in C++ (current and best) and we extract
             # one more in python for the update before tearning down the C++ data.
             interaction_boosting_bytes = (
                 n_bad_case_bins
                 * n_bad_case_bins
-                * np.float64().nbytes
-                * self.outer_bags
                 * interactions
+                * n_scores
+                * self.outer_bags
                 * 3
+                * np.float64().nbytes
             )
 
             # We merge the interactions together to make a combined interaction
