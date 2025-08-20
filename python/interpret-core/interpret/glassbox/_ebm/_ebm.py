@@ -7,7 +7,7 @@ import logging
 import os
 from copy import deepcopy
 from dataclasses import dataclass, field
-from itertools import combinations, count
+from itertools import combinations, count, starmap
 from math import ceil, isnan
 from multiprocessing import shared_memory
 from operator import itemgetter
@@ -15,6 +15,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Uni
 from warnings import warn
 
 import numpy as np
+from joblib import Parallel, delayed
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -28,7 +29,6 @@ from sklearn.utils.validation import check_is_fitted
 from ... import develop
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
-from ...provider import JobLibProvider
 from ...utils._clean_simple import (
     clean_dimensions,
     clean_X_and_init_score,
@@ -1053,7 +1053,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             exclude_features = {i for i, v in enumerate(monotone_constraints) if v != 0}
 
-        provider = JobLibProvider(n_jobs=self.n_jobs)
+        parallel = Parallel(n_jobs=self.n_jobs)
 
         bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
         if not is_differential_privacy:
@@ -1208,7 +1208,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         )
                     )
 
-                results = provider.parallel(boost, parallel_args)
+                results = parallel(starmap(delayed(boost), parallel_args))
 
                 # let python reclaim the dataset memory via reference counting
                 # parallel_args holds references to dataset, so must be deleted
@@ -1320,8 +1320,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 )
                             )
 
-                        bagged_ranked_interaction = provider.parallel(
-                            rank_interactions, parallel_args
+                        bagged_ranked_interaction = parallel(
+                            starmap(delayed(rank_interactions), parallel_args)
                         )
 
                         # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
@@ -1480,7 +1480,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             )
                         )
 
-                    results = provider.parallel(boost, parallel_args)
+                    results = parallel(starmap(delayed(boost), parallel_args))
 
                     # allow python to reclaim these big memory items via reference counting
                     # this holds references to dataset, scores_bags, and bags

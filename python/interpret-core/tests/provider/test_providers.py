@@ -7,7 +7,6 @@ from interpret.provider import (
     AutoVisualizeProvider,
     DashProvider,
     InlineProvider,
-    JobLibProvider,
     PreserveProvider,
 )
 
@@ -27,12 +26,6 @@ def example_explanation():
     explainer = LogisticRegression()
     explainer.fit(data["train"]["X"], data["train"]["y"])
     return explainer.explain_local(data["test"]["X"].head(), data["test"]["y"].head())
-
-
-def test_joblib_provider():
-    provider = JobLibProvider()
-    results = provider.parallel(task_fn, task_args_iter)
-    assert results == [2, 4, 6]
 
 
 @pytest.mark.slow
