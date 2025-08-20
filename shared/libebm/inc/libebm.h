@@ -175,8 +175,9 @@ typedef struct _InteractionHandle {
 // within the 17-20 digits that is required by IEEE-754 to give a universally reproducible float value
 #define FLOAT64_TO_INT64_MAX 9223372036854774784
 
-#define EBM_FALSE (BOOL_CAST(0))
-#define EBM_TRUE  (BOOL_CAST(1))
+#define EBM_BOOL_UNKNOWN (BOOL_CAST(-1))
+#define EBM_FALSE        (BOOL_CAST(0))
+#define EBM_TRUE         (BOOL_CAST(1))
 
 #define MONOTONE_INCREASING (MONOTONE_CAST(1))
 #define MONOTONE_NONE       (MONOTONE_CAST(0))
@@ -440,6 +441,7 @@ EBM_API_INCLUDE ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags 
       const char* objective,
       IntEbm countClasses,
       ObjectiveEbm* objectiveOut,
+      BoolEbm* isHessian,
       LinkEbm* linkOut,
       double* linkParamOut);
 EBM_API_INCLUDE const char* EBM_CALLING_CONVENTION GetLinkFunctionStr(LinkEbm link);

@@ -117,20 +117,24 @@ def measure_interactions(
 
         if n_classes == Native.Task_Unknown:
             n_classes = Native.Task_GeneralClassification
-            _, link, link_param = native.determine_link(flags, "log_loss", len(classes))
+            _, _, link, link_param = native.determine_link(
+                flags, "log_loss", len(classes)
+            )
         elif Native.Task_GeneralClassification <= n_classes:
-            _, link, link_param = native.determine_link(flags, objective, len(classes))
+            _, _, link, link_param = native.determine_link(
+                flags, objective, len(classes)
+            )
         else:
             msg = f"init_score is a classifier, but the objective is: {objective}"
             raise ValueError(msg)
     elif is_regressor(init_score):
         if n_classes == Native.Task_Unknown:
             n_classes = Native.Task_Regression
-            _, link, link_param = native.determine_link(
+            _, _, link, link_param = native.determine_link(
                 flags, "rmse", Native.Task_Regression
             )
         elif n_classes == Native.Task_Regression:
-            _, link, link_param = native.determine_link(
+            _, _, link, link_param = native.determine_link(
                 flags, objective, Native.Task_Regression
             )
         else:
@@ -140,7 +144,7 @@ def measure_interactions(
         y = typify_classification(y)
         # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
         classes, y = np.unique(y, return_inverse=True)
-        _, link, link_param = native.determine_link(flags, objective, len(classes))
+        _, _, link, link_param = native.determine_link(flags, objective, len(classes))
 
     X, n_samples, init_score = clean_X_and_init_score(
         X, init_score, feature_names, feature_types, link, link_param, len(y)

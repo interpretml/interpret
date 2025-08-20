@@ -750,7 +750,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             if is_differential_privacy
             else Native.LinkFlags_Default
         )
-        objective_code, link, link_param = native.determine_link(
+        objective_code, _, link, link_param = native.determine_link(
             flags, objective, n_classes
         )
 
@@ -1721,12 +1721,16 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 is more accurate for larger datasets.
         """
 
+        # TODO: include inner_bags
+        # TODO: include sample weights
+
         n_bytes = total_bytes(X)
         if y is not None:
             n_bytes += total_bytes(y)
 
         n_bytes = int(n_bytes * data_multiplier)
 
+        is_hessian = True
         if y is not None:
             y_id = id(y)
             n_classes = Native.Task_Unknown
@@ -1779,6 +1783,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
+            _, is_hessian, _, _ = native.determine_link(
+                Native.LinkFlags_Default, objective, n_classes
+            )
+
             if y_id != id(y):
                 # in fit we'll also make a copy of y that cannot be deleted until the end
                 n_bytes += total_bytes(y)
@@ -1798,6 +1806,14 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             y = np.zeros(n_samples, dtype=np.float64)
 
         n_scores = Native.get_count_scores_c(n_classes)
+
+        n_bytes_per_item = n_scores * n_samples * self.outer_bags * np.float32().nbytes
+
+        # boosting requires 1 score, 1 gradient, and often 1 hessian per score, per sample, per outer_bag
+        n_boost_sample_bytes = (3 if is_hessian else 2) * n_bytes_per_item
+
+        # interaction detection requires 1 gradient, and often 1 hessian per score, per sample, per outer_bag
+        n_interaction_detect_sample_bytes = (2 if is_hessian else 1) * n_bytes_per_item
 
         bin_levels = [self.max_bins, self.max_interaction_bins]
 
@@ -1843,7 +1859,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         # When we cannot use shared memory the parent has a copy of the dataset and
         # all the children share one copy.
         max_bytes = (
-            n_bytes_mains
+            n_boost_sample_bytes
+            + n_bytes_mains
             + n_bytes_mains
             + n_bytes_mains * self.outer_bags
             + n_tensor_bytes
@@ -1873,7 +1890,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             # Each outer bag makes a copy of the features. Only the training features
             # are kept for interaction detection, but don't estimate that for now.
             interaction_detection_bytes = (
-                n_bytes_pairs + n_bytes_pairs + n_bytes_pairs * self.outer_bags
+                n_interaction_detect_sample_bytes
+                + n_bytes_pairs
+                + n_bytes_pairs
+                + n_bytes_pairs * self.outer_bags
             )
 
             max_bytes = max(max_bytes, interaction_detection_bytes)
@@ -1896,12 +1916,12 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             # We have 2 copies of the update tensors in C++ (current and best) and we extract
             # one more in python for the update before tearning down the C++ data.
             interaction_boosting_bytes = (
-                n_bad_case_bins
+                n_scores
+                * n_bad_case_bins
                 * n_bad_case_bins
                 * interactions
-                * n_scores
-                * self.outer_bags
                 * 3
+                * self.outer_bags
                 * np.float64().nbytes
             )
 
@@ -1914,7 +1934,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             # that have more bins.
             interaction_multiple = 4.0 * float(interactions) / float(n_features_in)
             interaction_boosting_bytes += (
-                n_bytes_pairs
+                n_boost_sample_bytes
+                + n_bytes_pairs
                 + n_bytes_pairs
                 + int(n_bytes_pairs * interaction_multiple * self.outer_bags)
             )

@@ -64,6 +64,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
       const char* objective,
       IntEbm countClasses,
       ObjectiveEbm* objectiveOut,
+      BoolEbm* isHessian,
       LinkEbm* linkOut,
       double* linkParamOut) {
    LOG_N(Trace_Info,
@@ -72,12 +73,14 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          "objective=%p, "
          "countClasses=%" IntEbmPrintf ", "
          "objectiveOut=%p, "
+         "isHessian=%p, "
          "linkOut=%p, "
          "linkParamOut=%p",
          static_cast<ULinkFlags>(flags), // signed to unsigned conversion is defined behavior in C++
          static_cast<const void*>(objective),
          countClasses,
          static_cast<void*>(objectiveOut),
+         static_cast<void*>(isHessian),
          static_cast<void*>(linkOut),
          static_cast<void*>(linkParamOut));
 
@@ -106,6 +109,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
       if(nullptr != objectiveOut) {
          *objectiveOut = Objective_Other;
       }
+      if(nullptr != isHessian) {
+         *isHessian = EBM_BOOL_UNKNOWN;
+      }
       if(nullptr != linkOut) {
          *linkOut = Link_Unknown;
       }
@@ -128,6 +134,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          if(nullptr != objectiveOut) {
             *objectiveOut = Objective_Other;
          }
+         if(nullptr != isHessian) {
+            *isHessian = EBM_BOOL_UNKNOWN;
+         }
          if(nullptr != linkOut) {
             *linkOut = Link_Unknown;
          }
@@ -142,6 +151,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
          if(nullptr != objectiveOut) {
             *objectiveOut = Objective_Other;
          }
+         if(nullptr != isHessian) {
+            *isHessian = EBM_BOOL_UNKNOWN;
+         }
          if(nullptr != linkOut) {
             *linkOut = Link_Unknown;
          }
@@ -153,6 +165,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
       if(ptrdiff_t{Task_MonoClassification} == cClasses) {
          if(nullptr != objectiveOut) {
             *objectiveOut = Objective_MonoClassification;
+         }
+         if(nullptr != isHessian) {
+            *isHessian = EBM_TRUE;
          }
          if(nullptr != linkOut) {
             *linkOut = Link_monoclassification;
@@ -166,6 +181,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION DetermineLinkFunction(LinkFlags fla
 
    if(nullptr != objectiveOut) {
       *objectiveOut = objectiveWrapper.m_objective;
+   }
+   if(nullptr != isHessian) {
+      *isHessian = objectiveWrapper.m_bObjectiveHasHessian;
    }
    if(nullptr != linkOut) {
       *linkOut = objectiveWrapper.m_linkFunction;
