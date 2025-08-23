@@ -1347,16 +1347,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                     (rank - old_mean) / (n + 1)
                                 )
 
-                        final_ranks = []
-                        total_interactions = 0
-                        for indices in pair_ranks:
-                            heapq.heappush(final_ranks, (pair_ranks[indices], indices))
-                            total_interactions += 1
-
-                        n_interactions = min(interactions, total_interactions)
-                        boost_groups = [
-                            heapq.heappop(final_ranks)[1] for _ in range(n_interactions)
-                        ]
+                        boost_groups = heapq.nsmallest(
+                            interactions, pair_ranks, key=lambda idx: pair_ranks[idx]
+                        )
                     else:
                         # Check and remove duplicate interaction terms
                         uniquifier = set()
