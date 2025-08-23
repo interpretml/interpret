@@ -1145,9 +1145,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         shm_name,
                         idx,
                         callback,
-                        dataset=shared.name
-                        if shared.name is not None
-                        else shared.dataset,
+                        dataset=(
+                            shared.name if shared.name is not None else shared.dataset
+                        ),
                         intercept_rounds=n_intercept_rounds,
                         intercept_learning_rate=develop.get_option(
                             "intercept_learning_rate"
@@ -1158,10 +1158,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         # put init_score into the native shared dataframe
                         init_scores=(
                             init_score
-                            if not (
-                                init_score is not None
-                                and bag is not None
-                                and np.count_nonzero(bag) != len(bag)
+                            if (
+                                init_score is None
+                                or bag is None
+                                or np.count_nonzero(bag) == len(bag)
                             )
                             else init_score[bag != 0]
                         ),
@@ -1189,7 +1189,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         # because the validation metric cannot improve each round
                         early_stopping_rounds=(
                             early_stopping_rounds
-                            if not (bag is None or (bag >= 0).all())
+                            if (bag is not None and (bag < 0).any())
                             else 0
                         ),
                         early_stopping_tolerance=early_stopping_tolerance,
@@ -1449,9 +1449,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             # because the validation metric cannot improve each round
                             early_stopping_rounds=(
                                 early_stopping_rounds
-                                if not (
-                                    internal_bags[idx] is None
-                                    or (internal_bags[idx] >= 0).all()
+                                if (
+                                    internal_bags[idx] is not None
+                                    and (internal_bags[idx] < 0).any()
                                 )
                                 else 0
                             ),
