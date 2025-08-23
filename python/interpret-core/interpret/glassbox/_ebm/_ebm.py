@@ -1085,38 +1085,37 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         if sample_weight_local is None
                         else np.asarray(sample_weight_local, np.float64),
                     )
-            elif init_score is None:
-                if (
-                    objective_code == Native.Objective_LogLossBinary
-                    or objective_code == Native.Objective_LogLossMulticlass
-                ):
-                    n_intercept_rounds = 0
-                    for idx in range(self.outer_bags):
-                        bag = internal_bags[idx]
-                        sample_weight_local = sample_weight
-                        y_local = y
-                        if bag is not None:
-                            include_samples = 0 < bag
-                            y_local = y_local[include_samples]
-                            if sample_weight_local is None:
-                                sample_weight_local = bag[include_samples]
-                            else:
-                                sample_weight_local = (
-                                    sample_weight_local[include_samples]
-                                    * bag[include_samples]
-                                )
-
-                        probs = np.bincount(y_local, weights=sample_weight_local)
+            elif init_score is None and objective_code in (
+                Native.Objective_LogLossBinary,
+                Native.Objective_LogLossMulticlass,
+            ):
+                n_intercept_rounds = 0
+                for idx in range(self.outer_bags):
+                    bag = internal_bags[idx]
+                    sample_weight_local = sample_weight
+                    y_local = y
+                    if bag is not None:
+                        include_samples = 0 < bag
+                        y_local = y_local[include_samples]
                         if sample_weight_local is None:
-                            total = probs.sum()
-                            probs = probs.astype(np.float64, copy=False)
+                            sample_weight_local = bag[include_samples]
                         else:
-                            total = np.array(1, np.float64)
-                            native.safe_sum(probs, total, 0)
-                            total = total.item()
+                            sample_weight_local = (
+                                sample_weight_local[include_samples]
+                                * bag[include_samples]
+                            )
 
-                        probs /= total
-                        bagged_intercept[idx, :] = link_func(probs, link, link_param)
+                    probs = np.bincount(y_local, weights=sample_weight_local)
+                    if sample_weight_local is None:
+                        total = probs.sum()
+                        probs = probs.astype(np.float64, copy=False)
+                    else:
+                        total = np.array(1, np.float64)
+                        native.safe_sum(probs, total, 0)
+                        total = total.item()
+
+                    probs /= total
+                    bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
         with SharedDataset() as shared:
             bin_native_by_dimension(
