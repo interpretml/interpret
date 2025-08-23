@@ -4,17 +4,18 @@
 import heapq
 import json
 import logging
-from operator import itemgetter
 import os
 from copy import deepcopy
-from itertools import combinations, count
-from math import ceil, isnan
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union, Callable
-from warnings import warn
 from dataclasses import dataclass, field
+from itertools import combinations, count, starmap
+from math import ceil, isnan
 from multiprocessing import shared_memory
-import numpy as np
+from operator import itemgetter
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from warnings import warn
 
+import numpy as np
+from joblib import Parallel, delayed
 from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
@@ -28,7 +29,6 @@ from sklearn.utils.validation import check_is_fitted
 from ... import develop
 from ...api.base import ExplainerMixin
 from ...api.templates import FeatureValueExplanation
-from ...provider import JobLibProvider
 from ...utils._clean_simple import (
     clean_dimensions,
     clean_X_and_init_score,
@@ -44,6 +44,7 @@ from ...utils._explanation import (
 )
 from ...utils._histogram import make_all_histogram_edges
 from ...utils._link import inv_link, link_func
+from ...utils._measure_mem import total_bytes
 from ...utils._misc import clean_index, clean_indexes
 from ...utils._native import Native
 from ...utils._preprocessor import construct_bins
@@ -54,6 +55,7 @@ from ...utils._privacy import (
 )
 from ...utils._rank_interactions import rank_interactions
 from ...utils._seed import normalize_seed
+from ...utils._shared_dataset import SharedDataset
 from ...utils._unify_data import unify_data
 from ._bin import (
     ebm_eval_terms,
@@ -71,8 +73,6 @@ from ._utils import (
     process_terms,
     remove_extra_bins,
 )
-from ...utils._shared_dataset import SharedDataset
-from ...utils._measure_mem import total_bytes
 
 _log = logging.getLogger(__name__)
 
@@ -1053,7 +1053,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
             exclude_features = {i for i, v in enumerate(monotone_constraints) if v != 0}
 
-        provider = JobLibProvider(n_jobs=self.n_jobs)
+        parallel = Parallel(n_jobs=self.n_jobs)
 
         bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
         if not is_differential_privacy:
@@ -1208,7 +1208,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         )
                     )
 
-                results = provider.parallel(boost, parallel_args)
+                results = parallel(starmap(delayed(boost), parallel_args))
 
                 # let python reclaim the dataset memory via reference counting
                 # parallel_args holds references to dataset, so must be deleted
@@ -1320,8 +1320,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 )
                             )
 
-                        bagged_ranked_interaction = provider.parallel(
-                            rank_interactions, parallel_args
+                        bagged_ranked_interaction = parallel(
+                            starmap(delayed(rank_interactions), parallel_args)
                         )
 
                         # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
@@ -1480,7 +1480,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             )
                         )
 
-                    results = provider.parallel(boost, parallel_args)
+                    results = parallel(starmap(delayed(boost), parallel_args))
 
                     # allow python to reclaim these big memory items via reference counting
                     # this holds references to dataset, scores_bags, and bags
