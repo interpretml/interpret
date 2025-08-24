@@ -1348,7 +1348,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 )
 
                         boost_groups = heapq.nsmallest(
-                            interactions, pair_ranks, key=lambda idx: pair_ranks[idx]
+                            interactions,
+                            pair_ranks,
+                            key=lambda indices: (pair_ranks[indices], indices),
                         )
                     else:
                         # Check and remove duplicate interaction terms
