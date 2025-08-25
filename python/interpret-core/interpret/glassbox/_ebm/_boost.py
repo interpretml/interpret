@@ -3,12 +3,12 @@
 
 import heapq
 import logging
+from multiprocessing import shared_memory
 
 import numpy as np
 
 from ... import develop
 from ...utils._native import Booster, Native
-from multiprocessing import shared_memory
 
 _log = logging.getLogger(__name__)
 

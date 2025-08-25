@@ -7,7 +7,8 @@ import logging
 import os
 from copy import deepcopy
 from dataclasses import dataclass, field
-from itertools import combinations, count, starmap
+from functools import partial
+from itertools import combinations, count
 from math import ceil, isnan
 from multiprocessing import shared_memory
 from operator import itemgetter
@@ -1054,6 +1055,40 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             exclude_features = {i for i, v in enumerate(monotone_constraints) if v != 0}
 
         parallel = Parallel(n_jobs=self.n_jobs)
+        # set common boost arguments
+        booster = partial(
+            boost,
+            n_inner_bags=inner_bags,
+            term_boost_flags=term_boost_flags,
+            learning_rate=self.learning_rate,
+            min_samples_leaf=min_samples_leaf,
+            min_hessian=min_hessian,
+            reg_alpha=reg_alpha,
+            reg_lambda=reg_lambda,
+            max_delta_step=max_delta_step,
+            gain_scale=gain_scale,
+            min_cat_samples=min_cat_samples,
+            cat_smooth=cat_smooth,
+            missing=missing,
+            max_leaves=self.max_leaves,
+            monotone_constraints=monotone_constraints,
+            greedy_ratio=greedy_ratio,
+            cyclic_progress=cyclic_progress,
+            nominal_smoothing=nominal_smoothing,
+            max_rounds=self.max_rounds,
+            early_stopping_tolerance=early_stopping_tolerance,
+            noise_scale=noise_scale_boosting,
+            bin_weights=bin_data_weights,
+            create_booster_flags=(
+                Native.CreateBoosterFlags_DifferentialPrivacy
+                if is_differential_privacy
+                else Native.CreateBoosterFlags_Default
+            ),
+            objective=objective,
+            acceleration=develop.get_option("acceleration"),
+            experimental_params=None,
+            develop_options=develop._develop_options,
+        )
 
         bagged_intercept = np.zeros((self.outer_bags, n_scores), np.float64)
         if not is_differential_privacy:
@@ -1085,38 +1120,37 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         if sample_weight_local is None
                         else np.asarray(sample_weight_local, np.float64),
                     )
-            elif init_score is None:
-                if (
-                    objective_code == Native.Objective_LogLossBinary
-                    or objective_code == Native.Objective_LogLossMulticlass
-                ):
-                    n_intercept_rounds = 0
-                    for idx in range(self.outer_bags):
-                        bag = internal_bags[idx]
-                        sample_weight_local = sample_weight
-                        y_local = y
-                        if bag is not None:
-                            include_samples = 0 < bag
-                            y_local = y_local[include_samples]
-                            if sample_weight_local is None:
-                                sample_weight_local = bag[include_samples]
-                            else:
-                                sample_weight_local = (
-                                    sample_weight_local[include_samples]
-                                    * bag[include_samples]
-                                )
-
-                        probs = np.bincount(y_local, weights=sample_weight_local)
+            elif init_score is None and objective_code in (
+                Native.Objective_LogLossBinary,
+                Native.Objective_LogLossMulticlass,
+            ):
+                n_intercept_rounds = 0
+                for idx in range(self.outer_bags):
+                    bag = internal_bags[idx]
+                    sample_weight_local = sample_weight
+                    y_local = y
+                    if bag is not None:
+                        include_samples = 0 < bag
+                        y_local = y_local[include_samples]
                         if sample_weight_local is None:
-                            total = probs.sum()
-                            probs = probs.astype(np.float64, copy=False)
+                            sample_weight_local = bag[include_samples]
                         else:
-                            total = np.array(1, np.float64)
-                            native.safe_sum(probs, total, 0)
-                            total = total.item()
+                            sample_weight_local = (
+                                sample_weight_local[include_samples]
+                                * bag[include_samples]
+                            )
 
-                        probs /= total
-                        bagged_intercept[idx, :] = link_func(probs, link, link_param)
+                    probs = np.bincount(y_local, weights=sample_weight_local)
+                    if sample_weight_local is None:
+                        total = probs.sum()
+                        probs = probs.astype(np.float64, copy=False)
+                    else:
+                        total = np.array(1, np.float64)
+                        native.safe_sum(probs, total, 0)
+                        total = total.item()
+
+                    probs /= total
+                    bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
         with SharedDataset() as shared:
             bin_native_by_dimension(
@@ -1141,78 +1175,44 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     stop_flag = np.ndarray(1, dtype=np.bool_, buffer=shm.buf)
                     stop_flag[0] = False
 
-                parallel_args = []
-                for idx in range(self.outer_bags):
-                    early_stopping_rounds_local = early_stopping_rounds
-                    bag = internal_bags[idx]
-                    if bag is None or (bag >= 0).all():
-                        # if there are no validation samples, turn off early stopping
-                        # because the validation metric cannot improve each round
-                        early_stopping_rounds_local = 0
-
-                    init_score_local = init_score
-                    if (
-                        init_score_local is not None
-                        and bag is not None
-                        and np.count_nonzero(bag) != len(bag)
-                    ):
+                results = parallel(
+                    delayed(booster)(
+                        shm_name,
+                        idx,
+                        callback,
+                        dataset=(
+                            shared.name if shared.name is not None else shared.dataset
+                        ),
+                        intercept_rounds=n_intercept_rounds,
+                        intercept_learning_rate=develop.get_option(
+                            "intercept_learning_rate"
+                        ),
+                        intercept=bagged_intercept[idx],
+                        bag=(bag := internal_bags[idx]),
                         # TODO: instead of making these copies we should
                         # put init_score into the native shared dataframe
-                        init_score_local = init_score_local[bag != 0]
-
-                    parallel_args.append(
-                        (
-                            shm_name,
-                            idx,
-                            callback,
-                            shared.name if shared.name is not None else shared.dataset,
-                            n_intercept_rounds,
-                            develop.get_option("intercept_learning_rate"),
-                            bagged_intercept[idx],
-                            bag,
-                            init_score_local,
-                            term_features,
-                            inner_bags,
-                            term_boost_flags,
-                            self.learning_rate,
-                            min_samples_leaf,
-                            min_hessian,
-                            reg_alpha,
-                            reg_lambda,
-                            max_delta_step,
-                            gain_scale,
-                            min_cat_samples,
-                            cat_smooth,
-                            missing,
-                            self.max_leaves,
-                            monotone_constraints,
-                            greedy_ratio,
-                            cyclic_progress,
-                            smoothing_rounds,
-                            nominal_smoothing,
-                            self.max_rounds,
-                            early_stopping_rounds_local,
-                            early_stopping_tolerance,
-                            noise_scale_boosting,
-                            bin_data_weights,
-                            rngs[idx],
-                            (
-                                Native.CreateBoosterFlags_DifferentialPrivacy
-                                if is_differential_privacy
-                                else Native.CreateBoosterFlags_Default
-                            ),
-                            objective,
-                            develop.get_option("acceleration"),
-                            None,
-                            develop._develop_options,
-                        )
+                        init_scores=(
+                            init_score
+                            if (
+                                init_score is None
+                                or bag is None
+                                or np.count_nonzero(bag) == len(bag)
+                            )
+                            else init_score[bag != 0]
+                        ),
+                        term_features=term_features,
+                        smoothing_rounds=smoothing_rounds,
+                        # if there are no validation samples, turn off early stopping
+                        # because the validation metric cannot improve each round
+                        early_stopping_rounds=(
+                            early_stopping_rounds
+                            if (bag is not None and (bag < 0).any())
+                            else 0
+                        ),
+                        rng=rngs[idx],
                     )
-
-                results = parallel(starmap(delayed(boost), parallel_args))
-
-                # let python reclaim the dataset memory via reference counting
-                # parallel_args holds references to dataset, so must be deleted
-                del parallel_args
+                    for idx in range(self.outer_bags)
+                )
 
                 best_iteration = [[]]
                 models = []
@@ -1284,48 +1284,44 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     if isinstance(interactions, int):
                         _log.info("Estimating with FAST")
 
-                        parallel_args = []
-                        for idx in range(self.outer_bags):
+                        bagged_ranked_interaction = parallel(
                             # TODO: the combinations below should be selected from the non-excluded features
-                            parallel_args.append(
-                                (
-                                    shm_name,
-                                    idx,
+                            delayed(rank_interactions)(
+                                shm_name,
+                                idx,
+                                dataset=(
                                     shared.name
                                     if shared.name is not None
-                                    else shared.dataset,
-                                    bagged_intercept[idx],
-                                    internal_bags[idx],
-                                    scores_bags[idx],
-                                    combinations(range(n_features_in), 2),
-                                    exclude,
-                                    exclude_features,
-                                    interaction_flags,
-                                    max_cardinality,
-                                    min_samples_leaf,
-                                    min_hessian,
-                                    reg_alpha,
-                                    reg_lambda,
-                                    max_delta_step,
-                                    (
-                                        Native.CreateInteractionFlags_DifferentialPrivacy
-                                        if is_differential_privacy
-                                        else Native.CreateInteractionFlags_Default
-                                    ),
-                                    objective,
-                                    develop.get_option("acceleration"),
-                                    None,
-                                    0,
-                                    develop._develop_options,
-                                )
+                                    else shared.dataset
+                                ),
+                                intercept=bagged_intercept[idx],
+                                bag=internal_bags[idx],
+                                init_scores=scores_bags[idx],
+                                iter_term_features=combinations(
+                                    range(n_features_in), 2
+                                ),
+                                exclude=exclude,
+                                exclude_features=exclude_features,
+                                calc_interaction_flags=interaction_flags,
+                                max_cardinality=max_cardinality,
+                                min_samples_leaf=min_samples_leaf,
+                                min_hessian=min_hessian,
+                                reg_alpha=reg_alpha,
+                                reg_lambda=reg_lambda,
+                                max_delta_step=max_delta_step,
+                                create_interaction_flags=(
+                                    Native.CreateInteractionFlags_DifferentialPrivacy
+                                    if is_differential_privacy
+                                    else Native.CreateInteractionFlags_Default
+                                ),
+                                objective=objective,
+                                acceleration=develop.get_option("acceleration"),
+                                experimental_params=None,
+                                n_output_interactions=0,
+                                develop_options=develop._develop_options,
                             )
-
-                        bagged_ranked_interaction = parallel(
-                            starmap(delayed(rank_interactions), parallel_args)
+                            for idx in range(self.outer_bags)
                         )
-
-                        # this holds references to dataset, internal_bags, and scores_bags which we want python to reclaim later
-                        del parallel_args
 
                         # Select merged pairs
                         pair_ranks = {}
@@ -1419,72 +1415,39 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     if stop_flag is not None and stop_flag[0]:
                         break
 
-                    parallel_args = []
-                    for idx in range(self.outer_bags):
-                        early_stopping_rounds_local = early_stopping_rounds
-                        if (
-                            internal_bags[idx] is None
-                            or (internal_bags[idx] >= 0).all()
-                        ):
-                            # if there are no validation samples, turn off early stopping
-                            # because the validation metric cannot improve each round
-                            early_stopping_rounds_local = 0
-
-                        parallel_args.append(
-                            (
-                                shm_name,
-                                idx,
-                                callback,
+                    results = parallel(
+                        delayed(booster)(
+                            shm_name,
+                            idx,
+                            callback,
+                            dataset=(
                                 shared.name
                                 if shared.name is not None
-                                else shared.dataset,
-                                0,  # intercept should already be close for pairs
-                                0.0,  # intercept should already be close for pairs
-                                bagged_intercept[idx],
-                                internal_bags[idx],
-                                scores_bags[idx],
-                                boost_groups,
-                                inner_bags,
-                                term_boost_flags,
-                                self.learning_rate,
-                                min_samples_leaf,
-                                min_hessian,
-                                reg_alpha,
-                                reg_lambda,
-                                max_delta_step,
-                                gain_scale,
-                                min_cat_samples,
-                                cat_smooth,
-                                missing,
-                                self.max_leaves,
-                                monotone_constraints,
-                                greedy_ratio,
-                                cyclic_progress,
-                                interaction_smoothing_rounds,
-                                nominal_smoothing,
-                                self.max_rounds,
-                                early_stopping_rounds_local,
-                                early_stopping_tolerance,
-                                noise_scale_boosting,
-                                bin_data_weights,
-                                rngs[idx],
-                                (
-                                    Native.CreateBoosterFlags_DifferentialPrivacy
-                                    if is_differential_privacy
-                                    else Native.CreateBoosterFlags_Default
-                                ),
-                                objective,
-                                develop.get_option("acceleration"),
-                                None,
-                                develop._develop_options,
-                            )
+                                else shared.dataset
+                            ),
+                            intercept_rounds=0,  # intercept should already be close for pairs
+                            intercept_learning_rate=0.0,  # intercept should already be close for pairs
+                            intercept=bagged_intercept[idx],
+                            bag=internal_bags[idx],
+                            init_scores=scores_bags[idx],
+                            term_features=boost_groups,
+                            smoothing_rounds=interaction_smoothing_rounds,
+                            # if there are no validation samples, turn off early stopping
+                            # because the validation metric cannot improve each round
+                            early_stopping_rounds=(
+                                early_stopping_rounds
+                                if (
+                                    internal_bags[idx] is not None
+                                    and (internal_bags[idx] < 0).any()
+                                )
+                                else 0
+                            ),
+                            rng=rngs[idx],
                         )
-
-                    results = parallel(starmap(delayed(boost), parallel_args))
+                        for idx in range(self.outer_bags)
+                    )
 
                     # allow python to reclaim these big memory items via reference counting
-                    # this holds references to dataset, scores_bags, and bags
-                    del parallel_args
                     del scores_bags
 
                     best_iteration.append([])
@@ -1569,50 +1532,33 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     intercept += correction
                     bagged_intercept += correction
                 else:
-                    exception, intercept_change, _, _, rng = boost(
+                    exception, intercept_change, _, _, rng = booster(
                         None,
                         0,
                         None,
-                        shared.dataset,
-                        develop.get_option("n_intercept_rounds_final"),
-                        develop.get_option("intercept_learning_rate"),
-                        np.zeros(n_scores, np.float64),
-                        None,
-                        scores,
-                        [],
-                        0,
-                        term_boost_flags,
-                        self.learning_rate,
-                        0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        min_cat_samples,
-                        cat_smooth,
-                        missing,
-                        1,
-                        None,
-                        greedy_ratio,
-                        cyclic_progress,
-                        0,
-                        nominal_smoothing,
-                        0,
-                        0,
-                        early_stopping_tolerance,
-                        noise_scale_boosting,
-                        bin_data_weights,
-                        rng,
-                        (
-                            Native.CreateBoosterFlags_DifferentialPrivacy
-                            if is_differential_privacy
-                            else Native.CreateBoosterFlags_Default
+                        dataset=shared.dataset,
+                        intercept_rounds=develop.get_option("n_intercept_rounds_final"),
+                        intercept_learning_rate=develop.get_option(
+                            "intercept_learning_rate"
                         ),
-                        objective,
-                        Native.AccelerationFlags_NONE,
-                        None,
-                        develop._develop_options,
+                        intercept=np.zeros(n_scores, np.float64),
+                        bag=None,
+                        init_scores=scores,
+                        term_features=[],
+                        n_inner_bags=0,  # overwrite
+                        min_samples_leaf=0,  # overwrite
+                        min_hessian=0.0,  # overwrite
+                        reg_alpha=0.0,  # overwrite
+                        reg_lambda=0.0,  # overwrite
+                        max_delta_step=0.0,  # overwrite
+                        gain_scale=1.0,  # overwrite
+                        max_leaves=1,  # overwrite
+                        monotone_constraints=None,  # overwrite
+                        smoothing_rounds=0,
+                        max_rounds=0,  # overwrite
+                        early_stopping_rounds=0,
+                        rng=rng,
+                        acceleration=Native.AccelerationFlags_NONE,  # overwrite
                     )
                     if exception is not None:
                         raise exception
