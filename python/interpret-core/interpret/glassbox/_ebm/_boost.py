@@ -97,6 +97,7 @@ def boost(
                             learning_rate=intercept_learning_rate,
                             min_samples_leaf=0,
                             min_hessian=0.0,
+                            # TODO: should reg_alpha and reg_lambda be 0 for intercept?
                             reg_alpha=reg_alpha,
                             reg_lambda=reg_lambda,
                             max_delta_step=0.0,

@@ -1177,9 +1177,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                 results = parallel(
                     delayed(booster)(
-                        shm_name,
-                        idx,
-                        callback,
+                        shm_name=shm_name,
+                        bag_idx=idx,
+                        callback=callback,
                         dataset=(
                             shared.name if shared.name is not None else shared.dataset
                         ),
@@ -1188,17 +1188,18 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                             "intercept_learning_rate"
                         ),
                         intercept=bagged_intercept[idx],
-                        bag=(bag := internal_bags[idx]),
+                        bag=internal_bags[idx],
                         # TODO: instead of making these copies we should
                         # put init_score into the native shared dataframe
                         init_scores=(
                             init_score
                             if (
                                 init_score is None
-                                or bag is None
-                                or np.count_nonzero(bag) == len(bag)
+                                or internal_bags[idx] is None
+                                or np.count_nonzero(internal_bags[idx])
+                                == len(internal_bags[idx])
                             )
-                            else init_score[bag != 0]
+                            else init_score[internal_bags[idx] != 0]
                         ),
                         term_features=term_features,
                         smoothing_rounds=smoothing_rounds,
@@ -1206,7 +1207,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         # because the validation metric cannot improve each round
                         early_stopping_rounds=(
                             early_stopping_rounds
-                            if (bag is not None and (bag < 0).any())
+                            if (
+                                internal_bags[idx] is not None
+                                and (internal_bags[idx] < 0).any()
+                            )
                             else 0
                         ),
                         rng=rngs[idx],
@@ -1287,8 +1291,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         bagged_ranked_interaction = parallel(
                             # TODO: the combinations below should be selected from the non-excluded features
                             delayed(rank_interactions)(
-                                shm_name,
-                                idx,
+                                shm_name=shm_name,
+                                bag_idx=idx,
                                 dataset=(
                                     shared.name
                                     if shared.name is not None
@@ -1412,9 +1416,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
                     results = parallel(
                         delayed(booster)(
-                            shm_name,
-                            idx,
-                            callback,
+                            shm_name=shm_name,
+                            bag_idx=idx,
+                            callback=callback,
                             dataset=(
                                 shared.name
                                 if shared.name is not None
@@ -1528,9 +1532,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     bagged_intercept += correction
                 else:
                     exception, intercept_change, _, _, rng = booster(
-                        None,
-                        0,
-                        None,
+                        shm_name=None,
+                        bag_idx=0,
+                        callback=None,
                         dataset=shared.dataset,
                         intercept_rounds=develop.get_option("n_intercept_rounds_final"),
                         intercept_learning_rate=develop.get_option(
@@ -1541,16 +1545,9 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                         init_scores=scores,
                         term_features=[],
                         n_inner_bags=0,  # overwrite
-                        min_samples_leaf=0,  # overwrite
-                        min_hessian=0.0,  # overwrite
                         reg_alpha=0.0,  # overwrite
                         reg_lambda=0.0,  # overwrite
-                        max_delta_step=0.0,  # overwrite
-                        gain_scale=1.0,  # overwrite
-                        max_leaves=1,  # overwrite
-                        monotone_constraints=None,  # overwrite
                         smoothing_rounds=0,
-                        max_rounds=0,  # overwrite
                         early_stopping_rounds=0,
                         rng=rng,
                         acceleration=Native.AccelerationFlags_NONE,  # overwrite
