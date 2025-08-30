@@ -1954,7 +1954,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         else:
             # file is a file-like object implementing .read()
-            jsonable = json.load(fp)
+            jsonable = json.load(file)
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
