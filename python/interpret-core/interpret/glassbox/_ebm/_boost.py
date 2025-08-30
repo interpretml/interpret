@@ -159,14 +159,18 @@ def boost(
                                 bestkey = None
                                 heap = []
                                 if (
-                                    step_idx == 0
-                                    and develop.get_option(
-                                        "randomize_initial_feature_order"
+                                    (
+                                        step_idx == 0
+                                        and develop.get_option(
+                                            "randomize_initial_feature_order"
+                                        )
                                     )
-                                    or develop.get_option(
-                                        "randomize_greedy_feature_order"
+                                    or (
+                                        develop.get_option(
+                                            "randomize_greedy_feature_order"
+                                        )
+                                        and greedy_steps > 0
                                     )
-                                    and greedy_steps > 0
                                     or develop.get_option("randomize_feature_order")
                                 ):
                                     native.shuffle(rng, random_cyclic_ordering)
@@ -260,10 +264,11 @@ def boost(
                                 avg_gain *= gain_scale
 
                             gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
-                            if not make_progress:
-                                if bestkey is None or gainkey < bestkey:
-                                    bestkey = gainkey
-                                    cached_update = booster.get_term_update()
+                            if not make_progress and (
+                                bestkey is None or gainkey < bestkey
+                            ):
+                                bestkey = gainkey
+                                cached_update = booster.get_term_update()
                         else:
                             gainkey = bestkey
                             bestkey = None
