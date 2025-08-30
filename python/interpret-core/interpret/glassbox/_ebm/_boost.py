@@ -3,6 +3,8 @@
 
 import heapq
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from multiprocessing import shared_memory
 
 import numpy as np
@@ -11,6 +13,16 @@ from ... import develop
 from ...utils._native import Booster, Native
 
 _log = logging.getLogger(__name__)
+
+
+@contextmanager
+def load_shared_memory(name: str) -> Iterator[shared_memory.SharedMemory]:
+    """Context manager for existing shared memory."""
+    shm = shared_memory.SharedMemory(name=name)
+    try:
+        yield shm
+    finally:
+        shm.close()
 
 
 def boost(
@@ -56,19 +68,23 @@ def boost(
 ):
     try:
         develop._develop_options = develop_options  # restore these in this process
-        shared_dataset = None
-        try:
-            if isinstance(dataset, str):  # if str it is shared memory
-                shared_dataset = shared_memory.SharedMemory(name=dataset)
+        with (
+            load_shared_memory(name=dataset)
+            if isinstance(dataset, str)  # if str it is shared memory
+            else nullcontext()
+        ) as shared_dataset:
+            if shared_dataset is not None:
                 # we do not know the length of the dataset, so we create a 1-element array
                 dataset = np.ndarray(1, dtype=np.ubyte, buffer=shared_dataset.buf)
 
-            shm = None
-            try:
-                stop_flag = None
-                if shm_name is not None:
-                    shm = shared_memory.SharedMemory(name=shm_name)
-                    stop_flag = np.ndarray(1, dtype=np.bool_, buffer=shm.buf)
+            with (
+                nullcontext() if shm_name is None else load_shared_memory(shm_name)
+            ) as shm:
+                stop_flag = (
+                    np.ndarray(1, dtype=np.bool_, buffer=shm.buf)
+                    if shm is not None
+                    else None
+                )
 
                 step_idx = 0
                 cur_metric = np.nan
@@ -143,14 +159,18 @@ def boost(
                                 bestkey = None
                                 heap = []
                                 if (
-                                    step_idx == 0
-                                    and develop.get_option(
-                                        "randomize_initial_feature_order"
+                                    (
+                                        step_idx == 0
+                                        and develop.get_option(
+                                            "randomize_initial_feature_order"
+                                        )
                                     )
-                                    or develop.get_option(
-                                        "randomize_greedy_feature_order"
+                                    or (
+                                        develop.get_option(
+                                            "randomize_greedy_feature_order"
+                                        )
+                                        and greedy_steps > 0
                                     )
-                                    and greedy_steps > 0
                                     or develop.get_option("randomize_feature_order")
                                 ):
                                     native.shuffle(rng, random_cyclic_ordering)
@@ -244,10 +264,11 @@ def boost(
                                 avg_gain *= gain_scale
 
                             gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
-                            if not make_progress:
-                                if bestkey is None or gainkey < bestkey:
-                                    bestkey = gainkey
-                                    cached_update = booster.get_term_update()
+                            if not make_progress and (
+                                bestkey is None or gainkey < bestkey
+                            ):
+                                bestkey = gainkey
+                                cached_update = booster.get_term_update()
                         else:
                             gainkey = bestkey
                             bestkey = None
@@ -371,11 +392,5 @@ def boost(
                         model_update = booster.get_current_model()
 
                 return None, intercept, model_update, step_idx, rng
-            finally:
-                if shm is not None:
-                    shm.close()
-        finally:
-            if shared_dataset is not None:
-                shared_dataset.close()
     except Exception as e:
         return e, None, None, None, None
