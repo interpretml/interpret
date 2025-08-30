@@ -5,12 +5,13 @@ import heapq
 import json
 import logging
 import os
+from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import combinations, count
 from math import ceil, isnan
-from multiprocessing import shared_memory
+from multiprocessing.managers import SharedMemoryManager
 from operator import itemgetter
 from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 from warnings import warn
@@ -1165,15 +1166,15 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 shared,
             )
 
-            shm = None
-            try:
-                stop_flag = None
-                shm_name = None
-                if callback is not None:
-                    shm = shared_memory.SharedMemory(create=True, size=1, name=None)
+            with nullcontext() if callback is None else SharedMemoryManager() as smm:
+                if smm is not None:
+                    shm = smm.SharedMemory(size=1)
                     shm_name = shm.name
                     stop_flag = np.ndarray(1, dtype=np.bool_, buffer=shm.buf)
                     stop_flag[0] = False
+                else:
+                    stop_flag = None
+                    shm_name = None
 
                 results = parallel(
                     delayed(booster)(
@@ -1468,11 +1469,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     term_features.extend(boost_groups)
 
                     break  # do not loop!
-
-            finally:
-                if shm is not None:
-                    shm.close()
-                    shm.unlink()
 
             best_iteration = np.array(best_iteration, np.int64)
 
