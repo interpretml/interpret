@@ -5,6 +5,7 @@ import heapq
 import json
 import logging
 import os
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
@@ -12,7 +13,7 @@ from itertools import combinations, count
 from math import ceil, isnan
 from multiprocessing import shared_memory
 from operator import itemgetter
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -3224,23 +3225,23 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     """
 
     n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
+    term_names_: list[str]
+    bins_: list[Union[list[dict[str, int]], list[np.ndarray]]]  # np.float64, 1D[cut]
+    feature_names_in_: list[str]
+    feature_types_in_: list[str]
     feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
+    term_features_: list[tuple[int, ...]]
+    bin_weights_: list[np.ndarray]  # np.float64, [bin0...]
+    bagged_scores_: list[np.ndarray]  # np.float64, [bag, bin0..., ?class]
+    term_scores_: list[np.ndarray]  # np.float64, [bin0..., ?class]
+    standard_deviations_: list[np.ndarray]  # np.float64, [bin0..., ?class]
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
+    histogram_edges_: list[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
+    histogram_weights_: list[np.ndarray]  # np.float64, 1D[hist_bin]
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
     classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
@@ -3734,23 +3735,23 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
     """
 
     n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
+    term_names_: list[str]
+    bins_: list[Union[list[dict[str, int]], list[np.ndarray]]]  # np.float64, 1D[cut]
+    feature_names_in_: list[str]
+    feature_types_in_: list[str]
     feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0...]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0...]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0...]
+    term_features_: list[tuple[int, ...]]
+    bin_weights_: list[np.ndarray]  # np.float64, [bin0...]
+    bagged_scores_: list[np.ndarray]  # np.float64, [bag, bin0...]
+    term_scores_: list[np.ndarray]  # np.float64, [bin0...]
+    standard_deviations_: list[np.ndarray]  # np.float64, [bin0...]
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
     best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
 
-    histogram_edges_: List[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: List[np.ndarray]  # np.float64, 1D[hist_bin]
+    histogram_edges_: list[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
+    histogram_weights_: list[np.ndarray]  # np.float64, 1D[hist_bin]
     unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
 
     intercept_: float
@@ -4011,16 +4012,16 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
     """
 
     n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
+    term_names_: list[str]
+    bins_: list[Union[list[dict[str, int]], list[np.ndarray]]]  # np.float64, 1D[cut]
+    feature_names_in_: list[str]
+    feature_types_in_: list[str]
     feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin]
-    term_scores_: List[np.ndarray]  # np.float64, [bin]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin]
+    term_features_: list[tuple[int, ...]]
+    bin_weights_: list[np.ndarray]  # np.float64, [bin]
+    bagged_scores_: list[np.ndarray]  # np.float64, [bag, bin]
+    term_scores_: list[np.ndarray]  # np.float64, [bin]
+    standard_deviations_: list[np.ndarray]  # np.float64, [bin]
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
@@ -4066,7 +4067,7 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
         privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
+            Union[np.ndarray, Mapping[Union[int, str], tuple[float, float]]]
         ] = None,
     ):
         super().__init__(
@@ -4348,16 +4349,16 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
     """
 
     n_features_in_: int
-    term_names_: List[str]
-    bins_: List[Union[List[Dict[str, int]], List[np.ndarray]]]  # np.float64, 1D[cut]
-    feature_names_in_: List[str]
-    feature_types_in_: List[str]
+    term_names_: list[str]
+    bins_: list[Union[list[dict[str, int]], list[np.ndarray]]]  # np.float64, 1D[cut]
+    feature_names_in_: list[str]
+    feature_types_in_: list[str]
     feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
-    term_features_: List[Tuple[int, ...]]
-    bin_weights_: List[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: List[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: List[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: List[np.ndarray]  # np.float64, [bin0..., ?class]
+    term_features_: list[tuple[int, ...]]
+    bin_weights_: list[np.ndarray]  # np.float64, [bin0...]
+    bagged_scores_: list[np.ndarray]  # np.float64, [bag, bin0..., ?class]
+    term_scores_: list[np.ndarray]  # np.float64, [bin0..., ?class]
+    standard_deviations_: list[np.ndarray]  # np.float64, [bin0..., ?class]
     link_: str
     link_param_: float
     bag_weights_: np.ndarray  # np.float64, 1D[bag]
@@ -4405,7 +4406,7 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
         composition: str = "gdp",
         bin_budget_frac: float = 0.1,
         privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], Tuple[float, float]]]
+            Union[np.ndarray, Mapping[Union[int, str], tuple[float, float]]]
         ] = None,
         privacy_target_min: Optional[float] = None,
         privacy_target_max: Optional[float] = None,
