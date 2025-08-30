@@ -1,5 +1,5 @@
 # match oldest supported version
-target-version = "py38"
+target-version = "py39"
 [lint]
 extend-select = [
   "B",        # flake8-bugbear
