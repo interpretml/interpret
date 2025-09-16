@@ -8,3 +8,4 @@ This document lists the Maintainers of Project InterpretML. Maintainers may be a
 | Rich Caruana |  |
 | Harsha Nori | Microsoft |
 | Samuel Jenkins | Microsoft |
+| Andreas Weh |  |
