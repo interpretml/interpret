@@ -650,6 +650,8 @@ We also build on top of many great packages. Please check them out!
 - [Interpretable machine learning for precision cognitive aging](https://www.frontiersin.org/journals/computational-neuroscience/articles/10.3389/fncom.2025.1560064/full)
 - [LLMs Understand Glass-Box Models, Discover Surprises, and Suggest Repairs](https://arxiv.org/pdf/2308.01157.pdf)
 - [Model Interpretability in Credit Insurance](http://hdl.handle.net/10400.5/27507)
+- [Enhancing ML Interpretability for Credit Scoring](https://arxiv.org/html/2509.11389v1)
+- [Transparent and Fair Profiling in Employment Services: Evidence from Switzerland](https://www.arxiv.org/pdf/2509.11847)
 - [Federated Boosted Decision Trees with Differential Privacy](https://arxiv.org/pdf/2210.02910.pdf)
 - [Differentially private and explainable boosting machine with enhanced utility](https://www.sciencedirect.com/science/article/abs/pii/S0925231224011950?via%3Dihub#preview-section-abstract)
 - [Balancing Explainability and Privacy in Bank Failure Prediction: A Differentially Private Glass-Box Approach](https://ieeexplore.ieee.org/abstract/document/10818483)
