@@ -47,6 +47,20 @@ def test_regression():
         assert global_viz is not None
 
 
+def test_regression_no_feature_names():
+    dataset = load_diabetes()
+    X, y = dataset.data, dataset.target
+    X = X[:100]
+    y = y[:100]
+
+    our_aplr = APLRRegressor()
+    our_aplr.fit(X, y)
+
+    our_pred = our_aplr.predict(X)
+    assert our_pred is not None
+    assert our_aplr.feature_names_in_ == [f"X{i+1}" for i in range(X.shape[1])]
+
+
 def test_classification():
     cancer = load_breast_cancer()
     X, y = cancer.data, cancer.target
