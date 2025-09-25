@@ -58,7 +58,7 @@ def test_regression_no_feature_names():
 
     our_pred = our_aplr.predict(X)
     assert our_pred is not None
-    assert our_aplr.feature_names_in_ == [f"X{i+1}" for i in range(X.shape[1])]
+    assert our_aplr.feature_names_in_ == [f"X{i + 1}" for i in range(X.shape[1])]
 
 
 def test_classification():

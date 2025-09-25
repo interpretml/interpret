@@ -97,11 +97,11 @@ def APLRRegressor(**kwargs):
 
             def __init__(self, **kwargs):
                 """Initializes class.
-        
+
                 Args:
                     **kwargs: Kwargs passed to APLRRegressor at initialization time.
                 """
-        
+
                 # TODO: add feature_names and feature_types to conform to glassbox API
                 super().__init__(**kwargs)
 
@@ -145,7 +145,9 @@ def APLRRegressor(**kwargs):
                     self.get_unique_term_affiliations()
                 ):
                     shape = self.get_unique_term_affiliation_shape(affiliation)
-                    predictor_indexes_used = predictors_in_each_affiliation[affiliation_index]
+                    predictor_indexes_used = predictors_in_each_affiliation[
+                        affiliation_index
+                    ]
                     is_main_effect: bool = len(predictor_indexes_used) == 1
                     is_two_way_interaction: bool = len(predictor_indexes_used) == 2
                     if is_main_effect:
@@ -155,13 +157,17 @@ def APLRRegressor(**kwargs):
                         }
                         feature_dict = {
                             "type": "univariate",
-                            "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                            "feature_name": self.feature_names_in_[
+                                predictor_indexes_used[0]
+                            ],
                             "names": shape[:, 0],
                             "scores": shape[:, 1],
                         }
                         data_dict = {
                             "type": "univariate",
-                            "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                            "feature_name": self.feature_names_in_[
+                                predictor_indexes_used[0]
+                            ],
                             "names": shape[:, 0],
                             "scores": shape[:, 1],
                             "density": density_dict,
@@ -170,12 +176,15 @@ def APLRRegressor(**kwargs):
                         density_list.append(density_dict)
                         data_dicts.append(data_dict)
                         keep_idxs.append(affiliation_index)
-                        unique_values.append(self.unique_values_in_[predictor_indexes_used[0]])
+                        unique_values.append(
+                            self.unique_values_in_[predictor_indexes_used[0]]
+                        )
                     elif is_two_way_interaction:
                         feature_dict = {
                             "type": "interaction",
                             "feature_names": [
-                                self.feature_names_in_[idx] for idx in predictor_indexes_used
+                                self.feature_names_in_[idx]
+                                for idx in predictor_indexes_used
                             ],
                             "left_names": shape[:, 0],
                             "right_names": shape[:, 1],
@@ -184,7 +193,8 @@ def APLRRegressor(**kwargs):
                         data_dict = {
                             "type": "interaction",
                             "feature_names": [
-                                self.feature_names_in_[idx] for idx in predictor_indexes_used
+                                self.feature_names_in_[idx]
+                                for idx in predictor_indexes_used
                             ],
                             "left_names": shape[:, 0],
                             "right_names": shape[:, 1],
@@ -208,7 +218,10 @@ def APLRRegressor(**kwargs):
                             "explanation_type": "aplr_global",
                             "value": {"feature_list": feature_list},
                         },
-                        {"explanation_type": "density", "value": {"density": density_list}},
+                        {
+                            "explanation_type": "density",
+                            "value": {"density": density_list},
+                        },
                     ],
                 }
                 term_names = [self.get_unique_term_affiliations()[i] for i in keep_idxs]
@@ -257,7 +270,9 @@ def APLRRegressor(**kwargs):
                         msg = "y must be 1 dimensional"
                         raise ValueError(msg)
                     y = y.astype(np.float64, copy=False)
-                X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+                X_values = create_values(
+                    X, explanations, term_names, self.feature_names_in_
+                )
                 perf_list = gen_perf_dicts(pred, y, False)
 
                 for data, sample_scores, perf in zip(X_values, explanations, perf_list):
@@ -349,9 +364,7 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
         except (ValueError, TypeError) as e:
             msg = "If X is a list, it must be a list of lists containing only numeric values."
             raise TypeError(msg) from e
-    msg = (
-        "X must be a numpy matrix, a pandas dataframe, or a list of float lists."
-    )
+    msg = "X must be a numpy matrix, a pandas dataframe, or a list of float lists."
     raise TypeError(msg)
 
 
@@ -359,7 +372,9 @@ def calculate_unique_values(X: FloatMatrix) -> List[int]:
     return [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
 
 
-def define_feature_names(X: FloatMatrix, X_names: Optional[List[str]] = None) -> List[str]:
+def define_feature_names(
+    X: FloatMatrix, X_names: Optional[List[str]] = None
+) -> List[str]:
     if X_names is None or len(X_names) == 0:
         return [f"X{i + 1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
     return list(X_names)
@@ -401,11 +416,11 @@ def APLRClassifier(**kwargs):
 
             def __init__(self, **kwargs):
                 """Initializes class.
-        
+
                 Args:
                     **kwargs: Kwargs passed to APLRClassifier at initialization time.
                 """
-        
+
                 # TODO: add feature_names and feature_types to conform to glassbox API
                 super().__init__(**kwargs)
 
@@ -531,10 +546,15 @@ def APLRClassifier(**kwargs):
                             "explanation_type": "aplr_global",
                             "value": {"feature_list": feature_list},
                         },
-                        {"explanation_type": "density", "value": {"density": density_list}},
+                        {
+                            "explanation_type": "density",
+                            "value": {"density": density_list},
+                        },
                     ],
                 }
-                term_names = [feature_dict["term_name"] for feature_dict in feature_list]
+                term_names = [
+                    feature_dict["term_name"] for feature_dict in feature_list
+                ]
                 term_types = [feature_dict["type"] for feature_dict in feature_list]
                 selector = gen_global_selector(
                     len(term_names),
@@ -584,7 +604,9 @@ def APLRClassifier(**kwargs):
                         raise ValueError(msg)
                     if not all(isinstance(val, str) for val in y):
                         y = [str(val) for val in y]
-                X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+                X_values = create_values(
+                    X, explanations, term_names, self.feature_names_in_
+                )
                 perf_list = []
                 for i in range(len(pred)):
                     di = {}
