@@ -1,9 +1,8 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
-from typing import Dict, List, Optional, Tuple
-from warnings import warn
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Optional, Tuple
+from warnings import warn
 
 import numpy as np
 import pandas as pd
@@ -75,265 +74,248 @@ class APLRTags:
     input_tags: APLRInputTags = field(default_factory=APLRInputTags)
 
 
-_APLRRegressor = None
+try:
+    from aplr import APLRRegressor as APLRRegressorNative
+except ImportError:
+
+    class APLRRegressorNative:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "APLRRegressor requires the 'aplr' package. Please install it using 'pip install aplr'"
+            )
 
 
-def APLRRegressor(**kwargs):
-    """APLR Regressor.
+class APLRRegressor(APLRRegressorNative, RegressorMixin, ExplainerMixin):
+    """APLR Regressor."""
 
-    This is a factory function that returns an APLRRegressor class instance.
-    The class is created dynamically to avoid import-time dependencies on the native 'aplr' package.
-    """
-    global _APLRRegressor
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    if _APLRRegressor is None:
-        from aplr import APLRRegressor as APLRRegressorNative
+    def __init__(self, **kwargs):
+        """Initializes class.
 
-        class APLRRegressorImpl(APLRRegressorNative, RegressorMixin, ExplainerMixin):
-            available_explanations = ["local", "global"]
-            explainer_type = "model"
+        Args:
+            **kwargs: Kwargs passed to APLRRegressor at initialization time.
+        """
 
-            def __init__(self, **kwargs):
-                """Initializes class.
+        # TODO: add feature_names and feature_types to conform to glassbox API
+        super().__init__(**kwargs)
 
-                Args:
-                    **kwargs: Kwargs passed to APLRRegressor at initialization time.
-                """
+    def fit(self, X, y, **kwargs):
+        """Fits model."""
+        X_names = kwargs.get("X_names")
 
-                # TODO: add feature_names and feature_types to conform to glassbox API
-                super().__init__(**kwargs)
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.unique_values_in_ = calculate_unique_values(X)
+        self.feature_names_in_ = define_feature_names(X, X_names=X_names)
 
-            def fit(self, X, y, **kwargs):
-                X_names = kwargs.get("X_names")
+        super().fit(
+            X,
+            y,
+            **kwargs,
+        )
+        return self
 
-                self.bin_counts, self.bin_edges = calculate_densities(X)
-                self.unique_values_in_ = calculate_unique_values(X)
-                self.feature_names_in_ = define_feature_names(X, X_names=X_names)
+    def explain_global(self, name: Optional[str] = None):
+        """Provides global explanation for model.
 
-                super().fit(
-                    X,
-                    y,
-                    **kwargs,
-                )
+        Args:
+            name: User-defined explanation name.
 
-            def explain_global(self, name: Optional[str] = None):
-                """Provides global explanation for model.
+        Returns:
+            An explanation object,
+            visualizing feature-value pairs as horizontal bar chart.
+        """
+        overall_dict = {
+            "names": self.get_unique_term_affiliations(),
+            "scores": self.get_feature_importance(),
+        }
 
-                Args:
-                    name: User-defined explanation name.
-
-                Returns:
-                    An explanation object,
-                    visualizing feature-value pairs as horizontal bar chart.
-                """
-                overall_dict = {
-                    "names": self.get_unique_term_affiliations(),
-                    "scores": self.get_feature_importance(),
+        data_dicts = []
+        feature_list = []
+        density_list = []
+        keep_idxs = []
+        predictors_in_each_affiliation = (
+            self.get_base_predictors_in_each_unique_term_affiliation()
+        )
+        unique_values = []
+        for affiliation_index, affiliation in enumerate(
+            self.get_unique_term_affiliations()
+        ):
+            shape = self.get_unique_term_affiliation_shape(affiliation)
+            predictor_indexes_used = predictors_in_each_affiliation[affiliation_index]
+            is_main_effect: bool = len(predictor_indexes_used) == 1
+            is_two_way_interaction: bool = len(predictor_indexes_used) == 2
+            if is_main_effect:
+                density_dict = {
+                    "names": self.bin_edges[predictor_indexes_used[0]],
+                    "scores": self.bin_counts[predictor_indexes_used[0]],
                 }
-
-                data_dicts = []
-                feature_list = []
-                density_list = []
-                keep_idxs = []
-                predictors_in_each_affiliation = (
-                    self.get_base_predictors_in_each_unique_term_affiliation()
-                )
-                unique_values = []
-                for affiliation_index, affiliation in enumerate(
-                    self.get_unique_term_affiliations()
-                ):
-                    shape = self.get_unique_term_affiliation_shape(affiliation)
-                    predictor_indexes_used = predictors_in_each_affiliation[
-                        affiliation_index
-                    ]
-                    is_main_effect: bool = len(predictor_indexes_used) == 1
-                    is_two_way_interaction: bool = len(predictor_indexes_used) == 2
-                    if is_main_effect:
-                        density_dict = {
-                            "names": self.bin_edges[predictor_indexes_used[0]],
-                            "scores": self.bin_counts[predictor_indexes_used[0]],
-                        }
-                        feature_dict = {
-                            "type": "univariate",
-                            "feature_name": self.feature_names_in_[
-                                predictor_indexes_used[0]
-                            ],
-                            "names": shape[:, 0],
-                            "scores": shape[:, 1],
-                        }
-                        data_dict = {
-                            "type": "univariate",
-                            "feature_name": self.feature_names_in_[
-                                predictor_indexes_used[0]
-                            ],
-                            "names": shape[:, 0],
-                            "scores": shape[:, 1],
-                            "density": density_dict,
-                        }
-                        feature_list.append(feature_dict)
-                        density_list.append(density_dict)
-                        data_dicts.append(data_dict)
-                        keep_idxs.append(affiliation_index)
-                        unique_values.append(
-                            self.unique_values_in_[predictor_indexes_used[0]]
-                        )
-                    elif is_two_way_interaction:
-                        feature_dict = {
-                            "type": "interaction",
-                            "feature_names": [
-                                self.feature_names_in_[idx]
-                                for idx in predictor_indexes_used
-                            ],
-                            "left_names": shape[:, 0],
-                            "right_names": shape[:, 1],
-                            "scores": shape[:, 2],
-                        }
-                        data_dict = {
-                            "type": "interaction",
-                            "feature_names": [
-                                self.feature_names_in_[idx]
-                                for idx in predictor_indexes_used
-                            ],
-                            "left_names": shape[:, 0],
-                            "right_names": shape[:, 1],
-                            "scores": shape[:, 2],
-                        }
-                        feature_list.append(feature_dict)
-                        density_list.append({})
-                        data_dicts.append(data_dict)
-                        keep_idxs.append(affiliation_index)
-                        unique_values.append(np.nan)
-                    else:  # pragma: no cover
-                        warn(
-                            f"Dropping term {affiliation} from explanation "
-                            "since we can't graph more than 2 dimensions."
-                        )
-                internal_obj = {
-                    "overall": overall_dict,
-                    "specific": data_dicts,
-                    "mli": [
-                        {
-                            "explanation_type": "aplr_global",
-                            "value": {"feature_list": feature_list},
-                        },
-                        {
-                            "explanation_type": "density",
-                            "value": {"density": density_list},
-                        },
+                feature_dict = {
+                    "type": "univariate",
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                    "names": shape[:, 0],
+                    "scores": shape[:, 1],
+                }
+                data_dict = {
+                    "type": "univariate",
+                    "feature_name": self.feature_names_in_[predictor_indexes_used[0]],
+                    "names": shape[:, 0],
+                    "scores": shape[:, 1],
+                    "density": density_dict,
+                }
+                feature_list.append(feature_dict)
+                density_list.append(density_dict)
+                data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
+                unique_values.append(self.unique_values_in_[predictor_indexes_used[0]])
+            elif is_two_way_interaction:
+                feature_dict = {
+                    "type": "interaction",
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
                     ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
                 }
-                term_names = [self.get_unique_term_affiliations()[i] for i in keep_idxs]
-                term_types = [feature_dict["type"] for feature_dict in feature_list]
-                selector = gen_global_selector(
-                    len(keep_idxs),
-                    term_names,
-                    term_types,
-                    unique_values,
-                    None,
-                )
-                return APLRExplanation(
-                    "global",
-                    internal_obj,
-                    feature_names=term_names,
-                    feature_types=term_types,
-                    name=name,
-                    selector=selector,
-                )
-
-            def explain_local(
-                self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
-            ):
-                """Provides local explanations for provided instances.
-
-                Args:
-                    X: Numpy array for X to explain.
-                    y: Numpy vector for y to explain.
-                    name: User-defined explanation name.
-
-                Returns:
-                    An explanation object, visualizing feature-value pairs
-                    for each instance as horizontal bar charts.
-                """
-
-                pred = self.predict(X)
-                term_names = self.get_unique_term_affiliations()
-                explanations = self.calculate_local_feature_contribution(X)
-
-                data_dicts = []
-                perf_list = []
-
-                if y is not None:
-                    y = clean_dimensions(y, "y")
-                    if y.ndim != 1:
-                        msg = "y must be 1 dimensional"
-                        raise ValueError(msg)
-                    y = y.astype(np.float64, copy=False)
-                X_values = create_values(
-                    X, explanations, term_names, self.feature_names_in_
-                )
-                perf_list = gen_perf_dicts(pred, y, False)
-
-                for data, sample_scores, perf in zip(X_values, explanations, perf_list):
-                    values = ["" if np.isnan(val) else val for val in data.tolist()]
-                    data_dict = {
-                        "type": "univariate",
-                        "names": term_names,
-                        "scores": list(sample_scores),
-                        "values": values,
-                        "extra": {
-                            "names": ["Intercept"],
-                            "scores": [self.get_intercept()],
-                            "values": [1],
-                        },
-                        "perf": perf,
-                    }
-                    data_dicts.append(data_dict)
-
-                selector = gen_local_selector(data_dicts, is_classification=False)
-
-                internal_obj = {
-                    "overall": None,
-                    "specific": data_dicts,
-                    "mli": [
-                        {
-                            "explanation_type": "ebm_local",
-                            "value": {
-                                "perf": perf_list,
-                            },
-                        }
+                data_dict = {
+                    "type": "interaction",
+                    "feature_names": [
+                        self.feature_names_in_[idx] for idx in predictor_indexes_used
                     ],
+                    "left_names": shape[:, 0],
+                    "right_names": shape[:, 1],
+                    "scores": shape[:, 2],
                 }
-                internal_obj["mli"].append(
-                    {
-                        "explanation_type": "evaluation_dataset",
-                        "value": {"dataset_x": X, "dataset_y": y},
-                    }
+                feature_list.append(feature_dict)
+                density_list.append({})
+                data_dicts.append(data_dict)
+                keep_idxs.append(affiliation_index)
+                unique_values.append(np.nan)
+            else:  # pragma: no cover
+                warn(
+                    f"Dropping term {affiliation} from explanation "
+                    "since we can't graph more than 2 dimensions."
                 )
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "aplr_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {
+                    "explanation_type": "density",
+                    "value": {"density": density_list},
+                },
+            ],
+        }
+        term_names = [self.get_unique_term_affiliations()[i] for i in keep_idxs]
+        term_types = [feature_dict["type"] for feature_dict in feature_list]
+        selector = gen_global_selector(
+            len(keep_idxs),
+            term_names,
+            term_types,
+            unique_values,
+            None,
+        )
+        return APLRExplanation(
+            "global",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=name,
+            selector=selector,
+        )
 
-                term_types = [
-                    "interaction" if len(base_predictors) > 1 else "univariate"
-                    for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
-                ]
-                return APLRExplanation(
-                    "local",
-                    internal_obj,
-                    feature_names=term_names,
-                    feature_types=term_types,
-                    name=gen_name_from_class(self) if name is None else name,
-                    selector=selector,
-                )
+    def explain_local(
+        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+    ):
+        """Provides local explanations for provided instances.
 
-            def __sklearn_tags__(self):
-                tags = APLRTags()
-                tags.estimator_type = "regressor"
-                tags.regressor_tags = APLRRegressorTags()
-                return tags
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
 
-        _APLRRegressor = APLRRegressorImpl
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
 
-    return _APLRRegressor(**kwargs)
+        pred = self.predict(X)
+        term_names = self.get_unique_term_affiliations()
+        explanations = self.calculate_local_feature_contribution(X)
+
+        data_dicts = []
+        perf_list = []
+
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
+            y = y.astype(np.float64, copy=False)
+        X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+        perf_list = gen_perf_dicts(pred, y, False)
+
+        for data, sample_scores, perf in zip(X_values, explanations, perf_list):
+            values = ["" if np.isnan(val) else val for val in data.tolist()]
+            data_dict = {
+                "type": "univariate",
+                "names": term_names,
+                "scores": list(sample_scores),
+                "values": values,
+                "extra": {
+                    "names": ["Intercept"],
+                    "scores": [self.get_intercept()],
+                    "values": [1],
+                },
+                "perf": perf,
+            }
+            data_dicts.append(data_dict)
+
+        selector = gen_local_selector(data_dicts, is_classification=False)
+
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "ebm_local",
+                    "value": {
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
+
+        term_types = [
+            "interaction" if len(base_predictors) > 1 else "univariate"
+            for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
+        ]
+        return APLRExplanation(
+            "local",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=gen_name_from_class(self) if name is None else name,
+            selector=selector,
+        )
+
+    def __sklearn_tags__(self):
+        tags = APLRTags()
+        tags.estimator_type = "regressor"
+        tags.regressor_tags = APLRRegressorTags()
+        return tags
 
 
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
@@ -394,292 +376,283 @@ def create_values(
     return X_values
 
 
-_APLRClassifier = None
+try:
+    from aplr import APLRClassifier as APLRClassifierNative
+except ImportError:
+
+    class APLRClassifierNative:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "APLRClassifier requires the 'aplr' package. Please install it using 'pip install aplr'"
+            )
 
 
-def APLRClassifier(**kwargs):
-    """APLR Classifier.
+class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
+    """APLR Classifier."""
 
-    This is a factory function that returns an APLRClassifier class instance.
-    The class is created dynamically to avoid import-time dependencies on the native 'aplr' package.
-    """
-    global _APLRClassifier
     available_explanations = ["local", "global"]
     explainer_type = "model"
 
-    if _APLRClassifier is None:
-        from aplr import APLRClassifier as APLRClassifierNative
+    def __init__(self, **kwargs):
+        """Initializes class.
 
-        class APLRClassifierImpl(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
-            available_explanations = ["local", "global"]
-            explainer_type = "model"
+        Args:
+            **kwargs: Kwargs passed to APLRClassifier at initialization time.
+        """
 
-            def __init__(self, **kwargs):
-                """Initializes class.
+        # TODO: add feature_names and feature_types to conform to glassbox API
+        super().__init__(**kwargs)
 
-                Args:
-                    **kwargs: Kwargs passed to APLRClassifier at initialization time.
-                """
+    def fit(self, X, y, **kwargs):
+        """Fits model."""
+        X_names = kwargs.get("X_names")
 
-                # TODO: add feature_names and feature_types to conform to glassbox API
-                super().__init__(**kwargs)
+        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.unique_values_in_ = calculate_unique_values(X)
+        self.feature_names_in_ = define_feature_names(X, X_names=X_names)
 
-            def fit(self, X, y, **kwargs):
-                X_names = kwargs.get("X_names")
+        if not all(isinstance(val, str) for val in y):
+            y = [str(val) for val in y]
+        if isinstance(y, pd.Series):
+            y = y.values
 
-                self.bin_counts, self.bin_edges = calculate_densities(X)
-                self.unique_values_in_ = calculate_unique_values(X)
-                self.feature_names_in_ = define_feature_names(X, X_names=X_names)
+        super().fit(
+            X,
+            y,
+            **kwargs,
+        )
+        self.classes_ = self.classes_
+        return self
 
-                if not all(isinstance(val, str) for val in y):
-                    y = [str(val) for val in y]
-                if isinstance(y, pd.Series):
-                    y = y.values
+    def explain_global(self, name: Optional[str] = None):
+        """Provides global explanation for model.
 
-                super().fit(
-                    X,
-                    y,
-                    **kwargs,
-                )
-                self.classes_ = self.classes_
+        Args:
+            name: User-defined explanation name.
 
-            def explain_global(self, name: Optional[str] = None):
-                """Provides global explanation for model.
+        Returns:
+            An explanation object,
+            visualizing feature-value pairs as horizontal bar chart.
+        """
 
-                Args:
-                    name: User-defined explanation name.
+        overall_dict = {
+            "names": self.get_unique_term_affiliations(),
+            "scores": self.get_feature_importance(),
+        }
 
-                Returns:
-                    An explanation object,
-                    visualizing feature-value pairs as horizontal bar chart.
-                """
-
-                overall_dict = {
-                    "names": self.get_unique_term_affiliations(),
-                    "scores": self.get_feature_importance(),
-                }
-
-                data_dicts = []
-                feature_list = []
-                density_list = []
-                unique_values = []
-                categories = self.get_categories()
-                for category in categories:
-                    model = self.get_logit_model(category)
-                    predictors_in_each_affiliation = (
-                        model.get_base_predictors_in_each_unique_term_affiliation()
-                    )
-                    for affiliation_index, affiliation in enumerate(
-                        model.get_unique_term_affiliations()
-                    ):
-                        shape = model.get_unique_term_affiliation_shape(affiliation)
-                        predictor_indexes_used = predictors_in_each_affiliation[
-                            affiliation_index
-                        ]
-                        is_main_effect: bool = len(predictor_indexes_used) == 1
-                        is_two_way_interaction: bool = len(predictor_indexes_used) == 2
-                        if is_main_effect:
-                            density_dict = {
-                                "names": self.bin_edges[predictor_indexes_used[0]],
-                                "scores": self.bin_counts[predictor_indexes_used[0]],
-                            }
-                            feature_dict = {
-                                "type": "univariate",
-                                "feature_name": self.feature_names_in_[
-                                    predictor_indexes_used[0]
-                                ],
-                                "term_name": f"class {category}: {affiliation}",
-                                "names": shape[:, 0],
-                                "scores": shape[:, 1],
-                            }
-                            data_dict = {
-                                "type": "univariate",
-                                "feature_name": self.feature_names_in_[
-                                    predictor_indexes_used[0]
-                                ],
-                                "names": shape[:, 0],
-                                "scores": shape[:, 1],
-                                "density": density_dict,
-                            }
-                            feature_list.append(feature_dict)
-                            density_list.append(density_dict)
-                            data_dicts.append(data_dict)
-                            unique_values.append(
-                                self.unique_values_in_[predictor_indexes_used[0]]
-                            )
-                        elif is_two_way_interaction:
-                            feature_dict = {
-                                "type": "interaction",
-                                "feature_names": [
-                                    self.feature_names_in_[idx]
-                                    for idx in predictor_indexes_used
-                                ],
-                                "term_name": f"class {category}: {affiliation}",
-                                "left_names": shape[:, 0],
-                                "right_names": shape[:, 1],
-                                "scores": shape[:, 2],
-                            }
-                            data_dict = {
-                                "type": "interaction",
-                                "feature_names": [
-                                    self.feature_names_in_[idx]
-                                    for idx in predictor_indexes_used
-                                ],
-                                "left_names": shape[:, 0],
-                                "right_names": shape[:, 1],
-                                "scores": shape[:, 2],
-                            }
-                            feature_list.append(feature_dict)
-                            density_list.append({})
-                            data_dicts.append(data_dict)
-                            unique_values.append(np.nan)
-                        else:  # pragma: no cover
-                            warn(
-                                f"Dropping term {affiliation} from explanation "
-                                "since we can't graph more than 2 dimensions."
-                            )
-                internal_obj = {
-                    "overall": overall_dict,
-                    "specific": data_dicts,
-                    "mli": [
-                        {
-                            "explanation_type": "aplr_global",
-                            "value": {"feature_list": feature_list},
-                        },
-                        {
-                            "explanation_type": "density",
-                            "value": {"density": density_list},
-                        },
-                    ],
-                }
-                term_names = [
-                    feature_dict["term_name"] for feature_dict in feature_list
-                ]
-                term_types = [feature_dict["type"] for feature_dict in feature_list]
-                selector = gen_global_selector(
-                    len(term_names),
-                    term_names,
-                    term_types,
-                    unique_values,
-                    None,
-                )
-                return APLRExplanation(
-                    "global",
-                    internal_obj,
-                    feature_names=term_names,
-                    feature_types=term_types,
-                    name=name,
-                    selector=selector,
-                )
-
-            def explain_local(
-                self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+        data_dicts = []
+        feature_list = []
+        density_list = []
+        unique_values = []
+        categories = self.get_categories()
+        for category in categories:
+            model = self.get_logit_model(category)
+            predictors_in_each_affiliation = (
+                model.get_base_predictors_in_each_unique_term_affiliation()
+            )
+            for affiliation_index, affiliation in enumerate(
+                model.get_unique_term_affiliations()
             ):
-                """Provides local explanations for provided instances.
-
-                Args:
-                    X: Numpy array for X to explain.
-                    y: Numpy vector for y to explain.
-                    name: User-defined explanation name.
-
-                Returns:
-                    An explanation object, visualizing feature-value pairs
-                    for each instance as horizontal bar charts.
-                """
-
-                pred = self.predict(X)
-                pred_proba = self.predict_class_probabilities(X)
-                pred_max_prob = np.max(pred_proba, axis=1)
-                term_names = self.get_unique_term_affiliations()
-                explanations = self.calculate_local_feature_contribution(X)
-                classes = self.get_categories()
-
-                data_dicts = []
-                perf_list = []
-
-                if y is not None:
-                    y = clean_dimensions(y, "y")
-                    if y.ndim != 1:
-                        msg = "y must be 1 dimensional"
-                        raise ValueError(msg)
-                    if not all(isinstance(val, str) for val in y):
-                        y = [str(val) for val in y]
-                X_values = create_values(
-                    X, explanations, term_names, self.feature_names_in_
-                )
-                perf_list = []
-                for i in range(len(pred)):
-                    di = {}
-                    di["is_classification"] = True
-                    di["actual"] = np.nan if y is None else classes.index(y[i])
-                    di["predicted"] = classes.index(pred[i])
-                    di["actual_score"] = (
-                        np.nan if y is None else pred_proba[i, classes.index(y[i])]
-                    )
-                    di["predicted_score"] = pred_max_prob[i]
-                    perf_list.append(di)
-
-                for data, sample_scores, perf in zip(X_values, explanations, perf_list):
-                    model = self.get_logit_model(classes[perf["predicted"]])
-                    values = ["" if np.isnan(val) else val for val in data.tolist()]
+                shape = model.get_unique_term_affiliation_shape(affiliation)
+                predictor_indexes_used = predictors_in_each_affiliation[
+                    affiliation_index
+                ]
+                is_main_effect: bool = len(predictor_indexes_used) == 1
+                is_two_way_interaction: bool = len(predictor_indexes_used) == 2
+                if is_main_effect:
+                    density_dict = {
+                        "names": self.bin_edges[predictor_indexes_used[0]],
+                        "scores": self.bin_counts[predictor_indexes_used[0]],
+                    }
+                    feature_dict = {
+                        "type": "univariate",
+                        "feature_name": self.feature_names_in_[
+                            predictor_indexes_used[0]
+                        ],
+                        "term_name": f"class {category}: {affiliation}",
+                        "names": shape[:, 0],
+                        "scores": shape[:, 1],
+                    }
                     data_dict = {
                         "type": "univariate",
-                        "names": term_names,
-                        "scores": list(sample_scores),
-                        "values": values,
-                        "extra": {
-                            "names": ["Intercept"],
-                            "scores": [model.get_intercept()],
-                            "values": [1],
-                        },
-                        "perf": perf,
-                        "meta": {"label_names": classes},
+                        "feature_name": self.feature_names_in_[
+                            predictor_indexes_used[0]
+                        ],
+                        "names": shape[:, 0],
+                        "scores": shape[:, 1],
+                        "density": density_dict,
                     }
+                    feature_list.append(feature_dict)
+                    density_list.append(density_dict)
                     data_dicts.append(data_dict)
-
-                selector = gen_local_selector(data_dicts, is_classification=True)
-
-                internal_obj = {
-                    "overall": None,
-                    "specific": data_dicts,
-                    "mli": [
-                        {
-                            "explanation_type": "ebm_local",
-                            "value": {
-                                "perf": perf_list,
-                            },
-                        }
-                    ],
-                }
-                internal_obj["mli"].append(
-                    {
-                        "explanation_type": "evaluation_dataset",
-                        "value": {"dataset_x": X, "dataset_y": y},
+                    unique_values.append(
+                        self.unique_values_in_[predictor_indexes_used[0]]
+                    )
+                elif is_two_way_interaction:
+                    feature_dict = {
+                        "type": "interaction",
+                        "feature_names": [
+                            self.feature_names_in_[idx]
+                            for idx in predictor_indexes_used
+                        ],
+                        "term_name": f"class {category}: {affiliation}",
+                        "left_names": shape[:, 0],
+                        "right_names": shape[:, 1],
+                        "scores": shape[:, 2],
                     }
-                )
+                    data_dict = {
+                        "type": "interaction",
+                        "feature_names": [
+                            self.feature_names_in_[idx]
+                            for idx in predictor_indexes_used
+                        ],
+                        "left_names": shape[:, 0],
+                        "right_names": shape[:, 1],
+                        "scores": shape[:, 2],
+                    }
+                    feature_list.append(feature_dict)
+                    density_list.append({})
+                    data_dicts.append(data_dict)
+                    unique_values.append(np.nan)
+                else:  # pragma: no cover
+                    warn(
+                        f"Dropping term {affiliation} from explanation "
+                        "since we can't graph more than 2 dimensions."
+                    )
+        internal_obj = {
+            "overall": overall_dict,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "aplr_global",
+                    "value": {"feature_list": feature_list},
+                },
+                {
+                    "explanation_type": "density",
+                    "value": {"density": density_list},
+                },
+            ],
+        }
+        term_names = [feature_dict["term_name"] for feature_dict in feature_list]
+        term_types = [feature_dict["type"] for feature_dict in feature_list]
+        selector = gen_global_selector(
+            len(term_names),
+            term_names,
+            term_types,
+            unique_values,
+            None,
+        )
+        return APLRExplanation(
+            "global",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=name,
+            selector=selector,
+        )
 
-                term_types = [
-                    "interaction" if len(base_predictors) > 1 else "univariate"
-                    for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
-                ]
-                return APLRExplanation(
-                    "local",
-                    internal_obj,
-                    feature_names=term_names,
-                    feature_types=term_types,
-                    name=gen_name_from_class(self) if name is None else name,
-                    selector=selector,
-                )
+    def explain_local(
+        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+    ):
+        """Provides local explanations for provided instances.
 
-            def __sklearn_tags__(self):
-                tags = APLRTags()
-                tags.estimator_type = "classifier"
-                tags.classifier_tags = APLRClassifierTags()
-                return tags
+        Args:
+            X: Numpy array for X to explain.
+            y: Numpy vector for y to explain.
+            name: User-defined explanation name.
 
-        _APLRClassifier = APLRClassifierImpl
+        Returns:
+            An explanation object, visualizing feature-value pairs
+            for each instance as horizontal bar charts.
+        """
 
-    return _APLRClassifier(**kwargs)
+        pred = self.predict(X)
+        pred_proba = self.predict_class_probabilities(X)
+        pred_max_prob = np.max(pred_proba, axis=1)
+        term_names = self.get_unique_term_affiliations()
+        explanations = self.calculate_local_feature_contribution(X)
+        classes = self.get_categories()
+
+        data_dicts = []
+        perf_list = []
+
+        if y is not None:
+            y = clean_dimensions(y, "y")
+            if y.ndim != 1:
+                msg = "y must be 1 dimensional"
+                raise ValueError(msg)
+            if not all(isinstance(val, str) for val in y):
+                y = [str(val) for val in y]
+        X_values = create_values(X, explanations, term_names, self.feature_names_in_)
+        perf_list = []
+        for i in range(len(pred)):
+            di = {}
+            di["is_classification"] = True
+            di["actual"] = np.nan if y is None else classes.index(y[i])
+            di["predicted"] = classes.index(pred[i])
+            di["actual_score"] = (
+                np.nan if y is None else pred_proba[i, classes.index(y[i])]
+            )
+            di["predicted_score"] = pred_max_prob[i]
+            perf_list.append(di)
+
+        for data, sample_scores, perf in zip(X_values, explanations, perf_list):
+            model = self.get_logit_model(classes[perf["predicted"]])
+            values = ["" if np.isnan(val) else val for val in data.tolist()]
+            data_dict = {
+                "type": "univariate",
+                "names": term_names,
+                "scores": list(sample_scores),
+                "values": values,
+                "extra": {
+                    "names": ["Intercept"],
+                    "scores": [model.get_intercept()],
+                    "values": [1],
+                },
+                "perf": perf,
+                "meta": {"label_names": classes},
+            }
+            data_dicts.append(data_dict)
+
+        selector = gen_local_selector(data_dicts, is_classification=True)
+
+        internal_obj = {
+            "overall": None,
+            "specific": data_dicts,
+            "mli": [
+                {
+                    "explanation_type": "ebm_local",
+                    "value": {
+                        "perf": perf_list,
+                    },
+                }
+            ],
+        }
+        internal_obj["mli"].append(
+            {
+                "explanation_type": "evaluation_dataset",
+                "value": {"dataset_x": X, "dataset_y": y},
+            }
+        )
+
+        term_types = [
+            "interaction" if len(base_predictors) > 1 else "univariate"
+            for base_predictors in self.get_base_predictors_in_each_unique_term_affiliation()
+        ]
+        return APLRExplanation(
+            "local",
+            internal_obj,
+            feature_names=term_names,
+            feature_types=term_types,
+            name=gen_name_from_class(self) if name is None else name,
+            selector=selector,
+        )
+
+    def __sklearn_tags__(self):
+        tags = APLRTags()
+        tags.estimator_type = "classifier"
+        tags.classifier_tags = APLRClassifierTags()
+        return tags
 
 
 class APLRExplanation(FeatureValueExplanation):
