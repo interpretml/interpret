@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.3] - 2025-10-12
+### Changed
+- improved fitting memory requirement estimate
+- simplified interface by removing the ComputeProvider abstraction by @DerWeh in PR #631
+- updated typehints by @DerWeh in PR #634
+- updated APLR wrappers by @mathias-von-ottenbreit in PR #638
+### Fixed
+- resolved issue #609, UFuncTypeError in ShapKernel.explain_local 
+
 ## [v0.7.2] - 2025-08-05
 ### Changed
 - improved memory requirements estimate

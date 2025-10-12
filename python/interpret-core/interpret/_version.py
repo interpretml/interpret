@@ -2,4 +2,4 @@
 # Distributed under the MIT software license
 
 # NOTE: Version is replaced by a regex script.
-__version__ = "0.7.2"
+__version__ = "0.7.3"
