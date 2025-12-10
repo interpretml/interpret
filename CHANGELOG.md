@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.4] - 2025-12-10
+### Fixed
+- resolved incompatibility with scikit-learn 1.8+ due to change in is_classifier and is_regressor
+  only accepting valid estimators
+
 ## [v0.7.3] - 2025-10-12
 ### Changed
 - improved fitting memory requirement estimate

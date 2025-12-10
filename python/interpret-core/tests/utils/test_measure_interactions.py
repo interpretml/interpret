@@ -59,7 +59,7 @@ def test_init_multiclass_model():
 
     classes, y = np.unique(y, return_inverse=True)
 
-    lr = LogisticRegression(solver="lbfgs", multi_class="auto")
+    lr = LogisticRegression(solver="lbfgs")
     lr.fit(X, y)
 
     ranked_pairs = measure_interactions(X, y, init_score=lr)
