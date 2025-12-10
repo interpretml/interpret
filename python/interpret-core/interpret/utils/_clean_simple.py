@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 from numpy import ma
-from sklearn.base import is_classifier, is_regressor
+from ._scikit import _is_classifier, _is_regressor
 
 from ._clean_x import preclean_X
 from ._link import link_func
@@ -276,7 +276,7 @@ def clean_X_and_init_score(
         )
         return X, n_samples, None
 
-    if is_classifier(init_score):
+    if _is_classifier(init_score):
         probs = clean_dimensions(init_score.predict_proba(X), "init_score")
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source
@@ -306,7 +306,7 @@ def clean_X_and_init_score(
         probs = probs.astype(np.float64, copy=False)
         init_score = link_func(probs, link, link_param)
         return X, n_samples, init_score
-    if is_regressor(init_score):
+    if _is_regressor(init_score):
         predictions = clean_dimensions(init_score.predict(X), "init_score")
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source

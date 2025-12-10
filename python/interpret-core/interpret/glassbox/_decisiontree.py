@@ -8,11 +8,12 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
+from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
 from sklearn.tree import _tree
 from sklearn.utils.validation import check_is_fitted
+from ..utils._scikit import _is_classifier
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -325,7 +326,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
             msg = "y cannot have 0 samples"
             raise ValueError(msg)
 
-        if is_classifier(self):
+        if _is_classifier(self):
             y = typify_classification(y)
         else:
             y = y.astype(np.float64, copy=False)
@@ -355,7 +356,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
         self.n_samples_ = n_samples
 
         self.n_features_in_ = len(self.feature_names_in_)
-        if is_classifier(self):
+        if _is_classifier(self):
             self.classes_ = model.classes_
 
         self.has_fitted_ = True
@@ -453,7 +454,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
                 raise ValueError(msg)
             n_samples = len(y)
 
-            if is_classifier(self):
+            if _is_classifier(self):
                 y = typify_classification(y)
             else:
                 y = y.astype(np.float64, copy=False)
@@ -480,7 +481,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
         ]
 
         classes = None
-        is_classification = is_classifier(self)
+        is_classification = _is_classifier(self)
         if is_classification:
             classes = self.classes_
             predictions = self.predict_proba(X)
@@ -545,7 +546,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
 
             counter["node"] += 1
             node_id = str(counter["node"])
-            value_str = "# Obs: " if is_classifier(self) else "E[Y]: "
+            value_str = "# Obs: " if _is_classifier(self) else "E[Y]: "
 
             if feature is not None and threshold is not None:
                 value_str += ", ".join([str(v) for v in value[0]])

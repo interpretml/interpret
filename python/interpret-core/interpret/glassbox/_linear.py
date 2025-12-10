@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin, is_classifier
+from sklearn.base import ClassifierMixin, RegressorMixin
+from ..utils._scikit import _is_classifier
 from sklearn.linear_model import LinearRegression as SKLinear
 from sklearn.linear_model import LogisticRegression as SKLogistic
 from sklearn.utils.validation import check_is_fitted
@@ -127,7 +128,7 @@ class BaseLinear(ExplainerMixin):
             msg = "y cannot have 0 samples"
             raise ValueError(msg)
 
-        if is_classifier(self):
+        if _is_classifier(self):
             y = typify_classification(y)
         else:
             y = y.astype(np.float64, copy=False)
@@ -142,7 +143,7 @@ class BaseLinear(ExplainerMixin):
         model.fit(X, y)
 
         self.n_features_in_ = len(self.feature_names_in_)
-        if is_classifier(self):
+        if _is_classifier(self):
             self.classes_ = model.classes_
 
         self.X_mins_ = np.min(X, axis=0)
@@ -216,7 +217,7 @@ class BaseLinear(ExplainerMixin):
                 raise ValueError(msg)
             n_samples = len(y)
 
-            if is_classifier(self):
+            if _is_classifier(self):
                 y = typify_classification(y)
             else:
                 y = y.astype(np.float64, copy=False)
@@ -237,7 +238,7 @@ class BaseLinear(ExplainerMixin):
         model = self._model()
 
         classes = None
-        is_classification = is_classifier(self)
+        is_classification = _is_classifier(self)
         intercept = model.intercept_
         coef = model.coef_
         if is_classification:
@@ -328,7 +329,7 @@ class BaseLinear(ExplainerMixin):
             name = gen_name_from_class(self)
 
         model = self._model()
-        if is_classifier(self):
+        if _is_classifier(self):
             intercept = model.intercept_[0]
             coef = model.coef_[0]
         else:

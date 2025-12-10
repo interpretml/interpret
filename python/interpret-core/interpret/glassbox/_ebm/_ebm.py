@@ -23,9 +23,8 @@ from sklearn.base import (
     BaseEstimator,
     ClassifierMixin,
     RegressorMixin,
-    is_classifier,
-    is_regressor,
 )
+from ...utils._scikit import _is_classifier, _is_regressor
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.validation import check_is_fitted
 
@@ -697,7 +696,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             else:
                 n_classes = native.determine_task(objective)
 
-        if is_classifier(self):
+        if _is_classifier(self):
             if n_classes == Native.Task_Unknown:
                 n_classes = Native.Task_GeneralClassification
             elif n_classes < Native.Task_GeneralClassification:
@@ -705,7 +704,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
-        if is_regressor(self):
+        if _is_regressor(self):
             if n_classes == Native.Task_Unknown:
                 n_classes = Native.Task_Regression
             elif n_classes != Native.Task_Regression:
@@ -1688,7 +1687,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 else:
                     n_classes = native.determine_task(objective)
 
-            if is_classifier(self):
+            if _is_classifier(self):
                 if n_classes == Native.Task_Unknown:
                     n_classes = Native.Task_GeneralClassification
                 elif n_classes < Native.Task_GeneralClassification:
@@ -1696,7 +1695,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                     _log.error(msg)
                     raise ValueError(msg)
 
-            if is_regressor(self):
+            if _is_regressor(self):
                 if n_classes == Native.Task_Unknown:
                     n_classes = Native.Task_Regression
                 elif n_classes != Native.Task_Regression:

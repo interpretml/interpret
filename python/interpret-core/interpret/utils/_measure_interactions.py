@@ -14,7 +14,7 @@ from itertools import combinations, count
 
 from .. import develop
 import numpy as np
-from sklearn.base import is_classifier, is_regressor
+from ._scikit import _is_classifier, _is_regressor
 from sklearn.utils.multiclass import type_of_target
 
 from ._clean_simple import (
@@ -107,7 +107,7 @@ def measure_interactions(
     classes = None
     link = None
     link_param = None
-    if is_classifier(init_score):
+    if _is_classifier(init_score):
         # all scikit-learn classification models need to expose self.classes_
         classes = init_score.classes_
         y = typify_classification(y)
@@ -127,7 +127,7 @@ def measure_interactions(
         else:
             msg = f"init_score is a classifier, but the objective is: {objective}"
             raise ValueError(msg)
-    elif is_regressor(init_score):
+    elif _is_regressor(init_score):
         if n_classes == Native.Task_Unknown:
             n_classes = Native.Task_Regression
             _, _, link, link_param = native.determine_link(

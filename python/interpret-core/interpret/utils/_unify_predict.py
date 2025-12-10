@@ -4,7 +4,7 @@
 import logging
 
 import numpy as np
-from sklearn.base import is_classifier, is_regressor
+from ._scikit import _is_classifier, _is_regressor
 
 from ._clean_simple import clean_dimensions
 from ._native import Native
@@ -26,7 +26,7 @@ def determine_classes(model, data, n_samples):
         raise ValueError(msg)
 
     classes = None
-    if is_classifier(model):
+    if _is_classifier(model):
         classes = model.classes_
         model = model.predict_proba
         preds = clean_dimensions(model(data), "model")
@@ -76,7 +76,7 @@ def determine_classes(model, data, n_samples):
             msg = "class number mismatch"
             _log.error(msg)
             raise ValueError(msg)
-    elif is_regressor(model):
+    elif _is_regressor(model):
         n_classes = Native.Task_Regression
         model = model.predict
         preds = clean_dimensions(model(data), "model")
