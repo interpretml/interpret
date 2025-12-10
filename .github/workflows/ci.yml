@@ -393,17 +393,6 @@ jobs:
             options: "-debug_32"
             existing: ""
             scheduled: "-valgrind"
-          - name: mac_release_64
-            image: macos-13  # macos-13 is an intel based mac
-            options: "-release_64"
-            existing: "-existing_release_64"
-            scheduled: ""
-          - name: mac_debug_64
-            image: macos-13  # macos-13 is an intel based mac
-            # don't use the existing debug library since we want to rebuild with asan
-            options: "-debug_64 -asan"
-            existing: ""
-            scheduled: ""
           - name: mac_release_arm
             image: macos-latest
             options: "-release_arm"
