@@ -631,6 +631,7 @@ We also build on top of many great packages. Please check them out!
 - [The hidden risk of round numbers and sharp thresholds in clinical practice](https://www.nature.com/articles/s41746-025-02079-y)
 - [TabArena: A Living Benchmark for Machine Learning on Tabular Data](https://arxiv.org/pdf/2506.16791)
 - [Explainable Boosting Machine for Predicting Claim Severity and Frequency in Car Insurance](https://arxiv.org/pdf/2503.21321)
+- [Toward Faithful Retrieval-Augmented Generation with Sparse Autoencoders](https://arxiv.org/html/2512.08892v1)
 - [Modelling Container Transhipment Throughput and Analysing Dynamics During Significant External Events: A Case Study of the Port of Busan and the China-to-U.S. Trade Route](https://eprints.soton.ac.uk/505005/1/_PDF_A_Modelling_Container_Transhipment_Throughput_and_Analysing_Dynamics_During_Significant_External_Events_-_A_Case_Study_of_the_Port_of_Busan_and_the_China-to-U.S._Trade_Route.pdf)
 - [The Most Important Features in Generalized Additive Models Might Be Groups of Features](https://arxiv.org/pdf/2506.19937)
 - [GAMFORMER: In-context Learning for Generalized Additive Models](https://arxiv.org/pdf/2410.04560v1)

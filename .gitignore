@@ -21,6 +21,9 @@ env/
 .pytest_cache/
 __pycache__
 
+# Autogluon
+AutogluonModels/
+
 # General
 *.bak
 *.tmp
@@ -29,3 +32,4 @@ __pycache__
 dist/
 *.env
 *.whl
+
