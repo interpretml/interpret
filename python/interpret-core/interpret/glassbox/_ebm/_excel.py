@@ -748,7 +748,7 @@ class VariablesDataWorksheet(Worksheet):
             # Continuous
             x_compute = np.concatenate(
                 [
-                    [np.NaN, -1e12],
+                    [np.nan, -1e12],
                     self.ebm_model.bins_[feature_index][0],
                 ]
             )
@@ -907,7 +907,7 @@ class VariablesDataWorksheet(Worksheet):
             if self.ebm_model.feature_types_in_[term_interaction] == "continuous":
                 x_compute = np.concatenate(
                     [
-                        [np.NaN, -1e12],
+                        [np.nan, -1e12],
                         self.ebm_model.bins_[term_interaction][-1],
                     ]
                 )
