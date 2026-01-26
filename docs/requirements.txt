@@ -85,6 +85,6 @@ tornado==6.5.1
 traitlets==5.9.0
 typing_extensions==4.5.0
 uc-micro-py==1.0.1
-urllib3==2.6.0
+urllib3==2.6.3
 wcwidth==0.2.6
 zipp==3.19.1
