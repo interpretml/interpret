@@ -272,12 +272,13 @@ def test_unseen_multiclass_category():
     X_test = data["test"]["X"]
 
     # Add categorical feature
-    X_train["cat_feature"] = [
-        np.random.choice(["a", "b", "c"]) for x in range(X_train.shape[0])
-    ]
-    X_test["cat_feature"] = [
-        "d" for x in range(X_test.shape[0])
-    ]  # Unseen category in test set
+    X_train["cat_feature"] = pd.Series(
+        [np.random.choice(["a", "b", "c"]) for x in range(X_train.shape[0])],
+        dtype=object,
+    )
+    X_test["cat_feature"] = pd.Series(
+        ["d" for x in range(X_test.shape[0])], dtype=object
+    )  # Unseen category in test set
 
     # X_train['cat_feature'][1] = np.nan
     # X_test['cat_feature'][1] = np.nan
