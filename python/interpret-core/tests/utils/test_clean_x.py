@@ -1231,6 +1231,10 @@ def test_unify_columns_pandas_missings_BooleanDtype():
     check_pandas_missings(pd.BooleanDtype(), False, True)
 
 
+def test_unify_columns_pandas_missings_StringDtype():
+    check_pandas_missings(pd.StringDtype(), "abc", "def")
+
+
 def test_unify_columns_pandas_missings_str():
     check_pandas_missings(np.object_, "abc", "def")
 
