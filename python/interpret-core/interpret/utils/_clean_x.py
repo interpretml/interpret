@@ -1036,6 +1036,24 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             X_col.codes,
             None,
         )
+    elif isinstance(dt, pd.StringDtype):
+        # this handles pd.StringDtype both the numpy and arrow versions
+        if X_col.hasnans:
+            # if hasnans is true then there is definetly a real missing value in there and not just a mask
+            return _process_ndarray(
+                X_col.dropna().values.astype(np.str_, copy=False),
+                X_col.notna().values,
+                is_initial,
+                feature_type,
+                min_unique_continuous,
+            )
+        return _process_ndarray(
+            X_col.values.astype(np.str_, copy=False),
+            None,
+            is_initial,
+            feature_type,
+            min_unique_continuous,
+        )
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         if X_col.hasnans:
@@ -1058,8 +1076,6 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
         )
 
     # TODO: implement pd.SparseDtype
-    # TODO: implement pd.StringDtype both the numpy and arrow versions
-    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
     msg = f"{type(dt)} not supported"
     _log.error(msg)
     raise TypeError(msg)
