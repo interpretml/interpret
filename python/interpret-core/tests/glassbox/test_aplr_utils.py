@@ -31,7 +31,7 @@ def test_convert_to_numpy_matrix_failures():
     X_np_non_numeric = np.array([["a", "b"], ["c", "d"]])
     try:
         convert_to_numpy_matrix(X_np_non_numeric)
-        assert False, "Expected TypeError for non-numeric numpy array"
+        raise AssertionError("Expected TypeError for non-numeric numpy array")
     except TypeError as e:
         assert "must contain only numeric values" in str(e)
 
@@ -39,7 +39,7 @@ def test_convert_to_numpy_matrix_failures():
     X_pd_non_numeric = pd.DataFrame([["a", 2], ["c", 4]])
     try:
         convert_to_numpy_matrix(X_pd_non_numeric)
-        assert False, "Expected TypeError for non-numeric pandas DataFrame"
+        raise AssertionError("Expected TypeError for non-numeric pandas DataFrame")
     except TypeError as e:
         assert "all columns must be numeric" in str(e)
 
@@ -47,14 +47,14 @@ def test_convert_to_numpy_matrix_failures():
     X_list_non_numeric = [[1, "b"], [3, 4]]
     try:
         convert_to_numpy_matrix(X_list_non_numeric)
-        assert False, "Expected TypeError for non-numeric list of lists"
+        raise AssertionError("Expected TypeError for non-numeric list of lists")
     except TypeError as e:
         assert "must be a list of lists" in str(e)
 
     # Test with unsupported type
     try:
         convert_to_numpy_matrix("unsupported_type")
-        assert False, "Expected TypeError for unsupported type"
+        raise AssertionError("Expected TypeError for unsupported type")
     except TypeError as e:
         assert "must be a numpy matrix" in str(e)
 

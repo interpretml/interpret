@@ -1022,7 +1022,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             )
 
         # called under: predict
-        if feature_type != "ordinal" and feature_type != "nominal":
+        if feature_type not in {"ordinal", "nominal"}:
             # TODO: we could convert the categories to strings and then process them
 
             msg = "continuous type invalid for pandas.CategoricalDtype"

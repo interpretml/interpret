@@ -79,7 +79,7 @@ def all_explanations():
     return explanations
 
 
-num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", 1))
+num_jobs = int(os.getenv("PYTEST_XDIST_WORKER_COUNT", "1"))
 
 
 @pytest.mark.selenium

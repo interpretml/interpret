@@ -65,7 +65,7 @@ def run_trials(
             # if the previous trial function created cyclic garbage, clear it.
             gc.collect()
             _, duration, timed_out = timed_run(
-                lambda: trial_run_fn(trial), timeout_seconds=timeout
+                lambda current_trial=trial: trial_run_fn(current_trial), timeout_seconds=timeout
             )
             if timed_out:
                 msg = f"Timeout failure ({duration})"
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         experiment_id = os.getenv("EXPERIMENT_ID")
         runner_id = os.getenv("RUNNER_ID")
         db_url = os.getenv("DB_URL")
-        timeout = float(os.getenv("TIMEOUT", 0.0))
+        timeout = float(os.getenv("TIMEOUT", "0.0"))
         is_more = run_trials(
             experiment_id,
             runner_id,

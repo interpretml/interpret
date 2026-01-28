@@ -9,7 +9,7 @@ def test_that_explainer_throws_exceptions_for_incomplete():
     class IncompleteExplainer(ExplainerMixin):
         pass
 
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         _ = IncompleteExplainer()
 
 
@@ -30,7 +30,7 @@ def test_that_explanation_throws_exceptions_for_incomplete():
     class IncompleteExplanation(ExplanationMixin):
         pass
 
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         _ = IncompleteExplanation()
 
 

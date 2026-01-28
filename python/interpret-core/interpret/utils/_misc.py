@@ -30,7 +30,7 @@ def clean_index(index, n_items, names, param_name, attribute_name):
             raise ValueError(msg)
         try:
             index = names.index(index)
-        except:
+        except ValueError:
             msg = f'{attribute_name} does not contain "{index}".'
             _log.error(msg)
             raise ValueError(msg)
@@ -75,7 +75,7 @@ def clean_indexes(indexes, n_items, names, param_name, attribute_name):
                 raise ValueError(msg)
             try:
                 v = names[v]
-            except:
+            except (KeyError, IndexError, TypeError):
                 msg = f'{attribute_name} does not contain "{v}".'
                 _log.error(msg)
                 raise ValueError(msg)

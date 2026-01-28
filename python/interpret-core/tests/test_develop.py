@@ -15,7 +15,7 @@ def test_debug_mode():
     root.removeHandler(handler)
 
     with pytest.raises(
-        Exception, match="Cannot call debug_mode more than once in the same session."
+        Exception, match=r"Cannot call debug_mode more than once in the same session\."
     ):
         debug_mode()
 
@@ -29,7 +29,7 @@ def test_debug_info():
 def test_print_debug_info():
     # Light smoke test.
     print_debug_info()
-    assert 1 == 1
+    # No assertion needed - just testing that it runs without error
 
 
 def test_register_log():

@@ -56,13 +56,15 @@ def test_conversion_cut_intervals():
 @pytest.mark.skip(reason="make_bag test needs to be updated")
 def test_make_bag():
     # TODO: write this test
-    make_bag(y, test_size=0.25, rng=1, is_stratified=False)
+    # make_bag(y, test_size=0.25, rng=1, is_stratified=False)
+    pass
 
 
 @pytest.mark.skip(reason="make_bag test needs to be updated")
 def test_make_bag_stratified():
     # TODO: write this test
-    make_bag(y, test_size=0.25, rng=1, is_stratified=True)
+    # make_bag(y, test_size=0.25, rng=1, is_stratified=True)
+    pass
 
 
 def test_convert_categorical_to_continuous_none():
