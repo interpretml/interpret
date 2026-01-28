@@ -43,7 +43,7 @@ def _benchmark(trial):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.3)
 
         # Build preprocessor
-        is_cat = meta["categorical_mask"]
+        is_cat = trial.task.meta["categorical_mask"]
         cat_cols = [idx for idx in range(X.shape[1]) if is_cat[idx]]
         num_cols = [idx for idx in range(X.shape[1]) if not is_cat[idx]]
         cat_ohe_step = (

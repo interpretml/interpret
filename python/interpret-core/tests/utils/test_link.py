@@ -112,7 +112,7 @@ def test_link_func_logit_33():
         link_func(predictions, "logit")
 
 
-def test_link_func_logit_31():
+def test_link_func_logit_31_invalid():
     predictions = np.array([[[0.25, 0.5, 0.25]]])
     with pytest.raises(ValueError):
         link_func(predictions, "logit")
@@ -154,7 +154,7 @@ def test_link_func_logit_22():
     np.testing.assert_almost_equal(result, expected)
 
 
-def test_link_func_logit_22():
+def test_link_func_logit_22_invalid():
     predictions = np.array([[0.25, 0.5, 0.25]])
     with pytest.raises(ValueError):
         link_func(predictions, "logit")

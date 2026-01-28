@@ -278,7 +278,7 @@ def remove_extra_bins(term_features, bins):
             if len(types) != 1:
                 raise Exception("Inconsistent bin types.")
 
-            if next(iter(types)) == dict:
+            if next(iter(types)) is dict:
                 key = frozenset(bin_levels[i].items())
                 i -= 1
                 while 0 <= i:

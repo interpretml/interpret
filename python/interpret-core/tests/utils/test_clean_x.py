@@ -16,7 +16,7 @@ from interpret.utils._clean_x import preclean_X
 def compare_bins(bins, expected_bins):
     assert len(bins) == len(expected_bins)
     for a, b in zip(bins, expected_bins):
-        assert type(a) == type(b)
+        assert type(a) is type(b)
         if a is None:
             pass
         elif isinstance(a, dict):
@@ -289,7 +289,7 @@ def check_numpy_throws(dtype_src, val1, val2):
     pre = EBMPreprocessor()
     try:
         pre.fit(X)
-    except:
+    except Exception:
         return
     raise AssertionError()
 
