@@ -45,7 +45,7 @@ def unify_data(
         feature_names_in,
         feature_types,
         min_unique_continuous,
-        True,
+        False,
         False,
     )
     for feature_idx in range(len(feature_names_in)):

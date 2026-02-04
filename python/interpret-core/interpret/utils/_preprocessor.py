@@ -275,7 +275,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             feature_names_in,
             self.feature_types,
             self.min_unique_continuous,
-            True,
+            False,
             False,
         )
         for feature_idx in range(n_features):
@@ -528,7 +528,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 self.feature_names_in_,
                 self.feature_types_in_,
                 None,
-                False,
+                True,
                 False,
             )
             for feature_idx, bins in enumerate(self.bins_):

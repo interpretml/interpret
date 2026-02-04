@@ -50,7 +50,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     native = Native.get_native_singleton()
 
     get_col = unify_columns(
-        X, n_samples, feature_names_in, feature_types_in, None, False, True
+        X, n_samples, feature_names_in, feature_types_in, None, True, True
     )
     # rely on the guarantee that iterating over dict is by insertion order
     for column_feature_idx, all_requirements in waiting.items():

@@ -774,37 +774,34 @@ def _process_continuous(X_col, nonmissings):
         return floats_tmp, bad_tmp
 
 
-def _process_ndarray(X_col, nonmissings, is_initial, processing, min_unique_continuous):
+def _process_ndarray(X_col, nonmissings, is_predict, processing, min_unique_continuous):
     if processing == "continuous":
         # called under: fit or predict
         return processing, None, None, *_process_continuous(X_col, nonmissings)
+    if is_predict:
+        # called under: predict. processing == "nominal" or processing == "ordinal"
+        return None, *_encode_categorical_existing(X_col, nonmissings), None
     if processing == "nominal":
-        if is_initial:
-            # called under: fit
-            return (
-                processing,
-                *_process_column_initial(X_col, nonmissings, None, None),
-                None,
-            )
-        # called under: predict
-        return None, *_encode_categorical_existing(X_col, nonmissings), None
+        # called under: fit
+        return (
+            processing,
+            *_process_column_initial(X_col, nonmissings, None, None),
+            None,
+        )
     if processing == "ordinal":
-        if is_initial:
-            warn(
-                "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
-            )
+        warn(
+            "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
+        )
 
-            # called under: fit
-            # if the caller passes "ordinal" during fit, the only order that makes sense is either
-            # alphabetical or based on float values. Frequency doesn't make sense
-            # if the caller would prefer an error, they can check feature_types themselves
-            return (
-                processing,
-                *_process_column_initial(X_col, nonmissings, None, None),
-                None,
-            )
-        # called under: predict
-        return None, *_encode_categorical_existing(X_col, nonmissings), None
+        # called under: fit
+        # if the caller passes "ordinal" during fit, the only order that makes sense is either
+        # alphabetical or based on float values. Frequency doesn't make sense
+        # if the caller would prefer an error, they can check feature_types themselves
+        return (
+            processing,
+            *_process_column_initial(X_col, nonmissings, None, None),
+            None,
+        )
     if processing is None or processing == "auto":
         # called under: fit
         nonmissings, uniques, indexes = _process_column_initial(
@@ -923,7 +920,7 @@ def _reshape_1D_if_possible(col):
     return col
 
 
-def _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous):
+def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous):
     if isinstance(X_col, ma.masked_array):
         mask = X_col.mask
         if mask is ma.nomask:
@@ -949,7 +946,7 @@ def _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous
                         np.place(nonmissings, nonmissings, nonmissings2)
 
                 return _process_ndarray(
-                    X_col, nonmissings, is_initial, feature_type, min_unique_continuous
+                    X_col, nonmissings, is_predict, feature_type, min_unique_continuous
                 )
 
     if X_col.dtype.type is np.object_:
@@ -967,23 +964,23 @@ def _process_numpy_column(X_col, is_initial, feature_type, min_unique_continuous
             return _process_ndarray(
                 X_col[nonmissings],
                 nonmissings,
-                is_initial,
+                is_predict,
                 feature_type,
                 min_unique_continuous,
             )
 
     return _process_ndarray(
-        X_col, None, is_initial, feature_type, min_unique_continuous
+        X_col, None, is_predict, feature_type, min_unique_continuous
     )
 
 
-def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuous):
+def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuous):
     dt = X_col.dtype
     tt = dt.type
     if isinstance(dt, np.dtype):
         if issubclass(tt, _float_int_bool_types):
             return _process_ndarray(
-                X_col.values, None, is_initial, feature_type, min_unique_continuous
+                X_col.values, None, is_predict, feature_type, min_unique_continuous
             )
         if tt is np.object_:
             if X_col.hasnans:
@@ -991,14 +988,14 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
                 return _process_ndarray(
                     X_col.dropna().values,
                     X_col.notna().values,
-                    is_initial,
+                    is_predict,
                     feature_type,
                     min_unique_continuous,
                 )
             return _process_ndarray(
                 X_col.values,
                 None,
-                is_initial,
+                is_predict,
                 feature_type,
                 min_unique_continuous,
             )
@@ -1006,34 +1003,34 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.values  # pandas 1.0 introduced .cat but .values is older
 
-        if is_initial:
-            # called under: fit
-            is_ordered = X_col.ordered
+        if is_predict:
+            # called under: predict
+            if feature_type != "ordinal" and feature_type != "nominal":
+                # TODO: we could convert the categories to strings and then process them
+
+                msg = "continuous type invalid for pandas.CategoricalDtype"
+                _log.error(msg)
+                raise ValueError(msg)
+
             return (
-                "ordinal" if is_ordered else "nominal",
+                None,
                 False,
-                *_encode_pandas_categorical_initial(
-                    X_col.codes,
-                    X_col.categories.values.astype(np.str_, copy=False),
-                    is_ordered,
-                    feature_type,
-                ),
+                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.codes,
                 None,
             )
 
-        # called under: predict
-        if feature_type != "ordinal" and feature_type != "nominal":
-            # TODO: we could convert the categories to strings and then process them
-
-            msg = "continuous type invalid for pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-
+        # called under: fit
+        is_ordered = X_col.ordered
         return (
-            None,
+            "ordinal" if is_ordered else "nominal",
             False,
-            X_col.categories.values.astype(np.str_, copy=False),
-            X_col.codes,
+            *_encode_pandas_categorical_initial(
+                X_col.codes,
+                X_col.categories.values.astype(np.str_, copy=False),
+                is_ordered,
+                feature_type,
+            ),
             None,
         )
     elif issubclass(tt, _intbool_types):
@@ -1044,7 +1041,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             return _process_ndarray(
                 X_col.dropna().values.astype(tt, copy=False),
                 X_col.notna().values,
-                is_initial,
+                is_predict,
                 feature_type,
                 min_unique_continuous,
             )
@@ -1052,7 +1049,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
         return _process_ndarray(
             X_col.values.astype(tt, copy=False),
             None,
-            is_initial,
+            is_predict,
             feature_type,
             min_unique_continuous,
         )
@@ -1065,7 +1062,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
     raise TypeError(msg)
 
 
-def _process_sparse_column(X_col, is_initial, feature_type, min_unique_continuous):
+def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuous):
     X_col = X_col.toarray().ravel()
 
     if X_col.dtype.type is np.object_:
@@ -1082,33 +1079,33 @@ def _process_sparse_column(X_col, is_initial, feature_type, min_unique_continuou
 
         if nonmissings.all():
             return _process_ndarray(
-                X_col, None, is_initial, feature_type, min_unique_continuous
+                X_col, None, is_predict, feature_type, min_unique_continuous
             )
 
         return _process_ndarray(
             X_col[nonmissings],
             nonmissings,
-            is_initial,
+            is_predict,
             feature_type,
             min_unique_continuous,
         )
 
     return _process_ndarray(
-        X_col, None, is_initial, feature_type, min_unique_continuous
+        X_col, None, is_predict, feature_type, min_unique_continuous
     )
 
 
-def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous):
+def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous):
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif _pandas_installed and isinstance(X_col, pd.Series):
         return _process_pandas_column(
-            X_col, is_initial, feature_type, min_unique_continuous
+            X_col, is_predict, feature_type, min_unique_continuous
         )
     elif _pandas_installed and isinstance(X_col, pd.DataFrame):
         if X_col.shape[1] == 1:
             return _process_pandas_column(
-                X_col.iloc[:, 0], is_initial, feature_type, min_unique_continuous
+                X_col.iloc[:, 0], is_predict, feature_type, min_unique_continuous
             )
         if X_col.shape[0] == 1:
             X_col = X_col.astype(np.object_, copy=False).values.ravel()
@@ -1123,7 +1120,7 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
     ):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
             return _process_sparse_column(
-                X_col, is_initial, feature_type, min_unique_continuous
+                X_col, is_predict, feature_type, min_unique_continuous
             )
         if X_col.shape[1] == 0 or X_col.shape[0] == 0:
             X_col = np.empty(0, np.object_)
@@ -1155,7 +1152,7 @@ def _process_dict_column(X_col, is_initial, feature_type, min_unique_continuous)
             X_col = X_col_tmp
 
     return _process_numpy_column(
-        _reshape_1D_if_possible(X_col), is_initial, feature_type, min_unique_continuous
+        _reshape_1D_if_possible(X_col), is_predict, feature_type, min_unique_continuous
     )
 
 
@@ -1165,7 +1162,7 @@ def unify_columns(
     feature_names_in,
     feature_types,
     min_unique_continuous,
-    is_initial,
+    is_predict,
     go_fast,
 ):
     # preclean_X is always called on X prior to calling this function
@@ -1221,7 +1218,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_numpy_column(
-                        X[:, feature_idx], is_initial, None, min_unique_continuous
+                        X[:, feature_idx], is_predict, None, min_unique_continuous
                     )
 
                 return internal
@@ -1230,7 +1227,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_numpy_column(
                         X[:, feature_idx],
-                        is_initial,
+                        is_predict,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1262,7 +1259,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_numpy_column(
                     X[:, col_map[feature_idx]],
-                    is_initial,
+                    is_predict,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1292,7 +1289,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
-                        is_initial,
+                        is_predict,
                         None,
                         min_unique_continuous,
                     )
@@ -1312,7 +1309,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_pandas_column(
-                        X[:, feature_idx], is_initial, None, min_unique_continuous
+                        X[:, feature_idx], is_predict, None, min_unique_continuous
                     )
 
                 return internal
@@ -1334,7 +1331,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
-                        is_initial,
+                        is_predict,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1350,7 +1347,7 @@ def unify_columns(
                     def internal(feature_idx):
                         return _process_pandas_column(
                             X[:, feature_idx],
-                            is_initial,
+                            is_predict,
                             feature_types[feature_idx],
                             min_unique_continuous,
                         )
@@ -1379,7 +1376,7 @@ def unify_columns(
                     def internal(feature_idx):
                         return _process_pandas_column(
                             X[:, col_map[feature_idx]],
-                            is_initial,
+                            is_predict,
                             feature_types[feature_idx],
                             min_unique_continuous,
                         )
@@ -1400,7 +1397,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_sparse_column(
-                        X[:, (feature_idx,)], is_initial, None, min_unique_continuous
+                        X[:, (feature_idx,)], is_predict, None, min_unique_continuous
                     )
 
                 return internal
@@ -1409,7 +1406,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_sparse_column(
                         X[:, (feature_idx,)],
-                        is_initial,
+                        is_predict,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1439,7 +1436,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_sparse_column(
                     X[:, (col_map[feature_idx],)],
-                    is_initial,
+                    is_predict,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1453,7 +1450,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_sparse_column(
-                        X.getcol(feature_idx), is_initial, None, min_unique_continuous
+                        X.getcol(feature_idx), is_predict, None, min_unique_continuous
                     )
 
                 return internal
@@ -1462,7 +1459,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_sparse_column(
                         X.getcol(feature_idx),
-                        is_initial,
+                        is_predict,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1492,7 +1489,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_sparse_column(
                     X.getcol(col_map[feature_idx]),
-                    is_initial,
+                    is_predict,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1509,7 +1506,7 @@ def unify_columns(
             def internal(feature_idx):
                 feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                     X[feature_names_in[feature_idx]],
-                    is_initial,
+                    is_predict,
                     None,
                     min_unique_continuous,
                 )
@@ -1534,7 +1531,7 @@ def unify_columns(
             def internal(feature_idx):
                 feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                     X[feature_names_in[feature_idx]],
-                    is_initial,
+                    is_predict,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
