@@ -1060,25 +1060,6 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             X_col.codes,
             None,
         )
-    elif isinstance(dt, pd.StringDtype):
-        # this handles pd.StringDtype both the numpy and arrow versions
-        # StringDtype is similar to object dtype but with proper NA handling
-        if X_col.hasnans:
-            # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            return _process_ndarray(
-                X_col.dropna().values.astype(np.str_, copy=False),
-                X_col.notna().values,
-                is_initial,
-                feature_type,
-                min_unique_continuous,
-            )
-        return _process_ndarray(
-            X_col.values.astype(np.str_, copy=False),
-            None,
-            is_initial,
-            feature_type,
-            min_unique_continuous,
-        )
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         if X_col.hasnans:
@@ -1101,51 +1082,22 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
         )
     elif isinstance(dt, pd.StringDtype):
         # this handles pd.StringDtype both the numpy and arrow versions
-        # Pass StringArray to _process_arrayish to avoid inefficient conversion
+        # StringDtype is similar to object dtype but with proper NA handling
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            if feature_type == "continuous":
-                # called under: fit or predict
-                # Convert to string for continuous processing
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().values.astype(np.str_, copy=False),
-                        X_col.notna().values,
-                    ),
-                )
-            if is_predict:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return (
-                    None,
-                    *_encode_categorical_existing(
-                        X_col.dropna().values, X_col.notna().values
-                    ),
-                    None,
-                )
-            return _process_arrayish(
-                X_col.dropna().values,
+            return _process_ndarray(
+                X_col.dropna().values.astype(np.str_, copy=False),
                 X_col.notna().values,
+                is_initial,
                 feature_type,
                 min_unique_continuous,
             )
-
-        if feature_type == "continuous":
-            # called under: fit or predict
-            # Convert to string for continuous processing
-            return (
-                feature_type,
-                None,
-                None,
-                *_process_continuous(X_col.values.astype(np.str_, copy=False), None),
-            )
-        if is_predict:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col.values, None), None
-        return _process_arrayish(
-            X_col.values, None, feature_type, min_unique_continuous
+        return _process_ndarray(
+            X_col.values.astype(np.str_, copy=False),
+            None,
+            is_initial,
+            feature_type,
+            min_unique_continuous,
         )
 
     # TODO: implement pd.SparseDtype
