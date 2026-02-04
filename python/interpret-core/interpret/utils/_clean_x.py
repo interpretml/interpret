@@ -1038,6 +1038,7 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
         )
     elif isinstance(dt, pd.StringDtype):
         # this handles pd.StringDtype both the numpy and arrow versions
+        # StringDtype is similar to object dtype but with proper NA handling
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             return _process_ndarray(
