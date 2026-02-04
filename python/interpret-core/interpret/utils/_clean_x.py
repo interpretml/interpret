@@ -622,86 +622,6 @@ def _encode_categorical_existing(X_col, nonmissings):
     return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
 
-def _encode_pandas_categorical_initial(X_col, pd_categories, is_ordered, processing):
-    # called under: fit
-
-    if processing == "nominal":
-        if is_ordered:
-            msg = "nominal type invalid for ordered pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif processing == "ordinal":
-        if not is_ordered:
-            msg = "ordinal type invalid for unordered pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif processing is None or processing == "auto":
-        pass
-    elif processing in ("nominal_prevalence", "nominal_alphabetical"):
-        # TODO: we could instead handle this by re-ordering the pandas pd_categories.
-        # Someone might want to construct it quickly but then override the pd_categories
-        msg = f"{processing} type invalid for pandas.CategoricalDtype"
-        _log.error(msg)
-        raise ValueError(msg)
-    elif processing == "continuous":
-        # TODO: we could convert the categories to strings and then process them
-
-        msg = "continuous type invalid for pandas.CategoricalDtype"
-        _log.error(msg)
-        raise ValueError(msg)
-    else:
-        if isinstance(processing, (str, bytes)):
-            # isinstance(, str) also works for np.str_
-
-            # don't allow strings to get to the for loop below
-            msg = f"{processing} type invalid for pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        n_items = 0
-        n_ordinals = 0
-        n_continuous = 0
-        try:
-            for item in processing:
-                n_items += 1
-                if isinstance(item, str):
-                    # isinstance(, str) also works for np.str_
-                    n_ordinals += 1
-                elif isinstance(item, _float_int_types):
-                    n_continuous += 1
-        except TypeError:
-            msg = f"{processing} type invalid for pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if n_continuous == n_items:
-            # TODO: we could convert the categories to strings and then process them
-
-            msg = "continuous type invalid for pandas.CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-        if n_ordinals == n_items:
-            # TODO: currently we are using the CategoricalDtype order as the order,
-            # but if the user specified the categories like this then we should
-            # adopt that as our order.
-
-            if not is_ordered:
-                msg = "ordinal type invalid for unordered pandas.CategoricalDtype"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            # TODO: instead of throwing, we could match the ordinal values with the pandas pd_categories and
-            # report the rest as bad items.  For now though, just assume it's bad to specify this
-            msg = "cannot specify ordinal categories for a pandas.CategoricalDtype which already has categories"
-            _log.error(msg)
-            raise ValueError(msg)
-        msg = f"{processing} type invalid for pandas.CategoricalDtype"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    return pd_categories, X_col
-
-
 def _process_continuous(X_col, nonmissings):
     # called under: fit or predict
 
@@ -780,14 +700,31 @@ def _process_continuous(X_col, nonmissings):
         return floats_tmp, bad_tmp
 
 
-def _process_ndarray_fit(X_col, nonmissings, processing, min_unique_continuous):
+def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
     if processing == "nominal":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                processing,
+                False,
+                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.codes,
+                None,
+            )
         return (
             processing,
             *_process_column_initial(X_col, nonmissings, None, None),
             None,
         )
     if processing == "ordinal":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                processing,
+                False,
+                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.codes,
+                None,
+            )
+
         warn(
             "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
         )
@@ -801,6 +738,15 @@ def _process_ndarray_fit(X_col, nonmissings, processing, min_unique_continuous):
             None,
         )
     if processing is None or processing == "auto":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                "ordinal" if X_col.ordered else "nominal",
+                False,
+                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.codes,
+                None,
+            )
+
         nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, None, min_unique_continuous
         )
@@ -812,14 +758,34 @@ def _process_ndarray_fit(X_col, nonmissings, processing, min_unique_continuous):
             None,
         )
     if processing in ("nominal_prevalence", "nominal_alphabetical"):
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add re-ordering here to support this
+            msg = f"{processing} currently unsupported"
+            _log.error(msg)
+            raise ValueError(msg)
+
         return (
             "nominal",
             *_process_column_initial(X_col, nonmissings, processing, None),
             None,
         )
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                "continuous",
+                None,
+                None,
+                *_process_continuous(X_col.dropna(), X_col.notna()),
+            )
+
         return "continuous", None, None, *_process_continuous(X_col, nonmissings)
     if isinstance(processing, _all_int_types):
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add support for specifying the threshold between continuous and nominal
+            msg = "integer feature_types currently unsupported"
+            _log.error(msg)
+            raise ValueError(msg)
+
         nonmissings, uniques, indexes = _process_column_initial(
             X_col, nonmissings, None, processing
         )
@@ -830,7 +796,7 @@ def _process_ndarray_fit(X_col, nonmissings, processing, min_unique_continuous):
             indexes,
             None,
         )
-    if isinstance(processing, str):
+    if isinstance(processing, (str, bytes)):
         # don't allow strings to get to the np.array conversion below
         # isinstance(, str) also works for np.str_
         msg = f"{processing} type invalid"
@@ -854,10 +820,24 @@ def _process_ndarray_fit(X_col, nonmissings, processing, min_unique_continuous):
         raise TypeError(msg)
 
     if n_continuous == n_items:
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                "continuous",
+                None,
+                None,
+                *_process_continuous(X_col.dropna(), X_col.notna()),
+            )
+
         # if n_items == 0 then it must be continuous since we
         # can have zero cut points, but not zero ordinal categories
         return "continuous", None, None, *_process_continuous(X_col, nonmissings)
     if n_ordinals == n_items:
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add support for specifying the order of ordinal features
+            msg = "reordering ordinals unsupported for CategoricalDtype"
+            _log.error(msg)
+            raise ValueError(msg)
+
         nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
 
         try:
@@ -947,7 +927,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
                 if is_predict:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                     return None, *_encode_categorical_existing(X_col, nonmissings), None
-                return _process_ndarray_fit(
+                return _process_arrayish(
                     X_col, nonmissings, feature_type, min_unique_continuous
                 )
 
@@ -978,7 +958,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
                     *_encode_categorical_existing(X_col[nonmissings], nonmissings),
                     None,
                 )
-            return _process_ndarray_fit(
+            return _process_arrayish(
                 X_col[nonmissings],
                 nonmissings,
                 feature_type,
@@ -991,7 +971,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
     if is_predict:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
-    return _process_ndarray_fit(X_col, None, feature_type, min_unique_continuous)
+    return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
 def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuous):
@@ -1010,7 +990,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.values, None), None
-            return _process_ndarray_fit(
+            return _process_arrayish(
                 X_col.values, None, feature_type, min_unique_continuous
             )
         if tt is np.object_:
@@ -1035,7 +1015,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                         ),
                         None,
                     )
-                return _process_ndarray_fit(
+                return _process_arrayish(
                     X_col.dropna().values,
                     X_col.notna().values,
                     feature_type,
@@ -1053,7 +1033,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.values, None), None
-            return _process_ndarray_fit(
+            return _process_arrayish(
                 X_col.values,
                 None,
                 feature_type,
@@ -1080,19 +1060,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 None,
             )
 
-        # called under: fit
-        is_ordered = X_col.ordered
-        return (
-            "ordinal" if is_ordered else "nominal",
-            False,
-            *_encode_pandas_categorical_initial(
-                X_col.codes,
-                X_col.categories.values.astype(np.str_, copy=False),
-                is_ordered,
-                feature_type,
-            ),
-            None,
-        )
+        return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         if X_col.hasnans:
@@ -1120,7 +1088,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     ),
                     None,
                 )
-            return _process_ndarray_fit(
+            return _process_arrayish(
                 X_col.dropna().values.astype(tt, copy=False),
                 X_col.notna().values,
                 feature_type,
@@ -1145,7 +1113,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 ),
                 None,
             )
-        return _process_ndarray_fit(
+        return _process_arrayish(
             X_col.values.astype(tt, copy=False),
             None,
             feature_type,
@@ -1182,9 +1150,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col, None), None
-            return _process_ndarray_fit(
-                X_col, None, feature_type, min_unique_continuous
-            )
+            return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
         if feature_type == "continuous":
             # called under: fit or predict
@@ -1201,7 +1167,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
                 *_encode_categorical_existing(X_col[nonmissings], nonmissings),
                 None,
             )
-        return _process_ndarray_fit(
+        return _process_arrayish(
             X_col[nonmissings],
             nonmissings,
             feature_type,
@@ -1214,7 +1180,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
     if is_predict:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
-    return _process_ndarray_fit(X_col, None, feature_type, min_unique_continuous)
+    return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
 def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous):
