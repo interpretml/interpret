@@ -1231,6 +1231,10 @@ def test_unify_columns_pandas_missings_BooleanDtype():
     check_pandas_missings(pd.BooleanDtype(), False, True)
 
 
+def test_unify_columns_pandas_missings_StringDtype():
+    check_pandas_missings(pd.StringDtype(), "abc", "def")
+
+
 def test_unify_columns_pandas_missings_str():
     check_pandas_missings(np.object_, "abc", "def")
 
@@ -1428,6 +1432,140 @@ def test_unify_columns_pandas_obj_to_str():
             np.object_,
         ),
     )
+
+
+def test_unify_columns_pandas_string():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, "a", "bcd", "0"],
+        dtype=pd.StringDtype,
+    )
+
+    feature_names = None
+    feature_types = None
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], ["a"], ["bcd"], ["0"]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"0": 1, "a": 2, "bcd": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    pre.bins_[0]["new"] = 4
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [2], [3], [1]], np.int64))
+
+
+def test_unify_columns_pandas_string_string():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, "a", "bcd", "0"],
+        dtype=pd.StringDtype,
+    )
+
+    feature_names = None
+    feature_types = [["a", "bcd", "0"]]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["ordinal"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], ["a"], ["bcd"], ["0"]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["ordinal"]
+
+    expected_bins = [{"a": 1, "bcd": 2, "0": 3}]
+    compare_bins(pre.bins_, expected_bins)
+
+    pre.bins_[0]["new"] = 4
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [1], [2], [3]], np.int64))
+
+
+def test_unify_columns_pandas_string_continuous():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, "0.5", "1", "2.5"],
+        dtype=pd.StringDtype,
+    )
+
+    feature_names = None
+    feature_types = ["continuous"]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["continuous"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], [0.5], [1.0], [2.5]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["continuous"]
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [1], [2], [3]], np.int64))
+
+
+def test_unify_columns_pandas_string_continuous2():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, "0.5", "1", "2.5"],
+        dtype=pd.StringDtype,
+    )
+
+    feature_names = None
+    feature_types = [[0.75]]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["continuous"]
+    assert np.array_equal(
+        X_check, np.array([[None], [None], [0.5], [1.0], [2.5]], np.object_)
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["continuous"]
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [1], [2], [2]], np.int64))
 
 
 def test_unify_columns_pandas_categorical():

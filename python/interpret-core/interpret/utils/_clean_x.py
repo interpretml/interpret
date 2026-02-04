@@ -511,6 +511,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
     elif X_col.dtype.type is np.object_:
         X_col = _densify_object_ndarray(X_col)
 
+    # TODO: if X_col has type pd.StringDType then we could use pd.factorize to reduce memory and time useage
     uniques, indexes, counts = np.unique(X_col, return_inverse=True, return_counts=True)
 
     if issubclass(uniques.dtype.type, np.floating):
@@ -858,7 +859,13 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
             _log.error(msg)
             raise ValueError(msg)
 
-        nonmissings, uniques, indexes = _encode_categorical_existing(X_col, nonmissings)
+        if isinstance(X_col.dtype, pd.StringDtype):
+            indexes, uniques = pd.factorize(X_col)
+            uniques = uniques.to_numpy(dtype=np.str_)
+        else:
+            nonmissings, uniques, indexes = _encode_categorical_existing(
+                X_col, nonmissings
+            )
 
         try:
             processing_dict = dict(zip(processing, count()))
@@ -1092,6 +1099,54 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             )
 
         return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+    elif isinstance(dt, pd.StringDtype):
+        if feature_type == "continuous":
+            # called under: fit or predict
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col.values, None),
+            )
+
+        if X_col.hasnans:
+            # if hasnans is true then there is definetly a real missing value in there and not just a mask
+            if is_predict:
+                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+
+                indexes, uniques = pd.factorize(X_col)
+                uniques = uniques.to_numpy(dtype=np.str_)
+                return (
+                    None,
+                    False,
+                    uniques,
+                    indexes,
+                    None,
+                )
+            return _process_arrayish(
+                X_col.dropna().values,
+                X_col.notna().values,
+                feature_type,
+                min_unique_continuous,
+            )
+
+        if is_predict:
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            indexes, uniques = pd.factorize(X_col)
+            uniques = uniques.to_numpy(dtype=np.str_)
+            return (
+                None,
+                None,
+                uniques,
+                indexes,
+                None,
+            )
+        return _process_arrayish(
+            X_col.values,
+            None,
+            feature_type,
+            min_unique_continuous,
+        )
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
 
