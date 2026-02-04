@@ -1580,6 +1580,26 @@ def test_unify_columns_pandas_categorical_remap():
     assert np.array_equal(binned, np.array([[0], [0], [0], [2], [4], [1]], np.int64))
 
 
+def test_unify_columns_pandas_categorical_continuous_good():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(
+        [None, np.nan, 2.5, 3.5, 2.5],
+        dtype=pd.CategoricalDtype(categories=[2.5, 3.5, "BAD"]),
+    )
+
+    feature_names = None
+    feature_types = ["continuous"]
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["continuous"]
+
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[0], [0], [1], [2], [1]], np.int64))
+
+
 def test_unify_columns_extend_categories():
     X = [[None], [np.nan], ["a"], ["bcd"], ["0"]]
 

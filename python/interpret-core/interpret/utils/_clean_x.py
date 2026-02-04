@@ -723,6 +723,12 @@ def _process_continuous(X_col, nonmissings):
         return X_col_tmp, None
 
     # we either have an np.object_ or np.unicode_/np.str_
+
+    if isinstance(X_col.dtype, pd.CategoricalDtype):
+        # pandas will not convert to np.float64 directly, so convert to str first
+        # TODO: we could make this more efficient by only converting the categories.values to strings
+        X_col = X_col.astype(np.str_)
+
     try:
         if nonmissings is None:
             return X_col.astype(np.float64), None
@@ -932,7 +938,12 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
 
                 if feature_type == "continuous":
                     # called under: fit or predict
-                    return feature_type, None, None, *_process_continuous(X_col, nonmissings)
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous(X_col, nonmissings),
+                    )
                 if is_predict:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                     return None, *_encode_categorical_existing(X_col, nonmissings), None
@@ -954,10 +965,19 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
         if not nonmissings.all():
             if feature_type == "continuous":
                 # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col[nonmissings], nonmissings)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col[nonmissings], nonmissings),
+                )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col[nonmissings], nonmissings), None
+                return (
+                    None,
+                    *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+                    None,
+                )
             return _process_ndarray_fit(
                 X_col[nonmissings],
                 nonmissings,
@@ -971,9 +991,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
     if is_predict:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
-    return _process_ndarray_fit(
-        X_col, None, feature_type, min_unique_continuous
-    )
+    return _process_ndarray_fit(X_col, None, feature_type, min_unique_continuous)
 
 
 def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuous):
@@ -983,7 +1001,12 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
         if issubclass(tt, _float_int_bool_types):
             if feature_type == "continuous":
                 # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col.values, None)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col.values, None),
+                )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.values, None), None
@@ -995,10 +1018,23 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
                 if feature_type == "continuous":
                     # called under: fit or predict
-                    return feature_type, None, None, *_process_continuous(X_col.dropna().values, X_col.notna().values)
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous(
+                            X_col.dropna().values, X_col.notna().values
+                        ),
+                    )
                 if is_predict:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                    return None, *_encode_categorical_existing(X_col.dropna().values, X_col.notna().values), None
+                    return (
+                        None,
+                        *_encode_categorical_existing(
+                            X_col.dropna().values, X_col.notna().values
+                        ),
+                        None,
+                    )
                 return _process_ndarray_fit(
                     X_col.dropna().values,
                     X_col.notna().values,
@@ -1008,7 +1044,12 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
 
             if feature_type == "continuous":
                 # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col.values, None)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col.values, None),
+                )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.values, None), None
@@ -1022,15 +1063,15 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.values  # pandas 1.0 introduced .cat but .values is older
 
+        if feature_type == "continuous":
+            # called under: fit or predict
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col.dropna(), X_col.notna()),
+            )
         if is_predict:
-            # called under: predict
-            if feature_type != "ordinal" and feature_type != "nominal":
-                # TODO: we could convert the categories to strings and then process them
-
-                msg = "continuous type invalid for pandas.CategoricalDtype"
-                _log.error(msg)
-                raise ValueError(msg)
-
             return (
                 None,
                 False,
@@ -1060,10 +1101,25 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
 
             if feature_type == "continuous":
                 # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col.dropna().values.astype(tt, copy=False), X_col.notna().values)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().values.astype(tt, copy=False),
+                        X_col.notna().values,
+                    ),
+                )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col.dropna().values.astype(tt, copy=False), X_col.notna().values), None
+                return (
+                    None,
+                    *_encode_categorical_existing(
+                        X_col.dropna().values.astype(tt, copy=False),
+                        X_col.notna().values,
+                    ),
+                    None,
+                )
             return _process_ndarray_fit(
                 X_col.dropna().values.astype(tt, copy=False),
                 X_col.notna().values,
@@ -1074,10 +1130,21 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
 
         if feature_type == "continuous":
             # called under: fit or predict
-            return feature_type, None, None, *_process_continuous(X_col.values.astype(tt, copy=False), None)
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col.values.astype(tt, copy=False), None),
+            )
         if is_predict:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col.values.astype(tt, copy=False), None), None
+            return (
+                None,
+                *_encode_categorical_existing(
+                    X_col.values.astype(tt, copy=False), None
+                ),
+                None,
+            )
         return _process_ndarray_fit(
             X_col.values.astype(tt, copy=False),
             None,
@@ -1121,10 +1188,19 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
 
         if feature_type == "continuous":
             # called under: fit or predict
-            return feature_type, None, None, *_process_continuous(X_col[nonmissings], nonmissings)
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col[nonmissings], nonmissings),
+            )
         if is_predict:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col[nonmissings], nonmissings), None
+            return (
+                None,
+                *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+                None,
+            )
         return _process_ndarray_fit(
             X_col[nonmissings],
             nonmissings,
@@ -1138,9 +1214,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
     if is_predict:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
-    return _process_ndarray_fit(
-        X_col, None, feature_type, min_unique_continuous
-    )
+    return _process_ndarray_fit(X_col, None, feature_type, min_unique_continuous)
 
 
 def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous):
