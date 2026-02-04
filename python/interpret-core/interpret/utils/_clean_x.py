@@ -644,11 +644,6 @@ def _process_continuous(X_col, nonmissings):
 
     # we either have an np.object_ or np.unicode_/np.str_
 
-    if isinstance(X_col.dtype, pd.CategoricalDtype):
-        # pandas will not convert to np.float64 directly, so convert to str first
-        # TODO: we could make this more efficient by only converting the categories.values to strings
-        X_col = X_col.astype(np.str_)
-
     try:
         if nonmissings is None:
             return X_col.astype(np.float64), None
@@ -703,6 +698,7 @@ def _process_continuous(X_col, nonmissings):
 def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
     if processing == "nominal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
+            X_col = X_col.values
             return (
                 processing,
                 False,
@@ -717,6 +713,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         )
     if processing == "ordinal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
+            X_col = X_col.values
             return (
                 processing,
                 False,
@@ -739,6 +736,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         )
     if processing is None or processing == "auto":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
+            X_col = X_col.values
             return (
                 "ordinal" if X_col.ordered else "nominal",
                 False,
@@ -771,12 +769,23 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         )
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         if isinstance(X_col.dtype, pd.CategoricalDtype):
-            return (
-                "continuous",
-                None,
-                None,
-                *_process_continuous(X_col.dropna(), X_col.notna()),
-            )
+            # TODO: we could make this more efficient by only converting the categories.values to strings
+            if X_col.hasnans:
+                return (
+                    "continuous",
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                    ),
+                )
+            else:
+                return (
+                    "continuous",
+                    None,
+                    None,
+                    *_process_continuous(X_col.values.astype(np.str_), None),
+                )
 
         return "continuous", None, None, *_process_continuous(X_col, nonmissings)
     if isinstance(processing, _all_int_types):
@@ -821,12 +830,23 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
 
     if n_continuous == n_items:
         if isinstance(X_col.dtype, pd.CategoricalDtype):
-            return (
-                "continuous",
-                None,
-                None,
-                *_process_continuous(X_col.dropna(), X_col.notna()),
-            )
+            # TODO: we could make this more efficient by only converting the categories.values to strings
+            if X_col.hasnans:
+                return (
+                    "continuous",
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                    ),
+                )
+            else:
+                return (
+                    "continuous",
+                    None,
+                    None,
+                    *_process_continuous(X_col.values.astype(np.str_), None),
+                )
 
         # if n_items == 0 then it must be continuous since we
         # can have zero cut points, but not zero ordinal categories
@@ -1042,17 +1062,27 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             )
     elif isinstance(dt, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
-        X_col = X_col.values  # pandas 1.0 introduced .cat but .values is older
 
         if feature_type == "continuous":
             # called under: fit or predict
-            return (
-                feature_type,
-                None,
-                None,
-                *_process_continuous(X_col.dropna(), X_col.notna()),
-            )
+            if X_col.hasnans:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                    ),
+                )
+            else:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col.values.astype(np.str_), None),
+                )
         if is_predict:
+            X_col = X_col.values
             return (
                 None,
                 False,
