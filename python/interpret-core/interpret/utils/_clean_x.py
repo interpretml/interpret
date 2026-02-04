@@ -498,8 +498,24 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
 
 def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
     # called under: fit
-
-    if issubclass(X_col.dtype.type, np.floating):
+    
+    # Check if X_col is a pandas StringArray
+    if _pandas_installed and hasattr(X_col, 'dtype') and isinstance(X_col.dtype, pd.StringDtype):
+        # Use pd.factorize for StringDtype which is more efficient than np.unique
+        # factorize returns (codes, uniques) where codes are integer indices
+        indexes, uniques = pd.factorize(X_col)
+        
+        # Convert uniques from Index to numpy array and then to strings
+        uniques = uniques.to_numpy(dtype=np.str_, na_value='')
+        
+        # Count occurrences for each unique value
+        counts = np.bincount(indexes[indexes >= 0])  # -1 is for NA values, which we don't count
+        
+        # Convert to strings (already done above)
+        floats = None  # StringDtype values are strings, not floats
+        
+        # Continue with the sorting logic below
+    elif issubclass(X_col.dtype.type, np.floating):
         m = np.isnan(X_col)
         if m.any():
             np.logical_not(m, out=m)
@@ -592,6 +608,14 @@ def _encode_categorical_existing(X_col, nonmissings):
 
     # TODO: add special case handling if there is only 1 sample to make that faster
     # if we have just 1 sample, we can avoid making the mapping below
+    
+    # Check if X_col is a pandas StringArray
+    if _pandas_installed and hasattr(X_col, 'dtype') and isinstance(X_col.dtype, pd.StringDtype):
+        # Use pd.factorize for StringDtype which is more efficient than np.unique
+        indexes, uniques = pd.factorize(X_col)
+        # Convert uniques from Index to numpy array and then to strings  
+        uniques = uniques.to_numpy(dtype=np.str_, na_value='')
+        return nonmissings, uniques, indexes
 
     tt = X_col.dtype.type
     if issubclass(tt, np.floating):
@@ -1074,6 +1098,54 @@ def _process_pandas_column(X_col, is_initial, feature_type, min_unique_continuou
             is_initial,
             feature_type,
             min_unique_continuous,
+        )
+    elif isinstance(dt, pd.StringDtype):
+        # this handles pd.StringDtype both the numpy and arrow versions
+        # Pass StringArray to _process_arrayish to avoid inefficient conversion
+        if X_col.hasnans:
+            # if hasnans is true then there is definetly a real missing value in there and not just a mask
+            if feature_type == "continuous":
+                # called under: fit or predict
+                # Convert to string for continuous processing
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().values.astype(np.str_, copy=False),
+                        X_col.notna().values,
+                    ),
+                )
+            if is_predict:
+                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                return (
+                    None,
+                    *_encode_categorical_existing(
+                        X_col.dropna().values, X_col.notna().values
+                    ),
+                    None,
+                )
+            return _process_arrayish(
+                X_col.dropna().values,
+                X_col.notna().values,
+                feature_type,
+                min_unique_continuous,
+            )
+
+        if feature_type == "continuous":
+            # called under: fit or predict
+            # Convert to string for continuous processing
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col.values.astype(np.str_, copy=False), None),
+            )
+        if is_predict:
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return None, *_encode_categorical_existing(X_col.values, None), None
+        return _process_arrayish(
+            X_col.values, None, feature_type, min_unique_continuous
         )
 
     # TODO: implement pd.SparseDtype
