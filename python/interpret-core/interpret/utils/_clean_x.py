@@ -985,7 +985,8 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    *_process_continuous(X_col.values, None),
+                    X_col.values.astype(np.float64, "C", copy=False),
+                    None,
                 )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
@@ -1063,21 +1064,21 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
         return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+
+        if feature_type == "continuous":
+            # called under: fit or predict
+            return (
+                feature_type,
+                None,
+                None,
+                X_col.values.astype(np.float64),
+                None,
+            )
+
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-            if feature_type == "continuous":
-                # called under: fit or predict
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().values.astype(tt, copy=False),
-                        X_col.notna().values,
-                    ),
-                )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return (
@@ -1096,14 +1097,6 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             )
         # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-        if feature_type == "continuous":
-            # called under: fit or predict
-            return (
-                feature_type,
-                None,
-                None,
-                *_process_continuous(X_col.values.astype(tt, copy=False), None),
-            )
         if is_predict:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
