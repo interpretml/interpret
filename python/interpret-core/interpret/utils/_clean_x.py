@@ -632,6 +632,10 @@ def _encode_categorical_existing(X_col, nonmissings):
 
 
 def _process_continuous(X_col, nonmissings):
+    # X_col can be an ndarray, or an extension array (not a pd.Series)
+    # nonmissings must be a boolean ndarray or None
+    # do not use type hints because we would have to import pandas for pd.Series
+
     # called under: fit or predict
 
     tt = X_col.dtype.type
@@ -654,6 +658,14 @@ def _process_continuous(X_col, nonmissings):
     # we either have an np.object_ or np.unicode_/np.str_
 
     try:
+        # if X_col is a pandas extension array, then astype converts to np.nan
+        # .astype converts extension arrays of pd.StringDtype (with missing values becomming np.nan),
+        # np.str_, and np.object arrays that contain mixes of
+        # strings and floats, and integers, and bools.  Since both python and numpy support
+        # correct rounding, it shouldn't matter if python float values are converted first to np.float64,
+        # BUT one big gotcha is that we should not convert any float other than an np.float64 to a string
+        # since the converstion to a string won't be the same as a binary conversion to np.float64
+
         if nonmissings is None:
             return X_col.astype(np.float64), None
 
@@ -707,11 +719,11 @@ def _process_continuous(X_col, nonmissings):
 def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
     if processing == "nominal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.values
+            X_col = X_col.array
             return (
                 processing,
                 False,
-                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.categories.to_numpy(np.str_),
                 X_col.codes,
                 None,
             )
@@ -722,11 +734,11 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         )
     if processing == "ordinal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.values
+            X_col = X_col.array
             return (
                 processing,
                 False,
-                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.categories.to_numpy(np.str_),
                 X_col.codes,
                 None,
             )
@@ -745,11 +757,11 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         )
     if processing is None or processing == "auto":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.values
+            X_col = X_col.array
             return (
                 "ordinal" if X_col.ordered else "nominal",
                 False,
-                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.categories.to_numpy(np.str_),
                 X_col.codes,
                 None,
             )
@@ -785,7 +797,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
                     None,
                     None,
                     *_process_continuous(
-                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                        X_col.dropna().to_numpy(np.str_), X_col.notna()
                     ),
                 )
             else:
@@ -793,7 +805,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
                     "continuous",
                     None,
                     None,
-                    *_process_continuous(X_col.values.astype(np.str_), None),
+                    *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
 
         return "continuous", None, None, *_process_continuous(X_col, nonmissings)
@@ -846,7 +858,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
                     None,
                     None,
                     *_process_continuous(
-                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                        X_col.dropna().to_numpy(np.str_), X_col.notna()
                     ),
                 )
             else:
@@ -854,7 +866,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
                     "continuous",
                     None,
                     None,
-                    *_process_continuous(X_col.values.astype(np.str_), None),
+                    *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
 
         # if n_items == 0 then it must be continuous since we
@@ -1020,14 +1032,14 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    X_col.values.astype(np.float64, "C", copy=False),
+                    X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
                     None,
                 )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col.values, None), None
+                return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
             return _process_arrayish(
-                X_col.values, None, feature_type, min_unique_continuous
+                X_col.to_numpy(), None, feature_type, min_unique_continuous
             )
         if tt is np.object_:
             if X_col.hasnans:
@@ -1038,22 +1050,20 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                         feature_type,
                         None,
                         None,
-                        *_process_continuous(
-                            X_col.dropna().values, X_col.notna().values
-                        ),
+                        *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
                     )
                 if is_predict:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                     return (
                         None,
                         *_encode_categorical_existing(
-                            X_col.dropna().values, X_col.notna().values
+                            X_col.dropna().to_numpy(), X_col.notna()
                         ),
                         None,
                     )
                 return _process_arrayish(
-                    X_col.dropna().values,
-                    X_col.notna().values,
+                    X_col.dropna().to_numpy(),
+                    X_col.notna(),
                     feature_type,
                     min_unique_continuous,
                 )
@@ -1064,13 +1074,13 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    *_process_continuous(X_col.values, None),
+                    *_process_continuous(X_col.to_numpy(), None),
                 )
             if is_predict:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col.values, None), None
+                return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
             return _process_arrayish(
-                X_col.values,
+                X_col.to_numpy(),
                 None,
                 feature_type,
                 min_unique_continuous,
@@ -1090,7 +1100,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     None,
                     None,
                     *_process_continuous(
-                        X_col.dropna().values.astype(np.str_), X_col.notna().values
+                        X_col.dropna().to_numpy(np.str_), X_col.notna()
                     ),
                 )
             else:
@@ -1098,14 +1108,14 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    *_process_continuous(X_col.values.astype(np.str_), None),
+                    *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
         if is_predict:
-            X_col = X_col.values
+            X_col = X_col.array
             return (
                 None,
                 False,
-                X_col.categories.values.astype(np.str_, copy=False),
+                X_col.categories.to_numpy(np.str_),
                 X_col.codes,
                 None,
             )
@@ -1118,7 +1128,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 feature_type,
                 None,
                 None,
-                *_process_continuous(X_col.values, None),
+                *_process_continuous(X_col.array, None),
             )
 
         if is_predict:
@@ -1137,13 +1147,13 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             return _process_arrayish(
-                X_col.dropna().values,
-                X_col.notna().values,
+                X_col.dropna().array,
+                X_col.notna(),
                 feature_type,
                 min_unique_continuous,
             )
         return _process_arrayish(
-            X_col.values,
+            X_col.array,
             None,
             feature_type,
             min_unique_continuous,
@@ -1157,7 +1167,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 feature_type,
                 None,
                 None,
-                X_col.values.astype(np.float64),
+                X_col.to_numpy(np.float64),
                 None,
             )
 
@@ -1170,14 +1180,14 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 return (
                     None,
                     *_encode_categorical_existing(
-                        X_col.dropna().values.astype(tt, copy=False),
-                        X_col.notna().values,
+                        X_col.dropna().to_numpy(),
+                        X_col.notna(),
                     ),
                     None,
                 )
             return _process_arrayish(
-                X_col.dropna().values.astype(tt, copy=False),
-                X_col.notna().values,
+                X_col.dropna().to_numpy(),
+                X_col.notna(),
                 feature_type,
                 min_unique_continuous,
             )
@@ -1187,13 +1197,11 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
                 None,
-                *_encode_categorical_existing(
-                    X_col.values.astype(tt, copy=False), None
-                ),
+                *_encode_categorical_existing(X_col.to_numpy(), None),
                 None,
             )
         return _process_arrayish(
-            X_col.values.astype(tt, copy=False),
+            X_col.to_numpy(),
             None,
             feature_type,
             min_unique_continuous,
@@ -1275,7 +1283,7 @@ def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous)
                 X_col.iloc[:, 0], is_predict, feature_type, min_unique_continuous
             )
         if X_col.shape[0] == 1:
-            X_col = X_col.astype(np.object_, copy=False).values.ravel()
+            X_col = X_col.to_numpy(np.object_).ravel()
         elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
             X_col = np.empty(0, np.object_)
         else:
@@ -2025,13 +2033,13 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             if not is_copied:
                 is_copied = True
                 X = list(X)
-            X[idx] = sample.astype(np.object_, copy=False).values
+            X[idx] = sample.to_numpy(np.object_)
         elif isinstance(sample, _DataFrameType):
             if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = sample.astype(np.object_, copy=False).values.ravel()
+                X[idx] = sample.to_numpy(np.object_).ravel()
             elif sample.shape[1] == 0 or sample.shape[0] == 0:
                 if not is_copied:
                     is_copied = True

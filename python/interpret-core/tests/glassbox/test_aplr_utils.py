@@ -17,7 +17,7 @@ def test_convert_to_numpy_matrix_success():
 
     # Test with pandas DataFrame
     X_pd = pd.DataFrame([[1, 2], [3, 4]])
-    assert np.array_equal(convert_to_numpy_matrix(X_pd), X_pd.astype(np.float64).values)
+    assert np.array_equal(convert_to_numpy_matrix(X_pd), X_pd.to_numpy(np.float64))
 
     # Test with list of lists
     X_list = [[1, 2], [3, 4]]

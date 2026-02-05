@@ -336,7 +336,7 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
         return X.astype(np.float64, copy=False)
     if isinstance(X, pd.DataFrame) and not X.empty:
         try:
-            return X.astype(np.float64).values
+            return X.to_numpy(np.float64)
         except (ValueError, TypeError) as e:
             msg = "If X is a pandas DataFrame, all columns must be numeric."
             raise TypeError(msg) from e
@@ -414,7 +414,7 @@ class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
         if not all(isinstance(val, str) for val in y):
             y = [str(val) for val in y]
         if isinstance(y, pd.Series):
-            y = y.values
+            y = y.to_numpy()
 
         super().fit(
             X,
