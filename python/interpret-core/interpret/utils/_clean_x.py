@@ -631,6 +631,45 @@ def _encode_categorical_existing(X_col, nonmissings):
     return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
 
+def _process_continuous_slow(X_col, nonmissings):
+    n_samples = len(X_col)
+    bad = np.zeros(n_samples, np.bool_)
+    floats = np.zeros(n_samples, np.float64)
+    for idx in range(n_samples):
+        # slice one item at a time keeping as an np.ndarray
+        one_item_array = X_col[idx : idx + 1]
+        try:
+            # use .astype(..) instead of float(..) to ensure identical conversion results
+            floats[idx] = one_item_array.astype(np.float64).item()
+        except TypeError:
+            # use .astype instead of str(one_item_array) here to ensure identical string categories
+            one_item_array = one_item_array.astype(np.str_)
+            try:
+                # use .astype(..) instead of float(..) to ensure identical conversion results
+                floats[idx] = one_item_array.astype(np.float64).item()
+            except ValueError:
+                bad[idx] = True
+        except ValueError:
+            bad[idx] = True
+
+    if not bad.any():
+        # TODO: is it possible to have all good at this location?
+        bad = None
+
+    if nonmissings is None:
+        return floats, bad
+
+    floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
+    np.place(floats_tmp, nonmissings, floats)
+
+    if bad is None:
+        return floats_tmp, None
+
+    bad_tmp = np.zeros(len(nonmissings), np.bool_)
+    np.place(bad_tmp, nonmissings, bad)
+    return floats_tmp, bad_tmp
+
+
 def _process_continuous(X_col, nonmissings):
     # X_col can be an ndarray, or an extension array (not a pd.Series)
     # nonmissings must be a boolean ndarray or None
@@ -678,42 +717,7 @@ def _process_continuous(X_col, nonmissings):
         # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
         # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
 
-        n_samples = len(X_col)
-        bad = np.zeros(n_samples, np.bool_)
-        floats = np.zeros(n_samples, np.float64)
-        for idx in range(n_samples):
-            # slice one item at a time keeping as an np.ndarray
-            one_item_array = X_col[idx : idx + 1]
-            try:
-                # use .astype(..) instead of float(..) to ensure identical conversion results
-                floats[idx] = one_item_array.astype(np.float64).item()
-            except TypeError:
-                # use .astype instead of str(one_item_array) here to ensure identical string categories
-                one_item_array = one_item_array.astype(np.str_)
-                try:
-                    # use .astype(..) instead of float(..) to ensure identical conversion results
-                    floats[idx] = one_item_array.astype(np.float64).item()
-                except ValueError:
-                    bad[idx] = True
-            except ValueError:
-                bad[idx] = True
-
-        if not bad.any():
-            # TODO: is it possible to have all good at this location?
-            bad = None
-
-        if nonmissings is None:
-            return floats, bad
-
-        floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
-        np.place(floats_tmp, nonmissings, floats)
-
-        if bad is None:
-            return floats_tmp, None
-
-        bad_tmp = np.zeros(len(nonmissings), np.bool_)
-        np.place(bad_tmp, nonmissings, bad)
-        return floats_tmp, bad_tmp
+        return _process_continuous_slow(X_col, nonmissings)
 
 
 def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
@@ -1124,11 +1128,46 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
     elif isinstance(dt, pd.StringDtype):
         if feature_type == "continuous":
             # called under: fit or predict
+
+            if X_col.hasnans:
+                nonmissings = X_col.notna()
+                X_col = X_col.dropna()
+                try:
+                    X_col = X_col.to_numpy(np.float64)
+                except ValueError:
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous_slow(X_col.array, nonmissings),
+                    )
+
+                X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+                np.place(X_col_tmp, nonmissings, X_col)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    X_col_tmp,
+                    None,
+                )
+
+            try:
+                X_col = X_col.to_numpy(np.float64)
+            except ValueError:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous_slow(X_col.array, None),
+                )
+
             return (
                 feature_type,
                 None,
                 None,
-                *_process_continuous(X_col.array, None),
+                X_col,
+                None,
             )
 
         if is_predict:
