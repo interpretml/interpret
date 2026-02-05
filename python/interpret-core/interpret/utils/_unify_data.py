@@ -21,6 +21,7 @@ def unify_data(
     missing_data_allowed=False,
     unseen_data_allowed=False,
     min_unique_continuous=0,
+    is_schematized=False,
 ):
     _log.info("Unifying data")
 
@@ -45,7 +46,7 @@ def unify_data(
         feature_names_in,
         feature_types,
         min_unique_continuous,
-        False,
+        is_schematized,
         False,
     )
     for feature_idx in range(len(feature_names_in)):

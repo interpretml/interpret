@@ -942,7 +942,7 @@ def _reshape_1D_if_possible(col):
     return col
 
 
-def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous):
+def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_continuous):
     if isinstance(X_col, ma.masked_array):
         mask = X_col.mask
         if mask is ma.nomask:
@@ -975,7 +975,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
                         None,
                         *_process_continuous(X_col, nonmissings),
                     )
-                if is_predict:
+                if is_schematized:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                     return None, *_encode_categorical_existing(X_col, nonmissings), None
                 return _process_arrayish(
@@ -1002,7 +1002,7 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
                     None,
                     *_process_continuous(X_col[nonmissings], nonmissings),
                 )
-            if is_predict:
+            if is_schematized:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return (
                     None,
@@ -1019,13 +1019,13 @@ def _process_numpy_column(X_col, is_predict, feature_type, min_unique_continuous
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_predict:
+    if is_schematized:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
     return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
-def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuous):
+def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_continuous):
     dt = X_col.dtype
     tt = dt.type
     if isinstance(dt, np.dtype):
@@ -1039,7 +1039,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
                     None,
                 )
-            if is_predict:
+            if is_schematized:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
             return _process_arrayish(
@@ -1056,7 +1056,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                         None,
                         *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
                     )
-                if is_predict:
+                if is_schematized:
                     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                     return (
                         None,
@@ -1080,7 +1080,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     None,
                     *_process_continuous(X_col.to_numpy(), None),
                 )
-            if is_predict:
+            if is_schematized:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
             return _process_arrayish(
@@ -1114,7 +1114,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                     None,
                     *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
-        if is_predict:
+        if is_schematized:
             X_col = X_col.array
             return (
                 None,
@@ -1170,7 +1170,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 None,
             )
 
-        if is_predict:
+        if is_schematized:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
 
             indexes, uniques = pd.factorize(X_col)
@@ -1214,7 +1214,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-            if is_predict:
+            if is_schematized:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return (
                     None,
@@ -1232,7 +1232,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
             )
         # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-        if is_predict:
+        if is_schematized:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
                 None,
@@ -1254,7 +1254,7 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
     raise TypeError(msg)
 
 
-def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuous):
+def _process_sparse_column(X_col, is_schematized, feature_type, min_unique_continuous):
     X_col = X_col.toarray().ravel()
 
     if X_col.dtype.type is np.object_:
@@ -1273,7 +1273,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
             if feature_type == "continuous":
                 # called under: fit or predict
                 return feature_type, None, None, *_process_continuous(X_col, None)
-            if is_predict:
+            if is_schematized:
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                 return None, *_encode_categorical_existing(X_col, None), None
             return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
@@ -1286,7 +1286,7 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
                 None,
                 *_process_continuous(X_col[nonmissings], nonmissings),
             )
-        if is_predict:
+        if is_schematized:
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
                 None,
@@ -1303,23 +1303,23 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_predict:
+    if is_schematized:
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
     return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
-def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous):
+def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continuous):
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif isinstance(X_col, _SeriesType):
         return _process_pandas_column(
-            X_col, is_predict, feature_type, min_unique_continuous
+            X_col, is_schematized, feature_type, min_unique_continuous
         )
     elif isinstance(X_col, _DataFrameType):
         if X_col.shape[1] == 1:
             return _process_pandas_column(
-                X_col.iloc[:, 0], is_predict, feature_type, min_unique_continuous
+                X_col.iloc[:, 0], is_schematized, feature_type, min_unique_continuous
             )
         if X_col.shape[0] == 1:
             X_col = X_col.to_numpy(np.object_).ravel()
@@ -1334,7 +1334,7 @@ def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous)
     ):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
             return _process_sparse_column(
-                X_col, is_predict, feature_type, min_unique_continuous
+                X_col, is_schematized, feature_type, min_unique_continuous
             )
         if X_col.shape[1] == 0 or X_col.shape[0] == 0:
             X_col = np.empty(0, np.object_)
@@ -1366,7 +1366,10 @@ def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous)
             X_col = X_col_tmp
 
     return _process_numpy_column(
-        _reshape_1D_if_possible(X_col), is_predict, feature_type, min_unique_continuous
+        _reshape_1D_if_possible(X_col),
+        is_schematized,
+        feature_type,
+        min_unique_continuous,
     )
 
 
@@ -1376,7 +1379,7 @@ def unify_columns(
     feature_names_in,
     feature_types,
     min_unique_continuous,
-    is_predict,
+    is_schematized,
     go_fast,
 ):
     # preclean_X is always called on X prior to calling this function
@@ -1432,7 +1435,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_numpy_column(
-                        X[:, feature_idx], is_predict, None, min_unique_continuous
+                        X[:, feature_idx], is_schematized, None, min_unique_continuous
                     )
 
                 return internal
@@ -1441,7 +1444,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_numpy_column(
                         X[:, feature_idx],
-                        is_predict,
+                        is_schematized,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1473,7 +1476,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_numpy_column(
                     X[:, col_map[feature_idx]],
-                    is_predict,
+                    is_schematized,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1503,7 +1506,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
-                        is_predict,
+                        is_schematized,
                         None,
                         min_unique_continuous,
                     )
@@ -1523,7 +1526,7 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_pandas_column(
-                        X[:, feature_idx], is_predict, None, min_unique_continuous
+                        X[:, feature_idx], is_schematized, None, min_unique_continuous
                     )
 
                 return internal
@@ -1545,7 +1548,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_pandas_column(
                         X[mapping[feature_names_in[feature_idx]]],
-                        is_predict,
+                        is_schematized,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1561,7 +1564,7 @@ def unify_columns(
                     def internal(feature_idx):
                         return _process_pandas_column(
                             X[:, feature_idx],
-                            is_predict,
+                            is_schematized,
                             feature_types[feature_idx],
                             min_unique_continuous,
                         )
@@ -1590,7 +1593,7 @@ def unify_columns(
                     def internal(feature_idx):
                         return _process_pandas_column(
                             X[:, col_map[feature_idx]],
-                            is_predict,
+                            is_schematized,
                             feature_types[feature_idx],
                             min_unique_continuous,
                         )
@@ -1611,7 +1614,10 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_sparse_column(
-                        X[:, (feature_idx,)], is_predict, None, min_unique_continuous
+                        X[:, (feature_idx,)],
+                        is_schematized,
+                        None,
+                        min_unique_continuous,
                     )
 
                 return internal
@@ -1620,7 +1626,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_sparse_column(
                         X[:, (feature_idx,)],
-                        is_predict,
+                        is_schematized,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1650,7 +1656,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_sparse_column(
                     X[:, (col_map[feature_idx],)],
-                    is_predict,
+                    is_schematized,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1664,7 +1670,10 @@ def unify_columns(
 
                 def internal(feature_idx):
                     return _process_sparse_column(
-                        X.getcol(feature_idx), is_predict, None, min_unique_continuous
+                        X.getcol(feature_idx),
+                        is_schematized,
+                        None,
+                        min_unique_continuous,
                     )
 
                 return internal
@@ -1673,7 +1682,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _process_sparse_column(
                         X.getcol(feature_idx),
-                        is_predict,
+                        is_schematized,
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
@@ -1703,7 +1712,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _process_sparse_column(
                     X.getcol(col_map[feature_idx]),
-                    is_predict,
+                    is_schematized,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )
@@ -1720,7 +1729,7 @@ def unify_columns(
             def internal(feature_idx):
                 feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                     X[feature_names_in[feature_idx]],
-                    is_predict,
+                    is_schematized,
                     None,
                     min_unique_continuous,
                 )
@@ -1745,7 +1754,7 @@ def unify_columns(
             def internal(feature_idx):
                 feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                     X[feature_names_in[feature_idx]],
-                    is_predict,
+                    is_schematized,
                     feature_types[feature_idx],
                     min_unique_continuous,
                 )

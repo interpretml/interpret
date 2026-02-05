@@ -297,9 +297,9 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                     # continuous feature
 
                     if bad is not None:
-                        msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                        _log.error(msg)
-                        raise ValueError(msg)
+                        warn(
+                            f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                        )
 
                     if self.binning == "private":
                         if np.isnan(X_col).any():

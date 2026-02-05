@@ -25,6 +25,113 @@ def compare_bins(bins, expected_bins):
             assert tuple(a) == tuple(b)
 
 
+def check_data_extraction(
+    X_train,
+    feature_names=None,
+    feature_types=None,
+    X_pred=None,
+    min_unique_continuous=0,
+):
+    # clean first in case there are iterators
+    X_train, n_samples = preclean_X(X_train, feature_names, feature_types)
+
+    if X_pred is None:
+        X_pred = X_train
+
+    X_train, feature_names_in, feature_types_in = unify_data(
+        X_train,
+        n_samples,
+        feature_names=feature_names,
+        feature_types=feature_types,
+        missing_data_allowed=True,
+        unseen_data_allowed=True,
+        min_unique_continuous=min_unique_continuous,
+        is_schematized=False,
+    )
+    X_train[X_train != X_train] = "THIS IS A NAN"
+
+    X_pred, n_samples = preclean_X(X_pred, feature_names_in, feature_types_in)
+
+    X_check, feature_names_check, feature_types_check = unify_data(
+        X_pred,
+        n_samples,
+        feature_names=feature_names_in,
+        feature_types=feature_types_in,
+        missing_data_allowed=True,
+        unseen_data_allowed=True,
+        min_unique_continuous=0,
+        is_schematized=True,
+    )
+    X_check[X_check != X_check] = "THIS IS A NAN"
+    assert np.array_equal(X_train, X_check)
+
+    if isinstance(X_pred, (sp.sparse.spmatrix, sp.sparse.sparray)):
+        X_check, feature_names_check, feature_types_check = unify_data(
+            X_pred.toarray(),
+            n_samples,
+            feature_names=feature_names_in,
+            feature_types=feature_types_in,
+            missing_data_allowed=True,
+            unseen_data_allowed=True,
+            min_unique_continuous=0,
+            is_schematized=True,
+        )
+        X_check[X_check != X_check] = "THIS IS A NAN"
+        assert np.array_equal(X_train, X_check)
+    elif isinstance(X_pred, np.ndarray):
+        X_check, feature_names_check, feature_types_check = unify_data(
+            ma.array(X_pred, dtype=np.object_),
+            n_samples,
+            feature_names=feature_names_in,
+            feature_types=feature_types_in,
+            missing_data_allowed=True,
+            unseen_data_allowed=True,
+            min_unique_continuous=0,
+            is_schematized=True,
+        )
+        X_check[X_check != X_check] = "THIS IS A NAN"
+        assert np.array_equal(X_train, X_check)
+    elif isinstance(X_pred, pd.DataFrame):
+        X_check = X_pred.copy()
+        X_check = X_check.astype("object")
+        X_check, feature_names_check, feature_types_check = unify_data(
+            X_check,
+            n_samples,
+            feature_names=feature_names_in,
+            feature_types=feature_types_in,
+            missing_data_allowed=True,
+            unseen_data_allowed=True,
+            min_unique_continuous=0,
+            is_schematized=True,
+        )
+        X_check[X_check != X_check] = "THIS IS A NAN"
+        assert np.array_equal(X_train, X_check)
+
+        X_check = X_pred.copy()
+        change_cols = X_check.select_dtypes(include="floating").columns
+        X_check[change_cols] = X_check[change_cols].astype("float64")
+        change_cols = X_check.select_dtypes(include="object").columns
+        X_check[change_cols] = X_check[change_cols].apply(
+            lambda x: np.float64(x) if isinstance(x, np.floating) else x
+        )
+        str_cols = X_check.select_dtypes(include="string").columns
+        cat_cols = X_check.select_dtypes(include="category").columns
+        X_check[str_cols] = X_check[str_cols].astype("category")
+        X_check[cat_cols] = X_check[cat_cols].astype("string")
+        X_check, feature_names_check, feature_types_check = unify_data(
+            X_check,
+            n_samples,
+            feature_names=feature_names_in,
+            feature_types=feature_types_in,
+            missing_data_allowed=True,
+            unseen_data_allowed=True,
+            min_unique_continuous=0,
+            is_schematized=True,
+        )
+        X_check[X_check != X_check] = "THIS IS A NAN"
+        assert np.array_equal(X_train, X_check)
+
+
 def unify_test(
     X,
     feature_names=None,
@@ -34,8 +141,13 @@ def unify_test(
     unseen_data_allowed=True,
     n_samples=None,
 ):
+    X, n_samples = preclean_X(X, feature_names, feature_types, n_samples=n_samples)
+
+    check_data_extraction(X, feature_names, feature_types)
+
     X_check, feature_names_in, feature_types_in = unify_data(
-        *preclean_X(X, feature_names, feature_types, n_samples=n_samples),
+        X,
+        n_samples,
         feature_names,
         feature_types,
         missing_data_allowed=missing_data_allowed,
@@ -419,6 +531,8 @@ def test_process_column_initial_alphabetical_nomissing():
     feature_names = None
     feature_types = ["nominal_alphabetical"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -434,6 +548,8 @@ def test_process_column_initial_alphabetical_missing():
 
     feature_names = None
     feature_types = ["nominal_alphabetical"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -451,6 +567,8 @@ def test_process_column_initial_prevalence_nomissing():
     feature_names = None
     feature_types = ["nominal_prevalence"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -466,6 +584,8 @@ def test_process_column_initial_prevalence_missing():
 
     feature_names = None
     feature_types = ["nominal_prevalence"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -483,6 +603,8 @@ def test_process_column_initial_alphabetical_nomissing_int8():
     feature_names = None
     feature_types = ["nominal_alphabetical"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -498,6 +620,8 @@ def test_process_column_initial_prevalence_nomissing_int8():
 
     feature_names = None
     feature_types = ["nominal_prevalence"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -515,6 +639,8 @@ def test_process_column_initial_alphabetical_nomissing_one_bool():
     feature_names = None
     feature_types = ["nominal_alphabetical"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -530,6 +656,8 @@ def test_process_column_initial_alphabetical_nomissing_two_bool():
 
     feature_names = None
     feature_types = ["nominal_alphabetical"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -547,6 +675,8 @@ def test_process_column_initial_prevalence_nomissing_one_bool():
     feature_names = None
     feature_types = ["nominal_prevalence"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -563,6 +693,8 @@ def test_process_column_initial_prevalence_nomissing_two_bool():
     feature_names = None
     feature_types = ["nominal_prevalence"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -578,6 +710,8 @@ def test_encode_categorical_existing_obj_int_small():
 
     feature_names = None
     feature_types = ["nominal"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -596,6 +730,8 @@ def test_encode_categorical_existing_obj_int_big():
 
     feature_names = None
     feature_types = ["nominal"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -629,6 +765,8 @@ def test_encode_categorical_existing_obj_floats():
     feature_names = None
     feature_types = ["nominal"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -647,6 +785,8 @@ def test_encode_categorical_existing_obj_str_float64():
     feature_names = None
     feature_types = None
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -662,6 +802,8 @@ def test_encode_categorical_existing_obj_str_float32():
 
     feature_names = None
     feature_types = None
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -680,6 +822,8 @@ def test_encode_categorical_existing_int_float():
 
     feature_names = None
     feature_types = ["nominal"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -704,6 +848,8 @@ def test_encode_categorical_existing_int_float32():
     feature_names = None
     feature_types = ["nominal"]
 
+    check_data_extraction(X, feature_names, feature_types)
+
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
@@ -719,6 +865,8 @@ def test_encode_categorical_existing_obj_obj():
 
     feature_names = None
     feature_types = None
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -738,6 +886,8 @@ def test_process_column_initial_choose_floatcategories():
 
     feature_names = None
     feature_types = ["nominal"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
@@ -765,6 +915,8 @@ def test_process_column_initial_choose_floats():
 
     feature_names = None
     feature_types = ["nominal"]
+
+    check_data_extraction(X, feature_names, feature_types)
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
