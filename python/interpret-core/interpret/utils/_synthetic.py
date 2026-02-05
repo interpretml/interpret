@@ -5,13 +5,6 @@
 import numpy as np
 from ._misc import safe_isinstance
 
-try:
-    import pandas as pd
-
-    _pandas_installed = True
-except ImportError:
-    _pandas_installed = False
-
 
 def make_synthetic(
     classes=("class_0", "class_1"),
@@ -272,7 +265,9 @@ def _make_synthetic_features(
             X = np.array(features, np.str_)
         X = X.T
     elif output_type == "pandas":
-        if not _pandas_installed:
+        try:
+            import pandas as pd
+        except ImportError:
             msg = "pandas was requested, but is not installed."
             raise ValueError(msg)
 
@@ -393,8 +388,14 @@ def _normalize_string_categorical(col, clip_low, clip_high):
 
 def _normalize_categoricals(X, types, clip_low, clip_high):
     features = []
+
+    try:
+        import pandas as pd
+    except ImportError:
+        pd = None
+
     for i in range(X.shape[1]):
-        if _pandas_installed and isinstance(X, pd.DataFrame):
+        if pd is not None and isinstance(X, pd.DataFrame):
             col = X.iloc[:, i]
         elif safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
             X, "scipy.sparse.sparray"
@@ -403,7 +404,7 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
         else:
             col = X[:, i]
 
-        if _pandas_installed:
+        if pd is not None:
             nonmissings = pd.notna(col)
         else:
             # this is a check for nan that works with non-floats

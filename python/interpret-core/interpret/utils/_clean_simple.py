@@ -19,8 +19,16 @@ try:
     import pandas as pd
 
     _pandas_installed = True
+    _SeriesType = pd.Series
+    _DataFrameType = pd.DataFrame
 except ImportError:
     _pandas_installed = False
+
+    class ImpossibleType:
+        pass
+
+    _SeriesType = ImpossibleType
+    _DataFrameType = ImpossibleType
 
 _none_ndarray = np.array(None)
 
@@ -57,7 +65,7 @@ def clean_dimensions(data, param_name):
             data = data.data
         elif isinstance(data, np.ndarray):
             pass
-        elif _pandas_installed and isinstance(data, pd.Series):
+        elif isinstance(data, _SeriesType):
             if data.hasnans:
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
                 msg = f"{param_name} cannot contain missing values"
@@ -65,7 +73,7 @@ def clean_dimensions(data, param_name):
                 raise ValueError(msg)
             # can be a non-numpy datatype, but has enough conformance for us to work on it
             data = data.values
-        elif _pandas_installed and isinstance(data, pd.DataFrame):
+        elif isinstance(data, _DataFrameType):
             if data.shape[1] == 1:
                 data = data.iloc[:, 0]
                 if data.hasnans:

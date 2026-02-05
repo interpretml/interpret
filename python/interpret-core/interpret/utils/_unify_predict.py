@@ -12,9 +12,14 @@ from ._native import Native
 try:
     import pandas as pd
 
-    _pandas_installed = True
+    _DataFrameType = pd.DataFrame
 except ImportError:
-    _pandas_installed = False
+
+    class ImpossibleType:
+        pass
+
+    _DataFrameType = ImpossibleType
+
 
 _log = logging.getLogger(__name__)
 
@@ -123,7 +128,7 @@ def determine_classes(model, data, n_samples):
 
 
 def unify_predict_fn(predict_fn, X, class_idx):
-    if _pandas_installed and isinstance(X, pd.DataFrame):
+    if isinstance(X, _DataFrameType):
         # scikit-learn now wants a Pandas dataframe if the model was trained on a Pandas dataframe,
         # so convert it
         names = X.columns

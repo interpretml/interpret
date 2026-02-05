@@ -18,8 +18,16 @@ try:
     import pandas as pd
 
     _pandas_installed = True
+    _SeriesType = pd.Series
+    _DataFrameType = pd.DataFrame
 except ImportError:
     _pandas_installed = False
+
+    class ImpossibleType:
+        pass
+
+    _SeriesType = ImpossibleType
+    _DataFrameType = ImpossibleType
 
 # BIG TODO LIST:
 # - review this entire bin.py file
@@ -1264,11 +1272,11 @@ def _process_sparse_column(X_col, is_predict, feature_type, min_unique_continuou
 def _process_dict_column(X_col, is_predict, feature_type, min_unique_continuous):
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
-    elif _pandas_installed and isinstance(X_col, pd.Series):
+    elif isinstance(X_col, _SeriesType):
         return _process_pandas_column(
             X_col, is_predict, feature_type, min_unique_continuous
         )
-    elif _pandas_installed and isinstance(X_col, pd.DataFrame):
+    elif isinstance(X_col, _DataFrameType):
         if X_col.shape[1] == 1:
             return _process_pandas_column(
                 X_col.iloc[:, 0], is_predict, feature_type, min_unique_continuous
@@ -1431,7 +1439,7 @@ def unify_columns(
                 )
 
             return internal
-    elif _pandas_installed and isinstance(X, pd.DataFrame):
+    elif isinstance(X, _DataFrameType):
         cols = X.columns
         mapping = dict(zip(map(str, cols), cols))
         n_cols = len(cols)
@@ -1661,7 +1669,7 @@ def unify_columns(
                 )
 
             return internal
-    elif _pandas_installed and isinstance(X, pd.Series):
+    elif isinstance(X, _SeriesType):
         # TODO: handle as a single feature model
         msg = "X as pandas.Series is unsupported"
         _log.error(msg)
@@ -1747,10 +1755,10 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         X_names = None
         n_cols = X.shape[1]
-    elif _pandas_installed and isinstance(X, pd.DataFrame):
+    elif isinstance(X, _DataFrameType):
         X_names = list(map(str, X.columns))
         n_cols = len(X_names)
-    elif _pandas_installed and isinstance(X, pd.Series):
+    elif isinstance(X, _SeriesType):
         X_names = None
         n_cols = 1
     elif safe_isinstance(X, "scipy.sparse.spmatrix") or safe_isinstance(
@@ -1923,7 +1931,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, X.shape[0]
-    if _pandas_installed and isinstance(X, pd.DataFrame):
+    if isinstance(X, _DataFrameType):
         if n_samples is not None and n_samples != X.shape[0]:
             msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
             _log.error(msg)
@@ -1937,7 +1945,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             _log.error(msg)
             raise ValueError(msg)
         return X, X.shape[0]
-    if _pandas_installed and isinstance(X, pd.Series):
+    if isinstance(X, _SeriesType):
         if min_cols is not None and min_cols != 1:
             msg = "X cannot be a pandas.Series unless there is only 1 feature"
             _log.error(msg)
@@ -2020,12 +2028,12 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                     is_copied = True
                     X = list(X)
                 X[idx] = _reshape_1D_if_possible(sample)
-        elif _pandas_installed and isinstance(sample, pd.Series):
+        elif isinstance(sample, _SeriesType):
             if not is_copied:
                 is_copied = True
                 X = list(X)
             X[idx] = sample.astype(np.object_, copy=False).values
-        elif _pandas_installed and isinstance(sample, pd.DataFrame):
+        elif isinstance(sample, _DataFrameType):
             if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
