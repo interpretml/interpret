@@ -1080,6 +1080,10 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
 
         if feature_type == "continuous":
             # called under: fit or predict
+
+            # TODO: a faster way to handle this would be to convert the categories
+            #       first, then use the indexes to create the full float64 array.
+
             if X_col.hasnans:
                 return (
                     feature_type,
@@ -1117,37 +1121,26 @@ def _process_pandas_column(X_col, is_predict, feature_type, min_unique_continuou
                 *_process_continuous(X_col.values, None),
             )
 
+        if is_predict:
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+
+            indexes, uniques = pd.factorize(X_col)
+            uniques = uniques.to_numpy(dtype=np.str_)
+            return (
+                None,
+                False if X_col.hasnans else None,
+                uniques,
+                indexes,
+                None,
+            )
+
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            if is_predict:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-
-                indexes, uniques = pd.factorize(X_col)
-                uniques = uniques.to_numpy(dtype=np.str_)
-                return (
-                    None,
-                    False,
-                    uniques,
-                    indexes,
-                    None,
-                )
             return _process_arrayish(
                 X_col.dropna().values,
                 X_col.notna().values,
                 feature_type,
                 min_unique_continuous,
-            )
-
-        if is_predict:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            indexes, uniques = pd.factorize(X_col)
-            uniques = uniques.to_numpy(dtype=np.str_)
-            return (
-                None,
-                None,
-                uniques,
-                indexes,
-                None,
             )
         return _process_arrayish(
             X_col.values,
