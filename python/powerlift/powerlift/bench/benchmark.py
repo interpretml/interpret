@@ -92,9 +92,9 @@ class Benchmark:
         tasks = sorted(
             tasks,
             reverse=True,
-            key=lambda x: (1 if x.n_classes < 3 else x.n_classes)
-            * x.n_features
-            * x.n_samples,
+            key=lambda x: (
+                (1 if x.n_classes < 3 else x.n_classes) * x.n_features * x.n_samples
+            ),
         )
 
         # Create experiment
