@@ -26,20 +26,16 @@ def compare_bins(bins, expected_bins):
 
 
 def check_data_extraction(
-    X_train,
+    X,
     feature_names=None,
     feature_types=None,
-    X_pred=None,
     min_unique_continuous=0,
 ):
     # clean first in case there are iterators
-    X_train, n_samples = preclean_X(X_train, feature_names, feature_types)
+    X, n_samples = preclean_X(X, feature_names, feature_types)
 
-    if X_pred is None:
-        X_pred = X_train
-
-    X_train, feature_names_in, feature_types_in = unify_data(
-        X_train,
+    X_base, feature_names_in, feature_types_in = unify_data(
+        X,
         n_samples,
         feature_names=feature_names,
         feature_types=feature_types,
@@ -48,12 +44,27 @@ def check_data_extraction(
         min_unique_continuous=min_unique_continuous,
         is_schematized=False,
     )
-    X_train[X_train != X_train] = "THIS IS A NAN"
+    X_base[X_base != X_base] = "THIS IS A NAN"
 
-    X_pred, n_samples = preclean_X(X_pred, feature_names_in, feature_types_in)
-
+    # check that unify_columns returns the same results using the slower path
+    # when the feature types are the cleaned up ones
     X_check, feature_names_check, feature_types_check = unify_data(
-        X_pred,
+        X,
+        n_samples,
+        feature_names=feature_names_in,
+        feature_types=feature_types_in,
+        missing_data_allowed=True,
+        unseen_data_allowed=True,
+        min_unique_continuous=0,
+        is_schematized=False,
+    )
+    X_check[X_check != X_check] = "THIS IS A NAN"
+    assert np.array_equal(X_base, X_check)
+
+    # check that unify_columns returns the same results using the faster path.
+    # We need to use the cleaned up feature_types for this.
+    X_check, feature_names_check, feature_types_check = unify_data(
+        X,
         n_samples,
         feature_names=feature_names_in,
         feature_types=feature_types_in,
@@ -63,11 +74,11 @@ def check_data_extraction(
         is_schematized=True,
     )
     X_check[X_check != X_check] = "THIS IS A NAN"
-    assert np.array_equal(X_train, X_check)
+    assert np.array_equal(X_base, X_check)
 
-    if isinstance(X_pred, (sp.sparse.spmatrix, sp.sparse.sparray)):
+    if isinstance(X, (sp.sparse.spmatrix, sp.sparse.sparray)):
         X_check, feature_names_check, feature_types_check = unify_data(
-            X_pred.toarray(),
+            X.toarray(),
             n_samples,
             feature_names=feature_names_in,
             feature_types=feature_types_in,
@@ -77,10 +88,10 @@ def check_data_extraction(
             is_schematized=True,
         )
         X_check[X_check != X_check] = "THIS IS A NAN"
-        assert np.array_equal(X_train, X_check)
-    elif isinstance(X_pred, np.ndarray):
+        assert np.array_equal(X_base, X_check)
+    elif isinstance(X, np.ndarray):
         X_check, feature_names_check, feature_types_check = unify_data(
-            ma.array(X_pred, dtype=np.object_),
+            ma.array(X, dtype=np.object_),
             n_samples,
             feature_names=feature_names_in,
             feature_types=feature_types_in,
@@ -90,9 +101,9 @@ def check_data_extraction(
             is_schematized=True,
         )
         X_check[X_check != X_check] = "THIS IS A NAN"
-        assert np.array_equal(X_train, X_check)
-    elif isinstance(X_pred, pd.DataFrame):
-        X_check = X_pred.copy()
+        assert np.array_equal(X_base, X_check)
+    elif isinstance(X, pd.DataFrame):
+        X_check = X.copy()
         X_check = X_check.astype("object")
         X_check, feature_names_check, feature_types_check = unify_data(
             X_check,
@@ -105,9 +116,9 @@ def check_data_extraction(
             is_schematized=True,
         )
         X_check[X_check != X_check] = "THIS IS A NAN"
-        assert np.array_equal(X_train, X_check)
+        assert np.array_equal(X_base, X_check)
 
-        X_check = X_pred.copy()
+        X_check = X.copy()
         change_cols = X_check.select_dtypes(include="floating").columns
         X_check[change_cols] = X_check[change_cols].astype("float64")
         change_cols = X_check.select_dtypes(include="object").columns
@@ -129,7 +140,7 @@ def check_data_extraction(
             is_schematized=True,
         )
         X_check[X_check != X_check] = "THIS IS A NAN"
-        assert np.array_equal(X_train, X_check)
+        assert np.array_equal(X_base, X_check)
 
 
 def unify_test(
