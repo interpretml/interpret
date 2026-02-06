@@ -80,7 +80,5 @@ jobs:
         run: |
           cd bld/npm
           npm publish interpretml-interpret-inline-*.tgz
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
