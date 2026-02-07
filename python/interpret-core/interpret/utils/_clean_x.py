@@ -1443,11 +1443,11 @@ def unify_columns(
                 if is_schematized:
                     if isinstance(X, ma.masked_array):
                         if X.mask is ma.nomask:
+                            if X.dtype.type is np.object_:
 
-                            def internal(feature_idx):
-                                X_col = X[:, feature_idx].data
+                                def internal(feature_idx):
+                                    X_col = X[:, feature_idx].data
 
-                                if X_col.dtype.type is np.object_:
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1478,31 +1478,50 @@ def unify_columns(
                                             None,
                                         )
 
-                                if feature_types[feature_idx] == "continuous":
-                                    # called under: fit or predict
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, None),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                     return (
                                         None,
+                                        *_encode_categorical_existing(X_col, None),
                                         None,
-                                        None,
-                                        *_process_continuous(X_col, None),
                                     )
-                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                return (
-                                    None,
-                                    *_encode_categorical_existing(X_col, None),
-                                    None,
-                                )
+                            else:
+
+                                def internal(feature_idx):
+                                    X_col = X[:, feature_idx].data
+
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, None),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                    return (
+                                        None,
+                                        *_encode_categorical_existing(X_col, None),
+                                        None,
+                                    )
                         else:
+                            if X.dtype.type is np.object_:
 
-                            def internal(feature_idx):
-                                X_col = X[:, feature_idx]
+                                def internal(feature_idx):
+                                    X_col = X[:, feature_idx]
 
-                                mask = X_col.mask
-                                X_col = X_col.compressed()
-                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                if len(X_col) != len(mask):
-                                    nonmissings = ~mask
-                                    if X_col.dtype.type is np.object_:
+                                    mask = X_col.mask
+                                    X_col = X_col.compressed()
+                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                    if len(X_col) != len(mask):
+                                        nonmissings = ~mask
                                         if _pandas_installed:
                                             # pandas also has the pd.NA value that indicates missing. If Pandas is
                                             # available we can use the pd.notna function that checks for
@@ -1519,24 +1538,25 @@ def unify_columns(
                                                 nonmissings, nonmissings, nonmissings2
                                             )
 
-                                    if feature_types[feature_idx] == "continuous":
-                                        # called under: fit or predict
+                                        if feature_types[feature_idx] == "continuous":
+                                            # called under: fit or predict
+                                            return (
+                                                None,
+                                                None,
+                                                None,
+                                                *_process_continuous(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+                                        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                         return (
                                             None,
+                                            *_encode_categorical_existing(
+                                                X_col, nonmissings
+                                            ),
                                             None,
-                                            None,
-                                            *_process_continuous(X_col, nonmissings),
                                         )
-                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                    return (
-                                        None,
-                                        *_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
 
-                                if X_col.dtype.type is np.object_:
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1567,26 +1587,70 @@ def unify_columns(
                                             None,
                                         )
 
-                                if feature_types[feature_idx] == "continuous":
-                                    # called under: fit or predict
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, None),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                     return (
                                         None,
+                                        *_encode_categorical_existing(X_col, None),
                                         None,
-                                        None,
-                                        *_process_continuous(X_col, None),
                                     )
-                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                return (
-                                    None,
-                                    *_encode_categorical_existing(X_col, None),
-                                    None,
-                                )
+                            else:
+
+                                def internal(feature_idx):
+                                    X_col = X[:, feature_idx]
+
+                                    mask = X_col.mask
+                                    X_col = X_col.compressed()
+                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                    if len(X_col) != len(mask):
+                                        nonmissings = ~mask
+
+                                        if feature_types[feature_idx] == "continuous":
+                                            # called under: fit or predict
+                                            return (
+                                                None,
+                                                None,
+                                                None,
+                                                *_process_continuous(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+                                        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                        return (
+                                            None,
+                                            *_encode_categorical_existing(
+                                                X_col, nonmissings
+                                            ),
+                                            None,
+                                        )
+
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, None),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                    return (
+                                        None,
+                                        *_encode_categorical_existing(X_col, None),
+                                        None,
+                                    )
                     else:
+                        if X.dtype.type is np.object_:
 
-                        def internal(feature_idx):
-                            X_col = X[:, feature_idx]
+                            def internal(feature_idx):
+                                X_col = X[:, feature_idx]
 
-                            if X_col.dtype.type is np.object_:
                                 if _pandas_installed:
                                     # pandas also has the pd.NA value that indicates missing. If Pandas is
                                     # available we can use the pd.notna function that checks for
@@ -1617,20 +1681,39 @@ def unify_columns(
                                         None,
                                     )
 
-                            if feature_types[feature_idx] == "continuous":
-                                # called under: fit or predict
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                 return (
                                     None,
+                                    *_encode_categorical_existing(X_col, None),
                                     None,
-                                    None,
-                                    *_process_continuous(X_col, None),
                                 )
-                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                            return (
-                                None,
-                                *_encode_categorical_existing(X_col, None),
-                                None,
-                            )
+                        else:
+
+                            def internal(feature_idx):
+                                X_col = X[:, feature_idx]
+
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                return (
+                                    None,
+                                    *_encode_categorical_existing(X_col, None),
+                                    None,
+                                )
                 else:
 
                     def internal(feature_idx):
@@ -1668,11 +1751,11 @@ def unify_columns(
             if is_schematized:
                 if isinstance(X, ma.masked_array):
                     if X.mask is ma.nomask:
+                        if X.dtype.type is np.object_:
 
-                        def internal(feature_idx):
-                            X_col = X[:, col_map[feature_idx]].data
+                            def internal(feature_idx):
+                                X_col = X[:, col_map[feature_idx]].data
 
-                            if X_col.dtype.type is np.object_:
                                 if _pandas_installed:
                                     # pandas also has the pd.NA value that indicates missing. If Pandas is
                                     # available we can use the pd.notna function that checks for
@@ -1703,31 +1786,50 @@ def unify_columns(
                                         None,
                                     )
 
-                            if feature_types[feature_idx] == "continuous":
-                                # called under: fit or predict
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                 return (
                                     None,
+                                    *_encode_categorical_existing(X_col, None),
                                     None,
-                                    None,
-                                    *_process_continuous(X_col, None),
                                 )
-                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                            return (
-                                None,
-                                *_encode_categorical_existing(X_col, None),
-                                None,
-                            )
+                        else:
+
+                            def internal(feature_idx):
+                                X_col = X[:, col_map[feature_idx]].data
+
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                return (
+                                    None,
+                                    *_encode_categorical_existing(X_col, None),
+                                    None,
+                                )
                     else:
+                        if X.dtype.type is np.object_:
 
-                        def internal(feature_idx):
-                            X_col = X[:, col_map[feature_idx]]
+                            def internal(feature_idx):
+                                X_col = X[:, col_map[feature_idx]]
 
-                            mask = X_col.mask
-                            X_col = X_col.compressed()
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if len(X_col) != len(mask):
-                                nonmissings = ~mask
-                                if X_col.dtype.type is np.object_:
+                                mask = X_col.mask
+                                X_col = X_col.compressed()
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if len(X_col) != len(mask):
+                                    nonmissings = ~mask
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1742,22 +1844,23 @@ def unify_columns(
                                         X_col = X_col[nonmissings2]
                                         np.place(nonmissings, nonmissings, nonmissings2)
 
-                                if feature_types[feature_idx] == "continuous":
-                                    # called under: fit or predict
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, nonmissings),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                     return (
                                         None,
+                                        *_encode_categorical_existing(
+                                            X_col, nonmissings
+                                        ),
                                         None,
-                                        None,
-                                        *_process_continuous(X_col, nonmissings),
                                     )
-                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                return (
-                                    None,
-                                    *_encode_categorical_existing(X_col, nonmissings),
-                                    None,
-                                )
 
-                            if X_col.dtype.type is np.object_:
                                 if _pandas_installed:
                                     # pandas also has the pd.NA value that indicates missing. If Pandas is
                                     # available we can use the pd.notna function that checks for
@@ -1788,26 +1891,68 @@ def unify_columns(
                                         None,
                                     )
 
-                            if feature_types[feature_idx] == "continuous":
-                                # called under: fit or predict
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                 return (
                                     None,
+                                    *_encode_categorical_existing(X_col, None),
                                     None,
-                                    None,
-                                    *_process_continuous(X_col, None),
                                 )
-                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                            return (
-                                None,
-                                *_encode_categorical_existing(X_col, None),
-                                None,
-                            )
+                        else:
+
+                            def internal(feature_idx):
+                                X_col = X[:, col_map[feature_idx]]
+
+                                mask = X_col.mask
+                                X_col = X_col.compressed()
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if len(X_col) != len(mask):
+                                    nonmissings = ~mask
+
+                                    if feature_types[feature_idx] == "continuous":
+                                        # called under: fit or predict
+                                        return (
+                                            None,
+                                            None,
+                                            None,
+                                            *_process_continuous(X_col, nonmissings),
+                                        )
+                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                    return (
+                                        None,
+                                        *_encode_categorical_existing(
+                                            X_col, nonmissings
+                                        ),
+                                        None,
+                                    )
+
+                                if feature_types[feature_idx] == "continuous":
+                                    # called under: fit or predict
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, None),
+                                    )
+                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                                return (
+                                    None,
+                                    *_encode_categorical_existing(X_col, None),
+                                    None,
+                                )
                 else:
+                    if X.dtype.type is np.object_:
 
-                    def internal(feature_idx):
-                        X_col = X[:, col_map[feature_idx]]
+                        def internal(feature_idx):
+                            X_col = X[:, col_map[feature_idx]]
 
-                        if X_col.dtype.type is np.object_:
                             if _pandas_installed:
                                 # pandas also has the pd.NA value that indicates missing. If Pandas is
                                 # available we can use the pd.notna function that checks for
@@ -1838,11 +1983,39 @@ def unify_columns(
                                     None,
                                 )
 
-                        if feature_types[feature_idx] == "continuous":
-                            # called under: fit or predict
-                            return None, None, None, *_process_continuous(X_col, None)
-                        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                        return None, *_encode_categorical_existing(X_col, None), None
+                            if feature_types[feature_idx] == "continuous":
+                                # called under: fit or predict
+                                return (
+                                    None,
+                                    None,
+                                    None,
+                                    *_process_continuous(X_col, None),
+                                )
+                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                            return (
+                                None,
+                                *_encode_categorical_existing(X_col, None),
+                                None,
+                            )
+                    else:
+
+                        def internal(feature_idx):
+                            X_col = X[:, col_map[feature_idx]]
+
+                            if feature_types[feature_idx] == "continuous":
+                                # called under: fit or predict
+                                return (
+                                    None,
+                                    None,
+                                    None,
+                                    *_process_continuous(X_col, None),
+                                )
+                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                            return (
+                                None,
+                                *_encode_categorical_existing(X_col, None),
+                                None,
+                            )
             else:
 
                 def internal(feature_idx):
