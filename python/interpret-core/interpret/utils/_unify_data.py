@@ -106,4 +106,8 @@ def unify_data(
 
                 X_unified[:, feature_idx] = mapping[X_col]
 
-    return X_unified, feature_names_in, feature_types_in
+    return (
+        X_unified,
+        feature_names_in,
+        feature_types if is_schematized else feature_types_in,
+    )
