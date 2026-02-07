@@ -1431,174 +1431,152 @@ def unify_columns(
         #    X = np.asfortranarray(X)
 
         if len(feature_names_in) == X.shape[1]:
-            if feature_types is None:
+            if is_schematized:
+                if isinstance(X, ma.masked_array):
+                    if X.mask is ma.nomask:
+                        X = X.data
+                    else:
+                        if X.dtype.type is np.object_:
+
+                            def internal(feature_idx):
+                                X_col = X[:, feature_idx]
+
+                                mask = X_col.mask
+                                X_col = X_col.compressed()
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if len(X_col) != len(mask):
+                                    nonmissings = ~mask
+                                    if _pandas_installed:
+                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                        # available we can use the pd.notna function that checks for
+                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                        nonmissings2 = pd.notna(X_col)
+                                    else:
+                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                        nonmissings2 = X_col == X_col
+                                        nonmissings2 &= X_col != _none_ndarray
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        np.place(nonmissings, nonmissings, nonmissings2)
+                                else:
+                                    if _pandas_installed:
+                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                        # available we can use the pd.notna function that checks for
+                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                        nonmissings = pd.notna(X_col)
+                                    else:
+                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                        nonmissings = X_col == X_col
+                                        nonmissings &= X_col != _none_ndarray
+
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
+
+                                if feature_types[feature_idx] == "continuous":
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, nonmissings),
+                                    )
+                                return (
+                                    None,
+                                    *_encode_categorical_existing(X_col, nonmissings),
+                                    None,
+                                )
+                        else:
+
+                            def internal(feature_idx):
+                                X_col = X[:, feature_idx]
+
+                                mask = X_col.mask
+                                X_col = X_col.compressed()
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                nonmissings = ~mask if len(X_col) != len(mask) else None
+
+                                if feature_types[feature_idx] == "continuous":
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_process_continuous(X_col, nonmissings),
+                                    )
+                                return (
+                                    None,
+                                    *_encode_categorical_existing(X_col, nonmissings),
+                                    None,
+                                )
+
+                        return internal
+
+                if X.dtype.type is np.object_:
+
+                    def internal(feature_idx):
+                        X_col = X[:, feature_idx]
+
+                        if _pandas_installed:
+                            # pandas also has the pd.NA value that indicates missing. If Pandas is
+                            # available we can use the pd.notna function that checks for
+                            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                            # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                            nonmissings = pd.notna(X_col)
+                        else:
+                            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                            nonmissings = X_col == X_col
+                            nonmissings &= X_col != _none_ndarray
+
+                        if nonmissings.all():
+                            nonmissings = None
+                        else:
+                            X_col = X_col[nonmissings]
+
+                        if feature_types[feature_idx] == "continuous":
+                            return (
+                                None,
+                                None,
+                                None,
+                                *_process_continuous(X_col, nonmissings),
+                            )
+                        return (
+                            None,
+                            *_encode_categorical_existing(X_col, nonmissings),
+                            None,
+                        )
+                else:
+                    # TODO: we can further extract code from _process_continuous and
+                    # _encode_categorical_existing to eliminate more per feature
+                    # execution.
+
+                    def internal(feature_idx):
+                        X_col = X[:, feature_idx]
+
+                        if feature_types[feature_idx] == "continuous":
+                            return (
+                                None,
+                                None,
+                                None,
+                                *_process_continuous(X_col, None),
+                            )
+                        return (
+                            None,
+                            *_encode_categorical_existing(X_col, None),
+                            None,
+                        )
+            else:
 
                 def internal(feature_idx):
                     return _process_numpy_column(
-                        X[:, feature_idx], is_schematized, None, min_unique_continuous
+                        X[:, feature_idx],
+                        False,
+                        None if feature_types is None else feature_types[feature_idx],
+                        min_unique_continuous,
                     )
 
-                return internal
-            else:
-                if is_schematized:
-                    if isinstance(X, ma.masked_array):
-                        if X.mask is ma.nomask:
-                            X = X.data
-                        else:
-                            if X.dtype.type is np.object_:
-
-                                def internal(feature_idx):
-                                    X_col = X[:, feature_idx]
-
-                                    mask = X_col.mask
-                                    X_col = X_col.compressed()
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    if len(X_col) != len(mask):
-                                        nonmissings = ~mask
-                                        if _pandas_installed:
-                                            # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                            # available we can use the pd.notna function that checks for
-                                            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                            nonmissings2 = pd.notna(X_col)
-                                        else:
-                                            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                            nonmissings2 = X_col == X_col
-                                            nonmissings2 &= X_col != _none_ndarray
-                                        if not nonmissings2.all():
-                                            X_col = X_col[nonmissings2]
-                                            np.place(
-                                                nonmissings, nonmissings, nonmissings2
-                                            )
-                                    else:
-                                        if _pandas_installed:
-                                            # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                            # available we can use the pd.notna function that checks for
-                                            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                            nonmissings = pd.notna(X_col)
-                                        else:
-                                            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                            nonmissings = X_col == X_col
-                                            nonmissings &= X_col != _none_ndarray
-
-                                        if nonmissings.all():
-                                            nonmissings = None
-                                        else:
-                                            X_col = X_col[nonmissings]
-
-                                    if feature_types[feature_idx] == "continuous":
-                                        # called under: fit or predict
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_process_continuous(X_col, nonmissings),
-                                        )
-                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                    return (
-                                        None,
-                                        *_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-                            else:
-
-                                def internal(feature_idx):
-                                    X_col = X[:, feature_idx]
-
-                                    mask = X_col.mask
-                                    X_col = X_col.compressed()
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    nonmissings = (
-                                        ~mask if len(X_col) != len(mask) else None
-                                    )
-
-                                    if feature_types[feature_idx] == "continuous":
-                                        # called under: fit or predict
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_process_continuous(X_col, nonmissings),
-                                        )
-                                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                                    return (
-                                        None,
-                                        *_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-
-                            return internal
-
-                    if X.dtype.type is np.object_:
-
-                        def internal(feature_idx):
-                            X_col = X[:, feature_idx]
-
-                            if _pandas_installed:
-                                # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                # available we can use the pd.notna function that checks for
-                                # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                nonmissings = pd.notna(X_col)
-                            else:
-                                # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                nonmissings = X_col == X_col
-                                nonmissings &= X_col != _none_ndarray
-
-                            if nonmissings.all():
-                                nonmissings = None
-                            else:
-                                X_col = X_col[nonmissings]
-
-                            if feature_types[feature_idx] == "continuous":
-                                # called under: fit or predict
-                                return (
-                                    None,
-                                    None,
-                                    None,
-                                    *_process_continuous(X_col, nonmissings),
-                                )
-                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                            return (
-                                None,
-                                *_encode_categorical_existing(X_col, nonmissings),
-                                None,
-                            )
-                    else:
-
-                        def internal(feature_idx):
-                            X_col = X[:, feature_idx]
-
-                            if feature_types[feature_idx] == "continuous":
-                                # called under: fit or predict
-                                return (
-                                    None,
-                                    None,
-                                    None,
-                                    *_process_continuous(X_col, None),
-                                )
-                            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                            return (
-                                None,
-                                *_encode_categorical_existing(X_col, None),
-                                None,
-                            )
-                else:
-
-                    def internal(feature_idx):
-                        return _process_numpy_column(
-                            X[:, feature_idx],
-                            False,
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
-
-                return internal
+            return internal
         else:
             if feature_types is None:
                 # called under: predict
@@ -1668,14 +1646,12 @@ def unify_columns(
                                         X_col = X_col[nonmissings]
 
                                 if feature_types[feature_idx] == "continuous":
-                                    # called under: fit or predict
                                     return (
                                         None,
                                         None,
                                         None,
                                         *_process_continuous(X_col, nonmissings),
                                     )
-                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                 return (
                                     None,
                                     *_encode_categorical_existing(X_col, nonmissings),
@@ -1692,14 +1668,12 @@ def unify_columns(
                                 nonmissings = ~mask if len(X_col) != len(mask) else None
 
                                 if feature_types[feature_idx] == "continuous":
-                                    # called under: fit or predict
                                     return (
                                         None,
                                         None,
                                         None,
                                         *_process_continuous(X_col, nonmissings),
                                     )
-                                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                                 return (
                                     None,
                                     *_encode_categorical_existing(X_col, nonmissings),
@@ -1730,14 +1704,12 @@ def unify_columns(
                             X_col = X_col[nonmissings]
 
                         if feature_types[feature_idx] == "continuous":
-                            # called under: fit or predict
                             return (
                                 None,
                                 None,
                                 None,
                                 *_process_continuous(X_col, nonmissings),
                             )
-                        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                         return (
                             None,
                             *_encode_categorical_existing(X_col, nonmissings),
@@ -1749,14 +1721,12 @@ def unify_columns(
                         X_col = X[:, col_map[feature_idx]]
 
                         if feature_types[feature_idx] == "continuous":
-                            # called under: fit or predict
                             return (
                                 None,
                                 None,
                                 None,
                                 *_process_continuous(X_col, None),
                             )
-                        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
                         return (
                             None,
                             *_encode_categorical_existing(X_col, None),
