@@ -944,14 +944,12 @@ def _reshape_1D_if_possible(col):
 
 def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_continuous):
     if isinstance(X_col, ma.masked_array):
-        mask = X_col.mask
-        if mask is ma.nomask:
-            X_col = X_col.data
-        else:
-            X_col = X_col.compressed()
+        nonmissings = X_col.mask
+        if nonmissings is not ma.nomask:
             # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-            if len(X_col) != len(mask):
-                nonmissings = ~mask
+            if nonmissings.any():
+                nonmissings = ~nonmissings
+                X_col = X_col.compressed()
                 if X_col.dtype.type is np.object_:
                     if _pandas_installed:
                         # pandas also has the pd.NA value that indicates missing. If Pandas is
@@ -963,6 +961,7 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                         nonmissings2 = X_col == X_col
                         nonmissings2 &= X_col != _none_ndarray
+
                     if not nonmissings2.all():
                         X_col = X_col[nonmissings2]
                         np.place(nonmissings, nonmissings, nonmissings2)
@@ -981,6 +980,7 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
                 return _process_arrayish(
                     X_col, nonmissings, feature_type, min_unique_continuous
                 )
+        X_col = X_col.data
 
     if X_col.dtype.type is np.object_:
         if _pandas_installed:
@@ -993,6 +993,7 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
             # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
             nonmissings = X_col == X_col
             nonmissings &= X_col != _none_ndarray
+
         if not nonmissings.all():
             if feature_type == "continuous":
                 # called under: fit or predict
@@ -1441,11 +1442,11 @@ def unify_columns(
                             def internal(feature_idx):
                                 X_col = X[:, feature_idx]
 
-                                mask = X_col.mask
-                                X_col = X_col.compressed()
+                                nonmissings = X_col.mask
                                 # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                if len(X_col) != len(mask):
-                                    nonmissings = ~mask
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col.compressed()
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1456,10 +1457,12 @@ def unify_columns(
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings2 = X_col == X_col
                                         nonmissings2 &= X_col != _none_ndarray
+
                                     if not nonmissings2.all():
                                         X_col = X_col[nonmissings2]
                                         np.place(nonmissings, nonmissings, nonmissings2)
                                 else:
+                                    X_col = X_col.data
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1493,10 +1496,14 @@ def unify_columns(
                             def internal(feature_idx):
                                 X_col = X[:, feature_idx]
 
-                                mask = X_col.mask
-                                X_col = X_col.compressed()
+                                nonmissings = X_col.mask
                                 # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                nonmissings = ~mask if len(X_col) != len(mask) else None
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col.compressed()
+                                else:
+                                    X_col = X_col.data
+                                    nonmissings = None
 
                                 if feature_types[feature_idx] == "continuous":
                                     return (
@@ -1610,11 +1617,11 @@ def unify_columns(
                             def internal(feature_idx):
                                 X_col = X[:, col_map[feature_idx]]
 
-                                mask = X_col.mask
-                                X_col = X_col.compressed()
+                                nonmissings = X_col.mask
                                 # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                if len(X_col) != len(mask):
-                                    nonmissings = ~mask
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col.compressed()
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1625,10 +1632,12 @@ def unify_columns(
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings2 = X_col == X_col
                                         nonmissings2 &= X_col != _none_ndarray
+
                                     if not nonmissings2.all():
                                         X_col = X_col[nonmissings2]
                                         np.place(nonmissings, nonmissings, nonmissings2)
                                 else:
+                                    X_col = X_col.data
                                     if _pandas_installed:
                                         # pandas also has the pd.NA value that indicates missing. If Pandas is
                                         # available we can use the pd.notna function that checks for
@@ -1662,10 +1671,14 @@ def unify_columns(
                             def internal(feature_idx):
                                 X_col = X[:, col_map[feature_idx]]
 
-                                mask = X_col.mask
-                                X_col = X_col.compressed()
+                                nonmissings = X_col.mask
                                 # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                nonmissings = ~mask if len(X_col) != len(mask) else None
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col.compressed()
+                                else:
+                                    X_col = X_col.data
+                                    nonmissings = None
 
                                 if feature_types[feature_idx] == "continuous":
                                     return (
