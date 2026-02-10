@@ -1026,7 +1026,7 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
     return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
-def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_continuous):
+def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuous):
     dt = X_col.dtype
     tt = dt.type
     if isinstance(dt, np.dtype):
@@ -1040,9 +1040,184 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
                     X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
                     None,
                 )
-            if is_schematized:
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+        if tt is np.object_:
+            if X_col.hasnans:
+                # if hasnans is true then there is definetly a real missing value in there and not just a mask
+                if feature_type == "continuous":
+                    # called under: fit or predict
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
+                    )
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+                return (
+                    None,
+                    *_encode_categorical_existing(
+                        X_col.dropna().to_numpy(), X_col.notna()
+                    ),
+                    None,
+                )
+
+            if feature_type == "continuous":
+                # called under: fit or predict
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col.to_numpy(), None),
+                )
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+    elif isinstance(dt, pd.CategoricalDtype):
+        # unlike other missing value types, we get back -1's for missing here, so no need to drop them
+
+        if feature_type == "continuous":
+            # called under: fit or predict
+
+            # TODO: a faster way to handle this would be to convert the categories
+            #       first, then use the indexes to create the full float64 array.
+
+            if X_col.hasnans:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(
+                        X_col.dropna().to_numpy(np.str_), X_col.notna()
+                    ),
+                )
+            else:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col.to_numpy(np.str_), None),
+                )
+        X_col = X_col.array
+        return (
+            None,
+            False,
+            X_col.categories.to_numpy(np.str_),
+            X_col.codes,
+            None,
+        )
+    elif isinstance(dt, pd.StringDtype):
+        if feature_type == "continuous":
+            # called under: fit or predict
+
+            if X_col.hasnans:
+                nonmissings = X_col.notna()
+                X_col = X_col.dropna()
+                try:
+                    X_col = X_col.to_numpy(np.float64)
+                except ValueError:
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous_slow(X_col.array, nonmissings),
+                    )
+
+                X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+                np.place(X_col_tmp, nonmissings, X_col)
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    X_col_tmp,
+                    None,
+                )
+
+            try:
+                X_col = X_col.to_numpy(np.float64)
+            except ValueError:
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous_slow(X_col.array, None),
+                )
+
+            return (
+                feature_type,
+                None,
+                None,
+                X_col,
+                None,
+            )
+
+        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+
+        indexes, uniques = pd.factorize(X_col)
+        uniques = uniques.to_numpy(dtype=np.str_)
+        return (
+            None,
+            False if X_col.hasnans else None,
+            uniques,
+            indexes,
+            None,
+        )
+    elif issubclass(tt, _intbool_types):
+        # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+
+        if feature_type == "continuous":
+            # called under: fit or predict
+            return (
+                feature_type,
+                None,
+                None,
+                X_col.to_numpy(np.float64),
+                None,
+            )
+
+        if X_col.hasnans:
+            # if hasnans is true then there is definetly a real missing value in there and not just a mask
+            # if X_col is a special type like UInt64Dtype convert it to numpy using astype
+
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return (
+                None,
+                *_encode_categorical_existing(
+                    X_col.dropna().to_numpy(),
+                    X_col.notna(),
+                ),
+                None,
+            )
+        # if X_col is a special type like UInt64Dtype convert it to numpy using astype
+
+        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+        return (
+            None,
+            *_encode_categorical_existing(X_col.to_numpy(), None),
+            None,
+        )
+
+    # TODO: implement pd.SparseDtype
+    # TODO: implement pd.StringDtype both the numpy and arrow versions
+    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
+    msg = f"{type(dt)} not supported"
+    _log.error(msg)
+    raise TypeError(msg)
+
+
+def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_continuous):
+    dt = X_col.dtype
+    tt = dt.type
+    if isinstance(dt, np.dtype):
+        if issubclass(tt, _float_int_bool_types):
+            if feature_type == "continuous":
+                # called under: fit or predict
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
+                    None,
+                )
             return _process_arrayish(
                 X_col.to_numpy(), None, feature_type, min_unique_continuous
             )
@@ -1056,15 +1231,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
                         None,
                         None,
                         *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
-                    )
-                if is_schematized:
-                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                    return (
-                        None,
-                        *_encode_categorical_existing(
-                            X_col.dropna().to_numpy(), X_col.notna()
-                        ),
-                        None,
                     )
                 return _process_arrayish(
                     X_col.dropna().to_numpy(),
@@ -1081,9 +1247,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
                     None,
                     *_process_continuous(X_col.to_numpy(), None),
                 )
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
             return _process_arrayish(
                 X_col.to_numpy(),
                 None,
@@ -1115,16 +1278,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
                     None,
                     *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
-        if is_schematized:
-            X_col = X_col.array
-            return (
-                None,
-                False,
-                X_col.categories.to_numpy(np.str_),
-                X_col.codes,
-                None,
-            )
-
         return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
     elif isinstance(dt, pd.StringDtype):
         if feature_type == "continuous":
@@ -1171,19 +1324,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
                 None,
             )
 
-        if is_schematized:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-
-            indexes, uniques = pd.factorize(X_col)
-            uniques = uniques.to_numpy(dtype=np.str_)
-            return (
-                None,
-                False if X_col.hasnans else None,
-                uniques,
-                indexes,
-                None,
-            )
-
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             return _process_arrayish(
@@ -1215,16 +1355,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return (
-                    None,
-                    *_encode_categorical_existing(
-                        X_col.dropna().to_numpy(),
-                        X_col.notna(),
-                    ),
-                    None,
-                )
             return _process_arrayish(
                 X_col.dropna().to_numpy(),
                 X_col.notna(),
@@ -1233,13 +1363,6 @@ def _process_pandas_column(X_col, is_schematized, feature_type, min_unique_conti
             )
         # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-        if is_schematized:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return (
-                None,
-                *_encode_categorical_existing(X_col.to_numpy(), None),
-                None,
-            )
         return _process_arrayish(
             X_col.to_numpy(),
             None,
@@ -1314,14 +1437,24 @@ def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continu
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif isinstance(X_col, _SeriesType):
-        return _process_pandas_column(
-            X_col, is_schematized, feature_type, min_unique_continuous
-        )
+        if is_schematized:
+            return _process_pandas_column_schematized(
+                X_col, feature_type, min_unique_continuous
+            )
+        else:
+            return _process_pandas_column_nonschematized(
+                X_col, feature_type, min_unique_continuous
+            )
     elif isinstance(X_col, _DataFrameType):
         if X_col.shape[1] == 1:
-            return _process_pandas_column(
-                X_col.iloc[:, 0], is_schematized, feature_type, min_unique_continuous
-            )
+            if is_schematized:
+                return _process_pandas_column_schematized(
+                    X_col.iloc[:, 0], feature_type, min_unique_continuous
+                )
+            else:
+                return _process_pandas_column_nonschematized(
+                    X_col.iloc[:, 0], feature_type, min_unique_continuous
+                )
         if X_col.shape[0] == 1:
             X_col = X_col.to_numpy(np.object_).ravel()
         elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
@@ -1907,13 +2040,22 @@ def unify_columns(
                 if len(feature_names_in) != n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                def internal(feature_idx):
-                    return _process_pandas_column(
-                        X[mapping[feature_names_in[feature_idx]]],
-                        is_schematized,
-                        None,
-                        min_unique_continuous,
-                    )
+                if is_schematized:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_schematized(
+                            X[mapping[feature_names_in[feature_idx]]],
+                            None,
+                            min_unique_continuous,
+                        )
+                else:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_nonschematized(
+                            X[mapping[feature_names_in[feature_idx]]],
+                            None,
+                            min_unique_continuous,
+                        )
 
                 return internal
             else:
@@ -1928,10 +2070,18 @@ def unify_columns(
 
                 X = X.iloc
 
-                def internal(feature_idx):
-                    return _process_pandas_column(
-                        X[:, feature_idx], is_schematized, None, min_unique_continuous
-                    )
+                if is_schematized:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_schematized(
+                            X[:, feature_idx], None, min_unique_continuous
+                        )
+                else:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_nonschematized(
+                            X[:, feature_idx], None, min_unique_continuous
+                        )
 
                 return internal
         else:
@@ -1949,13 +2099,22 @@ def unify_columns(
                 if len(feature_names_in) < n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                def internal(feature_idx):
-                    return _process_pandas_column(
-                        X[mapping[feature_names_in[feature_idx]]],
-                        is_schematized,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
+                if is_schematized:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_schematized(
+                            X[mapping[feature_names_in[feature_idx]]],
+                            feature_types[feature_idx],
+                            min_unique_continuous,
+                        )
+                else:
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_nonschematized(
+                            X[mapping[feature_names_in[feature_idx]]],
+                            feature_types[feature_idx],
+                            min_unique_continuous,
+                        )
 
                 return internal
             else:
@@ -1965,13 +2124,22 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    def internal(feature_idx):
-                        return _process_pandas_column(
-                            X[:, feature_idx],
-                            is_schematized,
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
+                    if is_schematized:
+
+                        def internal(feature_idx):
+                            return _process_pandas_column_schematized(
+                                X[:, feature_idx],
+                                feature_types[feature_idx],
+                                min_unique_continuous,
+                            )
+                    else:
+
+                        def internal(feature_idx):
+                            return _process_pandas_column_nonschematized(
+                                X[:, feature_idx],
+                                feature_types[feature_idx],
+                                min_unique_continuous,
+                            )
 
                     return internal
                 else:
@@ -1994,13 +2162,22 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    def internal(feature_idx):
-                        return _process_pandas_column(
-                            X[:, col_map[feature_idx]],
-                            is_schematized,
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
+                    if is_schematized:
+
+                        def internal(feature_idx):
+                            return _process_pandas_column_schematized(
+                                X[:, col_map[feature_idx]],
+                                feature_types[feature_idx],
+                                min_unique_continuous,
+                            )
+                    else:
+
+                        def internal(feature_idx):
+                            return _process_pandas_column_nonschematized(
+                                X[:, col_map[feature_idx]],
+                                feature_types[feature_idx],
+                                min_unique_continuous,
+                            )
 
                     return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
