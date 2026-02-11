@@ -1,11 +1,10 @@
 """Base service classes and methods for services."""
 
+import threading
 import time
 from numbers import Number
 from types import FunctionType
 from typing import Any, Optional, Tuple
-
-from stopit import ThreadingTimeout as Timeout
 
 
 class Executor:
@@ -61,14 +60,29 @@ def timed_run(f: FunctionType, timeout_seconds: int = 3600) -> Tuple[Any, Number
         Tuple[Any, Number, bool]: Function response, duration, has timed out.
     """
     start_time = time.time()
-    with Timeout(timeout_seconds) as timeout_ctx:
-        res = f()
-    duration = time.time() - start_time
 
-    timed_out = timeout_ctx.state == timeout_ctx.TIMED_OUT
-    if timed_out:
-        res = None
-    return res, duration, timed_out
+    result = None
+    exception = None
+
+    def target():
+        nonlocal result, exception
+        try:
+            result = f()
+        except Exception as e:
+            exception = e
+
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    thread.join(timeout=timeout_seconds)
+
+    duration = time.time() - start_time
+    timed_out = thread.is_alive()
+
+    if exception is not None:
+        raise exception
+
+    return result, duration, timed_out
 
 
 def handle_err(err: Exception):

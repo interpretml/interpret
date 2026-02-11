@@ -27,7 +27,6 @@ setuptools.setup(
         "sqlalchemy-utils >=0.38",
         "tqdm",
         "fastparquet",
-        "stopit",
         "pandas",
         "numpy",
         "pytz",
