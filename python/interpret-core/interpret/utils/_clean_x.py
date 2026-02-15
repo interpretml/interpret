@@ -678,6 +678,14 @@ def _process_continuous(X_col, nonmissings):
     # called under: fit or predict
 
     tt = X_col.dtype.type
+    if tt is np.float64:
+        if nonmissings is None:
+            # force C contiguous here for a later call to native.discretize
+            return np.ascontiguousarray(X_col), None
+
+        X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+        np.place(X_col_tmp, nonmissings, X_col)
+        return X_col_tmp, None
     if issubclass(tt, np.floating):
         if nonmissings is None:
             # force C contiguous here for a later call to native.discretize
