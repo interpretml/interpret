@@ -630,8 +630,10 @@ We also build on top of many great packages. Please check them out!
 
 - [Challenging the Performance-Interpretability Trade-off: An Evaluation of Interpretable Machine Learning Models](https://link.springer.com/article/10.1007/s12599-024-00922-2)
 - [The hidden risk of round numbers and sharp thresholds in clinical practice](https://www.nature.com/articles/s41746-025-02079-y)
+- [Improving Credit Card Fraud Detection with an Optimized Explainable Boosting Machine](https://arxiv.org/pdf/2602.06955)
 - [TabArena: A Living Benchmark for Machine Learning on Tabular Data](https://arxiv.org/pdf/2506.16791)
 - [Classifier Calibration at Scale: An Empirical Study of Model-Agnostic Post-Hoc Methods](https://arxiv.org/html/2601.19944v1)
+- [A Comparative Study of Machine Learning Algorithms Using Explainable Artificial Intelligence System for Predicting Liver Disease](https://www.worldscientific.com/doi/full/10.1142/S2972370123500034)
 - [Statistical Inference for Explainable Boosting Machines](https://arxiv.org/abs/2601.18857)
 - [Explainable Boosting Machine for Predicting Claim Severity and Frequency in Car Insurance](https://arxiv.org/pdf/2503.21321)
 - [Interpretable Machine Learning Models for Credit Risk Scoring in High-Availability Wire-Payment Systems](https://www.researchgate.net/profile/Arina-Finnegan-2/publication/400225339_Interpretable_Machine_Learning_Models_for_Credit_Risk_Scoring_in_High-Availability_Wire-Payment_Systems/links/697bde565d60ab483569550a/Interpretable-Machine-Learning-Models-for-Credit-Risk-Scoring-in-High-Availability-Wire-Payment-Systems.pdf)

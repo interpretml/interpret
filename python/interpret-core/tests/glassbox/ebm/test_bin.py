@@ -84,11 +84,13 @@ def test_eval_terms():
     assert bin_weights is not None
 
     result = list(
-        eval_terms(
-            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        enumerate(
+            eval_terms(
+                X, n_samples, feature_names_in, feature_types_in, bins, term_features
+            )
         )
     )
-    result = [term_scores[x[0]][tuple(x[1])] for x in result]
+    result = [term_scores[x[0]][x[1]] for x in result]
 
     # feature 0
     assert result[0][0] == 0.2
@@ -102,17 +104,17 @@ def test_eval_terms():
     assert result[1][2] == 0.03
     assert result[1][3] == 0.04
 
-    # with feature 0 and 1 completed the pair term (0, 1) is available
-    assert result[2][0] == 0.0005
-    assert result[2][1] == 0
-    assert result[2][2] == 0.0006
-    assert result[2][3] == 0.0003
-
     # feature 2
-    assert result[3][0] == 0.001
-    assert result[3][1] == 0.002
-    assert result[3][2] == 0.003
-    assert result[3][3] == 0
+    assert result[2][0] == 0.001
+    assert result[2][1] == 0.002
+    assert result[2][2] == 0.003
+    assert result[2][3] == 0
+
+    # with feature 0 and 1 completed the pair term (0, 1) is available
+    assert result[3][0] == 0.0005
+    assert result[3][1] == 0
+    assert result[3][2] == 0.0006
+    assert result[3][3] == 0.0003
 
     # with feature 0 and 2 completed the pair term (0, 2) is available
     assert result[4][0] == 0.00004

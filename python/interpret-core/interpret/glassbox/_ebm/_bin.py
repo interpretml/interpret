@@ -13,99 +13,51 @@ from ...utils._native import Native
 _log = logging.getLogger(__name__)
 
 
-_none_list = [None]
-_repeat_none = repeat(None)
-_slice_remove_last = slice(None, -1)
-
-
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-    # TODO: modify this function to do a single sweep of the term_features where
-    # we cache extracting the raw data from the dataframe and also cache the discretized
-    # values using a dict with keys (feature_index, id(feature_bins)).
-
     # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
-
-    # This generator function returns data as the feature data within terms gets read.  Normally for
-    # mains it returns them in order, but pairs will be returned as their data completes and they can
-    # be mixed in with mains.  So, if we request data for [(0), (1), (2), (3), (4), (1, 3)] the return sequence
-    # would be [(0), (1), (2), (3), (1, 3), (4)].  More complicated pair/triples return even more randomized ordering.
-    # For additive models the results can be processed in any order, so this imposes no penalities on us.
-
-    waiting = {}
-    # term_features are guaranteed to be ordered by: len(feature_idxes), sorted(feature_idxes)
-    # Which typically means that the mains are processed in order first
-    # by feature_idx.
-    for term_idx, feature_idxs in enumerate(term_features):
-        # the first len(feature_idxs) items hold the binned data that we get back as it arrives
-        num_features = len(feature_idxs)
-        requirements = _none_list * (num_features + 1)
-        requirements[-1] = term_idx
-        for feature_idx in feature_idxs:
-            waiting_list = waiting.get(feature_idx)
-            if waiting_list is None:
-                waiting[feature_idx] = [requirements]
-            else:
-                waiting_list.append(requirements)
 
     native = Native.get_native_singleton()
 
     get_col = unify_columns(
         X, n_samples, feature_names_in, feature_types_in, None, True, True
     )
-    # rely on the guarantee that iterating over dict is by insertion order
-    for column_feature_idx, all_requirements in waiting.items():
-        _, nonmissings, uniques, X_col, bad = get_col(column_feature_idx)
 
-        bin_levels = bins[column_feature_idx]
-        max_level = len(bin_levels)
-        binning_completed = _none_list * max_level
+    cached_raw = {}
+    cached_discretized = {}
+    for feature_idxs in term_features:
+        num_features = len(feature_idxs)
+        term_discretized = []
+        for feature_idx in feature_idxs:
+            bin_levels = bins[feature_idx]
+            feature_bins = bin_levels[min(len(bin_levels), num_features) - 1]
 
-        if uniques is None:
-            # continuous feature
+            key = (feature_idx, id(feature_bins))
+            discretized = cached_discretized.get(key)
+            if discretized is None:
+                raw = cached_raw.get(feature_idx)
+                if raw is None:
+                    raw = get_col(feature_idx)
+                    cached_raw[feature_idx] = raw
 
-            for requirements in all_requirements:
-                term_idx = requirements[-1]
-                feature_idxs = term_features[term_idx]
-                level_idx = min(max_level, len(feature_idxs)) - 1
-                bin_indexes = binning_completed[level_idx]
-                if bin_indexes is None:
-                    bin_indexes = native.discretize(X_col, bin_levels[level_idx])
+                # these are the variables in raw
+                # _, nonmissings, uniques, X_col, bad = raw
+
+                uniques = raw[2]
+                if uniques is None:
+                    # continuous feature
+                    discretized = native.discretize(raw[3], feature_bins)
+                    bad = raw[4]
                     if bad is not None:
-                        bin_indexes[bad] = -1
-                    binning_completed[level_idx] = bin_indexes
-                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                    # TODO: consider making it illegal to duplicate features in terms
-                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
-                    if term_feature_idx == column_feature_idx:
-                        requirements[dimension_idx] = bin_indexes
-
-                if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[_slice_remove_last]
-                    # clear references so that the garbage collector can free them
-                    requirements.clear()
-        else:
-            # categorical feature
-
-            for requirements in all_requirements:
-                term_idx = requirements[-1]
-                feature_idxs = term_features[term_idx]
-                level_idx = min(max_level, len(feature_idxs)) - 1
-                bin_indexes = binning_completed[level_idx]
-                if bin_indexes is None:
-                    bin_indexes = categorical_encode(
-                        uniques, X_col, nonmissings, bin_levels[level_idx]
+                        discretized[bad] = -1
+                else:
+                    # categorical feature
+                    discretized = categorical_encode(
+                        uniques, raw[3], raw[1], feature_bins
                     )
-                    binning_completed[level_idx] = bin_indexes
-                for dimension_idx, term_feature_idx in enumerate(feature_idxs):
-                    # TODO: consider making it illegal to duplicate features in terms
-                    # then use: dimension_idx = feature_idxs.index(column_feature_idx)
-                    if term_feature_idx == column_feature_idx:
-                        requirements[dimension_idx] = bin_indexes
 
-                if all(map(is_not, requirements, _repeat_none)):
-                    yield term_idx, requirements[_slice_remove_last]
-                    # clear references so that the garbage collector can free them
-                    requirements.clear()
+                cached_discretized[key] = discretized
+            term_discretized.append(discretized)
+        yield tuple(term_discretized)
 
 
 def ebm_predict_scores(
@@ -132,10 +84,13 @@ def ebm_predict_scores(
     )
 
     if n_samples > 0:
-        for term_idx, bin_indexes in eval_terms(
-            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        for scores, bin_indexes in zip(
+            term_scores,
+            eval_terms(
+                X, n_samples, feature_names_in, feature_types_in, bins, term_features
+            ),
         ):
-            sample_scores += term_scores[term_idx][tuple(bin_indexes)]
+            sample_scores += scores[bin_indexes]
 
     return sample_scores
 
@@ -159,10 +114,12 @@ def ebm_eval_terms(
     )
 
     if n_samples > 0:
-        for term_idx, bin_indexes in eval_terms(
-            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        for term_idx, bin_indexes in enumerate(
+            eval_terms(
+                X, n_samples, feature_names_in, feature_types_in, bins, term_features
+            )
         ):
-            explanations[:, term_idx] = term_scores[term_idx][tuple(bin_indexes)]
+            explanations[:, term_idx] = term_scores[term_idx][bin_indexes]
 
     return explanations
 
@@ -170,9 +127,11 @@ def ebm_eval_terms(
 def make_bin_weights(
     X, n_samples, sample_weight, feature_names_in, feature_types_in, bins, term_features
 ):
-    bin_weights = _none_list * len(term_features)
-    for term_idx, bin_indexes in eval_terms(
-        X, n_samples, feature_names_in, feature_types_in, bins, term_features
+    bin_weights = [None] * len(term_features)
+    for term_idx, bin_indexes in enumerate(
+        eval_terms(
+            X, n_samples, feature_names_in, feature_types_in, bins, term_features
+        )
     ):
         feature_idxs = term_features[term_idx]
         multiple = 1
