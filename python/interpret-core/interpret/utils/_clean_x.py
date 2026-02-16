@@ -686,20 +686,13 @@ def _process_continuous(X_col, nonmissings):
         X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col
         return X_col_tmp, None
-    if issubclass(tt, np.floating):
+    if issubclass(tt, _float_int_bool_types):
         if nonmissings is None:
             # force C contiguous here for a later call to native.discretize
             return X_col.astype(np.float64, "C", copy=False), None
 
         X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col.astype(np.float64, copy=False)
-        return X_col_tmp, None
-    if issubclass(tt, _intbool_types):
-        if nonmissings is None:
-            return X_col.astype(np.float64), None
-
-        X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
-        X_col_tmp[nonmissings] = X_col.astype(np.float64)
         return X_col_tmp, None
 
     # we either have an np.object_ or np.unicode_/np.str_
