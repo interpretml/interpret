@@ -315,6 +315,7 @@ _repeat_uint_type = repeat(np.unsignedinteger)
 _repeat_ignore = repeat("ignore")
 _repeat_bools = repeat((bool, np.bool_))
 _repeat_negativeone = repeat(-1)
+_array_zero = np.zeros(1, np.int64)
 
 
 def _densify_object_ndarray(X_col):
@@ -455,12 +456,10 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
     n_cat = len(categories)
     if len(mapping) <= n_cat:
         if np.array_equal(mapping, np.arange(1, len(mapping) + 1, dtype=np.int64)):
-            # avoid overflows for np.int8
-            #
-            # We also need to make a copy because we could call categorical_encode
-            # multiple times for different terms with the same indexes which we
-            # would not want to increment each time since it would modify the indexes
-            # of other terms.
+            # CategoricalDType can encode values as np.int8. We cannot allow an
+            # int8 to overflow when we add 1, so convert to int64 first, and we
+            # also need to make a copy here because we cache the raw data and
+            # re-use it for different binning levels on the same feature.
 
             indexes = indexes.astype(np.int64)
             indexes += 1
@@ -473,12 +472,10 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             return indexes_tmp
     else:
         if np.array_equal(mapping[:n_cat], np.arange(1, n_cat + 1, dtype=np.int64)):
-            # avoid overflows for np.int8
-            #
-            # We also need to make a copy because we could call categorical_encode
-            # multiple times for different terms with the same indexes which we
-            # would not want to increment each time since it would modify the indexes
-            # of other terms.
+            # CategoricalDType can encode values as np.int8. We cannot allow an
+            # int8 to overflow when we add 1, so convert to int64 first, and we
+            # also need to make a copy here because we cache the raw data and
+            # re-use it for different binning levels on the same feature.
 
             indexes = indexes.astype(np.int64)
             indexes += 1
@@ -491,13 +488,13 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             indexes_tmp[nonmissings] = indexes
             return indexes_tmp
 
+    if nonmissings is None:
+        # indexes should be all positive if nonmissings is None
+        return mapping[indexes]
+
     if nonmissings is False:
         # missing values are -1 in indexes, so append 0 to the map, which is index -1
-        return np.append(mapping, 0)[indexes]
-
-    # indexes should be all positive and nonmissings defines the unseen values
-    if nonmissings is None:
-        return mapping[indexes]
+        return np.concatenate((mapping, _array_zero))[indexes]
 
     indexes_tmp = np.zeros(len(nonmissings), np.int64)
     indexes_tmp[nonmissings] = mapping[indexes]
@@ -614,7 +611,8 @@ def _encode_categorical_existing(X_col, nonmissings):
             np.place(nonmissings, nonmissings, m)
         uniques, indexes = np.unique(X_col, return_inverse=True)
         return nonmissings, uniques.astype(np.str_), indexes
-    elif tt is np.object_:
+
+    if tt is np.object_:
         uniques, indexes = np.unique(
             _densify_object_ndarray(X_col), return_inverse=True
         )
