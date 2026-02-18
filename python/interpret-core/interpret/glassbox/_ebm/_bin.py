@@ -14,7 +14,9 @@ _log = logging.getLogger(__name__)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
-    # prior to calling this function, call remove_extra_bins which will eliminate extra work in this function
+    # Prior to calling this function, call remove_extra_bins which will
+    # eliminate extra work in this function. The only place we need fast
+    # performance here is when called from ebm_predict_scores or ebm_eval_terms.
 
     native = Native.get_native_singleton()
 

@@ -1566,9 +1566,7 @@ def unify_columns(
         if len(feature_names_in) == X.shape[1]:
             if is_schematized:
                 if isinstance(X, ma.masked_array):
-                    if X.mask is ma.nomask:
-                        X = X.data
-                    else:
+                    if X.mask is not ma.nomask:
                         if X.dtype.type is np.object_:
                             if _pandas_installed:
 
@@ -1694,6 +1692,7 @@ def unify_columns(
                                 )
 
                         return internal
+                    X = X.data
 
                 if X.dtype.type is np.object_:
                     if _pandas_installed:
@@ -1807,9 +1806,7 @@ def unify_columns(
 
             if is_schematized:
                 if isinstance(X, ma.masked_array):
-                    if X.mask is ma.nomask:
-                        X = X.data
-                    else:
+                    if X.mask is not ma.nomask:
                         if X.dtype.type is np.object_:
                             if _pandas_installed:
 
@@ -1935,6 +1932,7 @@ def unify_columns(
                                 )
 
                         return internal
+                    X = X.data
 
                 if X.dtype.type is np.object_:
                     if _pandas_installed:
@@ -1992,6 +1990,9 @@ def unify_columns(
                                 None,
                             )
                 else:
+                    # TODO: we can further extract code from _process_continuous and
+                    # _encode_categorical_existing to eliminate more per feature
+                    # execution.
 
                     def internal(feature_idx):
                         X_col = X[:, col_map[feature_idx]]
