@@ -2457,106 +2457,73 @@ def unify_columns_nonschematized(
                     del mapping[name]
 
         if feature_types is None:
-            if all(map(mapping.__contains__, feature_names_in)):
-                # we can index by name, which is a lot faster in pandas
+            good_names = feature_names_in
+        else:
+            good_names = compress(
+                feature_names_in, map(ne, _repeat_ignore, feature_types)
+            )
+        if all(map(mapping.__contains__, good_names)):
+            # we can index by name, which is a lot faster in pandas
 
-                if len(feature_names_in) != n_cols:
-                    warn("Extra columns present in X that are not used by the model.")
+            if len(feature_names_in) < n_cols:
+                warn("Extra columns present in X that are not used by the model.")
+
+            def internal(feature_idx):
+                return _process_pandas_column_nonschematized(
+                    X[mapping[feature_names_in[feature_idx]]],
+                    None if feature_types is None else feature_types[feature_idx],
+                    min_unique_continuous,
+                )
+
+            return internal
+        else:
+            X = X.iloc
+
+            if len(feature_names_in) == n_cols:
+                warn(
+                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                )
 
                 def internal(feature_idx):
                     return _process_pandas_column_nonschematized(
-                        X[mapping[feature_names_in[feature_idx]]],
-                        None,
+                        X[:, feature_idx],
+                        None if feature_types is None else feature_types[feature_idx],
                         min_unique_continuous,
                     )
 
                 return internal
             else:
-                if len(feature_names_in) != n_cols:
-                    msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
+                if feature_types is None:
+                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
+
+                keep_cols = np.fromiter(
+                    map(ne, _repeat_ignore, feature_types),
+                    np.bool_,
+                    len(feature_types),
+                )
+                n_keep = keep_cols.sum()
+                if n_keep != n_cols:
+                    # called under: predict
+                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                    _log.error(msg)
+                    raise ValueError(msg)
+                col_map = np.empty(keep_cols.shape[0], np.int64)
+                col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
                 warn(
                     "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                 )
 
-                X = X.iloc
-
                 def internal(feature_idx):
                     return _process_pandas_column_nonschematized(
-                        X[:, feature_idx],
-                        None,
-                        min_unique_continuous,
-                    )
-
-                return internal
-        else:
-            if all(
-                map(
-                    mapping.__contains__,
-                    compress(
-                        feature_names_in,
-                        map(ne, _repeat_ignore, feature_types),
-                    ),
-                )
-            ):
-                # we can index by name, which is a lot faster in pandas
-
-                if len(feature_names_in) < n_cols:
-                    warn("Extra columns present in X that are not used by the model.")
-
-                def internal(feature_idx):
-                    return _process_pandas_column_nonschematized(
-                        X[mapping[feature_names_in[feature_idx]]],
+                        X[:, col_map[feature_idx]],
                         feature_types[feature_idx],
                         min_unique_continuous,
                     )
 
                 return internal
-            else:
-                X = X.iloc
-
-                if len(feature_names_in) == n_cols:
-                    warn(
-                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
-                    )
-
-                    def internal(feature_idx):
-                        return _process_pandas_column_nonschematized(
-                            X[:, feature_idx],
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
-
-                    return internal
-                else:
-                    keep_cols = np.fromiter(
-                        map(ne, _repeat_ignore, feature_types),
-                        np.bool_,
-                        len(feature_types),
-                    )
-                    n_keep = keep_cols.sum()
-                    if n_keep != n_cols:
-                        # called under: predict
-                        msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    col_map = np.empty(keep_cols.shape[0], np.int64)
-                    col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-
-                    warn(
-                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
-                    )
-
-                    def internal(feature_idx):
-                        return _process_pandas_column_nonschematized(
-                            X[:, col_map[feature_idx]],
-                            feature_types[feature_idx],
-                            min_unique_continuous,
-                        )
-
-                    return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
@@ -2568,28 +2535,16 @@ def unify_columns_nonschematized(
         n_cols = X.shape[1]
 
         if len(feature_names_in) == n_cols:
-            if feature_types is None:
 
-                def internal(feature_idx):
-                    return _process_sparse_column(
-                        X[:, (feature_idx,)],
-                        False,
-                        None,
-                        min_unique_continuous,
-                    )
+            def internal(feature_idx):
+                return _process_sparse_column(
+                    X[:, (feature_idx,)],
+                    False,
+                    None if feature_types is None else feature_types[feature_idx],
+                    min_unique_continuous,
+                )
 
-                return internal
-            else:
-
-                def internal(feature_idx):
-                    return _process_sparse_column(
-                        X[:, (feature_idx,)],
-                        False,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
-
-                return internal
+            return internal
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -2626,28 +2581,16 @@ def unify_columns_nonschematized(
         X_get = X.getcol
 
         if len(feature_names_in) == n_cols:
-            if feature_types is None:
 
-                def internal(feature_idx):
-                    return _process_sparse_column(
-                        X_get(feature_idx),
-                        False,
-                        None,
-                        min_unique_continuous,
-                    )
+            def internal(feature_idx):
+                return _process_sparse_column(
+                    X_get(feature_idx),
+                    False,
+                    None if feature_types is None else feature_types[feature_idx],
+                    min_unique_continuous,
+                )
 
-                return internal
-            else:
-
-                def internal(feature_idx):
-                    return _process_sparse_column(
-                        X_get(feature_idx),
-                        False,
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
-
-                return internal
+            return internal
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -2685,56 +2628,30 @@ def unify_columns_nonschematized(
         _log.error(msg)
         raise ValueError(msg)
     elif isinstance(X, dict):
-        if feature_types is None:
 
-            def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
-                    X[feature_names_in[feature_idx]],
-                    False,
-                    None,
-                    min_unique_continuous,
-                )
+        def internal(feature_idx):
+            feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
+                X[feature_names_in[feature_idx]],
+                False,
+                None if feature_types is None else feature_types[feature_idx],
+                min_unique_continuous,
+            )
 
-                # unlike other datasets, dict must be checked for content length
-                if nonmissings is None or nonmissings is False:
-                    if n_samples != X_col.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                else:
-                    if n_samples != nonmissings.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
+            # unlike other datasets, dict must be checked for content length
+            if nonmissings is None or nonmissings is False:
+                if n_samples != X_col.shape[0]:
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            else:
+                if n_samples != nonmissings.shape[0]:
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-                return feature_type, nonmissings, uniques, X_col, bad
+            return feature_type, nonmissings, uniques, X_col, bad
 
-            return internal
-        else:
-
-            def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
-                    X[feature_names_in[feature_idx]],
-                    False,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
-                )
-
-                # unlike other datasets, dict must be checked for content length
-                if nonmissings is None or nonmissings is False:
-                    if n_samples != X_col.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                else:
-                    if n_samples != nonmissings.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                return feature_type, nonmissings, uniques, X_col, bad
-
-            return internal
+        return internal
     else:
         msg = "internal error"
         _log.error(msg)
