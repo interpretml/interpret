@@ -2115,10 +2115,11 @@ def unify_columns_schematized(
                 X_get = X.__getitem__
                 _local_slice_none = _slice_none
 
+                warn(
+                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                )
+
                 if len(feature_names_in) == n_cols:
-                    warn(
-                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
-                    )
 
                     def internal(feature_idx):
                         return _local_process_pandas_column_schematized(
@@ -2143,10 +2144,6 @@ def unify_columns_schematized(
                     col_map = np.empty(keep_cols.shape[0], np.int64)
                     col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
                     col_map_get = col_map.__getitem__
-
-                    warn(
-                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
-                    )
 
                     def internal(feature_idx):
                         return _local_process_pandas_column_schematized(
@@ -2399,16 +2396,7 @@ def unify_columns_nonschematized(
         # memoryview
 
         if len(feature_names_in) == X.shape[1]:
-
-            def internal(feature_idx):
-                return _process_numpy_column(
-                    X[:, feature_idx],
-                    False,
-                    None if feature_types is None else feature_types[feature_idx],
-                    min_unique_continuous,
-                )
-
-            return internal
+            col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
             if feature_types is None:
                 # called under: predict
@@ -2433,15 +2421,15 @@ def unify_columns_nonschematized(
             col_map = np.empty(keep_cols.shape[0], np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
-            def internal(feature_idx):
-                return _process_numpy_column(
-                    X[:, col_map[feature_idx]],
-                    False,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
-                )
+        def internal(feature_idx):
+            return _process_numpy_column(
+                X[:, col_map[feature_idx]],
+                False,
+                None if feature_types is None else feature_types[feature_idx],
+                min_unique_continuous,
+            )
 
-            return internal
+        return internal
     elif isinstance(X, _DataFrameType):
         cols = X.columns
         mapping = dict(zip(map(str, cols), cols))
@@ -2465,7 +2453,7 @@ def unify_columns_nonschematized(
         if all(map(mapping.__contains__, good_names)):
             # we can index by name, which is a lot faster in pandas
 
-            if len(feature_names_in) < n_cols:
+            if len(feature_names_in) != n_cols:
                 warn("Extra columns present in X that are not used by the model.")
 
             def internal(feature_idx):
@@ -2480,18 +2468,7 @@ def unify_columns_nonschematized(
             X = X.iloc
 
             if len(feature_names_in) == n_cols:
-                warn(
-                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
-                )
-
-                def internal(feature_idx):
-                    return _process_pandas_column_nonschematized(
-                        X[:, feature_idx],
-                        None if feature_types is None else feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
-
-                return internal
+                col_map = np.arange(len(feature_names_in), dtype=np.int64)
             else:
                 if feature_types is None:
                     msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -2512,18 +2489,18 @@ def unify_columns_nonschematized(
                 col_map = np.empty(keep_cols.shape[0], np.int64)
                 col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
-                warn(
-                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+            warn(
+                "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+            )
+
+            def internal(feature_idx):
+                return _process_pandas_column_nonschematized(
+                    X[:, col_map[feature_idx]],
+                    None if feature_types is None else feature_types[feature_idx],
+                    min_unique_continuous,
                 )
 
-                def internal(feature_idx):
-                    return _process_pandas_column_nonschematized(
-                        X[:, col_map[feature_idx]],
-                        feature_types[feature_idx],
-                        min_unique_continuous,
-                    )
-
-                return internal
+            return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
@@ -2535,16 +2512,7 @@ def unify_columns_nonschematized(
         n_cols = X.shape[1]
 
         if len(feature_names_in) == n_cols:
-
-            def internal(feature_idx):
-                return _process_sparse_column(
-                    X[:, (feature_idx,)],
-                    False,
-                    None if feature_types is None else feature_types[feature_idx],
-                    min_unique_continuous,
-                )
-
-            return internal
+            col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -2567,30 +2535,21 @@ def unify_columns_nonschematized(
             col_map = np.empty(len(feature_types), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
-            def internal(feature_idx):
-                return _process_sparse_column(
-                    X[:, (col_map[feature_idx],)],
-                    False,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
-                )
+        def internal(feature_idx):
+            return _process_sparse_column(
+                X[:, (col_map[feature_idx],)],
+                False,
+                None if feature_types is None else feature_types[feature_idx],
+                min_unique_continuous,
+            )
 
-            return internal
+        return internal
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
         n_cols = X.shape[1]
         X_get = X.getcol
 
         if len(feature_names_in) == n_cols:
-
-            def internal(feature_idx):
-                return _process_sparse_column(
-                    X_get(feature_idx),
-                    False,
-                    None if feature_types is None else feature_types[feature_idx],
-                    min_unique_continuous,
-                )
-
-            return internal
+            col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
             if feature_types is None:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
@@ -2613,15 +2572,15 @@ def unify_columns_nonschematized(
             col_map = np.empty(len(feature_types), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
-            def internal(feature_idx):
-                return _process_sparse_column(
-                    X_get(col_map[feature_idx]),
-                    False,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
-                )
+        def internal(feature_idx):
+            return _process_sparse_column(
+                X_get(col_map[feature_idx]),
+                False,
+                None if feature_types is None else feature_types[feature_idx],
+                min_unique_continuous,
+            )
 
-            return internal
+        return internal
     elif isinstance(X, _SeriesType):
         # TODO: handle as a single feature model
         msg = "X as pandas.Series is unsupported"
