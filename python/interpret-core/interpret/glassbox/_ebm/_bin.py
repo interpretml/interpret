@@ -31,9 +31,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         term_discretized = []
         for feature_idx in feature_idxs:
             bin_levels = bins[feature_idx]
-            feature_bins = bin_levels[min(len(bin_levels), num_features) - 1]
-
-            key = (feature_idx, id(feature_bins))
+            bin_level = min(len(bin_levels), num_features)
+            key = (feature_idx, bin_level)
             discretized = cached_discretized.get(key)
             if discretized is None:
                 raw = cached_raw.get(feature_idx)
@@ -47,14 +46,14 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 uniques = raw[2]
                 if uniques is None:
                     # continuous feature
-                    discretized = native.discretize(raw[3], feature_bins)
+                    discretized = native.discretize(raw[3], bin_levels[bin_level - 1])
                     bad = raw[4]
                     if bad is not None:
                         discretized[bad] = -1
                 else:
                     # categorical feature
                     discretized = categorical_encode(
-                        uniques, raw[3], raw[1], feature_bins
+                        uniques, raw[3], raw[1], bin_levels[bin_level - 1]
                     )
 
                 cached_discretized[key] = discretized
