@@ -1513,8 +1513,6 @@ def unify_columns_schematized(
     n_samples,
     feature_names_in,
     feature_types,
-    min_unique_continuous,
-    go_fast,
 ):
     # preclean_X is always called on X prior to calling this function
 
@@ -1559,7 +1557,7 @@ def unify_columns_schematized(
         # For some reason numpy really sucks at transposing data and asfortranarray makes it slower, so let's do it ourselves.
         # Allocate an empty fortran array here in python and have C++ fill it.  Then we can keep all the
         # rest of the code below the same since it'll just be accessed internally more efficiently.
-        # if go_fast and X.flags.c_contiguous:
+        # if X.flags.c_contiguous:
         #    # called under: predict
         #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
         #    X = np.asfortranarray(X)
@@ -1793,7 +1791,7 @@ def unify_columns_schematized(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, _repeat_ignore, feature_types),
+                map("ignore".__ne__, feature_types),
                 np.bool_,
                 len(feature_types),
             )
@@ -2057,7 +2055,7 @@ def unify_columns_schematized(
                     return _local_process_pandas_column_schematized(
                         X_get(mapping_get(feature_names_in_get(feature_idx))),
                         None,
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2079,7 +2077,7 @@ def unify_columns_schematized(
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, feature_idx)),
                         None,
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2091,7 +2089,7 @@ def unify_columns_schematized(
                     mapping.__contains__,
                     compress(
                         feature_names_in,
-                        map(ne, _repeat_ignore, feature_types),
+                        map("ignore".__ne__, feature_types),
                     ),
                 )
             ):
@@ -2108,7 +2106,7 @@ def unify_columns_schematized(
                     return _local_process_pandas_column_schematized(
                         X_get(mapping_get(feature_names_in_get(feature_idx))),
                         feature_types_get(feature_idx),
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2126,13 +2124,13 @@ def unify_columns_schematized(
                         return _local_process_pandas_column_schematized(
                             X_get((_local_slice_none, feature_idx)),
                             feature_types_get(feature_idx),
-                            min_unique_continuous,
+                            None,
                         )
 
                     return internal
                 else:
                     keep_cols = np.fromiter(
-                        map(ne, _repeat_ignore, feature_types),
+                        map("ignore".__ne__, feature_types),
                         np.bool_,
                         len(feature_types),
                     )
@@ -2154,7 +2152,7 @@ def unify_columns_schematized(
                         return _local_process_pandas_column_schematized(
                             X_get((_local_slice_none, col_map_get(feature_idx))),
                             feature_types_get(feature_idx),
-                            min_unique_continuous,
+                            None,
                         )
 
                     return internal
@@ -2179,7 +2177,7 @@ def unify_columns_schematized(
                         X_get((_local_slice_none, (feature_idx,))),
                         True,
                         None,
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2191,7 +2189,7 @@ def unify_columns_schematized(
                         X_get((_local_slice_none, (feature_idx,))),
                         True,
                         feature_types_get(feature_idx),
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2205,7 +2203,7 @@ def unify_columns_schematized(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, _repeat_ignore, feature_types),
+                map("ignore".__ne__, feature_types),
                 np.bool_,
                 len(feature_types),
             )
@@ -2225,7 +2223,7 @@ def unify_columns_schematized(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
                     True,
                     feature_types_get(feature_idx),
-                    min_unique_continuous,
+                    None,
                 )
 
             return internal
@@ -2242,7 +2240,7 @@ def unify_columns_schematized(
                         X_get(feature_idx),
                         True,
                         None,
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2254,7 +2252,7 @@ def unify_columns_schematized(
                         X_get(feature_idx),
                         True,
                         feature_types_get(feature_idx),
-                        min_unique_continuous,
+                        None,
                     )
 
                 return internal
@@ -2268,7 +2266,7 @@ def unify_columns_schematized(
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map(ne, _repeat_ignore, feature_types),
+                map("ignore".__ne__, feature_types),
                 np.bool_,
                 len(feature_types),
             )
@@ -2288,7 +2286,7 @@ def unify_columns_schematized(
                     X_get(col_map_get(feature_idx)),
                     True,
                     feature_types_get(feature_idx),
-                    min_unique_continuous,
+                    None,
                 )
 
             return internal
@@ -2309,7 +2307,7 @@ def unify_columns_schematized(
                         X_get(feature_names_in_get(feature_idx)),
                         True,
                         None,
-                        min_unique_continuous,
+                        None,
                     )
                 )
 
@@ -2337,7 +2335,7 @@ def unify_columns_schematized(
                         X_get(feature_names_in_get(feature_idx)),
                         True,
                         feature_types_get(feature_idx),
-                        min_unique_continuous,
+                        None,
                     )
                 )
 
@@ -2368,7 +2366,6 @@ def unify_columns_nonschematized(
     feature_names_in,
     feature_types,
     min_unique_continuous,
-    go_fast,
 ):
     # preclean_X is always called on X prior to calling this function
 
@@ -2394,29 +2391,12 @@ def unify_columns_nonschematized(
                 _log.error(msg)
                 raise TypeError(msg)
 
-        # TODO: in the future special case this to make single samples faster at predict time
-
         # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
         # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
         # so read up on this more
         # https://numpy.org/doc/stable/reference/arrays.ndarray.html#internal-memory-layout-of-an-ndarray
         # https://numpy.org/doc/stable/reference/arrays.interface.html
         # memoryview
-
-        # TODO: create a C++ transposer that takes the stride length between items, so we can pass in 1 for bytes
-        # 2 for int16, 4 for int32, 8 for int64 and special case those sizes to be fast.  We can then also transpose
-        # np.object_ and np.unicode by passing in whatever lengths those are, which we can get from numpy reliably
-        # Inisde C++ we can use a templated function that takes the stride length or 0, so we'll get compiled
-        # versions that specialize the 1,2,4,8 sizes, and use memcpy to make the cell copies.  memcpy is an
-        # intrinsic that'll optimize down to avoid loops when possible, so that should give us fast results.
-        #
-        # For some reason numpy really sucks at transposing data and asfortranarray makes it slower, so let's do it ourselves.
-        # Allocate an empty fortran array here in python and have C++ fill it.  Then we can keep all the
-        # rest of the code below the same since it'll just be accessed internally more efficiently.
-        # if go_fast and X.flags.c_contiguous:
-        #    # called under: predict
-        #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
-        #    X = np.asfortranarray(X)
 
         _local_slice_none = _slice_none
 

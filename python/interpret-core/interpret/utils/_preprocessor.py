@@ -281,7 +281,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             feature_names_in,
             self.feature_types,
             self.min_unique_continuous,
-            False,
         )
         for feature_idx in range(n_features):
             feature_type_given = (
@@ -532,8 +531,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 n_samples,
                 self.feature_names_in_,
                 self.feature_types_in_,
-                None,
-                False,
             )
             for feature_idx, bins in enumerate(self.bins_):
                 if self.feature_types_in_[feature_idx] == "ignore":

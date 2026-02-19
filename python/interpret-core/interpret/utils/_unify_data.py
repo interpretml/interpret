@@ -51,8 +51,6 @@ def unify_data(
             n_samples,
             feature_names_in,
             feature_types,
-            min_unique_continuous,
-            False,
         )
     else:
         get_col = unify_columns_nonschematized(
@@ -61,7 +59,6 @@ def unify_data(
             feature_names_in,
             feature_types,
             min_unique_continuous,
-            False,
         )
 
     for feature_idx in range(len(feature_names_in)):

@@ -10,7 +10,6 @@ from operator import itemgetter, is_not, attrgetter
 from ...utils._clean_x import (
     unify_columns_schematized,
     categorical_encode,
-    unify_columns_schematized,
 )
 from ...utils._native import Native
 
@@ -37,7 +36,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
         )
 
     get_col = unify_columns_schematized(
-        X, n_samples, feature_names_in, feature_types_in, None, True
+        X, n_samples, feature_names_in, feature_types_in
     )
 
     cached_raw = {}
