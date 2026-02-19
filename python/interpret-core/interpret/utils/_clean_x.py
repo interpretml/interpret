@@ -436,7 +436,7 @@ def _densify_object_ndarray(X_col):
         if not X_col.flags.owndata:
             X_col = X_col.copy()  # we place into this array below so we need to own it
         places = np.fromiter(
-            map(isinstance, X_col, _repeat_float_types), np.bool_, len(X_col)
+            map(isinstance, X_col, _repeat_float_types), np.bool_, X_col.shape[0]
         )
         X_col[places] = X_col[places].astype(np.float64)
 
@@ -450,12 +450,12 @@ def _densify_object_ndarray(X_col):
 
 def categorical_encode(uniques, indexes, nonmissings, categories):
     mapping = np.fromiter(
-        map(categories.get, uniques, _repeat_negativeone), np.int64, len(uniques)
+        map(categories.get, uniques, _repeat_negativeone), np.int64, uniques.shape[0]
     )
 
     n_cat = len(categories)
-    if len(mapping) <= n_cat:
-        if np.array_equal(mapping, np.arange(1, len(mapping) + 1, dtype=np.int64)):
+    if mapping.shape[0] <= n_cat:
+        if np.array_equal(mapping, np.arange(1, mapping.shape[0] + 1, dtype=np.int64)):
             # CategoricalDType can encode values as np.int8. We cannot allow an
             # int8 to overflow when we add 1, so convert to int64 first, and we
             # also need to make a copy here because we cache the raw data and
@@ -467,7 +467,7 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             if nonmissings is None or nonmissings is False:
                 return indexes
 
-            indexes_tmp = np.zeros(len(nonmissings), np.int64)
+            indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
             indexes_tmp[nonmissings] = indexes
             return indexes_tmp
     else:
@@ -484,7 +484,7 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
             if nonmissings is None or nonmissings is False:
                 return indexes
 
-            indexes_tmp = np.zeros(len(nonmissings), np.int64)
+            indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
             indexes_tmp[nonmissings] = indexes
             return indexes_tmp
 
@@ -496,7 +496,7 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
         # missing values are -1 in indexes, so append 0 to the map, which is index -1
         return np.concatenate((mapping, _array_zero))[indexes]
 
-    indexes_tmp = np.zeros(len(nonmissings), np.int64)
+    indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
     indexes_tmp[nonmissings] = mapping[indexes]
     return indexes_tmp
 
@@ -630,7 +630,7 @@ def _encode_categorical_existing(X_col, nonmissings):
 
 
 def _process_continuous_slow(X_col, nonmissings):
-    n_samples = len(X_col)
+    n_samples = X_col.shape[0]
     bad = np.zeros(n_samples, np.bool_)
     floats = np.zeros(n_samples, np.float64)
     for idx in range(n_samples):
@@ -657,13 +657,13 @@ def _process_continuous_slow(X_col, nonmissings):
     if nonmissings is None:
         return floats, bad
 
-    floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
+    floats_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
     floats_tmp[nonmissings] = floats
 
     if bad is None:
         return floats_tmp, None
 
-    bad_tmp = np.zeros(len(nonmissings), np.bool_)
+    bad_tmp = np.zeros(nonmissings.shape[0], np.bool_)
     bad_tmp[nonmissings] = bad
     return floats_tmp, bad_tmp
 
@@ -681,7 +681,7 @@ def _process_continuous(X_col, nonmissings):
             # force C contiguous here for a later call to native.discretize
             return np.ascontiguousarray(X_col), None
 
-        X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+        X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col
         return X_col_tmp, None
     if issubclass(tt, _float_int_bool_types):
@@ -689,7 +689,7 @@ def _process_continuous(X_col, nonmissings):
             # force C contiguous here for a later call to native.discretize
             return X_col.astype(np.float64, "C", copy=False), None
 
-        X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+        X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col.astype(np.float64, copy=False)
         return X_col_tmp, None
 
@@ -708,7 +708,7 @@ def _process_continuous(X_col, nonmissings):
             return X_col.astype(np.float64), None
 
         X_col = X_col.astype(np.float64)
-        X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+        X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col
         return X_col_tmp, None
     except (TypeError, ValueError):
@@ -1121,7 +1121,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                         *_process_continuous_slow(X_col.array, nonmissings),
                     )
 
-                X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+                X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
                 X_col_tmp[nonmissings] = X_col
                 return (
                     feature_type,
@@ -1295,7 +1295,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                         *_process_continuous_slow(X_col.array, nonmissings),
                     )
 
-                X_col_tmp = np.full(len(nonmissings), np.nan, np.float64)
+                X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
                 X_col_tmp[nonmissings] = X_col
                 return (
                     feature_type,
@@ -1801,7 +1801,7 @@ def unify_columns(
                 msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(keep_cols), np.int64)
+            col_map = np.empty(keep_cols.shape[0], np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
             if is_schematized:
@@ -2155,7 +2155,7 @@ def unify_columns(
                         msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                         _log.error(msg)
                         raise ValueError(msg)
-                    col_map = np.empty(len(keep_cols), np.int64)
+                    col_map = np.empty(keep_cols.shape[0], np.int64)
                     col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
                     warn(
@@ -2319,12 +2319,12 @@ def unify_columns(
 
                 # unlike other datasets, dict must be checked for content length
                 if nonmissings is None or nonmissings is False:
-                    if n_samples != len(X_col):
+                    if n_samples != X_col.shape[0]:
                         msg = "The columns of X are mismatched in the number of of samples"
                         _log.error(msg)
                         raise ValueError(msg)
                 else:
-                    if n_samples != len(nonmissings):
+                    if n_samples != nonmissings.shape[0]:
                         msg = "The columns of X are mismatched in the number of of samples"
                         _log.error(msg)
                         raise ValueError(msg)
@@ -2344,12 +2344,12 @@ def unify_columns(
 
                 # unlike other datasets, dict must be checked for content length
                 if nonmissings is None or nonmissings is False:
-                    if n_samples != len(X_col):
+                    if n_samples != X_col.shape[0]:
                         msg = "The columns of X are mismatched in the number of of samples"
                         _log.error(msg)
                         raise ValueError(msg)
                 else:
-                    if n_samples != len(nonmissings):
+                    if n_samples != nonmissings.shape[0]:
                         msg = "The columns of X are mismatched in the number of of samples"
                         _log.error(msg)
                         raise ValueError(msg)

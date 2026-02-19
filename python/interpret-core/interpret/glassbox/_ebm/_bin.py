@@ -4,8 +4,8 @@
 import logging
 
 import numpy as np
-from itertools import repeat
-from operator import itemgetter, is_not
+from itertools import repeat, chain, compress
+from operator import itemgetter, is_not, attrgetter
 
 from ...utils._clean_x import unify_columns, categorical_encode
 from ...utils._native import Native
@@ -18,7 +18,19 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # eliminate extra work in this function. The only place we need fast
     # performance here is when called from ebm_predict_scores or ebm_eval_terms.
 
-    native = Native.get_native_singleton()
+    continuous_bins = list(
+        chain.from_iterable(compress(bins, map("continuous".__eq__, feature_types_in)))
+    )
+    if not all(
+        map(np.dtype(np.float64).__eq__, map(attrgetter("dtype"), continuous_bins))
+    ):
+        raise ValueError(
+            "All bins for continuous features must be of dtype np.float64."
+        )
+    if not all(map(attrgetter("flags.c_contiguous"), continuous_bins)):
+        raise ValueError(
+            "All bins for continuous features must be C-contiguous arrays."
+        )
 
     get_col = unify_columns(
         X, n_samples, feature_names_in, feature_types_in, None, True, True
@@ -26,11 +38,12 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
     cached_raw = {}
     cached_discretized = {}
-    for feature_idxs in term_features:
-        num_features = len(feature_idxs)
+    Discretize = Native.get_native_singleton()._unsafe.Discretize
+    bins_getitem = bins.__getitem__
+    for feature_idxs, num_features in zip(term_features, map(len, term_features)):
         term_discretized = []
         for feature_idx in feature_idxs:
-            bin_levels = bins[feature_idx]
+            bin_levels = bins_getitem(feature_idx)
             bin_level = min(len(bin_levels), num_features)
             key = (feature_idx, bin_level)
             discretized = cached_discretized.get(key)
@@ -46,7 +59,20 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                 uniques = raw[2]
                 if uniques is None:
                     # continuous feature
-                    discretized = native.discretize(raw[3], bin_levels[bin_level - 1])
+
+                    cuts = bin_levels[bin_level - 1]
+                    discretized = np.empty(n_samples, np.int64)
+
+                    return_code = Discretize(
+                        n_samples,
+                        raw[3].ctypes.data,
+                        cuts.shape[0],
+                        cuts.ctypes.data,
+                        discretized.ctypes.data,
+                    )
+                    if return_code:  # pragma: no cover
+                        raise Native._get_native_exception(return_code, "Discretize")
+
                     bad = raw[4]
                     if bad is not None:
                         discretized[bad] = -1
@@ -75,8 +101,8 @@ def ebm_predict_scores(
     sample_scores = (
         np.full(
             n_samples
-            if isinstance(intercept, float) or len(intercept) == 1
-            else (n_samples, len(intercept)),
+            if isinstance(intercept, float) or intercept.shape[0] == 1
+            else (n_samples, intercept.shape[0]),
             intercept,
             np.float64,
         )
