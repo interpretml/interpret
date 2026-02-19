@@ -37,7 +37,11 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     )
 
     cached_raw = {}
+    cached_raw_get = cached_raw.get
+    cached_raw_set = cached_raw.__setitem__
     cached_discretized = {}
+    cached_discretized_get = cached_discretized.get
+    cached_discretized_set = cached_discretized.__setitem__
     Discretize = Native.get_native_singleton()._unsafe.Discretize
     bins_getitem = bins.__getitem__
     for feature_idxs, num_features in zip(term_features, map(len, term_features)):
@@ -46,12 +50,12 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             bin_levels = bins_getitem(feature_idx)
             bin_level = min(len(bin_levels), num_features)
             key = (feature_idx, bin_level)
-            discretized = cached_discretized.get(key)
+            discretized = cached_discretized_get(key)
             if discretized is None:
-                raw = cached_raw.get(feature_idx)
+                raw = cached_raw_get(feature_idx)
                 if raw is None:
                     raw = get_col(feature_idx)
-                    cached_raw[feature_idx] = raw
+                    cached_raw_set(feature_idx, raw)
 
                 # these are the variables in raw
                 # _, nonmissings, uniques, X_col, bad = raw
@@ -82,7 +86,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         uniques, raw[3], raw[1], bin_levels[bin_level - 1]
                     )
 
-                cached_discretized[key] = discretized
+                cached_discretized_set(key, discretized)
             term_discretized.append(discretized)
         yield tuple(term_discretized)
 
@@ -111,13 +115,14 @@ def ebm_predict_scores(
     )
 
     if n_samples > 0:
+        sample_scores_iadd = sample_scores.__iadd__
         for scores, bin_indexes in zip(
             term_scores,
             eval_terms(
                 X, n_samples, feature_names_in, feature_types_in, bins, term_features
             ),
         ):
-            sample_scores += scores[bin_indexes]
+            sample_scores_iadd(scores[bin_indexes])
 
     return sample_scores
 

@@ -1563,12 +1563,17 @@ def unify_columns(
         #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
         #    X = np.asfortranarray(X)
 
+        _local_encode_categorical_existing = _encode_categorical_existing
+        _local_process_continuous = _process_continuous
+
         if len(feature_names_in) == X.shape[1]:
             if is_schematized:
                 if isinstance(X, ma.masked_array):
                     if X.mask is not ma.nomask:
                         if X.dtype.type is np.object_:
                             if _pandas_installed:
+                                _local_pd_notna = pd.notna
+                                _local_np_place = np.place
 
                                 def internal(feature_idx):
                                     X_col = X[:, feature_idx]
@@ -1583,11 +1588,11 @@ def unify_columns(
                                         # available we can use the pd.notna function that checks for
                                         # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings2 = pd.notna(X_col)
+                                        nonmissings2 = _local_pd_notna(X_col)
 
                                         if not nonmissings2.all():
                                             X_col = X_col[nonmissings2]
-                                            np.place(
+                                            _local_np_place(
                                                 nonmissings, nonmissings, nonmissings2
                                             )
                                     else:
@@ -1597,7 +1602,7 @@ def unify_columns(
                                         # available we can use the pd.notna function that checks for
                                         # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings = pd.notna(X_col)
+                                        nonmissings = _local_pd_notna(X_col)
 
                                         if nonmissings.all():
                                             nonmissings = None
@@ -1609,16 +1614,19 @@ def unify_columns(
                                             None,
                                             None,
                                             None,
-                                            *_process_continuous(X_col, nonmissings),
+                                            *_local_process_continuous(
+                                                X_col, nonmissings
+                                            ),
                                         )
                                     return (
                                         None,
-                                        *_encode_categorical_existing(
+                                        *_local_encode_categorical_existing(
                                             X_col, nonmissings
                                         ),
                                         None,
                                     )
                             else:
+                                _local_none_ndarray = _none_ndarray
 
                                 def internal(feature_idx):
                                     X_col = X[:, feature_idx]
@@ -1631,7 +1639,7 @@ def unify_columns(
 
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings2 = X_col == X_col
-                                        nonmissings2 &= X_col != _none_ndarray
+                                        nonmissings2 &= X_col != _local_none_ndarray
 
                                         if not nonmissings2.all():
                                             X_col = X_col[nonmissings2]
@@ -1643,7 +1651,7 @@ def unify_columns(
 
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings = X_col == X_col
-                                        nonmissings &= X_col != _none_ndarray
+                                        nonmissings &= X_col != _local_none_ndarray
 
                                         if nonmissings.all():
                                             nonmissings = None
@@ -1655,11 +1663,13 @@ def unify_columns(
                                             None,
                                             None,
                                             None,
-                                            *_process_continuous(X_col, nonmissings),
+                                            *_local_process_continuous(
+                                                X_col, nonmissings
+                                            ),
                                         )
                                     return (
                                         None,
-                                        *_encode_categorical_existing(
+                                        *_local_encode_categorical_existing(
                                             X_col, nonmissings
                                         ),
                                         None,
@@ -1683,11 +1693,13 @@ def unify_columns(
                                         None,
                                         None,
                                         None,
-                                        *_process_continuous(X_col, nonmissings),
+                                        *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
                                     None,
-                                    *_encode_categorical_existing(X_col, nonmissings),
+                                    *_local_encode_categorical_existing(
+                                        X_col, nonmissings
+                                    ),
                                     None,
                                 )
 
@@ -1696,6 +1708,7 @@ def unify_columns(
 
                 if X.dtype.type is np.object_:
                     if _pandas_installed:
+                        _local_pd_notna = pd.notna
 
                         def internal(feature_idx):
                             X_col = X[:, feature_idx]
@@ -1704,7 +1717,7 @@ def unify_columns(
                             # available we can use the pd.notna function that checks for
                             # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                             # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                            nonmissings = pd.notna(X_col)
+                            nonmissings = _local_pd_notna(X_col)
 
                             if nonmissings.all():
                                 nonmissings = None
@@ -1716,21 +1729,22 @@ def unify_columns(
                                     None,
                                     None,
                                     None,
-                                    *_process_continuous(X_col, nonmissings),
+                                    *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
                                 None,
-                                *_encode_categorical_existing(X_col, nonmissings),
+                                *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
                     else:
+                        _local_none_ndarray = _none_ndarray
 
                         def internal(feature_idx):
                             X_col = X[:, feature_idx]
 
                             # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                             nonmissings = X_col == X_col
-                            nonmissings &= X_col != _none_ndarray
+                            nonmissings &= X_col != _local_none_ndarray
 
                             if nonmissings.all():
                                 nonmissings = None
@@ -1742,11 +1756,11 @@ def unify_columns(
                                     None,
                                     None,
                                     None,
-                                    *_process_continuous(X_col, nonmissings),
+                                    *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
                                 None,
-                                *_encode_categorical_existing(X_col, nonmissings),
+                                *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
                 else:
@@ -1762,11 +1776,11 @@ def unify_columns(
                                 None,
                                 None,
                                 None,
-                                *_process_continuous(X_col, None),
+                                *_local_process_continuous(X_col, None),
                             )
                         return (
                             None,
-                            *_encode_categorical_existing(X_col, None),
+                            *_local_encode_categorical_existing(X_col, None),
                             None,
                         )
             else:
@@ -1809,6 +1823,8 @@ def unify_columns(
                     if X.mask is not ma.nomask:
                         if X.dtype.type is np.object_:
                             if _pandas_installed:
+                                _local_pd_notna = pd.notna
+                                _local_np_place = np.place
 
                                 def internal(feature_idx):
                                     X_col = X[:, col_map[feature_idx]]
@@ -1823,11 +1839,11 @@ def unify_columns(
                                         # available we can use the pd.notna function that checks for
                                         # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings2 = pd.notna(X_col)
+                                        nonmissings2 = _local_pd_notna(X_col)
 
                                         if not nonmissings2.all():
                                             X_col = X_col[nonmissings2]
-                                            np.place(
+                                            _local_np_place(
                                                 nonmissings, nonmissings, nonmissings2
                                             )
                                     else:
@@ -1837,7 +1853,7 @@ def unify_columns(
                                         # available we can use the pd.notna function that checks for
                                         # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings = pd.notna(X_col)
+                                        nonmissings = _local_pd_notna(X_col)
 
                                         if nonmissings.all():
                                             nonmissings = None
@@ -1849,16 +1865,19 @@ def unify_columns(
                                             None,
                                             None,
                                             None,
-                                            *_process_continuous(X_col, nonmissings),
+                                            *_local_process_continuous(
+                                                X_col, nonmissings
+                                            ),
                                         )
                                     return (
                                         None,
-                                        *_encode_categorical_existing(
+                                        *_local_encode_categorical_existing(
                                             X_col, nonmissings
                                         ),
                                         None,
                                     )
                             else:
+                                _local_none_ndarray = _none_ndarray
 
                                 def internal(feature_idx):
                                     X_col = X[:, col_map[feature_idx]]
@@ -1871,7 +1890,7 @@ def unify_columns(
 
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings2 = X_col == X_col
-                                        nonmissings2 &= X_col != _none_ndarray
+                                        nonmissings2 &= X_col != _local_none_ndarray
 
                                         if not nonmissings2.all():
                                             X_col = X_col[nonmissings2]
@@ -1883,7 +1902,7 @@ def unify_columns(
 
                                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                                         nonmissings = X_col == X_col
-                                        nonmissings &= X_col != _none_ndarray
+                                        nonmissings &= X_col != _local_none_ndarray
 
                                         if nonmissings.all():
                                             nonmissings = None
@@ -1895,11 +1914,13 @@ def unify_columns(
                                             None,
                                             None,
                                             None,
-                                            *_process_continuous(X_col, nonmissings),
+                                            *_local_process_continuous(
+                                                X_col, nonmissings
+                                            ),
                                         )
                                     return (
                                         None,
-                                        *_encode_categorical_existing(
+                                        *_local_encode_categorical_existing(
                                             X_col, nonmissings
                                         ),
                                         None,
@@ -1923,11 +1944,13 @@ def unify_columns(
                                         None,
                                         None,
                                         None,
-                                        *_process_continuous(X_col, nonmissings),
+                                        *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
                                     None,
-                                    *_encode_categorical_existing(X_col, nonmissings),
+                                    *_local_encode_categorical_existing(
+                                        X_col, nonmissings
+                                    ),
                                     None,
                                 )
 
@@ -1936,6 +1959,7 @@ def unify_columns(
 
                 if X.dtype.type is np.object_:
                     if _pandas_installed:
+                        _local_pd_notna = pd.notna
 
                         def internal(feature_idx):
                             X_col = X[:, col_map[feature_idx]]
@@ -1944,7 +1968,7 @@ def unify_columns(
                             # available we can use the pd.notna function that checks for
                             # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                             # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                            nonmissings = pd.notna(X_col)
+                            nonmissings = _local_pd_notna(X_col)
 
                             if nonmissings.all():
                                 nonmissings = None
@@ -1956,21 +1980,22 @@ def unify_columns(
                                     None,
                                     None,
                                     None,
-                                    *_process_continuous(X_col, nonmissings),
+                                    *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
                                 None,
-                                *_encode_categorical_existing(X_col, nonmissings),
+                                *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
                     else:
+                        _local_none_ndarray = _none_ndarray
 
                         def internal(feature_idx):
                             X_col = X[:, col_map[feature_idx]]
 
                             # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
                             nonmissings = X_col == X_col
-                            nonmissings &= X_col != _none_ndarray
+                            nonmissings &= X_col != _local_none_ndarray
 
                             if nonmissings.all():
                                 nonmissings = None
@@ -1982,11 +2007,11 @@ def unify_columns(
                                     None,
                                     None,
                                     None,
-                                    *_process_continuous(X_col, nonmissings),
+                                    *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
                                 None,
-                                *_encode_categorical_existing(X_col, nonmissings),
+                                *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
                 else:
@@ -2002,11 +2027,11 @@ def unify_columns(
                                 None,
                                 None,
                                 None,
-                                *_process_continuous(X_col, None),
+                                *_local_process_continuous(X_col, None),
                             )
                         return (
                             None,
-                            *_encode_categorical_existing(X_col, None),
+                            *_local_encode_categorical_existing(X_col, None),
                             None,
                         )
             else:
@@ -2021,6 +2046,7 @@ def unify_columns(
 
             return internal
     elif isinstance(X, _DataFrameType):
+        _local_process_pandas_column_schematized = _process_pandas_column_schematized
         cols = X.columns
         mapping = dict(zip(map(str, cols), cols))
         n_cols = len(cols)
@@ -2044,7 +2070,7 @@ def unify_columns(
                 if is_schematized:
 
                     def internal(feature_idx):
-                        return _process_pandas_column_schematized(
+                        return _local_process_pandas_column_schematized(
                             X[mapping[feature_names_in[feature_idx]]],
                             None,
                             min_unique_continuous,
@@ -2074,7 +2100,7 @@ def unify_columns(
                 if is_schematized:
 
                     def internal(feature_idx):
-                        return _process_pandas_column_schematized(
+                        return _local_process_pandas_column_schematized(
                             X[:, feature_idx], None, min_unique_continuous
                         )
                 else:
@@ -2103,7 +2129,7 @@ def unify_columns(
                 if is_schematized:
 
                     def internal(feature_idx):
-                        return _process_pandas_column_schematized(
+                        return _local_process_pandas_column_schematized(
                             X[mapping[feature_names_in[feature_idx]]],
                             feature_types[feature_idx],
                             min_unique_continuous,
@@ -2128,7 +2154,7 @@ def unify_columns(
                     if is_schematized:
 
                         def internal(feature_idx):
-                            return _process_pandas_column_schematized(
+                            return _local_process_pandas_column_schematized(
                                 X[:, feature_idx],
                                 feature_types[feature_idx],
                                 min_unique_continuous,
@@ -2165,7 +2191,7 @@ def unify_columns(
                     if is_schematized:
 
                         def internal(feature_idx):
-                            return _process_pandas_column_schematized(
+                            return _local_process_pandas_column_schematized(
                                 X[:, col_map[feature_idx]],
                                 feature_types[feature_idx],
                                 min_unique_continuous,
@@ -2181,6 +2207,7 @@ def unify_columns(
 
                     return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
+        _local_process_sparse_column = _process_sparse_column
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
             or safe_isinstance(X, "scipy.sparse.bsr_array")
@@ -2194,7 +2221,7 @@ def unify_columns(
             if feature_types is None:
 
                 def internal(feature_idx):
-                    return _process_sparse_column(
+                    return _local_process_sparse_column(
                         X[:, (feature_idx,)],
                         is_schematized,
                         None,
@@ -2205,7 +2232,7 @@ def unify_columns(
             else:
 
                 def internal(feature_idx):
-                    return _process_sparse_column(
+                    return _local_process_sparse_column(
                         X[:, (feature_idx,)],
                         is_schematized,
                         feature_types[feature_idx],
@@ -2236,7 +2263,7 @@ def unify_columns(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
             def internal(feature_idx):
-                return _process_sparse_column(
+                return _local_process_sparse_column(
                     X[:, (col_map[feature_idx],)],
                     is_schematized,
                     feature_types[feature_idx],
@@ -2245,13 +2272,14 @@ def unify_columns(
 
             return internal
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
+        _local_process_sparse_column = _process_sparse_column
         n_cols = X.shape[1]
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
 
                 def internal(feature_idx):
-                    return _process_sparse_column(
+                    return _local_process_sparse_column(
                         X.getcol(feature_idx),
                         is_schematized,
                         None,
@@ -2262,7 +2290,7 @@ def unify_columns(
             else:
 
                 def internal(feature_idx):
-                    return _process_sparse_column(
+                    return _local_process_sparse_column(
                         X.getcol(feature_idx),
                         is_schematized,
                         feature_types[feature_idx],
@@ -2293,7 +2321,7 @@ def unify_columns(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
             def internal(feature_idx):
-                return _process_sparse_column(
+                return _local_process_sparse_column(
                     X.getcol(col_map[feature_idx]),
                     is_schematized,
                     feature_types[feature_idx],
@@ -2307,14 +2335,17 @@ def unify_columns(
         _log.error(msg)
         raise ValueError(msg)
     elif isinstance(X, dict):
+        _local_process_dict_column = _process_dict_column
         if feature_types is None:
 
             def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
-                    X[feature_names_in[feature_idx]],
-                    is_schematized,
-                    None,
-                    min_unique_continuous,
+                feature_type, nonmissings, uniques, X_col, bad = (
+                    _local_process_dict_column(
+                        X[feature_names_in[feature_idx]],
+                        is_schematized,
+                        None,
+                        min_unique_continuous,
+                    )
                 )
 
                 # unlike other datasets, dict must be checked for content length
@@ -2335,11 +2366,13 @@ def unify_columns(
         else:
 
             def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
-                    X[feature_names_in[feature_idx]],
-                    is_schematized,
-                    feature_types[feature_idx],
-                    min_unique_continuous,
+                feature_type, nonmissings, uniques, X_col, bad = (
+                    _local_process_dict_column(
+                        X[feature_names_in[feature_idx]],
+                        is_schematized,
+                        feature_types[feature_idx],
+                        min_unique_continuous,
+                    )
                 )
 
                 # unlike other datasets, dict must be checked for content length
