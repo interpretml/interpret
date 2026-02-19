@@ -2398,14 +2398,11 @@ def unify_columns_nonschematized(
         # https://numpy.org/doc/stable/reference/arrays.interface.html
         # memoryview
 
-        _local_slice_none = _slice_none
-
         if len(feature_names_in) == X.shape[1]:
-            X_get = X.__getitem__
 
             def internal(feature_idx):
                 return _process_numpy_column(
-                    X_get((_local_slice_none, feature_idx)),
+                    X[:, feature_idx],
                     False,
                     None if feature_types is None else feature_types[feature_idx],
                     min_unique_continuous,
@@ -2435,15 +2432,12 @@ def unify_columns_nonschematized(
                 raise ValueError(msg)
             col_map = np.empty(keep_cols.shape[0], np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-            col_map_get = col_map.__getitem__
-
-            feature_types_get = feature_types.__getitem__
 
             def internal(feature_idx):
                 return _process_numpy_column(
-                    X[:, col_map_get(feature_idx)],
+                    X[:, col_map[feature_idx]],
                     False,
-                    feature_types_get(feature_idx),
+                    feature_types[feature_idx],
                     min_unique_continuous,
                 )
 
@@ -2469,13 +2463,9 @@ def unify_columns_nonschematized(
                 if len(feature_names_in) != n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                feature_names_in_get = feature_names_in.__getitem__
-                mapping_get = mapping.__getitem__
-                X_get = X.__getitem__
-
                 def internal(feature_idx):
                     return _process_pandas_column_nonschematized(
-                        X_get(mapping_get(feature_names_in_get(feature_idx))),
+                        X[mapping[feature_names_in[feature_idx]]],
                         None,
                         min_unique_continuous,
                     )
@@ -2492,20 +2482,16 @@ def unify_columns_nonschematized(
                 )
 
                 X = X.iloc
-                X_get = X.__getitem__
-                _local_slice_none = _slice_none
 
                 def internal(feature_idx):
                     return _process_pandas_column_nonschematized(
-                        X_get((_local_slice_none, feature_idx)),
+                        X[:, feature_idx],
                         None,
                         min_unique_continuous,
                     )
 
                 return internal
         else:
-            feature_types_get = feature_types.__getitem__
-
             if all(
                 map(
                     mapping.__contains__,
@@ -2520,22 +2506,16 @@ def unify_columns_nonschematized(
                 if len(feature_names_in) < n_cols:
                     warn("Extra columns present in X that are not used by the model.")
 
-                feature_names_in_get = feature_names_in.__getitem__
-                mapping_get = mapping.__getitem__
-                X_get = X.__getitem__
-
                 def internal(feature_idx):
                     return _process_pandas_column_nonschematized(
-                        X_get(mapping_get(feature_names_in_get(feature_idx))),
-                        feature_types_get(feature_idx),
+                        X[mapping[feature_names_in[feature_idx]]],
+                        feature_types[feature_idx],
                         min_unique_continuous,
                     )
 
                 return internal
             else:
                 X = X.iloc
-                X_get = X.__getitem__
-                _local_slice_none = _slice_none
 
                 if len(feature_names_in) == n_cols:
                     warn(
@@ -2544,8 +2524,8 @@ def unify_columns_nonschematized(
 
                     def internal(feature_idx):
                         return _process_pandas_column_nonschematized(
-                            X_get((_local_slice_none, feature_idx)),
-                            feature_types_get(feature_idx),
+                            X[:, feature_idx],
+                            feature_types[feature_idx],
                             min_unique_continuous,
                         )
 
@@ -2564,7 +2544,6 @@ def unify_columns_nonschematized(
                         raise ValueError(msg)
                     col_map = np.empty(keep_cols.shape[0], np.int64)
                     col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-                    col_map_get = col_map.__getitem__
 
                     warn(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
@@ -2572,14 +2551,13 @@ def unify_columns_nonschematized(
 
                     def internal(feature_idx):
                         return _process_pandas_column_nonschematized(
-                            X_get((_local_slice_none, col_map_get(feature_idx))),
-                            feature_types_get(feature_idx),
+                            X[:, col_map[feature_idx]],
+                            feature_types[feature_idx],
                             min_unique_continuous,
                         )
 
                     return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
-        _local_process_sparse_column = _process_sparse_column
         if (
             safe_isinstance(X, "scipy.sparse.dia_array")
             or safe_isinstance(X, "scipy.sparse.bsr_array")
@@ -2588,15 +2566,13 @@ def unify_columns_nonschematized(
             X = X.tocsc()
 
         n_cols = X.shape[1]
-        X_get = X.__getitem__
-        _local_slice_none = _slice_none
 
         if len(feature_names_in) == n_cols:
             if feature_types is None:
 
                 def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get((_local_slice_none, (feature_idx,))),
+                    return _process_sparse_column(
+                        X[:, (feature_idx,)],
                         False,
                         None,
                         min_unique_continuous,
@@ -2604,13 +2580,12 @@ def unify_columns_nonschematized(
 
                 return internal
             else:
-                feature_types_get = feature_types.__getitem__
 
                 def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get((_local_slice_none, (feature_idx,))),
+                    return _process_sparse_column(
+                        X[:, (feature_idx,)],
                         False,
-                        feature_types_get(feature_idx),
+                        feature_types[feature_idx],
                         min_unique_continuous,
                     )
 
@@ -2636,21 +2611,17 @@ def unify_columns_nonschematized(
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-            col_map_get = col_map.__getitem__
-
-            feature_types_get = feature_types.__getitem__
 
             def internal(feature_idx):
-                return _local_process_sparse_column(
-                    X_get((_local_slice_none, (col_map_get(feature_idx),))),
+                return _process_sparse_column(
+                    X[:, (col_map[feature_idx],)],
                     False,
-                    feature_types_get(feature_idx),
+                    feature_types[feature_idx],
                     min_unique_continuous,
                 )
 
             return internal
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
-        _local_process_sparse_column = _process_sparse_column
         n_cols = X.shape[1]
         X_get = X.getcol
 
@@ -2658,7 +2629,7 @@ def unify_columns_nonschematized(
             if feature_types is None:
 
                 def internal(feature_idx):
-                    return _local_process_sparse_column(
+                    return _process_sparse_column(
                         X_get(feature_idx),
                         False,
                         None,
@@ -2667,13 +2638,12 @@ def unify_columns_nonschematized(
 
                 return internal
             else:
-                feature_types_get = feature_types.__getitem__
 
                 def internal(feature_idx):
-                    return _local_process_sparse_column(
+                    return _process_sparse_column(
                         X_get(feature_idx),
                         False,
-                        feature_types_get(feature_idx),
+                        feature_types[feature_idx],
                         min_unique_continuous,
                     )
 
@@ -2699,15 +2669,12 @@ def unify_columns_nonschematized(
                 raise ValueError(msg)
             col_map = np.empty(len(feature_types), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-            col_map_get = col_map.__getitem__
-
-            feature_types_get = feature_types.__getitem__
 
             def internal(feature_idx):
-                return _local_process_sparse_column(
-                    X_get(col_map_get(feature_idx)),
+                return _process_sparse_column(
+                    X_get(col_map[feature_idx]),
                     False,
-                    feature_types_get(feature_idx),
+                    feature_types[feature_idx],
                     min_unique_continuous,
                 )
 
@@ -2718,19 +2685,14 @@ def unify_columns_nonschematized(
         _log.error(msg)
         raise ValueError(msg)
     elif isinstance(X, dict):
-        _local_process_dict_column = _process_dict_column
-        feature_names_in_get = feature_names_in.__getitem__
-        X_get = X.__getitem__
         if feature_types is None:
 
             def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = (
-                    _local_process_dict_column(
-                        X_get(feature_names_in_get(feature_idx)),
-                        False,
-                        None,
-                        min_unique_continuous,
-                    )
+                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
+                    X[feature_names_in[feature_idx]],
+                    False,
+                    None,
+                    min_unique_continuous,
                 )
 
                 # unlike other datasets, dict must be checked for content length
@@ -2749,16 +2711,13 @@ def unify_columns_nonschematized(
 
             return internal
         else:
-            feature_types_get = feature_types.__getitem__
 
             def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = (
-                    _local_process_dict_column(
-                        X_get(feature_names_in_get(feature_idx)),
-                        False,
-                        feature_types_get(feature_idx),
-                        min_unique_continuous,
-                    )
+                feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
+                    X[feature_names_in[feature_idx]],
+                    False,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
                 )
 
                 # unlike other datasets, dict must be checked for content length
