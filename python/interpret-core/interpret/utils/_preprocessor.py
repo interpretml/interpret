@@ -16,7 +16,13 @@ from sklearn.base import (
 from sklearn.utils.validation import check_is_fitted
 
 from ._clean_simple import clean_dimensions
-from ._clean_x import preclean_X, unify_columns, unify_feature_names, categorical_encode
+from ._clean_x import (
+    preclean_X,
+    unify_columns_nonschematized,
+    unify_columns_schematized,
+    unify_feature_names,
+    categorical_encode,
+)
 from ._native import Native
 from ._privacy import (
     calc_classic_noise_multi,
@@ -269,13 +275,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
 
-        get_col = unify_columns(
+        get_col = unify_columns_nonschematized(
             X,
             n_samples,
             feature_names_in,
             self.feature_types,
             self.min_unique_continuous,
-            False,
             False,
         )
         for feature_idx in range(n_features):
@@ -522,13 +527,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         if n_samples > 0:
             native = Native.get_native_singleton()
 
-            get_col = unify_columns(
+            get_col = unify_columns_schematized(
                 X,
                 n_samples,
                 self.feature_names_in_,
                 self.feature_types_in_,
                 None,
-                True,
                 False,
             )
             for feature_idx, bins in enumerate(self.bins_):

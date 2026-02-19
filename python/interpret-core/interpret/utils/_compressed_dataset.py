@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 
-from ._clean_x import categorical_encode, unify_columns
+from ._clean_x import categorical_encode, unify_columns_schematized
 from ._native import Native
 from multiprocessing import shared_memory
 
@@ -56,8 +56,8 @@ def bin_native(
     # during fitting we extract the feature handling first via the EBMPreprocessor,
     # and then we re-extract the data here, so we can now call unify_columns with
     # the same binning strategy as during prediction using is_schematized=True.
-    get_col = unify_columns(
-        X, n_samples, feature_names_in, feature_types_in, None, True, False
+    get_col = unify_columns_schematized(
+        X, n_samples, feature_names_in, feature_types_in, None, False
     )
     for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
         feature_type = feature_types_in[feature_idx]
@@ -118,8 +118,8 @@ def bin_native(
 
         native.fill_dataset_header(len(feature_idxs), n_weights, 1, dataset)
 
-        get_col = unify_columns(
-            X, n_samples, feature_names_in, feature_types_in, None, True, False
+        get_col = unify_columns_schematized(
+            X, n_samples, feature_names_in, feature_types_in, None, False
         )
         for feature_idx, feature_bins in zip(feature_idxs, bins_iter):
             feature_type = feature_types_in[feature_idx]

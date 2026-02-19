@@ -1508,13 +1508,12 @@ def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continu
     )
 
 
-def unify_columns(
+def unify_columns_schematized(
     X,
     n_samples,
     feature_names_in,
     feature_types,
     min_unique_continuous,
-    is_schematized,
     go_fast,
 ):
     # preclean_X is always called on X prior to calling this function
@@ -1570,118 +1569,18 @@ def unify_columns(
         _local_slice_none = _slice_none
 
         if len(feature_names_in) == X.shape[1]:
-            if is_schematized:
-                feature_types_get = feature_types.__getitem__
+            feature_types_get = feature_types.__getitem__
 
-                if isinstance(X, ma.masked_array):
-                    mask = X.mask
-                    X = X.data
-                    if mask is not ma.nomask:
-                        X_get = X.__getitem__
-                        mask_get = mask.__getitem__
-                        if X.dtype.type is np.object_:
-                            if _pandas_installed:
-                                _local_pd_notna = pd.notna
-                                _local_np_place = np.place
-
-                                def internal(feature_idx):
-                                    index = (_local_slice_none, feature_idx)
-                                    X_col = X_get(index)
-                                    nonmissings = mask_get(index)
-
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    if nonmissings.any():
-                                        nonmissings = ~nonmissings
-                                        X_col = X_col[nonmissings]
-
-                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                        # available we can use the pd.notna function that checks for
-                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings2 = _local_pd_notna(X_col)
-
-                                        if not nonmissings2.all():
-                                            X_col = X_col[nonmissings2]
-                                            _local_np_place(
-                                                nonmissings, nonmissings, nonmissings2
-                                            )
-                                    else:
-                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                        # available we can use the pd.notna function that checks for
-                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings = _local_pd_notna(X_col)
-
-                                        if nonmissings.all():
-                                            nonmissings = None
-                                        else:
-                                            X_col = X_col[nonmissings]
-
-                                    if feature_types_get(feature_idx) == "continuous":
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_local_process_continuous(
-                                                X_col, nonmissings
-                                            ),
-                                        )
-                                    return (
-                                        None,
-                                        *_local_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-                            else:
-                                _local_none_ndarray = _none_ndarray
-
-                                def internal(feature_idx):
-                                    index = (_local_slice_none, feature_idx)
-                                    X_col = X_get(index)
-                                    nonmissings = mask_get(index)
-
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    if nonmissings.any():
-                                        nonmissings = ~nonmissings
-                                        X_col = X_col[nonmissings]
-
-                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                        nonmissings2 = X_col == X_col
-                                        nonmissings2 &= X_col != _local_none_ndarray
-
-                                        if not nonmissings2.all():
-                                            X_col = X_col[nonmissings2]
-                                            np.place(
-                                                nonmissings, nonmissings, nonmissings2
-                                            )
-                                    else:
-                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                        nonmissings = X_col == X_col
-                                        nonmissings &= X_col != _local_none_ndarray
-
-                                        if nonmissings.all():
-                                            nonmissings = None
-                                        else:
-                                            X_col = X_col[nonmissings]
-
-                                    if feature_types_get(feature_idx) == "continuous":
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_local_process_continuous(
-                                                X_col, nonmissings
-                                            ),
-                                        )
-                                    return (
-                                        None,
-                                        *_local_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-                        else:
+            if isinstance(X, ma.masked_array):
+                mask = X.mask
+                X = X.data
+                if mask is not ma.nomask:
+                    X_get = X.__getitem__
+                    mask_get = mask.__getitem__
+                    if X.dtype.type is np.object_:
+                        if _pandas_installed:
+                            _local_pd_notna = pd.notna
+                            _local_np_place = np.place
 
                             def internal(feature_idx):
                                 index = (_local_slice_none, feature_idx)
@@ -1692,8 +1591,29 @@ def unify_columns(
                                 if nonmissings.any():
                                     nonmissings = ~nonmissings
                                     X_col = X_col[nonmissings]
+
+                                    # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                    # available we can use the pd.notna function that checks for
+                                    # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                    # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                    nonmissings2 = _local_pd_notna(X_col)
+
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        _local_np_place(
+                                            nonmissings, nonmissings, nonmissings2
+                                        )
                                 else:
-                                    nonmissings = None
+                                    # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                    # available we can use the pd.notna function that checks for
+                                    # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                    # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                    nonmissings = _local_pd_notna(X_col)
+
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
                                 if feature_types_get(feature_idx) == "continuous":
                                     return (
@@ -1709,54 +1629,63 @@ def unify_columns(
                                     ),
                                     None,
                                 )
+                        else:
+                            _local_none_ndarray = _none_ndarray
 
-                        return internal
+                            def internal(feature_idx):
+                                index = (_local_slice_none, feature_idx)
+                                X_col = X_get(index)
+                                nonmissings = mask_get(index)
 
-                X_get = X.__getitem__
-                if X.dtype.type is np.object_:
-                    if _pandas_installed:
-                        _local_pd_notna = pd.notna
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col[nonmissings]
 
-                        def internal(feature_idx):
-                            X_col = X_get((_local_slice_none, feature_idx))
+                                    # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                    nonmissings2 = X_col == X_col
+                                    nonmissings2 &= X_col != _local_none_ndarray
 
-                            # pandas also has the pd.NA value that indicates missing. If Pandas is
-                            # available we can use the pd.notna function that checks for
-                            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                            nonmissings = _local_pd_notna(X_col)
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        np.place(nonmissings, nonmissings, nonmissings2)
+                                else:
+                                    # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                    nonmissings = X_col == X_col
+                                    nonmissings &= X_col != _local_none_ndarray
 
-                            if nonmissings.all():
-                                nonmissings = None
-                            else:
-                                X_col = X_col[nonmissings]
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
-                            if feature_types_get(feature_idx) == "continuous":
+                                if feature_types_get(feature_idx) == "continuous":
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_local_process_continuous(X_col, nonmissings),
+                                    )
                                 return (
                                     None,
+                                    *_local_encode_categorical_existing(
+                                        X_col, nonmissings
+                                    ),
                                     None,
-                                    None,
-                                    *_local_process_continuous(X_col, nonmissings),
                                 )
-                            return (
-                                None,
-                                *_local_encode_categorical_existing(X_col, nonmissings),
-                                None,
-                            )
                     else:
-                        _local_none_ndarray = _none_ndarray
 
                         def internal(feature_idx):
-                            X_col = X_get((_local_slice_none, feature_idx))
+                            index = (_local_slice_none, feature_idx)
+                            X_col = X_get(index)
+                            nonmissings = mask_get(index)
 
-                            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                            nonmissings = X_col == X_col
-                            nonmissings &= X_col != _local_none_ndarray
-
-                            if nonmissings.all():
-                                nonmissings = None
-                            else:
+                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                            if nonmissings.any():
+                                nonmissings = ~nonmissings
                                 X_col = X_col[nonmissings]
+                            else:
+                                nonmissings = None
 
                             if feature_types_get(feature_idx) == "continuous":
                                 return (
@@ -1770,35 +1699,86 @@ def unify_columns(
                                 *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
-                else:
-                    # TODO: we can further extract code from _process_continuous and
-                    # _encode_categorical_existing to eliminate more per feature
-                    # execution.
+
+                    return internal
+
+            X_get = X.__getitem__
+            if X.dtype.type is np.object_:
+                if _pandas_installed:
+                    _local_pd_notna = pd.notna
 
                     def internal(feature_idx):
                         X_col = X_get((_local_slice_none, feature_idx))
+
+                        # pandas also has the pd.NA value that indicates missing. If Pandas is
+                        # available we can use the pd.notna function that checks for
+                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                        nonmissings = _local_pd_notna(X_col)
+
+                        if nonmissings.all():
+                            nonmissings = None
+                        else:
+                            X_col = X_col[nonmissings]
 
                         if feature_types_get(feature_idx) == "continuous":
                             return (
                                 None,
                                 None,
                                 None,
-                                *_local_process_continuous(X_col, None),
+                                *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
                             None,
-                            *_local_encode_categorical_existing(X_col, None),
+                            *_local_encode_categorical_existing(X_col, nonmissings),
+                            None,
+                        )
+                else:
+                    _local_none_ndarray = _none_ndarray
+
+                    def internal(feature_idx):
+                        X_col = X_get((_local_slice_none, feature_idx))
+
+                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                        nonmissings = X_col == X_col
+                        nonmissings &= X_col != _local_none_ndarray
+
+                        if nonmissings.all():
+                            nonmissings = None
+                        else:
+                            X_col = X_col[nonmissings]
+
+                        if feature_types_get(feature_idx) == "continuous":
+                            return (
+                                None,
+                                None,
+                                None,
+                                *_local_process_continuous(X_col, nonmissings),
+                            )
+                        return (
+                            None,
+                            *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
             else:
-                X_get = X.__getitem__
+                # TODO: we can further extract code from _process_continuous and
+                # _encode_categorical_existing to eliminate more per feature
+                # execution.
 
                 def internal(feature_idx):
-                    return _process_numpy_column(
-                        X_get((_local_slice_none, feature_idx)),
-                        False,
-                        None if feature_types is None else feature_types[feature_idx],
-                        min_unique_continuous,
+                    X_col = X_get((_local_slice_none, feature_idx))
+
+                    if feature_types_get(feature_idx) == "continuous":
+                        return (
+                            None,
+                            None,
+                            None,
+                            *_local_process_continuous(X_col, None),
+                        )
+                    return (
+                        None,
+                        *_local_encode_categorical_existing(X_col, None),
+                        None,
                     )
 
             return internal
@@ -1829,126 +1809,23 @@ def unify_columns(
 
             feature_types_get = feature_types.__getitem__
 
-            if is_schematized:
-                if isinstance(X, ma.masked_array):
-                    mask = X.mask
-                    X = X.data
-                    if mask is not ma.nomask:
-                        X_get = X.__getitem__
+            if isinstance(X, ma.masked_array):
+                mask = X.mask
+                X = X.data
+                if mask is not ma.nomask:
+                    X_get = X.__getitem__
 
-                        mask_get = mask.__getitem__
-                        if X.dtype.type is np.object_:
-                            if _pandas_installed:
-                                _local_pd_notna = pd.notna
-                                _local_np_place = np.place
-
-                                def internal(feature_idx):
-                                    index = (
-                                        _local_slice_none,
-                                        col_map_get(feature_idx),
-                                    )
-                                    X_col = X_get(index)
-                                    nonmissings = mask_get(index)
-
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    if nonmissings.any():
-                                        nonmissings = ~nonmissings
-                                        X_col = X_col[nonmissings]
-
-                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                        # available we can use the pd.notna function that checks for
-                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings2 = _local_pd_notna(X_col)
-
-                                        if not nonmissings2.all():
-                                            X_col = X_col[nonmissings2]
-                                            _local_np_place(
-                                                nonmissings, nonmissings, nonmissings2
-                                            )
-                                    else:
-                                        # pandas also has the pd.NA value that indicates missing. If Pandas is
-                                        # available we can use the pd.notna function that checks for
-                                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                                        nonmissings = _local_pd_notna(X_col)
-
-                                        if nonmissings.all():
-                                            nonmissings = None
-                                        else:
-                                            X_col = X_col[nonmissings]
-
-                                    if feature_types_get(feature_idx) == "continuous":
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_local_process_continuous(
-                                                X_col, nonmissings
-                                            ),
-                                        )
-                                    return (
-                                        None,
-                                        *_local_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-                            else:
-                                _local_none_ndarray = _none_ndarray
-
-                                def internal(feature_idx):
-                                    index = (
-                                        _local_slice_none,
-                                        col_map_get(feature_idx),
-                                    )
-                                    X_col = X_get(index)
-                                    nonmissings = mask_get(index)
-
-                                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                                    if nonmissings.any():
-                                        nonmissings = ~nonmissings
-                                        X_col = X_col[nonmissings]
-
-                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                        nonmissings2 = X_col == X_col
-                                        nonmissings2 &= X_col != _local_none_ndarray
-
-                                        if not nonmissings2.all():
-                                            X_col = X_col[nonmissings2]
-                                            np.place(
-                                                nonmissings, nonmissings, nonmissings2
-                                            )
-                                    else:
-                                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                                        nonmissings = X_col == X_col
-                                        nonmissings &= X_col != _local_none_ndarray
-
-                                        if nonmissings.all():
-                                            nonmissings = None
-                                        else:
-                                            X_col = X_col[nonmissings]
-
-                                    if feature_types_get(feature_idx) == "continuous":
-                                        return (
-                                            None,
-                                            None,
-                                            None,
-                                            *_local_process_continuous(
-                                                X_col, nonmissings
-                                            ),
-                                        )
-                                    return (
-                                        None,
-                                        *_local_encode_categorical_existing(
-                                            X_col, nonmissings
-                                        ),
-                                        None,
-                                    )
-                        else:
+                    mask_get = mask.__getitem__
+                    if X.dtype.type is np.object_:
+                        if _pandas_installed:
+                            _local_pd_notna = pd.notna
+                            _local_np_place = np.place
 
                             def internal(feature_idx):
-                                index = (_local_slice_none, col_map_get(feature_idx))
+                                index = (
+                                    _local_slice_none,
+                                    col_map_get(feature_idx),
+                                )
                                 X_col = X_get(index)
                                 nonmissings = mask_get(index)
 
@@ -1956,8 +1833,29 @@ def unify_columns(
                                 if nonmissings.any():
                                     nonmissings = ~nonmissings
                                     X_col = X_col[nonmissings]
+
+                                    # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                    # available we can use the pd.notna function that checks for
+                                    # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                    # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                    nonmissings2 = _local_pd_notna(X_col)
+
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        _local_np_place(
+                                            nonmissings, nonmissings, nonmissings2
+                                        )
                                 else:
-                                    nonmissings = None
+                                    # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                    # available we can use the pd.notna function that checks for
+                                    # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                    # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                    nonmissings = _local_pd_notna(X_col)
+
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
                                 if feature_types_get(feature_idx) == "continuous":
                                     return (
@@ -1973,54 +1871,66 @@ def unify_columns(
                                     ),
                                     None,
                                 )
+                        else:
+                            _local_none_ndarray = _none_ndarray
 
-                        return internal
+                            def internal(feature_idx):
+                                index = (
+                                    _local_slice_none,
+                                    col_map_get(feature_idx),
+                                )
+                                X_col = X_get(index)
+                                nonmissings = mask_get(index)
 
-                X_get = X.__getitem__
-                if X.dtype.type is np.object_:
-                    if _pandas_installed:
-                        _local_pd_notna = pd.notna
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_col[nonmissings]
 
-                        def internal(feature_idx):
-                            X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
+                                    # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                    nonmissings2 = X_col == X_col
+                                    nonmissings2 &= X_col != _local_none_ndarray
 
-                            # pandas also has the pd.NA value that indicates missing. If Pandas is
-                            # available we can use the pd.notna function that checks for
-                            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                            nonmissings = _local_pd_notna(X_col)
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        np.place(nonmissings, nonmissings, nonmissings2)
+                                else:
+                                    # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                    nonmissings = X_col == X_col
+                                    nonmissings &= X_col != _local_none_ndarray
 
-                            if nonmissings.all():
-                                nonmissings = None
-                            else:
-                                X_col = X_col[nonmissings]
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
-                            if feature_types_get(feature_idx) == "continuous":
+                                if feature_types_get(feature_idx) == "continuous":
+                                    return (
+                                        None,
+                                        None,
+                                        None,
+                                        *_local_process_continuous(X_col, nonmissings),
+                                    )
                                 return (
                                     None,
+                                    *_local_encode_categorical_existing(
+                                        X_col, nonmissings
+                                    ),
                                     None,
-                                    None,
-                                    *_local_process_continuous(X_col, nonmissings),
                                 )
-                            return (
-                                None,
-                                *_local_encode_categorical_existing(X_col, nonmissings),
-                                None,
-                            )
                     else:
-                        _local_none_ndarray = _none_ndarray
 
                         def internal(feature_idx):
-                            X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
+                            index = (_local_slice_none, col_map_get(feature_idx))
+                            X_col = X_get(index)
+                            nonmissings = mask_get(index)
 
-                            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                            nonmissings = X_col == X_col
-                            nonmissings &= X_col != _local_none_ndarray
-
-                            if nonmissings.all():
-                                nonmissings = None
-                            else:
+                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                            if nonmissings.any():
+                                nonmissings = ~nonmissings
                                 X_col = X_col[nonmissings]
+                            else:
+                                nonmissings = None
 
                             if feature_types_get(feature_idx) == "continuous":
                                 return (
@@ -2034,34 +1944,86 @@ def unify_columns(
                                 *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
-                else:
-                    # TODO: we can further extract code from _process_continuous and
-                    # _encode_categorical_existing to eliminate more per feature
-                    # execution.
+
+                    return internal
+
+            X_get = X.__getitem__
+            if X.dtype.type is np.object_:
+                if _pandas_installed:
+                    _local_pd_notna = pd.notna
 
                     def internal(feature_idx):
                         X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
+
+                        # pandas also has the pd.NA value that indicates missing. If Pandas is
+                        # available we can use the pd.notna function that checks for
+                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                        nonmissings = _local_pd_notna(X_col)
+
+                        if nonmissings.all():
+                            nonmissings = None
+                        else:
+                            X_col = X_col[nonmissings]
 
                         if feature_types_get(feature_idx) == "continuous":
                             return (
                                 None,
                                 None,
                                 None,
-                                *_local_process_continuous(X_col, None),
+                                *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
                             None,
-                            *_local_encode_categorical_existing(X_col, None),
+                            *_local_encode_categorical_existing(X_col, nonmissings),
+                            None,
+                        )
+                else:
+                    _local_none_ndarray = _none_ndarray
+
+                    def internal(feature_idx):
+                        X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
+
+                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                        nonmissings = X_col == X_col
+                        nonmissings &= X_col != _local_none_ndarray
+
+                        if nonmissings.all():
+                            nonmissings = None
+                        else:
+                            X_col = X_col[nonmissings]
+
+                        if feature_types_get(feature_idx) == "continuous":
+                            return (
+                                None,
+                                None,
+                                None,
+                                *_local_process_continuous(X_col, nonmissings),
+                            )
+                        return (
+                            None,
+                            *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
             else:
+                # TODO: we can further extract code from _process_continuous and
+                # _encode_categorical_existing to eliminate more per feature
+                # execution.
 
                 def internal(feature_idx):
-                    return _process_numpy_column(
-                        X[:, col_map_get(feature_idx)],
-                        False,
-                        feature_types_get(feature_idx),
-                        min_unique_continuous,
+                    X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
+
+                    if feature_types_get(feature_idx) == "continuous":
+                        return (
+                            None,
+                            None,
+                            None,
+                            *_local_process_continuous(X_col, None),
+                        )
+                    return (
+                        None,
+                        *_local_encode_categorical_existing(X_col, None),
+                        None,
                     )
 
             return internal
@@ -2089,24 +2051,14 @@ def unify_columns(
 
                 feature_names_in_get = feature_names_in.__getitem__
                 mapping_get = mapping.__getitem__
-
                 X_get = X.__getitem__
-                if is_schematized:
 
-                    def internal(feature_idx):
-                        return _local_process_pandas_column_schematized(
-                            X_get(mapping_get(feature_names_in_get(feature_idx))),
-                            None,
-                            min_unique_continuous,
-                        )
-                else:
-
-                    def internal(feature_idx):
-                        return _process_pandas_column_nonschematized(
-                            X_get(mapping_get(feature_names_in_get(feature_idx))),
-                            None,
-                            min_unique_continuous,
-                        )
+                def internal(feature_idx):
+                    return _local_process_pandas_column_schematized(
+                        X_get(mapping_get(feature_names_in_get(feature_idx))),
+                        None,
+                        min_unique_continuous,
+                    )
 
                 return internal
             else:
@@ -2123,22 +2075,12 @@ def unify_columns(
                 X_get = X.__getitem__
                 _local_slice_none = _slice_none
 
-                if is_schematized:
-
-                    def internal(feature_idx):
-                        return _local_process_pandas_column_schematized(
-                            X_get((_local_slice_none, feature_idx)),
-                            None,
-                            min_unique_continuous,
-                        )
-                else:
-
-                    def internal(feature_idx):
-                        return _process_pandas_column_nonschematized(
-                            X_get((_local_slice_none, feature_idx)),
-                            None,
-                            min_unique_continuous,
-                        )
+                def internal(feature_idx):
+                    return _local_process_pandas_column_schematized(
+                        X_get((_local_slice_none, feature_idx)),
+                        None,
+                        min_unique_continuous,
+                    )
 
                 return internal
         else:
@@ -2160,24 +2102,14 @@ def unify_columns(
 
                 feature_names_in_get = feature_names_in.__getitem__
                 mapping_get = mapping.__getitem__
-
                 X_get = X.__getitem__
-                if is_schematized:
 
-                    def internal(feature_idx):
-                        return _local_process_pandas_column_schematized(
-                            X_get(mapping_get(feature_names_in_get(feature_idx))),
-                            feature_types_get(feature_idx),
-                            min_unique_continuous,
-                        )
-                else:
-
-                    def internal(feature_idx):
-                        return _process_pandas_column_nonschematized(
-                            X_get(mapping_get(feature_names_in_get(feature_idx))),
-                            feature_types_get(feature_idx),
-                            min_unique_continuous,
-                        )
+                def internal(feature_idx):
+                    return _local_process_pandas_column_schematized(
+                        X_get(mapping_get(feature_names_in_get(feature_idx))),
+                        feature_types_get(feature_idx),
+                        min_unique_continuous,
+                    )
 
                 return internal
             else:
@@ -2190,22 +2122,12 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    if is_schematized:
-
-                        def internal(feature_idx):
-                            return _local_process_pandas_column_schematized(
-                                X_get((_local_slice_none, feature_idx)),
-                                feature_types_get(feature_idx),
-                                min_unique_continuous,
-                            )
-                    else:
-
-                        def internal(feature_idx):
-                            return _process_pandas_column_nonschematized(
-                                X_get((_local_slice_none, feature_idx)),
-                                feature_types_get(feature_idx),
-                                min_unique_continuous,
-                            )
+                    def internal(feature_idx):
+                        return _local_process_pandas_column_schematized(
+                            X_get((_local_slice_none, feature_idx)),
+                            feature_types_get(feature_idx),
+                            min_unique_continuous,
+                        )
 
                     return internal
                 else:
@@ -2228,22 +2150,12 @@ def unify_columns(
                         "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
                     )
 
-                    if is_schematized:
-
-                        def internal(feature_idx):
-                            return _local_process_pandas_column_schematized(
-                                X_get((_local_slice_none, col_map_get(feature_idx))),
-                                feature_types_get(feature_idx),
-                                min_unique_continuous,
-                            )
-                    else:
-
-                        def internal(feature_idx):
-                            return _process_pandas_column_nonschematized(
-                                X_get((_local_slice_none, col_map_get(feature_idx))),
-                                feature_types_get(feature_idx),
-                                min_unique_continuous,
-                            )
+                    def internal(feature_idx):
+                        return _local_process_pandas_column_schematized(
+                            X_get((_local_slice_none, col_map_get(feature_idx))),
+                            feature_types_get(feature_idx),
+                            min_unique_continuous,
+                        )
 
                     return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
@@ -2265,7 +2177,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _local_process_sparse_column(
                         X_get((_local_slice_none, (feature_idx,))),
-                        is_schematized,
+                        True,
                         None,
                         min_unique_continuous,
                     )
@@ -2277,7 +2189,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _local_process_sparse_column(
                         X_get((_local_slice_none, (feature_idx,))),
-                        is_schematized,
+                        True,
                         feature_types_get(feature_idx),
                         min_unique_continuous,
                     )
@@ -2311,7 +2223,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _local_process_sparse_column(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
-                    is_schematized,
+                    True,
                     feature_types_get(feature_idx),
                     min_unique_continuous,
                 )
@@ -2320,7 +2232,6 @@ def unify_columns(
     elif safe_isinstance(X, "scipy.sparse.spmatrix"):
         _local_process_sparse_column = _process_sparse_column
         n_cols = X.shape[1]
-
         X_get = X.getcol
 
         if len(feature_names_in) == n_cols:
@@ -2329,7 +2240,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _local_process_sparse_column(
                         X_get(feature_idx),
-                        is_schematized,
+                        True,
                         None,
                         min_unique_continuous,
                     )
@@ -2341,7 +2252,7 @@ def unify_columns(
                 def internal(feature_idx):
                     return _local_process_sparse_column(
                         X_get(feature_idx),
-                        is_schematized,
+                        True,
                         feature_types_get(feature_idx),
                         min_unique_continuous,
                     )
@@ -2375,7 +2286,7 @@ def unify_columns(
             def internal(feature_idx):
                 return _local_process_sparse_column(
                     X_get(col_map_get(feature_idx)),
-                    is_schematized,
+                    True,
                     feature_types_get(feature_idx),
                     min_unique_continuous,
                 )
@@ -2396,7 +2307,7 @@ def unify_columns(
                 feature_type, nonmissings, uniques, X_col, bad = (
                     _local_process_dict_column(
                         X_get(feature_names_in_get(feature_idx)),
-                        is_schematized,
+                        True,
                         None,
                         min_unique_continuous,
                     )
@@ -2424,7 +2335,447 @@ def unify_columns(
                 feature_type, nonmissings, uniques, X_col, bad = (
                     _local_process_dict_column(
                         X_get(feature_names_in_get(feature_idx)),
-                        is_schematized,
+                        True,
+                        feature_types_get(feature_idx),
+                        min_unique_continuous,
+                    )
+                )
+
+                # unlike other datasets, dict must be checked for content length
+                if nonmissings is None or nonmissings is False:
+                    if n_samples != X_col.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                else:
+                    if n_samples != nonmissings.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                return feature_type, nonmissings, uniques, X_col, bad
+
+            return internal
+    else:
+        msg = "internal error"
+        _log.error(msg)
+        raise ValueError(msg)
+
+
+def unify_columns_nonschematized(
+    X,
+    n_samples,
+    feature_names_in,
+    feature_types,
+    min_unique_continuous,
+    go_fast,
+):
+    # preclean_X is always called on X prior to calling this function
+
+    # unify_feature_names is always called on feature_names_in prior to calling this function
+
+    # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
+
+    # feature_types can ONLY be None when called from unify_data OR when called from EBMPreprocessor.fit(...)
+    # on all subsequent calls we pass a cleaned up feature_types from the results of the first call to EBMPreprocessor.fit(...)
+
+    # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
+    # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being
+    # yielded by using the id(categories) along with the feature_idx
+
+    if isinstance(X, np.ndarray):  # this includes ma.masked_array
+        if issubclass(X.dtype.type, _complex_void_types):
+            if issubclass(X.dtype.type, np.complexfloating):
+                msg = "Complex data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            else:
+                msg = "np.void data not supported"
+                _log.error(msg)
+                raise TypeError(msg)
+
+        # TODO: in the future special case this to make single samples faster at predict time
+
+        # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
+        # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
+        # so read up on this more
+        # https://numpy.org/doc/stable/reference/arrays.ndarray.html#internal-memory-layout-of-an-ndarray
+        # https://numpy.org/doc/stable/reference/arrays.interface.html
+        # memoryview
+
+        # TODO: create a C++ transposer that takes the stride length between items, so we can pass in 1 for bytes
+        # 2 for int16, 4 for int32, 8 for int64 and special case those sizes to be fast.  We can then also transpose
+        # np.object_ and np.unicode by passing in whatever lengths those are, which we can get from numpy reliably
+        # Inisde C++ we can use a templated function that takes the stride length or 0, so we'll get compiled
+        # versions that specialize the 1,2,4,8 sizes, and use memcpy to make the cell copies.  memcpy is an
+        # intrinsic that'll optimize down to avoid loops when possible, so that should give us fast results.
+        #
+        # For some reason numpy really sucks at transposing data and asfortranarray makes it slower, so let's do it ourselves.
+        # Allocate an empty fortran array here in python and have C++ fill it.  Then we can keep all the
+        # rest of the code below the same since it'll just be accessed internally more efficiently.
+        # if go_fast and X.flags.c_contiguous:
+        #    # called under: predict
+        #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
+        #    X = np.asfortranarray(X)
+
+        _local_slice_none = _slice_none
+
+        if len(feature_names_in) == X.shape[1]:
+            X_get = X.__getitem__
+
+            def internal(feature_idx):
+                return _process_numpy_column(
+                    X_get((_local_slice_none, feature_idx)),
+                    False,
+                    None if feature_types is None else feature_types[feature_idx],
+                    min_unique_continuous,
+                )
+
+            return internal
+        else:
+            if feature_types is None:
+                # called under: predict
+                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
+            # to check for legality on the dimensions of X
+            keep_cols = np.fromiter(
+                map(ne, _repeat_ignore, feature_types),
+                np.bool_,
+                len(feature_types),
+            )
+            n_keep = keep_cols.sum()
+            if n_keep != X.shape[1]:
+                # called under: predict
+                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
+                _log.error(msg)
+                raise ValueError(msg)
+            col_map = np.empty(keep_cols.shape[0], np.int64)
+            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map_get = col_map.__getitem__
+
+            feature_types_get = feature_types.__getitem__
+
+            def internal(feature_idx):
+                return _process_numpy_column(
+                    X[:, col_map_get(feature_idx)],
+                    False,
+                    feature_types_get(feature_idx),
+                    min_unique_continuous,
+                )
+
+            return internal
+    elif isinstance(X, _DataFrameType):
+        cols = X.columns
+        mapping = dict(zip(map(str, cols), cols))
+        n_cols = len(cols)
+        if len(mapping) != n_cols:
+            warn(
+                "Columns with duplicate names detected. This can happen for example if there are columns '0' and 0."
+            )
+
+            # We can handle duplicate names if they are not being used by the model.
+            for name, n_count in Counter(map(str, cols)).items():
+                if n_count != 1:
+                    del mapping[name]
+
+        if feature_types is None:
+            if all(map(mapping.__contains__, feature_names_in)):
+                # we can index by name, which is a lot faster in pandas
+
+                if len(feature_names_in) != n_cols:
+                    warn("Extra columns present in X that are not used by the model.")
+
+                feature_names_in_get = feature_names_in.__getitem__
+                mapping_get = mapping.__getitem__
+                X_get = X.__getitem__
+
+                def internal(feature_idx):
+                    return _process_pandas_column_nonschematized(
+                        X_get(mapping_get(feature_names_in_get(feature_idx))),
+                        None,
+                        min_unique_continuous,
+                    )
+
+                return internal
+            else:
+                if len(feature_names_in) != n_cols:
+                    msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                warn(
+                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                )
+
+                X = X.iloc
+                X_get = X.__getitem__
+                _local_slice_none = _slice_none
+
+                def internal(feature_idx):
+                    return _process_pandas_column_nonschematized(
+                        X_get((_local_slice_none, feature_idx)),
+                        None,
+                        min_unique_continuous,
+                    )
+
+                return internal
+        else:
+            feature_types_get = feature_types.__getitem__
+
+            if all(
+                map(
+                    mapping.__contains__,
+                    compress(
+                        feature_names_in,
+                        map(ne, _repeat_ignore, feature_types),
+                    ),
+                )
+            ):
+                # we can index by name, which is a lot faster in pandas
+
+                if len(feature_names_in) < n_cols:
+                    warn("Extra columns present in X that are not used by the model.")
+
+                feature_names_in_get = feature_names_in.__getitem__
+                mapping_get = mapping.__getitem__
+                X_get = X.__getitem__
+
+                def internal(feature_idx):
+                    return _process_pandas_column_nonschematized(
+                        X_get(mapping_get(feature_names_in_get(feature_idx))),
+                        feature_types_get(feature_idx),
+                        min_unique_continuous,
+                    )
+
+                return internal
+            else:
+                X = X.iloc
+                X_get = X.__getitem__
+                _local_slice_none = _slice_none
+
+                if len(feature_names_in) == n_cols:
+                    warn(
+                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                    )
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_nonschematized(
+                            X_get((_local_slice_none, feature_idx)),
+                            feature_types_get(feature_idx),
+                            min_unique_continuous,
+                        )
+
+                    return internal
+                else:
+                    keep_cols = np.fromiter(
+                        map(ne, _repeat_ignore, feature_types),
+                        np.bool_,
+                        len(feature_types),
+                    )
+                    n_keep = keep_cols.sum()
+                    if n_keep != n_cols:
+                        # called under: predict
+                        msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                        _log.error(msg)
+                        raise ValueError(msg)
+                    col_map = np.empty(keep_cols.shape[0], np.int64)
+                    col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+                    col_map_get = col_map.__getitem__
+
+                    warn(
+                        "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                    )
+
+                    def internal(feature_idx):
+                        return _process_pandas_column_nonschematized(
+                            X_get((_local_slice_none, col_map_get(feature_idx))),
+                            feature_types_get(feature_idx),
+                            min_unique_continuous,
+                        )
+
+                    return internal
+    elif safe_isinstance(X, "scipy.sparse.sparray"):
+        _local_process_sparse_column = _process_sparse_column
+        if (
+            safe_isinstance(X, "scipy.sparse.dia_array")
+            or safe_isinstance(X, "scipy.sparse.bsr_array")
+            or safe_isinstance(X, "scipy.sparse.coo_array")
+        ):
+            X = X.tocsc()
+
+        n_cols = X.shape[1]
+        X_get = X.__getitem__
+        _local_slice_none = _slice_none
+
+        if len(feature_names_in) == n_cols:
+            if feature_types is None:
+
+                def internal(feature_idx):
+                    return _local_process_sparse_column(
+                        X_get((_local_slice_none, (feature_idx,))),
+                        False,
+                        None,
+                        min_unique_continuous,
+                    )
+
+                return internal
+            else:
+                feature_types_get = feature_types.__getitem__
+
+                def internal(feature_idx):
+                    return _local_process_sparse_column(
+                        X_get((_local_slice_none, (feature_idx,))),
+                        False,
+                        feature_types_get(feature_idx),
+                        min_unique_continuous,
+                    )
+
+                return internal
+        else:
+            if feature_types is None:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+
+            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
+            # to check for legality on the dimensions of X
+            keep_cols = np.fromiter(
+                map(ne, _repeat_ignore, feature_types),
+                np.bool_,
+                len(feature_types),
+            )
+            n_keep = keep_cols.sum()
+            if n_keep != n_cols:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+            col_map = np.empty(len(feature_types), np.int64)
+            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map_get = col_map.__getitem__
+
+            feature_types_get = feature_types.__getitem__
+
+            def internal(feature_idx):
+                return _local_process_sparse_column(
+                    X_get((_local_slice_none, (col_map_get(feature_idx),))),
+                    False,
+                    feature_types_get(feature_idx),
+                    min_unique_continuous,
+                )
+
+            return internal
+    elif safe_isinstance(X, "scipy.sparse.spmatrix"):
+        _local_process_sparse_column = _process_sparse_column
+        n_cols = X.shape[1]
+        X_get = X.getcol
+
+        if len(feature_names_in) == n_cols:
+            if feature_types is None:
+
+                def internal(feature_idx):
+                    return _local_process_sparse_column(
+                        X_get(feature_idx),
+                        False,
+                        None,
+                        min_unique_continuous,
+                    )
+
+                return internal
+            else:
+                feature_types_get = feature_types.__getitem__
+
+                def internal(feature_idx):
+                    return _local_process_sparse_column(
+                        X_get(feature_idx),
+                        False,
+                        feature_types_get(feature_idx),
+                        min_unique_continuous,
+                    )
+
+                return internal
+        else:
+            if feature_types is None:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+
+            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
+            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
+            # to check for legality on the dimensions of X
+            keep_cols = np.fromiter(
+                map(ne, _repeat_ignore, feature_types),
+                np.bool_,
+                len(feature_types),
+            )
+            n_keep = keep_cols.sum()
+            if n_keep != n_cols:
+                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+            col_map = np.empty(len(feature_types), np.int64)
+            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map_get = col_map.__getitem__
+
+            feature_types_get = feature_types.__getitem__
+
+            def internal(feature_idx):
+                return _local_process_sparse_column(
+                    X_get(col_map_get(feature_idx)),
+                    False,
+                    feature_types_get(feature_idx),
+                    min_unique_continuous,
+                )
+
+            return internal
+    elif isinstance(X, _SeriesType):
+        # TODO: handle as a single feature model
+        msg = "X as pandas.Series is unsupported"
+        _log.error(msg)
+        raise ValueError(msg)
+    elif isinstance(X, dict):
+        _local_process_dict_column = _process_dict_column
+        feature_names_in_get = feature_names_in.__getitem__
+        X_get = X.__getitem__
+        if feature_types is None:
+
+            def internal(feature_idx):
+                feature_type, nonmissings, uniques, X_col, bad = (
+                    _local_process_dict_column(
+                        X_get(feature_names_in_get(feature_idx)),
+                        False,
+                        None,
+                        min_unique_continuous,
+                    )
+                )
+
+                # unlike other datasets, dict must be checked for content length
+                if nonmissings is None or nonmissings is False:
+                    if n_samples != X_col.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+                else:
+                    if n_samples != nonmissings.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                return feature_type, nonmissings, uniques, X_col, bad
+
+            return internal
+        else:
+            feature_types_get = feature_types.__getitem__
+
+            def internal(feature_idx):
+                feature_type, nonmissings, uniques, X_col, bad = (
+                    _local_process_dict_column(
+                        X_get(feature_names_in_get(feature_idx)),
+                        False,
                         feature_types_get(feature_idx),
                         min_unique_continuous,
                     )

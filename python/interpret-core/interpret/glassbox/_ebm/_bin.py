@@ -7,7 +7,11 @@ import numpy as np
 from itertools import repeat, chain, compress
 from operator import itemgetter, is_not, attrgetter
 
-from ...utils._clean_x import unify_columns, categorical_encode
+from ...utils._clean_x import (
+    unify_columns_schematized,
+    categorical_encode,
+    unify_columns_schematized,
+)
 from ...utils._native import Native
 
 _log = logging.getLogger(__name__)
@@ -32,8 +36,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             "All bins for continuous features must be C-contiguous arrays."
         )
 
-    get_col = unify_columns(
-        X, n_samples, feature_names_in, feature_types_in, None, True, True
+    get_col = unify_columns_schematized(
+        X, n_samples, feature_names_in, feature_types_in, None, True
     )
 
     cached_raw = {}
