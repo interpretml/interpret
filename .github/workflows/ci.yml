@@ -52,11 +52,11 @@ jobs:
             options: "-debug_arm"
             asm: ""
           - name: win_release_64
-            image: windows-2022
+            image: windows-2025-vs2026
             options: "-release_64"
             asm: ""
           - name: win_debug_64
-            image: windows-2022
+            image: windows-2025-vs2026
             options: "-debug_64"
             asm: ""
     runs-on: ${{ matrix.image }}
@@ -68,7 +68,7 @@ jobs:
       - name: Build for Windows
         if: startsWith(matrix.image, 'windows-')
         run: |
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           $env:CudaToolkitDir = 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
           python -c "from urllib.request import urlretrieve; urlretrieve('https://developer.download.nvidia.com/compute/cuda/11.2.2/network_installers/cuda_11.2.2_win10_network.exe', 'cuda_11.2.2_win10_network.exe')"
           ./cuda_11.2.2_win10_network.exe -s nvcc_11.2 visual_studio_integration_11.2 cudart_11.2
@@ -360,7 +360,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/powerlift" -Filter "powerlift-*.whl"
           $install_file = $install_file.Name -replace '\.whl$', ''
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           python -m pip install "bld/powerlift/$install_file.whl[datasets,docker,postgres,mssql,aci,testing]"
           New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
           xcopy /E "python\powerlift\tests\*" "tmp\zqmr\t\"
@@ -455,12 +455,12 @@ jobs:
       - name: win test_native (CI)
         if: ${{ startsWith(matrix.image, 'windows-') && github.event_name != 'schedule' }}
         run: |
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
       - name: win test_native (Schedule)
         if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
         run: |
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
 
   testS:
@@ -548,7 +548,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/sdist" -Filter "interpret_core-*.tar.gz"
           $install_file = $install_file.Name -replace '\.tar\.gz$', ''
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           python -m pip install "bld/sdist/$install_file.tar.gz[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
           tar -xzvf "bld/sdist/$install_file.tar.gz" -C "tmp/zqmr/t" "$install_file/tests"
@@ -649,7 +649,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           $install_file = Get-ChildItem -Path "bld/bdist" -Filter "interpret_core-*.whl"
           $install_file = $install_file.Name -replace '\.whl$', ''
-          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin'
+          $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           python -m pip install "bld/bdist/$install_file.whl[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"
           New-Item -Path "tmp/zqmr/t" -ItemType Directory -Force
           xcopy /E "python\interpret-core\tests\*" "tmp\zqmr\t\"
