@@ -65,6 +65,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Setup MSBuild (Windows)
+        if: startsWith(matrix.image, 'windows-')
+        uses: microsoft/setup-msbuild@v2
       - name: Build for Windows
         if: startsWith(matrix.image, 'windows-')
         run: |
@@ -334,6 +337,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Setup MSBuild (Windows)
+        if: startsWith(matrix.image, 'windows-')
+        uses: microsoft/setup-msbuild@v2
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -358,6 +364,7 @@ jobs:
         if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          python -m pip install pytest coverage
           $install_file = Get-ChildItem -Path "bld/powerlift" -Filter "powerlift-*.whl"
           $install_file = $install_file.Name -replace '\.whl$', ''
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
@@ -430,6 +437,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Setup MSBuild (Windows)
+        if: startsWith(matrix.image, 'windows-')
+        uses: microsoft/setup-msbuild@v2
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -522,6 +532,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Setup MSBuild (Windows)
+        if: startsWith(matrix.image, 'windows-')
+        uses: microsoft/setup-msbuild@v2
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -546,6 +559,7 @@ jobs:
         if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          python -m pip install pytest coverage
           $install_file = Get-ChildItem -Path "bld/sdist" -Filter "interpret_core-*.tar.gz"
           $install_file = $install_file.Name -replace '\.tar\.gz$', ''
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
@@ -623,6 +637,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Setup MSBuild (Windows)
+        if: startsWith(matrix.image, 'windows-')
+        uses: microsoft/setup-msbuild@v2
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -647,6 +664,7 @@ jobs:
         if: ${{ startsWith(matrix.image, 'windows-') }}
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          python -m pip install pytest coverage
           $install_file = Get-ChildItem -Path "bld/bdist" -Filter "interpret_core-*.whl"
           $install_file = $install_file.Name -replace '\.whl$', ''
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
