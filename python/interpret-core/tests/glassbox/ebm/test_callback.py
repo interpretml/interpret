@@ -2,16 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
-import pytest
-
 from interpret.glassbox import ExplainableBoostingClassifier
-from interpret.utils._native import Native
-
-# Skip if the native lib is not available (common in source checkouts without build artifacts)
-try:
-    Native._get_ebm_lib_path()
-except Exception:  # pragma: no cover - just gating environments without libebm
-    pytest.skip("libebm shared library not available", allow_module_level=True)
 
 
 def test_callback_iteration_is_monotonic():
