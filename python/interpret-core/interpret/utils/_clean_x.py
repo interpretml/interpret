@@ -518,7 +518,6 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
     elif X_col.dtype.type is np.object_:
         X_col = _densify_object_ndarray(X_col)
 
-    # TODO: if X_col has type pd.StringDType then we could use pd.factorize to reduce memory and time useage
     uniques, indexes, counts = np.unique(X_col, return_inverse=True, return_counts=True)
 
     if issubclass(uniques.dtype.type, np.floating):
@@ -1198,8 +1197,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         )
 
     # TODO: implement pd.SparseDtype
-    # TODO: implement pd.StringDtype both the numpy and arrow versions
-    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
     msg = f"{type(dt)} not supported"
     _log.error(msg)
     raise TypeError(msg)
@@ -1372,8 +1369,6 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
         )
 
     # TODO: implement pd.SparseDtype
-    # TODO: implement pd.StringDtype both the numpy and arrow versions
-    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.StringDtype.html#pandas.StringDtype
     msg = f"{type(dt)} not supported"
     _log.error(msg)
     raise TypeError(msg)
@@ -1515,17 +1510,10 @@ def unify_columns_schematized(
     feature_types,
 ):
     # preclean_X is always called on X prior to calling this function
-
-    # unify_feature_names is always called on feature_names_in prior to calling this function
-
-    # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
-
-    # feature_types can ONLY be None when called from unify_data OR when called from EBMPreprocessor.fit(...)
-    # on all subsequent calls we pass a cleaned up feature_types from the results of the first call to EBMPreprocessor.fit(...)
-
-    # If the requests paramter contains a categories dictionary, then that same categories object is guaranteed to
-    # be yielded back to the caller.  This guarantee can be used to rapidly identify which request is being
-    # yielded by using the id(categories) along with the feature_idx
+    #
+    # feature_names_in and feature_types are cleaned up versions where there are no
+    # duplicate names and feature_types can only consist of
+    # "continous", "nominal", or "ordinal"
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):
@@ -1781,15 +1769,6 @@ def unify_columns_schematized(
 
             return internal
         else:
-            if feature_types is None:
-                # called under: predict
-                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
                 map("ignore".__ne__, feature_types),
                 np.bool_,
@@ -2040,119 +2019,77 @@ def unify_columns_schematized(
                 if n_count != 1:
                     del mapping[name]
 
-        if feature_types is None:
-            if all(map(mapping.__contains__, feature_names_in)):
-                # we can index by name, which is a lot faster in pandas
+        feature_types_get = feature_types.__getitem__
 
-                if len(feature_names_in) != n_cols:
-                    warn("Extra columns present in X that are not used by the model.")
+        if all(
+            map(
+                mapping.__contains__,
+                compress(
+                    feature_names_in,
+                    map("ignore".__ne__, feature_types),
+                ),
+            )
+        ):
+            # we can index by name, which is a lot faster in pandas
 
-                feature_names_in_get = feature_names_in.__getitem__
-                mapping_get = mapping.__getitem__
-                X_get = X.__getitem__
+            if len(feature_names_in) < n_cols:
+                warn("Extra columns present in X that are not used by the model.")
 
-                def internal(feature_idx):
-                    return _local_process_pandas_column_schematized(
-                        X_get(mapping_get(feature_names_in_get(feature_idx))),
-                        None,
-                        None,
-                    )
+            feature_names_in_get = feature_names_in.__getitem__
+            mapping_get = mapping.__getitem__
+            X_get = X.__getitem__
 
-                return internal
-            else:
-                if len(feature_names_in) != n_cols:
-                    msg = f"The model has {len(feature_names_in)} feature names, but X has {n_cols} columns."
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                warn(
-                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+            def internal(feature_idx):
+                return _local_process_pandas_column_schematized(
+                    X_get(mapping_get(feature_names_in_get(feature_idx))),
+                    feature_types_get(feature_idx),
+                    None,
                 )
 
-                X = X.iloc
-                X_get = X.__getitem__
-                _local_slice_none = _slice_none
+            return internal
+        else:
+            X = X.iloc
+            X_get = X.__getitem__
+            _local_slice_none = _slice_none
+
+            warn(
+                "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+            )
+
+            if len(feature_names_in) == n_cols:
 
                 def internal(feature_idx):
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, feature_idx)),
-                        None,
-                        None,
-                    )
-
-                return internal
-        else:
-            feature_types_get = feature_types.__getitem__
-
-            if all(
-                map(
-                    mapping.__contains__,
-                    compress(
-                        feature_names_in,
-                        map("ignore".__ne__, feature_types),
-                    ),
-                )
-            ):
-                # we can index by name, which is a lot faster in pandas
-
-                if len(feature_names_in) < n_cols:
-                    warn("Extra columns present in X that are not used by the model.")
-
-                feature_names_in_get = feature_names_in.__getitem__
-                mapping_get = mapping.__getitem__
-                X_get = X.__getitem__
-
-                def internal(feature_idx):
-                    return _local_process_pandas_column_schematized(
-                        X_get(mapping_get(feature_names_in_get(feature_idx))),
                         feature_types_get(feature_idx),
                         None,
                     )
 
                 return internal
             else:
-                X = X.iloc
-                X_get = X.__getitem__
-                _local_slice_none = _slice_none
-
-                warn(
-                    "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
+                keep_cols = np.fromiter(
+                    map("ignore".__ne__, feature_types),
+                    np.bool_,
+                    len(feature_types),
                 )
+                n_keep = keep_cols.sum()
+                if n_keep != n_cols:
+                    # called under: predict
+                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                    _log.error(msg)
+                    raise ValueError(msg)
+                col_map = np.empty(keep_cols.shape[0], np.int64)
+                col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+                col_map_get = col_map.__getitem__
 
-                if len(feature_names_in) == n_cols:
-
-                    def internal(feature_idx):
-                        return _local_process_pandas_column_schematized(
-                            X_get((_local_slice_none, feature_idx)),
-                            feature_types_get(feature_idx),
-                            None,
-                        )
-
-                    return internal
-                else:
-                    keep_cols = np.fromiter(
-                        map("ignore".__ne__, feature_types),
-                        np.bool_,
-                        len(feature_types),
+                def internal(feature_idx):
+                    return _local_process_pandas_column_schematized(
+                        X_get((_local_slice_none, col_map_get(feature_idx))),
+                        feature_types_get(feature_idx),
+                        None,
                     )
-                    n_keep = keep_cols.sum()
-                    if n_keep != n_cols:
-                        # called under: predict
-                        msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    col_map = np.empty(keep_cols.shape[0], np.int64)
-                    col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
-                    col_map_get = col_map.__getitem__
 
-                    def internal(feature_idx):
-                        return _local_process_pandas_column_schematized(
-                            X_get((_local_slice_none, col_map_get(feature_idx))),
-                            feature_types_get(feature_idx),
-                            None,
-                        )
-
-                    return internal
+                return internal
     elif safe_isinstance(X, "scipy.sparse.sparray"):
         _local_process_sparse_column = _process_sparse_column
         if (
@@ -2167,35 +2104,18 @@ def unify_columns_schematized(
         _local_slice_none = _slice_none
 
         if len(feature_names_in) == n_cols:
-            if feature_types is None:
+            feature_types_get = feature_types.__getitem__
 
-                def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get((_local_slice_none, (feature_idx,))),
-                        True,
-                        None,
-                        None,
-                    )
+            def internal(feature_idx):
+                return _local_process_sparse_column(
+                    X_get((_local_slice_none, (feature_idx,))),
+                    True,
+                    feature_types_get(feature_idx),
+                    None,
+                )
 
-                return internal
-            else:
-                feature_types_get = feature_types.__getitem__
-
-                def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get((_local_slice_none, (feature_idx,))),
-                        True,
-                        feature_types_get(feature_idx),
-                        None,
-                    )
-
-                return internal
+            return internal
         else:
-            if feature_types is None:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                _log.error(msg)
-                raise ValueError(msg)
-
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
@@ -2230,35 +2150,18 @@ def unify_columns_schematized(
         X_get = X.getcol
 
         if len(feature_names_in) == n_cols:
-            if feature_types is None:
+            feature_types_get = feature_types.__getitem__
 
-                def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get(feature_idx),
-                        True,
-                        None,
-                        None,
-                    )
+            def internal(feature_idx):
+                return _local_process_sparse_column(
+                    X_get(feature_idx),
+                    True,
+                    feature_types_get(feature_idx),
+                    None,
+                )
 
-                return internal
-            else:
-                feature_types_get = feature_types.__getitem__
-
-                def internal(feature_idx):
-                    return _local_process_sparse_column(
-                        X_get(feature_idx),
-                        True,
-                        feature_types_get(feature_idx),
-                        None,
-                    )
-
-                return internal
+            return internal
         else:
-            if feature_types is None:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                _log.error(msg)
-                raise ValueError(msg)
-
             # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
             # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
             # to check for legality on the dimensions of X
@@ -2296,61 +2199,31 @@ def unify_columns_schematized(
         _local_process_dict_column = _process_dict_column
         feature_names_in_get = feature_names_in.__getitem__
         X_get = X.__getitem__
-        if feature_types is None:
+        feature_types_get = feature_types.__getitem__
 
-            def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = (
-                    _local_process_dict_column(
-                        X_get(feature_names_in_get(feature_idx)),
-                        True,
-                        None,
-                        None,
-                    )
-                )
+        def internal(feature_idx):
+            feature_type, nonmissings, uniques, X_col, bad = _local_process_dict_column(
+                X_get(feature_names_in_get(feature_idx)),
+                True,
+                feature_types_get(feature_idx),
+                None,
+            )
 
-                # unlike other datasets, dict must be checked for content length
-                if nonmissings is None or nonmissings is False:
-                    if n_samples != X_col.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                else:
-                    if n_samples != nonmissings.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
+            # unlike other datasets, dict must be checked for content length
+            if nonmissings is None or nonmissings is False:
+                if n_samples != X_col.shape[0]:
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            else:
+                if n_samples != nonmissings.shape[0]:
+                    msg = "The columns of X are mismatched in the number of of samples"
+                    _log.error(msg)
+                    raise ValueError(msg)
 
-                return feature_type, nonmissings, uniques, X_col, bad
+            return feature_type, nonmissings, uniques, X_col, bad
 
-            return internal
-        else:
-            feature_types_get = feature_types.__getitem__
-
-            def internal(feature_idx):
-                feature_type, nonmissings, uniques, X_col, bad = (
-                    _local_process_dict_column(
-                        X_get(feature_names_in_get(feature_idx)),
-                        True,
-                        feature_types_get(feature_idx),
-                        None,
-                    )
-                )
-
-                # unlike other datasets, dict must be checked for content length
-                if nonmissings is None or nonmissings is False:
-                    if n_samples != X_col.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                else:
-                    if n_samples != nonmissings.shape[0]:
-                        msg = "The columns of X are mismatched in the number of of samples"
-                        _log.error(msg)
-                        raise ValueError(msg)
-
-                return feature_type, nonmissings, uniques, X_col, bad
-
-            return internal
+        return internal
     else:
         msg = "internal error"
         _log.error(msg)

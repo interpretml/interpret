@@ -653,6 +653,7 @@ We also build on top of many great packages. Please check them out!
 - [Explainable Boosting Machines with Sparsity - Maintaining Explainability in High-Dimensional Settings](https://arxiv.org/abs/2311.07452)
 - [Cost of Explainability in AI: An Example with Credit Scoring Models](https://link.springer.com/chapter/10.1007/978-3-031-44064-9_26)
 - [iTARGET: Interpretable Tailored Age Regression for Grouped Epigenetic Traits](https://arxiv.org/pdf/2501.02401v1)
+- [Interpretability-by-Design with Accurate Locally Additive Models and Conditional Feature Effects](https://arxiv.org/html/2602.16503v1)
 - [Interpreting Machine Learning-Based Intrusion Detection in IoT using Explainable AI: A Case Study with Explainable Boosting Machine](https://openreview.net/pdf?id=hVpg1MEF4y)
 - [Vehicle Fuel Optimization Under Real-World Driving Conditions: An Explainable Artificial Intelligence Approach](https://arxiv.org/pdf/2107.06031v3)
 - [Explainable Boosting Machine for Structural Health Assessment: An Interpretable Approach to Data-Driven Structural Assessment](https://dpi-proceedings.com.destechpub.a2hosted.com/index.php/shm2025/article/view/37379/35953)
