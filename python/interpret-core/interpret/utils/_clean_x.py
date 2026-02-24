@@ -411,10 +411,12 @@ def _densify_object_ndarray(X_col):
     if all(map(issubclass, types, _repeat_float_types)):
         types.discard(np.float16)
         if len(types) == 0:
+            # density it first before converting to float64 later
             return X_col.astype(np.float16)
 
         types.discard(np.float32)
         if len(types) == 0:
+            # density it first before converting to float64 later
             return X_col.astype(np.float32)
 
         return X_col.astype(np.float64)
@@ -1066,7 +1068,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
+                    np.ascontiguousarray(X_col.to_numpy(np.float64)),
                     None,
                 )
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
@@ -1242,7 +1244,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                     feature_type,
                     None,
                     None,
-                    X_col.to_numpy(np.float64).astype(np.float64, "C", copy=False),
+                    np.ascontiguousarray(X_col.to_numpy(np.float64)),
                     None,
                 )
             return _process_arrayish(
