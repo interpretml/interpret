@@ -1058,12 +1058,11 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
 
 
 def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuous):
-    dt = X_col.dtype
-    tt = dt.type
-    if isinstance(dt, np.dtype):
-        if issubclass(tt, _float_int_bool_types):
-            if feature_type == "continuous":
-                # called under: fit or predict
+    if feature_type == "continuous":
+        dt = X_col.dtype
+        tt = dt.type
+        if isinstance(dt, np.dtype):
+            if issubclass(tt, _float_int_bool_types):
                 return (
                     feature_type,
                     None,
@@ -1071,43 +1070,24 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     np.ascontiguousarray(X_col.to_numpy(np.float64)),
                     None,
                 )
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
-        if tt is np.object_:
-            if X_col.hasnans:
-                # if hasnans is true then there is definetly a real missing value in there and not just a mask
-                if feature_type == "continuous":
-                    # called under: fit or predict
+            if tt is np.object_:
+                if X_col.hasnans:
+                    # if hasnans is true then there is definetly a real missing value in there and not just a mask
                     return (
                         feature_type,
                         None,
                         None,
                         *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
                     )
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return (
-                    None,
-                    *_encode_categorical_existing(
-                        X_col.dropna().to_numpy(), X_col.notna()
-                    ),
-                    None,
-                )
 
-            if feature_type == "continuous":
-                # called under: fit or predict
                 return (
                     feature_type,
                     None,
                     None,
                     *_process_continuous(X_col.to_numpy(), None),
                 )
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
-    elif isinstance(dt, pd.CategoricalDtype):
-        # unlike other missing value types, we get back -1's for missing here, so no need to drop them
-
-        if feature_type == "continuous":
-            # called under: fit or predict
+        elif isinstance(dt, pd.CategoricalDtype):
+            # unlike other missing value types, we get back -1's for missing here, so no need to drop them
 
             # TODO: a faster way to handle this would be to convert the categories
             #       first, then use the indexes to create the full float64 array.
@@ -1128,18 +1108,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     None,
                     *_process_continuous(X_col.to_numpy(np.str_), None),
                 )
-        X_col = X_col.array
-        return (
-            None,
-            False,
-            X_col.categories.to_numpy(np.str_),
-            X_col.codes,
-            None,
-        )
-    elif isinstance(dt, pd.StringDtype):
-        if feature_type == "continuous":
-            # called under: fit or predict
-
+        elif isinstance(dt, pd.StringDtype):
             if X_col.hasnans:
                 nonmissings = X_col.notna()
                 X_col = X_col.dropna()
@@ -1180,9 +1149,52 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                 X_col,
                 None,
             )
+        elif issubclass(tt, _intbool_types):
+            # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
 
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return (
+                feature_type,
+                None,
+                None,
+                X_col.to_numpy(np.float64),
+                None,
+            )
 
+        # TODO: implement pd.SparseDtype
+        msg = f"{type(dt)} not supported"
+        _log.error(msg)
+        raise TypeError(msg)
+
+    # feature_type == "nominal" or feature_type == "ordinal"
+
+    dt = X_col.dtype
+    tt = dt.type
+    if isinstance(dt, np.dtype):
+        if issubclass(tt, _float_int_bool_types):
+            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+        if tt is np.object_:
+            if X_col.hasnans:
+                # if hasnans is true then there is definetly a real missing value in there and not just a mask
+                return (
+                    None,
+                    *_encode_categorical_existing(
+                        X_col.dropna().to_numpy(), X_col.notna()
+                    ),
+                    None,
+                )
+
+            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+    elif isinstance(dt, pd.CategoricalDtype):
+        # unlike other missing value types, we get back -1's for missing here, so no need to drop them
+        X_col = X_col.array
+        return (
+            None,
+            False,
+            X_col.categories.to_numpy(np.str_),
+            X_col.codes,
+            None,
+        )
+    elif isinstance(dt, pd.StringDtype):
         indexes, uniques = pd.factorize(X_col)
         uniques = uniques.to_numpy(dtype=np.str_)
         return (
@@ -1195,21 +1207,10 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
     elif issubclass(tt, _intbool_types):
         # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
 
-        if feature_type == "continuous":
-            # called under: fit or predict
-            return (
-                feature_type,
-                None,
-                None,
-                X_col.to_numpy(np.float64),
-                None,
-            )
-
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
                 None,
                 *_encode_categorical_existing(
@@ -1220,7 +1221,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             )
         # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return (
             None,
             *_encode_categorical_existing(X_col.to_numpy(), None),
