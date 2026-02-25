@@ -352,6 +352,12 @@ _hard_sparse = (_dia_array, _bsr_array, _coo_array)
 
 
 def _densify_object_ndarray(X_col):
+    # TODO: this function isn't consistent when we have mixed types like np.float32 mixed in with strings
+    # we should eliminate this function and replace it with something that extracts the pure floats for
+    # binary conversion into float64 followed by conversion IN NUMPY ONLY OR OUR OWN STRING CONVERTER to strings.
+    # floats = np.fromiter(map(issubclass, map(type, X_col), repeat((float, np.floating))), np.bool_, X_col.shape[0])
+    # Maybe instead we should check for the existance of a __float__ function?
+
     # called under: fit or predict
 
     # numpy hierarchy of types
@@ -565,6 +571,7 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
 
             floats = uniques.astype(np.float64)
         except ValueError:
+            # ValueError occurs when a string could not be converted to a float
             floats = None
 
     if min_unique_continuous is not None and floats is not None:
@@ -664,7 +671,8 @@ def _encode_categorical_existing(X_col, nonmissings):
 
 
 def _process_continuous_slow(X_col, nonmissings):
-    # TODO: _process_continuous_slow should really on be called on numpy objects (not pandas series) since the conversion might be different
+    # If X_col is an object array, it needs to be a numpy array.
+    # If X_col has strings, it can be either numpy or pandas.
 
     # TODO: attempt to optimize this by converting entire windows
     # within the data and progressively growing/shrinking the windows
@@ -674,23 +682,26 @@ def _process_continuous_slow(X_col, nonmissings):
     floats = np.zeros(n_samples, np.float64)
     for idx in range(n_samples):
         # slice one item at a time keeping as an np.ndarray
+        # incase we need to convert to string, which we want
+        # to ONLY use numpy for for consistency.
         one_item_array = X_col[idx : idx + 1]
         try:
-            # use .astype(..) instead of float(..) to ensure identical conversion results
             floats[idx] = one_item_array.astype(np.float64).item()
         except TypeError:
-            # use .astype instead of str(one_item_array) here to ensure identical string categories
+            # TypeError occurs when an object does not have a __float__ function
+
+            # use .astype instead of str(one_item_array) here to ensure identical string handling
             one_item_array = one_item_array.astype(np.str_)
             try:
-                # use .astype(..) instead of float(..) to ensure identical conversion results
                 floats[idx] = one_item_array.astype(np.float64).item()
             except ValueError:
+                # ValueError occurs when a string could not be converted to a float
                 bad[idx] = True
         except ValueError:
+            # ValueError occurs when a string could not be converted to a float
             bad[idx] = True
 
     if not bad.any():
-        # TODO: is it possible to have all good at this location?
         bad = None
 
     if nonmissings is None:
@@ -708,8 +719,6 @@ def _process_continuous_slow(X_col, nonmissings):
 
 
 def _process_continuous(X_col, nonmissings):
-    # TODO: _process_continuous should really on be called on numpy objects (not pandas series) since the conversion might be different
-
     # X_col can be an ndarray, or an extension array (not a pd.Series)
     # nonmissings must be a boolean ndarray or None
     # do not use type hints because we would have to import pandas for pd.Series
@@ -753,10 +762,8 @@ def _process_continuous(X_col, nonmissings):
         X_col_tmp[nonmissings] = X_col
         return X_col_tmp, None
     except (TypeError, ValueError):
-        # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
-        # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
-        # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
-
+        # TypeError occurs when an object does not have a __float__ function
+        # ValueError occurs when a string could not be converted to a float
         return _process_continuous_slow(X_col, nonmissings)
 
 
@@ -1095,41 +1102,39 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                 else:
                     X_col = X_col.values[nonmissings]
 
-                floatable = np.fromiter(
-                    map(issubclass, map(type, X_col), _repeat_floatable),
-                    np.bool_,
-                    X_col.shape[0],
-                )
-
                 bad = None
-                if floatable.all():
+                try:
+                    # Since both python and numpy support correct rounding,
+                    # conversions from string to np.float64 should be the same
                     X_col = X_col.astype(np.float64, "C")
-                else:
+                except (TypeError, ValueError):
+                    # TypeError occurs when an object does not have a __float__ function
+                    # ValueError occurs when a string could not be converted to a float
+
+                    floatable = np.fromiter(
+                        map(issubclass, map(type, X_col), _repeat_floatable),
+                        np.bool_,
+                        X_col.shape[0],
+                    )
+
                     if floatable.any():
                         floats = X_col[floatable]
                         nonfloatable = ~floatable
                         X_col = X_col[nonfloatable]
-                    else:
-                        floatable = None
 
-                    X_col = X_col.astype(np.str_)
-                    try:
-                        # Since both python and numpy support correct rounding,
-                        # conversions to np.float64 should be the same
-
-                        X_col = X_col.astype(np.float64, "C")
-                    except ValueError:
                         X_col, bad = _process_continuous_slow(X_col, None)
 
-                    if floatable is not None:
                         X_col_tmp = np.empty(nonfloatable.shape[0], np.float64)
                         X_col_tmp[nonfloatable] = X_col
                         X_col_tmp[floatable] = floats
                         X_col = X_col_tmp
+
                         if bad is not None:
                             bad_tmp = np.zeros(nonfloatable.shape[0], np.bool_)
                             bad_tmp[nonfloatable] = bad
                             bad = bad_tmp
+                    else:
+                        X_col, bad = _process_continuous_slow(X_col, None)
 
                 if nonmissings is not None:
                     X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
@@ -1169,11 +1174,11 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             else:
                 nonmissings = None
 
-            # for consistency, use the numpy np.str_ to float converter for strings
-            X_col = X_col.to_numpy(np.str_)
             try:
-                X_col = X_col.astype(np.float64, "C")
+                # numpy, pandas, and python all have identical conversions (IEEE-754)
+                X_col = X_col.to_numpy(np.float64)
             except ValueError:
+                # ValueError occurs when a string could not be converted to a float
                 return (
                     feature_type,
                     None,
@@ -1396,6 +1401,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                 try:
                     X_col = X_col.to_numpy(np.float64)
                 except ValueError:
+                    # ValueError occurs when a string could not be converted to a float
                     return (
                         feature_type,
                         None,
@@ -1416,6 +1422,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
             try:
                 X_col = X_col.to_numpy(np.float64)
             except ValueError:
+                # ValueError occurs when a string could not be converted to a float
                 return (
                     feature_type,
                     None,
@@ -1616,6 +1623,11 @@ def unify_columns_schematized(
     feature_names_in,
     feature_types,
 ):
+    # TODO: replace all the calls to _local_process_continuous and _local_encode_categorical_existing
+    # with the same functionality inside this function.  That will allow us to eliminate some of the
+    # type checking, and we should also switch to using pd.factorize whenever possible since it's
+    # faster.
+
     # preclean_X is always called on X prior to calling this function
     #
     # feature_names_in and feature_types are cleaned up versions where there are no
