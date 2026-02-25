@@ -1067,9 +1067,9 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
 
 
 def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuous):
+    dt = X_col.dtype
+    tt = dt.type
     if feature_type == "continuous":
-        dt = X_col.dtype
-        tt = dt.type
         if isinstance(dt, np.dtype):
             if tt is np.float64:
                 return (
@@ -1201,31 +1201,28 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
 
     # feature_type == "nominal" or feature_type == "ordinal"
 
-    dt = X_col.dtype
-    tt = dt.type
-    if isinstance(dt, np.dtype):
-        if tt is np.float64:
-            indexes, uniques = pd.factorize(X_col)
-            return (
-                None,
-                False,
-                uniques.values.astype(np.str_),
-                indexes,
-                None,
-            )
-        elif issubclass(tt, np.floating):
-            indexes, uniques = pd.factorize(X_col)
-            return (
-                None,
-                False,
-                uniques.values.astype(np.float64).astype(np.str_),
-                indexes,
-                None,
-            )
-        elif issubclass(tt, _intbool_types):
-            indexes, uniques = pd.factorize(X_col)
-            return None, None, uniques.values.astype(np.str_), indexes, None
-        elif tt is np.object_:
+    if isinstance(dt, pd.CategoricalDtype):
+        # unlike other missing value types, we get back -1's for missing here, so no need to drop them
+        X_col = X_col.array
+        return (
+            None,
+            False,
+            X_col.categories.to_numpy(np.str_),
+            X_col.codes,
+            None,
+        )
+    elif isinstance(dt, pd.StringDtype):
+        # factorize uses -1 for missing values
+        indexes, uniques = pd.factorize(X_col)
+        return (
+            None,
+            False,
+            uniques.to_numpy(np.str_),
+            indexes,
+            None,
+        )
+    elif isinstance(dt, np.dtype):
+        if tt is np.object_:
             nonmissings = X_col.notna()
             if nonmissings.all():
                 nonmissings = None
@@ -1261,30 +1258,31 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     indexes,
                     None,
                 )
+        elif tt is np.float64:
+            indexes, uniques = pd.factorize(X_col)
+            return (
+                None,
+                False,
+                uniques.values.astype(np.str_),
+                indexes,
+                None,
+            )
+        elif issubclass(tt, np.floating):
+            indexes, uniques = pd.factorize(X_col)
+            return (
+                None,
+                False,
+                uniques.values.astype(np.float64).astype(np.str_),
+                indexes,
+                None,
+            )
+        elif issubclass(tt, _intbool_types):
+            indexes, uniques = pd.factorize(X_col)
+            return None, None, uniques.values.astype(np.str_), indexes, None
 
         # pandas never uses np.str_ or np.bytes_
 
         # fall through to the default handler
-    elif isinstance(dt, pd.CategoricalDtype):
-        # unlike other missing value types, we get back -1's for missing here, so no need to drop them
-        X_col = X_col.array
-        return (
-            None,
-            False,
-            X_col.categories.to_numpy(np.str_),
-            X_col.codes,
-            None,
-        )
-    elif isinstance(dt, pd.StringDtype):
-        # factorize uses -1 for missing values
-        indexes, uniques = pd.factorize(X_col)
-        return (
-            None,
-            False,
-            uniques.to_numpy(np.str_),
-            indexes,
-            None,
-        )
     elif issubclass(tt, np.floating):
         # this handles Float64Dtype, Float32Dtype
 
