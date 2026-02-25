@@ -341,7 +341,9 @@ _repeat_uint_type = repeat(np.unsignedinteger)
 _repeat_ignore = repeat("ignore")
 _repeat_bools = repeat((bool, np.bool_))
 _repeat_negativeone = repeat(-1)
+_repeat_floatable = repeat((float, int, bool, np.floating, np.integer, np.bool_))
 _array_zero = np.zeros(1, np.int64)
+_stringable = (pd.CategoricalDtype, pd.StringDtype)
 _slice_none = slice(None)
 _repeat_str = repeat(str)
 _not_one = (1).__ne__
@@ -662,6 +664,9 @@ def _encode_categorical_existing(X_col, nonmissings):
 
 
 def _process_continuous_slow(X_col, nonmissings):
+    # TODO: attempt to optimize this by converting entire windows
+    # within the data and progressively growing/shrinking the windows
+
     n_samples = X_col.shape[0]
     bad = np.zeros(n_samples, np.bool_)
     floats = np.zeros(n_samples, np.float64)
@@ -1062,101 +1067,126 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         dt = X_col.dtype
         tt = dt.type
         if isinstance(dt, np.dtype):
-            if issubclass(tt, _float_int_bool_types):
+            if tt is np.float64:
                 return (
                     feature_type,
                     None,
                     None,
-                    np.ascontiguousarray(X_col.to_numpy(np.float64)),
+                    np.ascontiguousarray(X_col.values),
                     None,
                 )
-            if tt is np.object_:
-                if X_col.hasnans:
-                    # if hasnans is true then there is definetly a real missing value in there and not just a mask
-                    return (
-                        feature_type,
-                        None,
-                        None,
-                        *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
-                    )
+            elif issubclass(tt, _float_int_bool_types):
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    X_col.values.astype(np.float64, "C"),
+                    None,
+                )
+            elif tt is np.object_:
+                nonmissings = X_col.notna()
+                if nonmissings.all():
+                    nonmissings = None
+                    X_col = X_col.values
+                else:
+                    X_col = X_col.values[nonmissings]
+
+                floatable = np.fromiter(
+                    map(issubclass, map(type, X_col), _repeat_floatable),
+                    np.bool_,
+                    X_col.shape[0],
+                )
+
+                bad = None
+                if floatable.all():
+                    X_col = X_col.astype(np.float64, "C")
+                else:
+                    if floatable.any():
+                        floats = X_col[floatable]
+                        nonfloatable = ~floatable
+                        X_col = X_col[nonfloatable]
+                    else:
+                        floatable = None
+
+                    X_col = X_col.astype(np.str_)
+                    try:
+                        # Since both python and numpy support correct rounding,
+                        # conversions to np.float64 should be the same
+
+                        X_col = X_col.astype(np.float64, "C")
+                    except ValueError:
+                        X_col, bad = _process_continuous_slow(X_col, None)
+
+                    if floatable is not None:
+                        X_col_tmp = np.empty(nonfloatable.shape[0], np.float64)
+                        X_col_tmp[nonfloatable] = X_col
+                        X_col_tmp[floatable] = floats
+                        X_col = X_col_tmp
+                        if bad is not None:
+                            bad_tmp = np.zeros(nonfloatable.shape[0], np.bool_)
+                            bad_tmp[nonfloatable] = bad
+                            bad = bad_tmp
+
+                if nonmissings is not None:
+                    X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
+                    X_col_tmp[nonmissings] = X_col
+                    X_col = X_col_tmp
+
+                    if bad is not None:
+                        bad_tmp = np.zeros(nonmissings.shape[0], np.bool_)
+                        bad_tmp[nonmissings] = bad
+                        bad = bad_tmp
 
                 return (
                     feature_type,
                     None,
                     None,
-                    *_process_continuous(X_col.to_numpy(), None),
+                    X_col,
+                    bad,
                 )
-        elif isinstance(dt, pd.CategoricalDtype):
-            # unlike other missing value types, we get back -1's for missing here, so no need to drop them
 
-            # TODO: a faster way to handle this would be to convert the categories
-            #       first, then use the indexes to create the full float64 array.
+            # pandas never uses np.str_ or np.bytes_
 
-            if X_col.hasnans:
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().to_numpy(np.str_), X_col.notna()
-                    ),
-                )
-            else:
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(X_col.to_numpy(np.str_), None),
-                )
-        elif isinstance(dt, pd.StringDtype):
+            # fall through to the default handler
+        elif issubclass(tt, _float_int_bool_types):
+            # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+
+            return (
+                feature_type,
+                None,
+                None,
+                X_col.to_numpy(np.float64),  # missing becomes np.nan for these types
+                None,
+            )
+        elif isinstance(dt, _stringable):
             if X_col.hasnans:
                 nonmissings = X_col.notna()
-                X_col = X_col.dropna()
-                try:
-                    X_col = X_col.to_numpy(np.float64)
-                except ValueError:
-                    return (
-                        feature_type,
-                        None,
-                        None,
-                        *_process_continuous_slow(X_col.array, nonmissings),
-                    )
+                X_col = X_col[nonmissings]
+            else:
+                nonmissings = None
 
-                X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
-                X_col_tmp[nonmissings] = X_col
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    X_col_tmp,
-                    None,
-                )
-
+            # for consistency, use the numpy np.str_ to float converter for strings
+            X_col = X_col.to_numpy(np.str_)
             try:
-                X_col = X_col.to_numpy(np.float64)
+                X_col = X_col.astype(np.float64, "C")
             except ValueError:
                 return (
                     feature_type,
                     None,
                     None,
-                    *_process_continuous_slow(X_col.array, None),
+                    *_process_continuous_slow(X_col, nonmissings),
                 )
+
+            if nonmissings is not None:
+                X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
+                X_col_tmp[nonmissings] = X_col
+                X_col = X_col_tmp
 
             return (
                 feature_type,
                 None,
                 None,
                 X_col,
-                None,
-            )
-        elif issubclass(tt, _intbool_types):
-            # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-
-            return (
-                feature_type,
-                None,
-                None,
-                X_col.to_numpy(np.float64),
                 None,
             )
 
