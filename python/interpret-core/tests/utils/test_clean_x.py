@@ -1390,6 +1390,10 @@ def test_unify_columns_pandas_missings_UInt64Dtype():
     )
 
 
+def test_unify_columns_pandas_missings_Float64Dtype():
+    check_pandas_missings(pd.Float64Dtype(), 1.1, 2.2)
+
+
 def test_unify_columns_pandas_missings_BooleanDtype():
     check_pandas_missings(pd.BooleanDtype(), False, True)
 
@@ -2428,3 +2432,38 @@ def test_unify_columns_ma_objects_categorical():
     assert np.array_equal(
         binned, np.array([[0], [0], [1], [0], [0], [2], [0]], np.int64)
     )
+
+
+def test_schematized_nominal_float64():
+    X = pd.DataFrame()
+    X["feature1"] = pd.Series(np.array([1.1, 2.2, 1.1, 2.2, 1.1], dtype=np.float64))
+
+    feature_names = None
+    feature_types = ["nominal"]
+
+    X_check, feature_names_in, feature_types_in = unify_test(
+        X,
+        feature_names,
+        feature_types,
+    )
+    assert feature_names_in == ["feature1"]
+    assert feature_types_in == ["nominal"]
+    assert np.array_equal(
+        X_check,
+        np.array([["1.1"], ["2.2"], ["1.1"], ["2.2"], ["1.1"]], np.object_),
+    )
+
+    pre = EBMPreprocessor(feature_names, feature_types)
+    pre.fit(X)
+
+    assert pre.feature_names_in_ == ["feature1"]
+    assert pre.feature_types_in_ == ["nominal"]
+
+    expected_bins = [{"1.1": 1, "2.2": 2}]
+    compare_bins(pre.bins_, expected_bins)
+
+    # transform uses the schematized path which hits
+    # _process_pandas_column_schematized with feature_type="nominal"
+    # and a np.float64 pandas column
+    binned = pre.transform(X)
+    assert np.array_equal(binned, np.array([[1], [2], [1], [2], [1]], np.int64))

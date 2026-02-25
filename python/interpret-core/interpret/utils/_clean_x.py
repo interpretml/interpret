@@ -664,6 +664,8 @@ def _encode_categorical_existing(X_col, nonmissings):
 
 
 def _process_continuous_slow(X_col, nonmissings):
+    # TODO: _process_continuous_slow should really on be called on numpy objects (not pandas series) since the conversion might be different
+
     # TODO: attempt to optimize this by converting entire windows
     # within the data and progressively growing/shrinking the windows
 
@@ -706,6 +708,8 @@ def _process_continuous_slow(X_col, nonmissings):
 
 
 def _process_continuous(X_col, nonmissings):
+    # TODO: _process_continuous should really on be called on numpy objects (not pandas series) since the conversion might be different
+
     # X_col can be an ndarray, or an extension array (not a pd.Series)
     # nonmissings must be a boolean ndarray or None
     # do not use type hints because we would have to import pandas for pd.Series
@@ -1200,20 +1204,67 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
     dt = X_col.dtype
     tt = dt.type
     if isinstance(dt, np.dtype):
-        if issubclass(tt, _float_int_bool_types):
-            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
-        if tt is np.object_:
-            if X_col.hasnans:
-                # if hasnans is true then there is definetly a real missing value in there and not just a mask
+        if tt is np.float64:
+            indexes, uniques = pd.factorize(X_col)
+            return (
+                None,
+                False,
+                uniques.values.astype(np.str_),
+                indexes,
+                None,
+            )
+        elif issubclass(tt, np.floating):
+            indexes, uniques = pd.factorize(X_col)
+            return (
+                None,
+                False,
+                uniques.values.astype(np.float64).astype(np.str_),
+                indexes,
+                None,
+            )
+        elif issubclass(tt, _intbool_types):
+            indexes, uniques = pd.factorize(X_col)
+            return None, None, uniques.values.astype(np.str_), indexes, None
+        elif tt is np.object_:
+            nonmissings = X_col.notna()
+            if nonmissings.all():
+                nonmissings = None
+                X_col = X_col.values
+            else:
+                X_col = X_col.values[nonmissings]
+
+            indexes, uniques = pd.factorize(_densify_object_ndarray(X_col))
+
+            tt = uniques.dtype.type
+            if tt is np.float64:
                 return (
                     None,
-                    *_encode_categorical_existing(
-                        X_col.dropna().to_numpy(), X_col.notna()
-                    ),
+                    nonmissings,
+                    uniques.astype(np.str_),
+                    indexes,
+                    None,
+                )
+            elif issubclass(tt, np.floating):
+                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                return (
+                    None,
+                    nonmissings,
+                    uniques.astype(np.float64).astype(np.str_),
+                    indexes,
+                    None,
+                )
+            else:
+                return (
+                    None,
+                    nonmissings,
+                    uniques.astype(np.str_, copy=False),
+                    indexes,
                     None,
                 )
 
-            return None, *_encode_categorical_existing(X_col.to_numpy(), None), None
+        # pandas never uses np.str_ or np.bytes_
+
+        # fall through to the default handler
     elif isinstance(dt, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.array
@@ -1225,35 +1276,34 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             None,
         )
     elif isinstance(dt, pd.StringDtype):
+        # factorize uses -1 for missing values
         indexes, uniques = pd.factorize(X_col)
-        uniques = uniques.to_numpy(dtype=np.str_)
         return (
             None,
-            False if X_col.hasnans else None,
-            uniques,
+            False,
+            uniques.to_numpy(np.str_),
+            indexes,
+            None,
+        )
+    elif issubclass(tt, np.floating):
+        # this handles Float64Dtype, Float32Dtype
+
+        indexes, uniques = pd.factorize(X_col)
+        return (
+            None,
+            False,
+            uniques.to_numpy(np.float64).astype(np.str_),
             indexes,
             None,
         )
     elif issubclass(tt, _intbool_types):
-        # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-
-        if X_col.hasnans:
-            # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            # if X_col is a special type like UInt64Dtype convert it to numpy using astype
-
-            return (
-                None,
-                *_encode_categorical_existing(
-                    X_col.dropna().to_numpy(),
-                    X_col.notna(),
-                ),
-                None,
-            )
-        # if X_col is a special type like UInt64Dtype convert it to numpy using astype
-
+        # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+        indexes, uniques = pd.factorize(X_col)
         return (
             None,
-            *_encode_categorical_existing(X_col.to_numpy(), None),
+            False,
+            uniques.to_numpy(np.str_),
+            indexes,
             None,
         )
 
@@ -1397,8 +1447,8 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
             feature_type,
             min_unique_continuous,
         )
-    elif issubclass(tt, _intbool_types):
-        # this handles Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+    elif issubclass(tt, _float_int_bool_types):
+        # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
 
         if feature_type == "continuous":
             # called under: fit or predict
