@@ -3086,12 +3086,13 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     callback : Optional[Callable[[int, int, bool, float], bool]], default=None
-        A user-defined function that is invoked at the end of each boosting step to determine
+        A user-defined function that is invoked at the end of each boosting step attempt to determine
         whether to terminate boosting or continue. If it returns True, the boosting loop is
         stopped immediately. By default, no callback is used and training proceeds according
         to the early stopping settings.  The callback function receives:
-        (1) the bag index, (2) the number of boosting steps completed,
-        (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
+        (1) the bag index, (2) the callback step index (increments on every callback, even when
+        no update is applied), (3) a boolean indicating whether progress was made in the current step,
+        and (4) the current best score.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -3596,12 +3597,13 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     callback : Optional[Callable[[int, int, bool, float], bool]], default=None
-        A user-defined function that is invoked at the end of each boosting step to determine
+        A user-defined function that is invoked at the end of each boosting step attempt to determine
         whether to terminate boosting or continue. If it returns True, the boosting loop is
         stopped immediately. By default, no callback is used and training proceeds according
         to the early stopping settings.  The callback function receives:
-        (1) the bag index, (2) the number of boosting steps completed,
-        (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
+        (1) the bag index, (2) the callback step index (increments on every callback, even when
+        no update is applied), (3) a boolean indicating whether progress was made in the current step,
+        and (4) the current best score.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0

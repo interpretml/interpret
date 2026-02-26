@@ -86,7 +86,8 @@ def boost(
                     else None
                 )
 
-                step_idx = 0
+                step_idx = 0  # number of accepted boosting updates
+                callback_idx = 0  # number of callback invocations (attempted steps)
                 cur_metric = np.nan
 
                 _log.info("Start boosting")
@@ -369,12 +370,13 @@ def boost(
 
                         if callback is not None:
                             is_done = callback(
-                                bag_idx, step_idx, make_progress, cur_metric
+                                bag_idx, callback_idx, make_progress, cur_metric
                             )
                             if is_done:
                                 if stop_flag is not None:
                                     stop_flag[0] = True
                                 break
+                            callback_idx += 1
 
                         state_idx = state_idx + 1
                         if len(term_features) <= state_idx:
