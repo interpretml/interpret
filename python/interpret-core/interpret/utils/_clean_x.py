@@ -2621,11 +2621,16 @@ def _determine_min_cols(feature_names=None, feature_types=None):
     raise ValueError(msg)
 
 
-def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
+def unify_feature_names(X, feature_names=None, feature_types=None):
     # called under: fit
 
-    # if feature_names_given and feature_types_given were the outputs of a fit function, then this function
-    # is re-callable because it will return the same feature names as previously generated
+    # If feature_names and feature_types were the outputs of a fit function, then
+    # this function is re-callable because it will return the same feature names
+    # as previously generated.
+
+    # Passing a None feature_name will cause us to use positional
+    # ordering and generate a name, but None values in the X column names
+    # will be stringified to "None".
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         X_names = None
@@ -2650,117 +2655,138 @@ def unify_feature_names(X, feature_names_given=None, feature_types_given=None):
         _log.error(msg)
         raise ValueError(msg)
 
-    n_ignored = 0
-    if feature_types_given is not None:
-        n_ignored = sum(
-            1
-            for feature_type_given in feature_types_given
-            if feature_type_given == "ignore"
-        )
+    n_ignored = (
+        0 if feature_types is None else sum(1 for t in feature_types if t == "ignore")
+    )
 
-    if feature_names_given is None:
-        if feature_types_given is not None:
-            if (
-                len(feature_types_given) != n_cols
-                and len(feature_types_given) != n_cols + n_ignored
-            ):
-                msg = f"There are {len(feature_types_given)} feature_types, but X has {n_cols} columns"
-                _log.error(msg)
-                raise ValueError(msg)
-            n_cols = len(feature_types_given)
-
-        feature_names_in = X_names
-        if X_names is None:
-            feature_names_in = []
-            # this isn't used other than to indicate new names need to be created
-            feature_types_given = ["ignore"] * n_cols
-    else:
-        n_final = len(feature_names_given)
-        if feature_types_given is not None:
-            n_final = len(feature_types_given)
-            if (
-                n_final != len(feature_names_given)
-                and n_final != len(feature_names_given) + n_ignored
-            ):
-                msg = f"There are {n_final} feature_types and {len(feature_names_given)} feature_names which is a mismatch"
-                _log.error(msg)
-                raise ValueError(msg)
-
-        feature_names_in = list(map(str, feature_names_given))
-
-        if X_names is None:
-            # ok, need to use position indexing
-            if n_final != n_cols and n_final != n_cols + n_ignored:
-                msg = f"There are {n_final} features, but X has {n_cols} columns"
-                _log.error(msg)
-                raise ValueError(msg)
+    if feature_names is None:
+        if feature_types is None:
+            feature_types = [None] * n_cols
+            if X_names is None:
+                feature_names = [None] * n_cols
+            else:
+                feature_names = X_names
         else:
-            # we might be indexing by name
-            names_used = feature_names_in
-            if feature_types_given is not None and len(feature_names_in) == len(
-                feature_types_given
-            ):
-                names_used = [
-                    feature_name_in
-                    for feature_name_in, feature_type_given in zip(
-                        feature_names_in, feature_types_given
-                    )
-                    if feature_type_given != "ignore"
-                ]
-
-            X_names_unique = {
-                name for name, n_count in Counter(X_names).items() if n_count == 1
-            }
-            if any(name not in X_names_unique for name in names_used):
+            if len(feature_types) == n_cols:
+                if X_names is None:
+                    feature_names = [None] * n_cols
+                else:
+                    feature_names = X_names
+            elif len(feature_types) == n_cols + n_ignored:
+                if X_names is None:
+                    feature_names = [None] * len(feature_types)
+                else:
+                    feature_names = []
+                    i = 0
+                    for t in feature_types:
+                        if t == "ignore":
+                            feature_names.append(None)
+                        else:
+                            feature_names.append(X_names[i])
+                            i += 1
+            else:
+                msg = f"There are {len(feature_types)} feature_types, but X has {n_cols} columns."
+                _log.error(msg)
+                raise ValueError(msg)
+    else:
+        feature_names = [None if name is None else str(name) for name in feature_names]
+        if feature_types is None:
+            if X_names is None:
                 # ok, need to use position indexing
-                if n_final != n_cols and n_final != n_cols + n_ignored:
-                    msg = f"There are {n_final} features, but X has {n_cols} columns"
+                if len(feature_names) != n_cols:
+                    msg = f"There are {len(feature_names)} features, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
-
-    if feature_types_given is not None:
-        if len(feature_types_given) == len(feature_names_in):
-            if len(feature_names_in) - n_ignored != len(
-                {
-                    feature_name_in
-                    for feature_name_in, feature_type_given in zip(
-                        feature_names_in, feature_types_given
-                    )
-                    if feature_type_given != "ignore"
+            else:
+                # we might be indexing by name
+                X_names_unique = {
+                    name for name, n_count in Counter(X_names).items() if n_count == 1
                 }
-            ):
-                msg = "cannot have duplicate feature names"
+                if any(name not in X_names_unique for name in feature_names):
+                    warn(
+                        "Using column positional indexing instead of feature_name indexing because of a naming mismatch."
+                    )
+
+                    if len(feature_names) != n_cols:
+                        msg = f"There are {len(feature_names)} features, but X has {n_cols} columns."
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+            feature_types = [None] * len(feature_names)
+        else:
+            if len(feature_types) == len(feature_names):
+                pass
+            elif len(feature_types) == len(feature_names) + n_ignored:
+                feature_names_clean = []
+                i = 0
+                for t in feature_types:
+                    if t == "ignore":
+                        feature_names_clean.append(None)
+                    else:
+                        feature_names_clean.append(feature_names[i])
+                        i += 1
+                feature_names = feature_names_clean
+            else:
+                msg = f"There are {len(feature_types)} feature_types and {len(feature_names)} feature_names which is a mismatch."
                 _log.error(msg)
                 raise ValueError(msg)
 
-            return feature_names_in
-
-        names_set = set(feature_names_in)
-
-        names = []
-        names_idx = 0
-        feature_idx = 0
-        for feature_type_given in feature_types_given:
-            if feature_type_given == "ignore":
-                while True:
-                    # give 4 digits to the number so that anything below 9999 gets sorted in the right order in string format
-                    name = f"feature_{feature_idx:04}"
-                    feature_idx += 1
-                    if name not in names_set:
-                        break
+            if X_names is None:
+                # ok, need to use position indexing
+                if (
+                    len(feature_types) != n_cols
+                    and len(feature_types) != n_cols + n_ignored
+                ):
+                    msg = f"There are {len(feature_types)} features, but X has {n_cols} columns."
+                    _log.error(msg)
+                    raise ValueError(msg)
             else:
-                name = feature_names_in[names_idx]
-                names_idx += 1
-            names.append(name)
+                # we might be indexing by name
+                X_names_unique = {
+                    name for name, n_count in Counter(X_names).items() if n_count == 1
+                }
+                if any(
+                    name not in X_names_unique
+                    for name, t in zip(feature_names, feature_types)
+                    if t != "ignore"
+                ):
+                    warn(
+                        "Using column positional indexing instead of feature_name indexing because of a naming mismatch."
+                    )
 
-        feature_names_in = names
+                    if (
+                        len(feature_types) != n_cols
+                        and len(feature_types) != n_cols + n_ignored
+                    ):
+                        msg = f"There are {len(feature_types)} features, but X has {n_cols} columns."
+                        _log.error(msg)
+                        raise ValueError(msg)
 
-    if len(feature_names_in) != len(set(feature_names_in)):
-        msg = "cannot have duplicate feature names"
-        _log.error(msg)
-        raise ValueError(msg)
+    all_names = set()
+    used_names = set()
+    for name, t in zip(feature_names, feature_types):
+        if name is not None:
+            all_names.add(name)
+            if t != "ignore":
+                if name in used_names:
+                    msg = f"feature name {name} is a duplicate."
+                    _log.error(msg)
+                    raise ValueError(msg)
+                used_names.add(name)
 
-    return feature_names_in
+    feature_idx = 0
+    for i in range(len(feature_names)):
+        name = feature_names[i]
+        if name is None:
+            while True:
+                # give 4 digits to the number so that anything below 9999 gets sorted in the right order in string format
+                name = f"feature_{feature_idx:04}"
+                feature_idx += 1
+                if name not in all_names:
+                    break
+            feature_names[i] = name
+
+    return feature_names, feature_types
 
 
 def _reshape_X(X, min_cols, n_samples, sample_source):

@@ -232,7 +232,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_names_in = unify_feature_names(
+        feature_names_in, _ = unify_feature_names(
             X, self.feature_names, self.feature_types
         )
         n_features = len(feature_names_in)
