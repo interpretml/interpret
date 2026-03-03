@@ -54,11 +54,7 @@ class Marginal(ExplainerMixin):
 
         try:
             y = y.astype(np.float64, copy=False)
-        except (TypeError, ValueError):
-            # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
-            # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
-            # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
-
+        except:  # object can throw anything in their __float__ function
             y = typify_classification(y)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
@@ -323,11 +319,7 @@ class ClassHistogram(ExplainerMixin):
 
         try:
             y = y.astype(np.float64, copy=False)
-        except (TypeError, ValueError):
-            # we get a TypeError whenever we have an np.object_ array and numpy attempts to call float(), but the
-            # object doesn't have a __float__ function.  We get a ValueError when either a str object inside an
-            # np.object_ array or when an np.unicode_ array attempts to convert a string to a float and fails
-
+        except:  # object can throw anything in their __float__ function
             y = typify_classification(y)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))

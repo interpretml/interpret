@@ -275,6 +275,11 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
 
+        # TODO: modify this section to first call unify_columns_nonschematized to ONLY get the
+        # feature types "continuous", "nominal", or "ordinal", then call unify_columns_schematized
+        # to get the feature values. This is to ensure that we have 100% identical feature value
+        # generation at predict time from training time
+
         get_col = unify_columns_nonschematized(
             X,
             n_samples,

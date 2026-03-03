@@ -428,7 +428,7 @@ def _normalize_categoricals(X, types, clip_low, clip_high):
             else:
                 try:
                     col = col.astype(np.float64, copy=False)
-                except ValueError:
+                except:  # object can throw anything in their __float__ function
                     col = _normalize_string_categorical(col, clip_low, clip_high)
 
             np.place(floats, nonmissings, col)

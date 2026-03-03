@@ -670,9 +670,16 @@ def _encode_categorical_existing(X_col, nonmissings):
     return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
 
-def _process_continuous_slow(X_col, nonmissings):
-    # If X_col is an object array, it needs to be a numpy array.
-    # If X_col has strings, it can be either numpy or pandas.
+def _process_continuous_objects(X_col, nonmissings):
+    # In theory, python, pandas, and numpy all use correct rounding and
+    # should therefore convert objects and strings to the same float64 values,
+    # but there can be slight differences with things like allowing spaces
+    # at the start and end of strings, or which order or methods are used
+    # on objects when converting to floats. We want repetable conversion
+    # methods that give the same results even if the data is presented
+    # slightly differently. Since we want to accept vals.astype(np.float64)
+    # for fast converstion elsewhere, we force all conversions as numpy
+    # arrays of objects or strings.
 
     # TODO: attempt to optimize this by converting entire windows
     # within the data and progressively growing/shrinking the windows
@@ -681,24 +688,56 @@ def _process_continuous_slow(X_col, nonmissings):
     bad = np.zeros(n_samples, np.bool_)
     floats = np.zeros(n_samples, np.float64)
     for idx in range(n_samples):
-        # slice one item at a time keeping as an np.ndarray
-        # incase we need to convert to string, which we want
-        # to ONLY use numpy for for consistency.
+        # slice one item at a time keeping as an np.ndarray for consistency
         one_item_array = X_col[idx : idx + 1]
         try:
             floats[idx] = one_item_array.astype(np.float64).item()
-        except TypeError:
-            # TypeError occurs when an object does not have a __float__ function
-
-            # use .astype instead of str(one_item_array) here to ensure identical string handling
-            one_item_array = one_item_array.astype(np.str_)
+        except:  # object can throw anything in their __float__ function
             try:
-                floats[idx] = one_item_array.astype(np.float64).item()
-            except ValueError:
-                # ValueError occurs when a string could not be converted to a float
+                floats[idx] = one_item_array.astype(np.str_).astype(np.float64).item()
+            except:  # object can throw anything in their __str__ function
                 bad[idx] = True
+
+    if not bad.any():
+        bad = None
+
+    if nonmissings is None:
+        return floats, bad
+
+    floats_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
+    floats_tmp[nonmissings] = floats
+
+    if bad is None:
+        return floats_tmp, None
+
+    bad_tmp = np.zeros(nonmissings.shape[0], np.bool_)
+    bad_tmp[nonmissings] = bad
+    return floats_tmp, bad_tmp
+
+
+def _process_continuous_strings(X_col, nonmissings):
+    # In theory, python, pandas, and numpy all use correct rounding and
+    # should therefore convert strings to the same float64 values,
+    # but there can be slight differences with things like allowing spaces
+    # at the start and end of strings, or which order or methods are used
+    # on objects when converting to floats. We want repetable conversion
+    # methods that give the same results even if the data is presented
+    # slightly differently. Since we want to accept vals.astype(np.float64)
+    # for fast converstion elsewhere, we force all conversions as numpy
+    # arrays of objects or strings.
+
+    # TODO: attempt to optimize this by converting entire windows
+    # within the data and progressively growing/shrinking the windows
+
+    n_samples = X_col.shape[0]
+    bad = np.zeros(n_samples, np.bool_)
+    floats = np.zeros(n_samples, np.float64)
+    for idx in range(n_samples):
+        # slice one item at a time keeping as an np.ndarray for consistency
+        one_item_array = X_col[idx : idx + 1]
+        try:
+            floats[idx] = one_item_array.astype(np.float64).item()
         except ValueError:
-            # ValueError occurs when a string could not be converted to a float
             bad[idx] = True
 
     if not bad.any():
@@ -761,10 +800,11 @@ def _process_continuous(X_col, nonmissings):
         X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
         X_col_tmp[nonmissings] = X_col
         return X_col_tmp, None
-    except (TypeError, ValueError):
-        # TypeError occurs when an object does not have a __float__ function
-        # ValueError occurs when a string could not be converted to a float
-        return _process_continuous_slow(X_col, nonmissings)
+    except:  # object conversion can throw any exception in their __float__ or __str__
+        if tt is np.object_:
+            return _process_continuous_objects(X_col, nonmissings)
+        else:
+            return _process_continuous_strings(X_col, nonmissings)
 
 
 def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
@@ -1107,10 +1147,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     # Since both python and numpy support correct rounding,
                     # conversions from string to np.float64 should be the same
                     X_col = X_col.astype(np.float64, "C")
-                except (TypeError, ValueError):
-                    # TypeError occurs when an object does not have a __float__ function
-                    # ValueError occurs when a string could not be converted to a float
-
+                except:  # object can throw anything in their __float__ function
                     floatable = np.fromiter(
                         map(issubclass, map(type, X_col), _repeat_floatable),
                         np.bool_,
@@ -1118,11 +1155,11 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     )
 
                     if floatable.any():
-                        floats = X_col[floatable]
+                        floats = X_col[floatable].astype(np.float64)
                         nonfloatable = ~floatable
                         X_col = X_col[nonfloatable]
 
-                        X_col, bad = _process_continuous_slow(X_col, None)
+                        X_col, bad = _process_continuous_objects(X_col, None)
 
                         X_col_tmp = np.empty(nonfloatable.shape[0], np.float64)
                         X_col_tmp[nonfloatable] = X_col
@@ -1134,7 +1171,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                             bad_tmp[nonfloatable] = bad
                             bad = bad_tmp
                     else:
-                        X_col, bad = _process_continuous_slow(X_col, None)
+                        X_col, bad = _process_continuous_objects(X_col, None)
 
                 if nonmissings is not None:
                     X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
@@ -1183,7 +1220,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                     feature_type,
                     None,
                     None,
-                    *_process_continuous_slow(X_col, nonmissings),
+                    *_process_continuous_strings(X_col, nonmissings),
                 )
 
             if nonmissings is not None:
@@ -1406,7 +1443,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                         feature_type,
                         None,
                         None,
-                        *_process_continuous_slow(X_col.array, nonmissings),
+                        *_process_continuous_strings(X_col.array, nonmissings),
                     )
 
                 X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
@@ -1427,7 +1464,7 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                     feature_type,
                     None,
                     None,
-                    *_process_continuous_slow(X_col.array, None),
+                    *_process_continuous_strings(X_col.array, None),
                 )
 
             return (
@@ -2361,6 +2398,10 @@ def unify_columns_nonschematized(
     # unify_feature_names is always called on feature_names_in prior to calling this function
 
     # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
+
+    # TODO: modify this function to ONLY return whether the feature is "continuous", "nominal", or "ordinal".
+    # Then the caller needs to invoke unify_columns_schematized to get the full list of feature vales
+    # so that we can be guaranteed consistency between training and prediction.
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):

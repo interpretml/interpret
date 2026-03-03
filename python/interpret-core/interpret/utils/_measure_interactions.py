@@ -161,7 +161,7 @@ def measure_interactions(
         # type_of_target does not seem to like np.object_, so convert it to something that works
         try:
             y_discard = y.astype(dtype=np.float64, copy=False)
-        except (TypeError, ValueError):
+        except:  # object can throw anything in their __float__ function
             y_discard = y.astype(dtype=np.str_, copy=False)
 
         target_type = type_of_target(y_discard)

@@ -53,6 +53,13 @@ def unify_data(
             feature_types,
         )
     else:
+        # TODO: modify this section to first call unify_columns_nonschematized to ONLY get the
+        # feature types "continuous", "nominal", or "ordinal", then call unify_columns_schematized
+        # to get the feature values. This is to ensure that we have 100% identical feature value
+        # generation at predict time from training time
+        # If all feature types are already specified, then we don't need to call unify_columns_nonschematized
+        # and we can proceed to just calling unify_columns_nonschematized
+
         get_col = unify_columns_nonschematized(
             X,
             n_samples,
