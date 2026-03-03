@@ -61,9 +61,9 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     cached_raw_set(feature_idx, raw)
 
                 # these are the variables in raw
-                # _, nonmissings, uniques, X_col, bad = raw
+                # nonmissings, uniques, X_col, bad = raw
 
-                uniques = raw[2]
+                uniques = raw[1]
                 if uniques is None:
                     # continuous feature
 
@@ -72,7 +72,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
 
                     return_code = Discretize(
                         n_samples,
-                        raw[3].ctypes.data,
+                        raw[2].ctypes.data,
                         cuts.shape[0],
                         cuts.ctypes.data,
                         discretized.ctypes.data,
@@ -80,13 +80,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     if return_code:  # pragma: no cover
                         raise Native._get_native_exception(return_code, "Discretize")
 
-                    bad = raw[4]
+                    bad = raw[3]
                     if bad is not None:
                         discretized[bad] = -1
                 else:
                     # categorical feature
                     discretized = categorical_encode(
-                        uniques, raw[3], raw[1], bin_levels[bin_level - 1]
+                        uniques, raw[2], raw[0], bin_levels[bin_level - 1]
                     )
 
                 cached_discretized_set(key, discretized)

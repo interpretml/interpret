@@ -1120,7 +1120,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         if isinstance(dt, np.dtype):
             if tt is np.float64:
                 return (
-                    feature_type,
                     None,
                     None,
                     np.ascontiguousarray(X_col.values),
@@ -1128,7 +1127,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                 )
             elif issubclass(tt, _float_int_bool_types):
                 return (
-                    feature_type,
                     None,
                     None,
                     X_col.values.astype(np.float64, "C"),
@@ -1184,7 +1182,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                         bad = bad_tmp
 
                 return (
-                    feature_type,
                     None,
                     None,
                     X_col,
@@ -1198,7 +1195,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
 
             return (
-                feature_type,
                 None,
                 None,
                 X_col.to_numpy(np.float64),  # missing becomes np.nan for these types
@@ -1217,7 +1213,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             except ValueError:
                 # ValueError occurs when a string could not be converted to a float
                 return (
-                    feature_type,
                     None,
                     None,
                     *_process_continuous_strings(X_col, nonmissings),
@@ -1229,7 +1224,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                 X_col = X_col_tmp
 
             return (
-                feature_type,
                 None,
                 None,
                 X_col,
@@ -1247,7 +1241,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.array
         return (
-            None,
             False,
             X_col.categories.to_numpy(np.str_),
             X_col.codes,
@@ -1257,7 +1250,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         # factorize uses -1 for missing values
         indexes, uniques = pd.factorize(X_col)
         return (
-            None,
             False,
             uniques.to_numpy(np.str_),
             indexes,
@@ -1277,7 +1269,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             tt = uniques.dtype.type
             if tt is np.float64:
                 return (
-                    None,
                     nonmissings,
                     uniques.astype(np.str_),
                     indexes,
@@ -1286,7 +1277,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             elif issubclass(tt, np.floating):
                 # Convert all non-float64 floats to float64 to ensure consistent strings.
                 return (
-                    None,
                     nonmissings,
                     uniques.astype(np.float64).astype(np.str_),
                     indexes,
@@ -1294,7 +1284,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
                 )
             else:
                 return (
-                    None,
                     nonmissings,
                     uniques.astype(np.str_, copy=False),
                     indexes,
@@ -1303,7 +1292,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         elif tt is np.float64:
             indexes, uniques = pd.factorize(X_col)
             return (
-                None,
                 False,
                 uniques.values.astype(np.str_),
                 indexes,
@@ -1312,7 +1300,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         elif issubclass(tt, np.floating):
             indexes, uniques = pd.factorize(X_col)
             return (
-                None,
                 False,
                 uniques.values.astype(np.float64).astype(np.str_),
                 indexes,
@@ -1320,7 +1307,7 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
             )
         elif issubclass(tt, _intbool_types):
             indexes, uniques = pd.factorize(X_col)
-            return None, None, uniques.values.astype(np.str_), indexes, None
+            return None, uniques.values.astype(np.str_), indexes, None
 
         # pandas never uses np.str_ or np.bytes_
 
@@ -1330,7 +1317,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
 
         indexes, uniques = pd.factorize(X_col)
         return (
-            None,
             False,
             uniques.to_numpy(np.float64).astype(np.str_),
             indexes,
@@ -1340,7 +1326,6 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
         # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
         indexes, uniques = pd.factorize(X_col)
         return (
-            None,
             False,
             uniques.to_numpy(np.str_),
             indexes,
@@ -1761,11 +1746,9 @@ def unify_columns_schematized(
                                     return (
                                         None,
                                         None,
-                                        None,
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
-                                    None,
                                     *_local_encode_categorical_existing(
                                         X_col, nonmissings
                                     ),
@@ -1807,11 +1790,9 @@ def unify_columns_schematized(
                                     return (
                                         None,
                                         None,
-                                        None,
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
-                                    None,
                                     *_local_encode_categorical_existing(
                                         X_col, nonmissings
                                     ),
@@ -1835,11 +1816,9 @@ def unify_columns_schematized(
                                 return (
                                     None,
                                     None,
-                                    None,
                                     *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
-                                None,
                                 *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
@@ -1869,11 +1848,9 @@ def unify_columns_schematized(
                             return (
                                 None,
                                 None,
-                                None,
                                 *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
-                            None,
                             *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
@@ -1896,11 +1873,9 @@ def unify_columns_schematized(
                             return (
                                 None,
                                 None,
-                                None,
                                 *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
-                            None,
                             *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
@@ -1914,13 +1889,11 @@ def unify_columns_schematized(
                         return (
                             None,
                             None,
-                            None,
                             *_local_process_continuous(
                                 X_get((_local_slice_none, feature_idx)), None
                             ),
                         )
                     return (
-                        None,
                         *_local_encode_categorical_existing(
                             X_get((_local_slice_none, feature_idx)), None
                         ),
@@ -1996,11 +1969,9 @@ def unify_columns_schematized(
                                     return (
                                         None,
                                         None,
-                                        None,
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
-                                    None,
                                     *_local_encode_categorical_existing(
                                         X_col, nonmissings
                                     ),
@@ -2046,11 +2017,9 @@ def unify_columns_schematized(
                                     return (
                                         None,
                                         None,
-                                        None,
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
                                 return (
-                                    None,
                                     *_local_encode_categorical_existing(
                                         X_col, nonmissings
                                     ),
@@ -2074,11 +2043,9 @@ def unify_columns_schematized(
                                 return (
                                     None,
                                     None,
-                                    None,
                                     *_local_process_continuous(X_col, nonmissings),
                                 )
                             return (
-                                None,
                                 *_local_encode_categorical_existing(X_col, nonmissings),
                                 None,
                             )
@@ -2108,11 +2075,9 @@ def unify_columns_schematized(
                             return (
                                 None,
                                 None,
-                                None,
                                 *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
-                            None,
                             *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
@@ -2135,11 +2100,9 @@ def unify_columns_schematized(
                             return (
                                 None,
                                 None,
-                                None,
                                 *_local_process_continuous(X_col, nonmissings),
                             )
                         return (
-                            None,
                             *_local_encode_categorical_existing(X_col, nonmissings),
                             None,
                         )
@@ -2153,14 +2116,12 @@ def unify_columns_schematized(
                         return (
                             None,
                             None,
-                            None,
                             *_local_process_continuous(
                                 X_get((_local_slice_none, col_map_get(feature_idx))),
                                 None,
                             ),
                         )
                     return (
-                        None,
                         *_local_encode_categorical_existing(
                             X_get((_local_slice_none, col_map_get(feature_idx))), None
                         ),
@@ -2272,7 +2233,7 @@ def unify_columns_schematized(
                     True,
                     feature_types_get(feature_idx),
                     None,
-                )
+                )[1:]
 
             return internal
         else:
@@ -2299,7 +2260,7 @@ def unify_columns_schematized(
                     True,
                     feature_types_get(feature_idx),
                     None,
-                )
+                )[1:]
 
             return internal
     elif isinstance(X, _spmatrix):
@@ -2316,7 +2277,7 @@ def unify_columns_schematized(
                     True,
                     feature_types_get(feature_idx),
                     None,
-                )
+                )[1:]
 
             return internal
         else:
@@ -2343,7 +2304,7 @@ def unify_columns_schematized(
                     True,
                     feature_types_get(feature_idx),
                     None,
-                )
+                )[1:]
 
             return internal
     elif isinstance(X, _SeriesType):
@@ -2358,7 +2319,7 @@ def unify_columns_schematized(
         feature_types_get = feature_types.__getitem__
 
         def internal(feature_idx):
-            feature_type, nonmissings, uniques, X_col, bad = _local_process_dict_column(
+            _, nonmissings, uniques, X_col, bad = _local_process_dict_column(
                 X_get(feature_names_in_get(feature_idx)),
                 True,
                 feature_types_get(feature_idx),
@@ -2377,7 +2338,7 @@ def unify_columns_schematized(
                     _log.error(msg)
                     raise ValueError(msg)
 
-            return feature_type, nonmissings, uniques, X_col, bad
+            return nonmissings, uniques, X_col, bad
 
         return internal
     else:

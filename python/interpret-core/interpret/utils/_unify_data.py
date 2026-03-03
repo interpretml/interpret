@@ -37,15 +37,10 @@ def unify_data(
         _log.error(msg)
         raise ValueError(msg)
 
-    # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
-    # and unify_columns will return the identical names and types
-    feature_names_in = unify_feature_names(X, feature_names, feature_types)
-    feature_types_in = _none_list * len(feature_names_in)
-
-    # fill with np.nan for missing values and None for unseen values
-    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
-
     if is_schematized:
+        feature_names_in = feature_names
+        feature_types_in = feature_types
+
         get_col = unify_columns_schematized(
             X,
             n_samples,
@@ -60,6 +55,11 @@ def unify_data(
         # If all feature types are already specified, then we don't need to call unify_columns_nonschematized
         # and we can proceed to just calling unify_columns_nonschematized
 
+        # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
+        # and unify_columns will return the identical names and types
+        feature_names_in = unify_feature_names(X, feature_names, feature_types)
+        feature_types_in = _none_list * len(feature_names_in)
+
         get_col = unify_columns_nonschematized(
             X,
             n_samples,
@@ -68,65 +68,84 @@ def unify_data(
             min_unique_continuous,
         )
 
-    for feature_idx in range(len(feature_names_in)):
-        if feature_types is not None and feature_types[feature_idx] == "ignore":
-            # TODO: we should drop these columns instead of passing them to the dependent model
-            # since many models cannot handle missing values.
+    # fill with np.nan for missing values and None for unseen values
+    X_unified = np.empty((n_samples, len(feature_names_in)), np.object_, "F")
 
-            if not missing_data_allowed:
+    for feature_idx in range(len(feature_names_in)):
+        if is_schematized:
+            if feature_types[feature_idx] == "ignore":
+                # TODO: we should drop these columns instead of passing them to the dependent model
+                # since many models cannot handle missing values.
+
+                if not missing_data_allowed:
+                    msg = "X cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                X_unified[:, feature_idx] = np.nan
+                continue
+
+            nonmissings, uniques, X_col, bad = get_col(feature_idx)
+        else:
+            if feature_types is not None and feature_types[feature_idx] == "ignore":
+                # TODO: we should drop these columns instead of passing them to the dependent model
+                # since many models cannot handle missing values.
+
+                if not missing_data_allowed:
+                    msg = "X cannot contain missing values"
+                    _log.error(msg)
+                    raise ValueError(msg)
+
+                X_unified[:, feature_idx] = np.nan
+                feature_types_in[feature_idx] = "ignore"
+                continue
+
+            feature_types_in[feature_idx], nonmissings, uniques, X_col, bad = get_col(
+                feature_idx
+            )
+        if uniques is None:
+            # continuous feature
+
+            if not missing_data_allowed and np.isnan(X_col).any():
                 msg = "X cannot contain missing values"
                 _log.error(msg)
                 raise ValueError(msg)
 
-            X_unified[:, feature_idx] = np.nan
-            feature_types_in[feature_idx] = "ignore"
+            if bad is not None:
+                if not unseen_data_allowed:
+                    msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                X_col[bad] = None  # use None for unseen. np.nan is for missing
+
+            X_unified[:, feature_idx] = X_col
         else:
-            feature_types_in[feature_idx], nonmissings, uniques, X_col, bad = get_col(
-                feature_idx
-            )
-            if uniques is None:
-                # continuous feature
+            # categorical feature
 
-                if not missing_data_allowed and np.isnan(X_col).any():
-                    msg = "X cannot contain missing values"
-                    _log.error(msg)
-                    raise ValueError(msg)
+            categories = dict(zip(uniques, count(1)))
 
-                if bad is not None:
-                    if not unseen_data_allowed:
-                        msg = f"Feature {feature_names_in[feature_idx]} is indicated as continuous, but has non-numeric data"
-                        _log.error(msg)
-                        raise ValueError(msg)
-                    X_col[bad] = None  # use None for unseen. np.nan is for missing
+            X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
-                X_unified[:, feature_idx] = X_col
-            else:
-                # categorical feature
+            if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
+                msg = "X cannot contain missing values"
+                _log.error(msg)
+                raise ValueError(msg)
 
-                categories = dict(zip(uniques, count(1)))
+            if not unseen_data_allowed and (X_col == -1).any():
+                msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
+                _log.error(msg)
+                raise ValueError(msg)
 
-                X_col = categorical_encode(uniques, X_col, nonmissings, categories)
+            mapping = np.empty(len(categories) + 2, np.object_)
+            mapping[0] = np.nan  # use np.nan for missing
+            mapping[-1] = None  # use None for unseen
+            for category, idx in categories.items():
+                mapping[idx] = category
 
-                if not missing_data_allowed and np.count_nonzero(X_col) != n_samples:
-                    msg = "X cannot contain missing values"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                if not unseen_data_allowed and (X_col == -1).any():
-                    msg = f"Feature {feature_names_in[feature_idx]} has unrecognized ordinal values"
-                    _log.error(msg)
-                    raise ValueError(msg)
-
-                mapping = np.empty(len(categories) + 2, np.object_)
-                mapping[0] = np.nan  # use np.nan for missing
-                mapping[-1] = None  # use None for unseen
-                for category, idx in categories.items():
-                    mapping[idx] = category
-
-                X_unified[:, feature_idx] = mapping[X_col]
+            X_unified[:, feature_idx] = mapping[X_col]
 
     return (
         X_unified,
         feature_names_in,
-        feature_types if is_schematized else feature_types_in,
+        feature_types_in,
     )

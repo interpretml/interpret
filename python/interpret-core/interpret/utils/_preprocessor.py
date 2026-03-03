@@ -544,7 +544,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col = 0
                 else:
-                    _, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+                    nonmissings, uniques, X_col, bad = get_col(feature_idx)
                     if isinstance(bins, dict):
                         # categorical feature
 
