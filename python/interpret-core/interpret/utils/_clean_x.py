@@ -542,7 +542,9 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
     return indexes_tmp
 
 
-def _process_column_initial(X_col, nonmissings, processing, min_unique_continuous):
+def _process_column_initial_schematized(
+    X_col, nonmissings, processing, min_unique_continuous
+):
     # called under: fit
 
     if issubclass(X_col.dtype.type, np.floating):
@@ -886,7 +888,9 @@ def _process_continuous(X_col, nonmissings):
             return _process_continuous_strings(X_col, nonmissings)
 
 
-def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
+def _process_arrayish_schematized(
+    X_col, nonmissings, processing, min_unique_continuous
+):
     if processing == "nominal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
             X_col = X_col.array
@@ -899,7 +903,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
             )
         return (
             processing,
-            *_process_column_initial(X_col, nonmissings, None, None),
+            *_process_column_initial_schematized(X_col, nonmissings, None, None),
             None,
         )
     if processing == "ordinal":
@@ -922,7 +926,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
         # if the caller would prefer an error, they can check feature_types themselves
         return (
             processing,
-            *_process_column_initial(X_col, nonmissings, None, None),
+            *_process_column_initial_schematized(X_col, nonmissings, None, None),
             None,
         )
     if processing is None or processing == "auto":
@@ -936,7 +940,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
                 None,
             )
 
-        nonmissings, uniques, indexes = _process_column_initial(
+        nonmissings, uniques, indexes = _process_column_initial_schematized(
             X_col, nonmissings, None, min_unique_continuous
         )
         return (
@@ -955,7 +959,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
 
         return (
             "nominal",
-            *_process_column_initial(X_col, nonmissings, processing, None),
+            *_process_column_initial_schematized(X_col, nonmissings, processing, None),
             None,
         )
     if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
@@ -986,7 +990,7 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
             _log.error(msg)
             raise ValueError(msg)
 
-        nonmissings, uniques, indexes = _process_column_initial(
+        nonmissings, uniques, indexes = _process_column_initial_schematized(
             X_col, nonmissings, None, processing
         )
         return (
@@ -1269,9 +1273,7 @@ def _reshape_1D_if_possible(col):
     return col
 
 
-def _process_numpy_column_schematized(
-    X_col, is_schematized, feature_type, min_unique_continuous
-):
+def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous):
     if isinstance(X_col, ma.masked_array):
         nonmissings = X_col.mask
         if nonmissings is not ma.nomask:
@@ -1303,12 +1305,8 @@ def _process_numpy_column_schematized(
                         None,
                         *_process_continuous(X_col, nonmissings),
                     )
-                if is_schematized:
-                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                    return None, *_encode_categorical_existing(X_col, nonmissings), None
-                return _process_arrayish(
-                    X_col, nonmissings, feature_type, min_unique_continuous
-                )
+                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                return None, *_encode_categorical_existing(X_col, nonmissings), None
         X_col = X_col.data
 
     if X_col.dtype.type is np.object_:
@@ -1332,33 +1330,23 @@ def _process_numpy_column_schematized(
                     None,
                     *_process_continuous(X_col[nonmissings], nonmissings),
                 )
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return (
-                    None,
-                    *_encode_categorical_existing(X_col[nonmissings], nonmissings),
-                    None,
-                )
-            return _process_arrayish(
-                X_col[nonmissings],
-                nonmissings,
-                feature_type,
-                min_unique_continuous,
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return (
+                None,
+                *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+                None,
             )
 
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_schematized:
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-        return None, *_encode_categorical_existing(X_col, None), None
-    return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+    return None, *_encode_categorical_existing(X_col, None), None
 
 
 def _process_numpy_column_nonschematized(
     feature_idx,
     X_col,
-    is_schematized,
     feature_type,
     min_unique_continuous,
     get_col_schematized,
@@ -1394,9 +1382,6 @@ def _process_numpy_column_nonschematized(
                         None,
                         *_process_continuous(X_col, nonmissings),
                     )
-                if is_schematized:
-                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                    return None, *_encode_categorical_existing(X_col, nonmissings), None
                 return _process_arrayish_nonschematized(
                     feature_idx,
                     X_col,
@@ -1427,13 +1412,6 @@ def _process_numpy_column_nonschematized(
                     None,
                     *_process_continuous(X_col[nonmissings], nonmissings),
                 )
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return (
-                    None,
-                    *_encode_categorical_existing(X_col[nonmissings], nonmissings),
-                    None,
-                )
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col[nonmissings],
@@ -1445,9 +1423,6 @@ def _process_numpy_column_nonschematized(
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_schematized:
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-        return None, *_encode_categorical_existing(X_col, None), None
     return _process_arrayish_nonschematized(
         feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
     )
@@ -1802,9 +1777,7 @@ def _process_pandas_column_nonschematized(
     raise TypeError(msg)
 
 
-def _process_sparse_column_schematized(
-    X_col, is_schematized, feature_type, min_unique_continuous
-):
+def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuous):
     X_col = X_col.toarray().ravel()
 
     if X_col.dtype.type is np.object_:
@@ -1823,10 +1796,8 @@ def _process_sparse_column_schematized(
             if feature_type == "continuous":
                 # called under: fit or predict
                 return feature_type, None, None, *_process_continuous(X_col, None)
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col, None), None
-            return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return None, *_encode_categorical_existing(X_col, None), None
 
         if feature_type == "continuous":
             # called under: fit or predict
@@ -1836,33 +1807,23 @@ def _process_sparse_column_schematized(
                 None,
                 *_process_continuous(X_col[nonmissings], nonmissings),
             )
-        if is_schematized:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return (
-                None,
-                *_encode_categorical_existing(X_col[nonmissings], nonmissings),
-                None,
-            )
-        return _process_arrayish(
-            X_col[nonmissings],
-            nonmissings,
-            feature_type,
-            min_unique_continuous,
+        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+        return (
+            None,
+            *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+            None,
         )
 
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_schematized:
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-        return None, *_encode_categorical_existing(X_col, None), None
-    return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+    return None, *_encode_categorical_existing(X_col, None), None
 
 
 def _process_sparse_column_nonschematized(
     feature_idx,
     X_col,
-    is_schematized,
     feature_type,
     min_unique_continuous,
     get_col_schematized,
@@ -1885,9 +1846,6 @@ def _process_sparse_column_nonschematized(
             if feature_type == "continuous":
                 # called under: fit or predict
                 return feature_type, None, None, *_process_continuous(X_col, None)
-            if is_schematized:
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col, None), None
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col,
@@ -1904,13 +1862,6 @@ def _process_sparse_column_nonschematized(
                 None,
                 *_process_continuous(X_col[nonmissings], nonmissings),
             )
-        if is_schematized:
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return (
-                None,
-                *_encode_categorical_existing(X_col[nonmissings], nonmissings),
-                None,
-            )
         return _process_arrayish_nonschematized(
             feature_idx,
             X_col[nonmissings],
@@ -1922,38 +1873,23 @@ def _process_sparse_column_nonschematized(
     if feature_type == "continuous":
         # called under: fit or predict
         return feature_type, None, None, *_process_continuous(X_col, None)
-    if is_schematized:
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-        return None, *_encode_categorical_existing(X_col, None), None
     return _process_arrayish_nonschematized(
         feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
     )
 
 
-def _process_dict_column_schematized(
-    X_col, is_schematized, feature_type, min_unique_continuous
-):
+def _process_dict_column_schematized(X_col, feature_type, min_unique_continuous):
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif isinstance(X_col, _SeriesType):
-        if is_schematized:
-            return _process_pandas_column_schematized(
-                X_col, feature_type, min_unique_continuous
-            )
-        else:
-            return _process_pandas_column_nonschematized(
-                X_col, feature_type, min_unique_continuous
-            )
+        return _process_pandas_column_schematized(
+            X_col, feature_type, min_unique_continuous
+        )
     elif isinstance(X_col, _DataFrameType):
         if X_col.shape[1] == 1:
-            if is_schematized:
-                return _process_pandas_column_schematized(
-                    X_col.iloc[:, 0], feature_type, min_unique_continuous
-                )
-            else:
-                return _process_pandas_column_nonschematized(
-                    X_col.iloc[:, 0], feature_type, min_unique_continuous
-                )
+            return _process_pandas_column_schematized(
+                X_col.iloc[:, 0], feature_type, min_unique_continuous
+            )
         if X_col.shape[0] == 1:
             X_col = X_col.to_numpy(np.object_).ravel()
         elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
@@ -1965,7 +1901,7 @@ def _process_dict_column_schematized(
     elif isinstance(X_col, _spmatrix_or_sparray):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
             return _process_sparse_column_schematized(
-                X_col, is_schematized, feature_type, min_unique_continuous
+                X_col, feature_type, min_unique_continuous
             )
         if X_col.shape[1] == 0 or X_col.shape[0] == 0:
             X_col = np.empty(0, np.object_)
@@ -1998,7 +1934,6 @@ def _process_dict_column_schematized(
 
     return _process_numpy_column_schematized(
         _reshape_1D_if_possible(X_col),
-        is_schematized,
         feature_type,
         min_unique_continuous,
     )
@@ -2007,7 +1942,6 @@ def _process_dict_column_schematized(
 def _process_dict_column_nonschematized(
     feature_idx,
     X_col,
-    is_schematized,
     feature_type,
     min_unique_continuous,
     get_col_schematized,
@@ -2015,32 +1949,22 @@ def _process_dict_column_nonschematized(
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif isinstance(X_col, _SeriesType):
-        if is_schematized:
-            return _process_pandas_column_schematized(
-                X_col, feature_type, min_unique_continuous
-            )
-        else:
+        return _process_pandas_column_nonschematized(
+            feature_idx,
+            X_col,
+            feature_type,
+            min_unique_continuous,
+            get_col_schematized,
+        )
+    elif isinstance(X_col, _DataFrameType):
+        if X_col.shape[1] == 1:
             return _process_pandas_column_nonschematized(
                 feature_idx,
-                X_col,
+                X_col.iloc[:, 0],
                 feature_type,
                 min_unique_continuous,
                 get_col_schematized,
             )
-    elif isinstance(X_col, _DataFrameType):
-        if X_col.shape[1] == 1:
-            if is_schematized:
-                return _process_pandas_column_schematized(
-                    X_col.iloc[:, 0], feature_type, min_unique_continuous
-                )
-            else:
-                return _process_pandas_column_nonschematized(
-                    feature_idx,
-                    X_col.iloc[:, 0],
-                    feature_type,
-                    min_unique_continuous,
-                    get_col_schematized,
-                )
         if X_col.shape[0] == 1:
             X_col = X_col.to_numpy(np.object_).ravel()
         elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
@@ -2054,7 +1978,6 @@ def _process_dict_column_nonschematized(
             return _process_sparse_column_nonschematized(
                 feature_idx,
                 X_col,
-                is_schematized,
                 feature_type,
                 min_unique_continuous,
                 get_col_schematized,
@@ -2091,7 +2014,6 @@ def _process_dict_column_nonschematized(
     return _process_numpy_column_nonschematized(
         feature_idx,
         _reshape_1D_if_possible(X_col),
-        is_schematized,
         feature_type,
         min_unique_continuous,
         get_col_schematized,
@@ -2686,7 +2608,6 @@ def unify_columns_schematized(
             def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get((_local_slice_none, (feature_idx,))),
-                    True,
                     feature_type,
                     None,
                 )[1:]
@@ -2710,7 +2631,6 @@ def unify_columns_schematized(
             def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
-                    True,
                     feature_type,
                     None,
                 )[1:]
@@ -2726,7 +2646,6 @@ def unify_columns_schematized(
             def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get(feature_idx),
-                    True,
                     feature_type,
                     None,
                 )[1:]
@@ -2750,7 +2669,6 @@ def unify_columns_schematized(
             def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get(col_map_get(feature_idx)),
-                    True,
                     feature_type,
                     None,
                 )[1:]
@@ -2769,7 +2687,6 @@ def unify_columns_schematized(
         def internal(feature_idx, feature_type):
             _, nonmissings, uniques, X_col, bad = _local_process_dict_column(
                 X_get(feature_names_in_get(feature_idx)),
-                True,
                 feature_type,
                 None,
             )
@@ -2809,10 +2726,6 @@ def unify_columns_nonschematized(
 
     # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
 
-    # TODO: modify this function to ONLY return whether the feature is "continuous", "nominal", or "ordinal".
-    # Then the caller needs to invoke unify_columns_schematized to get the full list of feature vales
-    # so that we can be guaranteed consistency between training and prediction.
-
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):
             if issubclass(X.dtype.type, np.complexfloating):
@@ -2851,7 +2764,6 @@ def unify_columns_nonschematized(
             return _process_numpy_column_nonschematized(
                 feature_idx,
                 X[:, col_map[feature_idx]],
-                False,
                 feature_types[feature_idx],
                 min_unique_continuous,
                 get_col_schematized,
@@ -2949,7 +2861,6 @@ def unify_columns_nonschematized(
             return _process_sparse_column_nonschematized(
                 feature_idx,
                 X[:, (col_map[feature_idx],)],
-                False,
                 feature_types[feature_idx],
                 min_unique_continuous,
                 get_col_schematized,
@@ -2980,7 +2891,6 @@ def unify_columns_nonschematized(
             return _process_sparse_column_nonschematized(
                 feature_idx,
                 X_get(col_map[feature_idx]),
-                False,
                 feature_types[feature_idx],
                 min_unique_continuous,
                 get_col_schematized,
@@ -2999,7 +2909,6 @@ def unify_columns_nonschematized(
                 _process_dict_column_nonschematized(
                     feature_idx,
                     X[feature_names_in[feature_idx]],
-                    False,
                     feature_types[feature_idx],
                     min_unique_continuous,
                     get_col_schematized,
