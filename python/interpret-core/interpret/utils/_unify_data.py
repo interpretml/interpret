@@ -57,7 +57,9 @@ def unify_data(
 
         # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
         # and unify_columns will return the identical names and types
-        feature_names_in, _ = unify_feature_names(X, feature_names, feature_types)
+        feature_names_in, feature_types = unify_feature_names(
+            X, feature_names, feature_types
+        )
         feature_types_in = _none_list * len(feature_names_in)
 
         get_col = unify_columns_nonschematized(
@@ -87,7 +89,7 @@ def unify_data(
 
             nonmissings, uniques, X_col, bad = get_col(feature_idx)
         else:
-            if feature_types is not None and feature_types[feature_idx] == "ignore":
+            if feature_types[feature_idx] == "ignore":
                 # TODO: we should drop these columns instead of passing them to the dependent model
                 # since many models cannot handle missing values.
 

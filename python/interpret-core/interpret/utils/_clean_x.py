@@ -2385,15 +2385,6 @@ def unify_columns_nonschematized(
         if len(feature_names_in) == X.shape[1]:
             col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
-            if feature_types is None:
-                # called under: predict
-                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
@@ -2401,7 +2392,6 @@ def unify_columns_nonschematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != X.shape[1]:
-                # called under: predict
                 msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -2412,7 +2402,7 @@ def unify_columns_nonschematized(
             return _process_numpy_column(
                 X[:, col_map[feature_idx]],
                 False,
-                None if feature_types is None else feature_types[feature_idx],
+                feature_types[feature_idx],
                 min_unique_continuous,
             )
 
@@ -2431,12 +2421,7 @@ def unify_columns_nonschematized(
             for name in compress(counter.keys(), map(_not_one, counter.values())):
                 del mapping[name]
 
-        if feature_types is None:
-            good_names = feature_names_in
-        else:
-            good_names = compress(
-                feature_names_in, map(ne, _repeat_ignore, feature_types)
-            )
+        good_names = compress(feature_names_in, map(ne, _repeat_ignore, feature_types))
         if all(map(mapping.__contains__, good_names)):
             # we can index by name, which is a lot faster in pandas
 
@@ -2447,7 +2432,7 @@ def unify_columns_nonschematized(
             def internal(feature_idx):
                 return _process_pandas_column_nonschematized(
                     X[mapping[feature_names_in[feature_idx]]],
-                    None if feature_types is None else feature_types[feature_idx],
+                    feature_types[feature_idx],
                     min_unique_continuous,
                 )
 
@@ -2458,11 +2443,6 @@ def unify_columns_nonschematized(
             if len(feature_names_in) == n_cols:
                 col_map = np.arange(len(feature_names_in), dtype=np.int64)
             else:
-                if feature_types is None:
-                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                    _log.error(msg)
-                    raise ValueError(msg)
-
                 keep_cols = np.fromiter(
                     map(ne, _repeat_ignore, feature_types),
                     np.bool_,
@@ -2470,7 +2450,6 @@ def unify_columns_nonschematized(
                 )
                 n_keep = keep_cols.sum()
                 if n_keep != n_cols:
-                    # called under: predict
                     msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
@@ -2484,7 +2463,7 @@ def unify_columns_nonschematized(
             def internal(feature_idx):
                 return _process_pandas_column_nonschematized(
                     X[:, col_map[feature_idx]],
-                    None if feature_types is None else feature_types[feature_idx],
+                    feature_types[feature_idx],
                     min_unique_continuous,
                 )
 
@@ -2498,14 +2477,6 @@ def unify_columns_nonschematized(
         if len(feature_names_in) == n_cols:
             col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
-            if feature_types is None:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                _log.error(msg)
-                raise ValueError(msg)
-
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
@@ -2523,7 +2494,7 @@ def unify_columns_nonschematized(
             return _process_sparse_column(
                 X[:, (col_map[feature_idx],)],
                 False,
-                None if feature_types is None else feature_types[feature_idx],
+                feature_types[feature_idx],
                 min_unique_continuous,
             )
 
@@ -2535,14 +2506,6 @@ def unify_columns_nonschematized(
         if len(feature_names_in) == n_cols:
             col_map = np.arange(len(feature_names_in), dtype=np.int64)
         else:
-            if feature_types is None:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
-                _log.error(msg)
-                raise ValueError(msg)
-
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
                 map(ne, _repeat_ignore, feature_types),
                 np.bool_,
@@ -2560,7 +2523,7 @@ def unify_columns_nonschematized(
             return _process_sparse_column(
                 X_get(col_map[feature_idx]),
                 False,
-                None if feature_types is None else feature_types[feature_idx],
+                feature_types[feature_idx],
                 min_unique_continuous,
             )
 
@@ -2576,7 +2539,7 @@ def unify_columns_nonschematized(
             feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
                 X[feature_names_in[feature_idx]],
                 False,
-                None if feature_types is None else feature_types[feature_idx],
+                feature_types[feature_idx],
                 min_unique_continuous,
             )
 

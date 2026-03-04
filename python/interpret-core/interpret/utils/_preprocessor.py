@@ -232,7 +232,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        feature_names_in, _ = unify_feature_names(
+        feature_names_in, feature_types = unify_feature_names(
             X, self.feature_names, self.feature_types
         )
         n_features = len(feature_names_in)
@@ -284,14 +284,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             X,
             n_samples,
             feature_names_in,
-            self.feature_types,
+            feature_types,
             self.min_unique_continuous,
         )
         for feature_idx in range(n_features):
-            feature_type_given = (
-                None if self.feature_types is None else self.feature_types[feature_idx]
-            )
-            if feature_type_given == "ignore":
+            feature_type = feature_types[feature_idx]
+            if feature_type == "ignore":
                 feature_type_in = "ignore"
             else:
                 feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
@@ -318,7 +316,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                             _log.error(msg)
                             raise ValueError(msg)
 
-                        if feature_type_given != "continuous":
+                        if feature_type != "continuous":
                             is_privacy_types_warning = True
 
                         min_feature_val = np.nan
@@ -370,7 +368,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                         cuts = _cut_continuous(
                             native,
                             X_col,
-                            feature_type_given,
+                            feature_type,
                             self.binning,
                             max_bins,
                             self.min_samples_bin,
@@ -426,7 +424,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                             _log.error(msg)
                             raise ValueError(msg)
 
-                        if feature_type_given is None:
+                        if feature_type is None:
                             # if auto-detected then we need to show a privacy warning
                             is_privacy_types_warning = True
 
