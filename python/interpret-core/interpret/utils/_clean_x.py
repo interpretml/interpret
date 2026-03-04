@@ -2713,13 +2713,19 @@ def unify_columns_nonschematized(
     feature_names_in,
     feature_types,
     min_unique_continuous,
-    get_col_schematized,
 ):
     # preclean_X is always called on X prior to calling this function
 
     # unify_feature_names is always called on feature_names_in prior to calling this function
 
     # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
+
+    get_col_schematized = unify_columns_schematized(
+        X,
+        n_samples,
+        feature_names_in,
+        feature_types,
+    )
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):

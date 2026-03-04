@@ -47,14 +47,14 @@ def unify_data(
     feature_names_in = feature_names
     feature_types_in = feature_types
 
-    get_col_schematized = unify_columns_schematized(
-        X,
-        n_samples,
-        feature_names,
-        feature_types,
-    )
-
-    if not is_schematized:
+    if is_schematized:
+        get_col = unify_columns_schematized(
+            X,
+            n_samples,
+            feature_names,
+            feature_types,
+        )
+    else:
         feature_types_in = _none_list * len(feature_names)
 
         get_col = unify_columns_nonschematized(
@@ -63,7 +63,6 @@ def unify_data(
             feature_names,
             feature_types,
             min_unique_continuous,
-            get_col_schematized,
         )
 
     # fill with np.nan for missing values and None for unseen values
@@ -83,7 +82,7 @@ def unify_data(
                 X_unified[:, feature_idx] = np.nan
                 continue
 
-            nonmissings, uniques, X_col, bad = get_col_schematized(
+            nonmissings, uniques, X_col, bad = get_col(
                 feature_idx, feature_types[feature_idx]
             )
         else:

@@ -275,20 +275,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
 
-        get_col_schematized = unify_columns_schematized(
-            X,
-            n_samples,
-            feature_names_in,
-            feature_types,
-        )
-
         get_col = unify_columns_nonschematized(
             X,
             n_samples,
             feature_names_in,
             feature_types,
             self.min_unique_continuous,
-            get_col_schematized,
         )
         for feature_idx in range(n_features):
             feature_type = feature_types[feature_idx]
