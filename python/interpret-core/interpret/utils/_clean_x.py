@@ -1300,13 +1300,12 @@ def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous
                 if feature_type == "continuous":
                     # called under: fit or predict
                     return (
-                        feature_type,
                         None,
                         None,
                         *_process_continuous(X_col, nonmissings),
                     )
                 # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-                return None, *_encode_categorical_existing(X_col, nonmissings), None
+                return *_encode_categorical_existing(X_col, nonmissings), None
         X_col = X_col.data
 
     if X_col.dtype.type is np.object_:
@@ -1325,23 +1324,21 @@ def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous
             if feature_type == "continuous":
                 # called under: fit or predict
                 return (
-                    feature_type,
                     None,
                     None,
                     *_process_continuous(X_col[nonmissings], nonmissings),
                 )
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
             return (
-                None,
                 *_encode_categorical_existing(X_col[nonmissings], nonmissings),
                 None,
             )
 
     if feature_type == "continuous":
         # called under: fit or predict
-        return feature_type, None, None, *_process_continuous(X_col, None)
+        return None, None, *_process_continuous(X_col, None)
     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-    return None, *_encode_categorical_existing(X_col, None), None
+    return *_encode_categorical_existing(X_col, None), None
 
 
 def _process_numpy_column_nonschematized(
@@ -1795,30 +1792,28 @@ def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuou
         if nonmissings.all():
             if feature_type == "continuous":
                 # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col, None)
+                return None, None, *_process_continuous(X_col, None)
             # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-            return None, *_encode_categorical_existing(X_col, None), None
+            return *_encode_categorical_existing(X_col, None), None
 
         if feature_type == "continuous":
             # called under: fit or predict
             return (
-                feature_type,
                 None,
                 None,
                 *_process_continuous(X_col[nonmissings], nonmissings),
             )
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return (
-            None,
             *_encode_categorical_existing(X_col[nonmissings], nonmissings),
             None,
         )
 
     if feature_type == "continuous":
         # called under: fit or predict
-        return feature_type, None, None, *_process_continuous(X_col, None)
+        return None, None, *_process_continuous(X_col, None)
     # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
-    return None, *_encode_categorical_existing(X_col, None), None
+    return *_encode_categorical_existing(X_col, None), None
 
 
 def _process_sparse_column_nonschematized(
@@ -2610,7 +2605,7 @@ def unify_columns_schematized(
                     X_get((_local_slice_none, (feature_idx,))),
                     feature_type,
                     None,
-                )[1:]
+                )
 
             return internal
         else:
@@ -2633,7 +2628,7 @@ def unify_columns_schematized(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
                     feature_type,
                     None,
-                )[1:]
+                )
 
             return internal
     elif isinstance(X, _spmatrix):
@@ -2648,7 +2643,7 @@ def unify_columns_schematized(
                     X_get(feature_idx),
                     feature_type,
                     None,
-                )[1:]
+                )
 
             return internal
         else:
@@ -2671,7 +2666,7 @@ def unify_columns_schematized(
                     X_get(col_map_get(feature_idx)),
                     feature_type,
                     None,
-                )[1:]
+                )
 
             return internal
     elif isinstance(X, _SeriesType):
@@ -2685,7 +2680,7 @@ def unify_columns_schematized(
         X_get = X.__getitem__
 
         def internal(feature_idx, feature_type):
-            _, nonmissings, uniques, X_col, bad = _local_process_dict_column(
+            nonmissings, uniques, X_col, bad = _local_process_dict_column(
                 X_get(feature_names_in_get(feature_idx)),
                 feature_type,
                 None,
