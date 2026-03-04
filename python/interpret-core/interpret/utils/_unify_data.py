@@ -37,37 +37,33 @@ def unify_data(
         _log.error(msg)
         raise ValueError(msg)
 
-    if is_schematized:
-        feature_names_in = feature_names
-        feature_types_in = feature_types
-
-        get_col = unify_columns_schematized(
-            X,
-            n_samples,
-            feature_names_in,
-            feature_types,
-        )
-    else:
-        # TODO: modify this section to first call unify_columns_nonschematized to ONLY get the
-        # feature types "continuous", "nominal", or "ordinal", then call unify_columns_schematized
-        # to get the feature values. This is to ensure that we have 100% identical feature value
-        # generation at predict time from training time
-        # If all feature types are already specified, then we don't need to call unify_columns_nonschematized
-        # and we can proceed to just calling unify_columns_nonschematized
-
+    if not is_schematized:
         # if feature_names_in and feature_types_in were generated in a call to fit(..) then unify_feature_names
         # and unify_columns will return the identical names and types
-        feature_names_in, feature_types = unify_feature_names(
+        feature_names, feature_types = unify_feature_names(
             X, feature_names, feature_types
         )
-        feature_types_in = _none_list * len(feature_names_in)
+
+    feature_names_in = feature_names
+    feature_types_in = feature_types
+
+    get_col_schematized = unify_columns_schematized(
+        X,
+        n_samples,
+        feature_names,
+        feature_types,
+    )
+
+    if not is_schematized:
+        feature_types_in = _none_list * len(feature_names)
 
         get_col = unify_columns_nonschematized(
             X,
             n_samples,
-            feature_names_in,
+            feature_names,
             feature_types,
             min_unique_continuous,
+            get_col_schematized,
         )
 
     # fill with np.nan for missing values and None for unseen values
@@ -87,7 +83,9 @@ def unify_data(
                 X_unified[:, feature_idx] = np.nan
                 continue
 
-            nonmissings, uniques, X_col, bad = get_col(feature_idx)
+            nonmissings, uniques, X_col, bad = get_col_schematized(
+                feature_idx, feature_types[feature_idx]
+            )
         else:
             if feature_types[feature_idx] == "ignore":
                 # TODO: we should drop these columns instead of passing them to the dependent model

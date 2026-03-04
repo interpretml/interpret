@@ -15,6 +15,12 @@ from ...utils._native import Native
 
 _log = logging.getLogger(__name__)
 
+_is_contiguous = attrgetter("flags.c_contiguous")
+_float_type_eq = np.dtype(np.float64).__eq__
+_dtype = attrgetter("dtype")
+_continuous_eq = "continuous".__eq__
+_from_iterable = chain.from_iterable
+
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
     # Prior to calling this function, call remove_extra_bins which will
@@ -22,15 +28,13 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     # performance here is when called from ebm_predict_scores or ebm_eval_terms.
 
     continuous_bins = list(
-        chain.from_iterable(compress(bins, map("continuous".__eq__, feature_types_in)))
+        _from_iterable(compress(bins, map(_continuous_eq, feature_types_in)))
     )
-    if not all(
-        map(np.dtype(np.float64).__eq__, map(attrgetter("dtype"), continuous_bins))
-    ):
+    if not all(map(_float_type_eq, map(_dtype, continuous_bins))):
         raise ValueError(
             "All bins for continuous features must be of dtype np.float64."
         )
-    if not all(map(attrgetter("flags.c_contiguous"), continuous_bins)):
+    if not all(map(_is_contiguous, continuous_bins)):
         raise ValueError(
             "All bins for continuous features must be C-contiguous arrays."
         )
@@ -38,6 +42,8 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     get_col = unify_columns_schematized(
         X, n_samples, feature_names_in, feature_types_in
     )
+
+    get_feature_type = feature_types_in.__getitem__
 
     cached_raw = {}
     cached_raw_get = cached_raw.get
@@ -57,7 +63,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
             if discretized is None:
                 raw = cached_raw_get(feature_idx)
                 if raw is None:
-                    raw = get_col(feature_idx)
+                    raw = get_col(feature_idx, get_feature_type(feature_idx))
                     cached_raw_set(feature_idx, raw)
 
                 # these are the variables in raw

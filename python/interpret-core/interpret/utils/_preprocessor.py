@@ -275,10 +275,12 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         is_privacy_bounds_warning = False
         is_privacy_types_warning = False
 
-        # TODO: modify this section to first call unify_columns_nonschematized to ONLY get the
-        # feature types "continuous", "nominal", or "ordinal", then call unify_columns_schematized
-        # to get the feature values. This is to ensure that we have 100% identical feature value
-        # generation at predict time from training time
+        get_col_schematized = unify_columns_schematized(
+            X,
+            n_samples,
+            feature_names_in,
+            feature_types,
+        )
 
         get_col = unify_columns_nonschematized(
             X,
@@ -286,6 +288,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             feature_names_in,
             feature_types,
             self.min_unique_continuous,
+            get_col_schematized,
         )
         for feature_idx in range(n_features):
             feature_type = feature_types[feature_idx]
@@ -542,7 +545,9 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col = 0
                 else:
-                    nonmissings, uniques, X_col, bad = get_col(feature_idx)
+                    nonmissings, uniques, X_col, bad = get_col(
+                        feature_idx, self.feature_types_in_[feature_idx]
+                    )
                     if isinstance(bins, dict):
                         # categorical feature
 

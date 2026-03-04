@@ -634,6 +634,85 @@ def _process_column_initial(X_col, nonmissings, processing, min_unique_continuou
     return nonmissings, np.array(categories, np.str_), mapping[indexes]
 
 
+def _process_column_initial_nonschematized(
+    feature_idx, processing, min_unique_continuous, get_col_schematized
+):
+    # called under: fit
+
+    nonmissings, uniques, indexes, _ = get_col_schematized(feature_idx, "nominal")
+    if nonmissings is False:
+        nonmissings = 0 <= indexes
+        if nonmissings.all():
+            nonmissings = None
+        else:
+            indexes = indexes[nonmissings]
+
+    try:
+        # we rely here on there being a round trip format within this language from float64 to text to float64
+
+        # TODO: does this work if there are spaces or bools?
+
+        floats = uniques.astype(np.float64)
+    except ValueError:
+        # ValueError occurs when a string could not be converted to a float
+        floats = None
+
+    if min_unique_continuous is not None and floats is not None:
+        # floats can have more than one string representation, so run unique again to check if we have
+        # min_unique_continuous unique float64s in binary representation
+        if min_unique_continuous <= len(np.unique(floats)):
+            _, _, floats, _ = get_col_schematized(feature_idx, "continuous")
+            return None, None, floats
+
+    # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
+    # np.unicode_ array here.  There are two issues with keeping it here
+    #   1) If the user wants 'nominal_prevalence' in a DP model, then we need to order the prevalence
+    #      by the publically visible noisy weights rather than the private non-noisy prevalences,
+    #      but we don't have access to the noisy weights here.  We haven't documented 'nominal_prevalence'
+    #      yet, so nobody should be using it yet, but before we make it public we need to solve this issue
+    #   2) If we someday want to have an 'eval_set' that has a separate X_eval, then we'll need
+    #      two iterators that operate on different X's.  If that happens then the categories dictionary
+    #      needs to be synchronized, so we need access to all the possible categories which is not available
+    #      here
+    # Since we only really care about speed during predict time, and at predict time we already have a
+    # categories dictionary, moving this to EBMPreprocessor.fit(...) won't cause any performance issues
+    # but it's a bit more complicated.  Also, we need to think through how we handle categoricals from
+    # pandas.  We can't return an np.unicode_ array there since then we'd loose the ordering that pandas
+    # gives us, which at a minimum is required for ordinals, and is nice to preserve for nominals because
+    # it gives the user an easy way to order the nominals on the graph and in the models (for model editing).
+    #
+    # Alternatively, if we decide to expose the integer bag definitions instead of having an eval_set then
+    # we could probably just keep the ordering here and then re-order them again in
+    # EBMPreprocessor.fit(...) for DP models.  If we destroy the information about prevalence and resort
+    # by noisy prevalence then that would be ok.
+
+    # TODO: add a callback function option here that allows the caller to sort, remove, combine
+    if processing == "nominal_prevalence":
+        counts = np.bincount(indexes)
+        if floats is None:
+            categories = [(-item[0], item[1]) for item in zip(counts, uniques)]
+        else:
+            categories = [
+                (-item[0], item[1], item[2]) for item in zip(counts, floats, uniques)
+            ]
+        categories.sort()
+        categories = [x[-1] for x in categories]
+    elif processing != "nominal_alphabetical" and floats is not None:
+        categories = [(item[0], item[1]) for item in zip(floats, uniques)]
+        categories.sort()
+        categories = [x[1] for x in categories]
+    else:
+        categories = uniques.tolist()
+        categories.sort()
+
+    mapping = np.fromiter(
+        map(dict(zip(categories, count())).__getitem__, uniques),
+        np.int64,
+        len(uniques),
+    )
+    return nonmissings, np.array(categories, np.str_), mapping[indexes]
+
+
 def _encode_categorical_existing(X_col, nonmissings):
     # called under: predict
 
@@ -1010,6 +1089,167 @@ def _process_arrayish(X_col, nonmissings, processing, min_unique_continuous):
     raise TypeError(msg)
 
 
+def _process_arrayish_nonschematized(
+    feature_idx, X_col, processing, min_unique_continuous, get_col_schematized
+):
+    if processing == "nominal":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (processing, *get_col_schematized(feature_idx, "nominal"))
+        return (
+            processing,
+            *_process_column_initial_nonschematized(
+                feature_idx, None, None, get_col_schematized
+            ),
+            None,
+        )
+    if processing == "ordinal":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (
+                processing,
+                *get_col_schematized(feature_idx, "ordinal"),
+            )
+
+        warn(
+            "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
+        )
+
+        # if the caller passes "ordinal" during fit, the only order that makes sense is either
+        # alphabetical or based on float values. Frequency doesn't make sense
+        # if the caller would prefer an error, they can check feature_types themselves
+        return (
+            processing,
+            *_process_column_initial_nonschematized(
+                feature_idx, None, None, get_col_schematized
+            ),
+            None,
+        )
+    if processing is None or processing == "auto":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            feature_type = "ordinal" if X_col.array.ordered else "nominal"
+
+            return (
+                feature_type,
+                *get_col_schematized(feature_idx, feature_type),
+            )
+
+        nonmissings, uniques, indexes = _process_column_initial_nonschematized(
+            feature_idx, None, min_unique_continuous, get_col_schematized
+        )
+        return (
+            "continuous" if uniques is None else "nominal",
+            nonmissings,
+            uniques,
+            indexes,
+            None,
+        )
+    if processing in ("nominal_prevalence", "nominal_alphabetical"):
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add re-ordering here to support this
+            msg = f"{processing} currently unsupported"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        return (
+            "nominal",
+            *_process_column_initial_nonschematized(
+                feature_idx, processing, None, get_col_schematized
+            ),
+            None,
+        )
+    if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
+        return "continuous", *get_col_schematized(feature_idx, "continuous")
+    if isinstance(processing, _all_int_types):
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add support for specifying the threshold between continuous and nominal
+            msg = "integer feature_types currently unsupported"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        nonmissings, uniques, indexes = _process_column_initial_nonschematized(
+            feature_idx, None, processing, get_col_schematized
+        )
+        return (
+            "continuous" if uniques is None else "nominal",
+            nonmissings,
+            uniques,
+            indexes,
+            None,
+        )
+    if isinstance(processing, (str, bytes)):
+        # don't allow strings to get to the np.array conversion below
+        # isinstance(, str) also works for np.str_
+        msg = f"{processing} type invalid"
+        _log.error(msg)
+        raise ValueError(msg)
+
+    n_items = 0
+    n_ordinals = 0
+    n_continuous = 0
+    try:
+        for item in processing:
+            n_items += 1
+            if isinstance(item, str):
+                # isinstance(, str) also works for np.str_
+                n_ordinals += 1
+            elif isinstance(item, _float_int_types):
+                n_continuous += 1
+    except TypeError:
+        msg = f"{processing} type invalid"
+        _log.error(msg)
+        raise TypeError(msg)
+
+    if n_continuous == n_items:
+        # if n_items == 0 then it must be continuous since we
+        # can have zero cut points, but not zero ordinal categories
+
+        return "continuous", *get_col_schematized(feature_idx, "continuous")
+    if n_ordinals == n_items:
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            # TODO: add support for specifying the order of ordinal features
+            msg = "reordering ordinals unsupported for CategoricalDtype"
+            _log.error(msg)
+            raise ValueError(msg)
+
+        nonmissings, uniques, indexes, _ = get_col_schematized(feature_idx, "ordinal")
+        if nonmissings is False:
+            nonmissings = 0 <= indexes
+            if nonmissings.all():
+                nonmissings = None
+            else:
+                indexes = indexes[nonmissings]
+
+        try:
+            processing_dict = dict(zip(processing, count()))
+
+            if len(processing) != len(processing_dict):
+                msg = "feature_types contains duplicate ordinal categories."
+                _log.error(msg)
+                raise Exception(msg)
+
+            mapping = np.fromiter(
+                map(processing_dict.__getitem__, uniques),
+                np.int64,
+                len(uniques),
+            )
+        except KeyError:
+            # TODO: warn the user, but allow them to make unseen values
+
+            msg = "X contains values outside of the ordinal set."
+            _log.error(msg)
+            raise Exception(msg)
+
+        return (
+            "ordinal",
+            nonmissings,
+            np.array(processing, np.str_),
+            mapping[indexes],
+            None,
+        )
+    msg = f"{processing} type invalid"
+    _log.error(msg)
+    raise TypeError(msg)
+
+
 def _reshape_1D_if_possible(col):
     if col.ndim != 1:
         if col.ndim == 0:
@@ -1029,7 +1269,9 @@ def _reshape_1D_if_possible(col):
     return col
 
 
-def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_continuous):
+def _process_numpy_column_schematized(
+    X_col, is_schematized, feature_type, min_unique_continuous
+):
     if isinstance(X_col, ma.masked_array):
         nonmissings = X_col.mask
         if nonmissings is not ma.nomask:
@@ -1111,6 +1353,104 @@ def _process_numpy_column(X_col, is_schematized, feature_type, min_unique_contin
         # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
         return None, *_encode_categorical_existing(X_col, None), None
     return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+
+
+def _process_numpy_column_nonschematized(
+    feature_idx,
+    X_col,
+    is_schematized,
+    feature_type,
+    min_unique_continuous,
+    get_col_schematized,
+):
+    if isinstance(X_col, ma.masked_array):
+        nonmissings = X_col.mask
+        if nonmissings is not ma.nomask:
+            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+            if nonmissings.any():
+                nonmissings = ~nonmissings
+                X_col = X_col.compressed()
+                if X_col.dtype.type is np.object_:
+                    if _pandas_installed:
+                        # pandas also has the pd.NA value that indicates missing. If Pandas is
+                        # available we can use the pd.notna function that checks for
+                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                        nonmissings2 = pd.notna(X_col)
+                    else:
+                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                        nonmissings2 = X_col == X_col
+                        nonmissings2 &= X_col != _none_ndarray
+
+                    if not nonmissings2.all():
+                        X_col = X_col[nonmissings2]
+                        np.place(nonmissings, nonmissings, nonmissings2)
+
+                if feature_type == "continuous":
+                    # called under: fit or predict
+                    return (
+                        feature_type,
+                        None,
+                        None,
+                        *_process_continuous(X_col, nonmissings),
+                    )
+                if is_schematized:
+                    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                    return None, *_encode_categorical_existing(X_col, nonmissings), None
+                return _process_arrayish_nonschematized(
+                    feature_idx,
+                    X_col,
+                    feature_type,
+                    min_unique_continuous,
+                    get_col_schematized,
+                )
+        X_col = X_col.data
+
+    if X_col.dtype.type is np.object_:
+        if _pandas_installed:
+            # pandas also has the pd.NA value that indicates missing. If Pandas is
+            # available we can use the pd.notna function that checks for
+            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+            # alternative (X_col == X_col) & (X_col != np.array(None)) below
+            nonmissings = pd.notna(X_col)
+        else:
+            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+            nonmissings = X_col == X_col
+            nonmissings &= X_col != _none_ndarray
+
+        if not nonmissings.all():
+            if feature_type == "continuous":
+                # called under: fit or predict
+                return (
+                    feature_type,
+                    None,
+                    None,
+                    *_process_continuous(X_col[nonmissings], nonmissings),
+                )
+            if is_schematized:
+                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                return (
+                    None,
+                    *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+                    None,
+                )
+            return _process_arrayish_nonschematized(
+                feature_idx,
+                X_col[nonmissings],
+                feature_type,
+                min_unique_continuous,
+                get_col_schematized,
+            )
+
+    if feature_type == "continuous":
+        # called under: fit or predict
+        return feature_type, None, None, *_process_continuous(X_col, None)
+    if is_schematized:
+        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+        return None, *_encode_categorical_existing(X_col, None), None
+    return _process_arrayish_nonschematized(
+        feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
+    )
 
 
 def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuous):
@@ -1338,22 +1678,21 @@ def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuou
     raise TypeError(msg)
 
 
-def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_continuous):
+def _process_pandas_column_nonschematized(
+    feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
+):
     dt = X_col.dtype
     tt = dt.type
     if isinstance(dt, np.dtype):
         if issubclass(tt, _float_int_bool_types):
             if feature_type == "continuous":
-                # called under: fit or predict
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    np.ascontiguousarray(X_col.to_numpy(np.float64)),
-                    None,
-                )
-            return _process_arrayish(
-                X_col.to_numpy(), None, feature_type, min_unique_continuous
+                return (feature_type, *get_col_schematized(feature_idx, "continuous"))
+            return _process_arrayish_nonschematized(
+                feature_idx,
+                X_col.to_numpy(),
+                feature_type,
+                min_unique_continuous,
+                get_col_schematized,
             )
         if tt is np.object_:
             if X_col.hasnans:
@@ -1362,30 +1701,28 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
                     # called under: fit or predict
                     return (
                         feature_type,
-                        None,
-                        None,
-                        *_process_continuous(X_col.dropna().to_numpy(), X_col.notna()),
+                        *get_col_schematized(feature_idx, "continuous"),
                     )
-                return _process_arrayish(
+                return _process_arrayish_nonschematized(
+                    feature_idx,
                     X_col.dropna().to_numpy(),
-                    X_col.notna(),
                     feature_type,
                     min_unique_continuous,
+                    get_col_schematized,
                 )
 
             if feature_type == "continuous":
                 # called under: fit or predict
                 return (
                     feature_type,
-                    None,
-                    None,
-                    *_process_continuous(X_col.to_numpy(), None),
+                    *get_col_schematized(feature_idx, "continuous"),
                 )
-            return _process_arrayish(
+            return _process_arrayish_nonschematized(
+                feature_idx,
                 X_col.to_numpy(),
-                None,
                 feature_type,
                 min_unique_continuous,
+                get_col_schematized,
             )
     elif isinstance(dt, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
@@ -1396,83 +1733,37 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
             # TODO: a faster way to handle this would be to convert the categories
             #       first, then use the indexes to create the full float64 array.
 
-            if X_col.hasnans:
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().to_numpy(np.str_), X_col.notna()
-                    ),
-                )
-            else:
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(X_col.to_numpy(np.str_), None),
-                )
-        return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
+            return (
+                feature_type,
+                *get_col_schematized(feature_idx, "continuous"),
+            )
+        return _process_arrayish_nonschematized(
+            feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
+        )
     elif isinstance(dt, pd.StringDtype):
         if feature_type == "continuous":
             # called under: fit or predict
 
-            if X_col.hasnans:
-                nonmissings = X_col.notna()
-                X_col = X_col.dropna()
-                try:
-                    X_col = X_col.to_numpy(np.float64)
-                except ValueError:
-                    # ValueError occurs when a string could not be converted to a float
-                    return (
-                        feature_type,
-                        None,
-                        None,
-                        *_process_continuous_strings(X_col.array, nonmissings),
-                    )
-
-                X_col_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
-                X_col_tmp[nonmissings] = X_col
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    X_col_tmp,
-                    None,
-                )
-
-            try:
-                X_col = X_col.to_numpy(np.float64)
-            except ValueError:
-                # ValueError occurs when a string could not be converted to a float
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous_strings(X_col.array, None),
-                )
-
             return (
                 feature_type,
-                None,
-                None,
-                X_col,
-                None,
+                *get_col_schematized(feature_idx, "continuous"),
             )
 
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            return _process_arrayish(
+            return _process_arrayish_nonschematized(
+                feature_idx,
                 X_col.dropna().array,
-                X_col.notna(),
                 feature_type,
                 min_unique_continuous,
+                get_col_schematized,
             )
-        return _process_arrayish(
+        return _process_arrayish_nonschematized(
+            feature_idx,
             X_col.array,
-            None,
             feature_type,
             min_unique_continuous,
+            get_col_schematized,
         )
     elif issubclass(tt, _float_int_bool_types):
         # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
@@ -1481,29 +1772,28 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
             # called under: fit or predict
             return (
                 feature_type,
-                None,
-                None,
-                X_col.to_numpy(np.float64),
-                None,
+                *get_col_schematized(feature_idx, "continuous"),
             )
 
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-            return _process_arrayish(
+            return _process_arrayish_nonschematized(
+                feature_idx,
                 X_col.dropna().to_numpy(),
-                X_col.notna(),
                 feature_type,
                 min_unique_continuous,
+                get_col_schematized,
             )
         # if X_col is a special type like UInt64Dtype convert it to numpy using astype
 
-        return _process_arrayish(
+        return _process_arrayish_nonschematized(
+            feature_idx,
             X_col.to_numpy(),
-            None,
             feature_type,
             min_unique_continuous,
+            get_col_schematized,
         )
 
     # TODO: implement pd.SparseDtype
@@ -1512,7 +1802,9 @@ def _process_pandas_column_nonschematized(X_col, feature_type, min_unique_contin
     raise TypeError(msg)
 
 
-def _process_sparse_column(X_col, is_schematized, feature_type, min_unique_continuous):
+def _process_sparse_column_schematized(
+    X_col, is_schematized, feature_type, min_unique_continuous
+):
     X_col = X_col.toarray().ravel()
 
     if X_col.dtype.type is np.object_:
@@ -1567,7 +1859,80 @@ def _process_sparse_column(X_col, is_schematized, feature_type, min_unique_conti
     return _process_arrayish(X_col, None, feature_type, min_unique_continuous)
 
 
-def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continuous):
+def _process_sparse_column_nonschematized(
+    feature_idx,
+    X_col,
+    is_schematized,
+    feature_type,
+    min_unique_continuous,
+    get_col_schematized,
+):
+    X_col = X_col.toarray().ravel()
+
+    if X_col.dtype.type is np.object_:
+        if _pandas_installed:
+            # pandas also has the pd.NA value that indicates missing. If Pandas is
+            # available we can use the pd.notna function that checks for
+            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+            # alternative (X_col == X_col) & (X_col != np.array(None)) below
+            nonmissings = pd.notna(X_col)
+        else:
+            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+            nonmissings = X_col == X_col
+            nonmissings &= X_col != _none_ndarray
+
+        if nonmissings.all():
+            if feature_type == "continuous":
+                # called under: fit or predict
+                return feature_type, None, None, *_process_continuous(X_col, None)
+            if is_schematized:
+                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                return None, *_encode_categorical_existing(X_col, None), None
+            return _process_arrayish_nonschematized(
+                feature_idx,
+                X_col,
+                feature_type,
+                min_unique_continuous,
+                get_col_schematized,
+            )
+
+        if feature_type == "continuous":
+            # called under: fit or predict
+            return (
+                feature_type,
+                None,
+                None,
+                *_process_continuous(X_col[nonmissings], nonmissings),
+            )
+        if is_schematized:
+            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            return (
+                None,
+                *_encode_categorical_existing(X_col[nonmissings], nonmissings),
+                None,
+            )
+        return _process_arrayish_nonschematized(
+            feature_idx,
+            X_col[nonmissings],
+            feature_type,
+            min_unique_continuous,
+            get_col_schematized,
+        )
+
+    if feature_type == "continuous":
+        # called under: fit or predict
+        return feature_type, None, None, *_process_continuous(X_col, None)
+    if is_schematized:
+        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+        return None, *_encode_categorical_existing(X_col, None), None
+    return _process_arrayish_nonschematized(
+        feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
+    )
+
+
+def _process_dict_column_schematized(
+    X_col, is_schematized, feature_type, min_unique_continuous
+):
     if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
         pass
     elif isinstance(X_col, _SeriesType):
@@ -1599,7 +1964,7 @@ def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continu
             raise ValueError(msg)
     elif isinstance(X_col, _spmatrix_or_sparray):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
-            return _process_sparse_column(
+            return _process_sparse_column_schematized(
                 X_col, is_schematized, feature_type, min_unique_continuous
             )
         if X_col.shape[1] == 0 or X_col.shape[0] == 0:
@@ -1631,7 +1996,7 @@ def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continu
             X_col_tmp[0] = X_col
             X_col = X_col_tmp
 
-    return _process_numpy_column(
+    return _process_numpy_column_schematized(
         _reshape_1D_if_possible(X_col),
         is_schematized,
         feature_type,
@@ -1639,11 +2004,105 @@ def _process_dict_column(X_col, is_schematized, feature_type, min_unique_continu
     )
 
 
+def _process_dict_column_nonschematized(
+    feature_idx,
+    X_col,
+    is_schematized,
+    feature_type,
+    min_unique_continuous,
+    get_col_schematized,
+):
+    if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
+        pass
+    elif isinstance(X_col, _SeriesType):
+        if is_schematized:
+            return _process_pandas_column_schematized(
+                X_col, feature_type, min_unique_continuous
+            )
+        else:
+            return _process_pandas_column_nonschematized(
+                feature_idx,
+                X_col,
+                feature_type,
+                min_unique_continuous,
+                get_col_schematized,
+            )
+    elif isinstance(X_col, _DataFrameType):
+        if X_col.shape[1] == 1:
+            if is_schematized:
+                return _process_pandas_column_schematized(
+                    X_col.iloc[:, 0], feature_type, min_unique_continuous
+                )
+            else:
+                return _process_pandas_column_nonschematized(
+                    feature_idx,
+                    X_col.iloc[:, 0],
+                    feature_type,
+                    min_unique_continuous,
+                    get_col_schematized,
+                )
+        if X_col.shape[0] == 1:
+            X_col = X_col.to_numpy(np.object_).ravel()
+        elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
+            X_col = np.empty(0, np.object_)
+        else:
+            msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
+            _log.error(msg)
+            raise ValueError(msg)
+    elif isinstance(X_col, _spmatrix_or_sparray):
+        if X_col.shape[1] == 1 or X_col.shape[0] == 1:
+            return _process_sparse_column_nonschematized(
+                feature_idx,
+                X_col,
+                is_schematized,
+                feature_type,
+                min_unique_continuous,
+                get_col_schematized,
+            )
+        if X_col.shape[1] == 0 or X_col.shape[0] == 0:
+            X_col = np.empty(0, np.object_)
+        else:
+            msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
+            _log.error(msg)
+            raise ValueError(msg)
+    elif isinstance(X_col, _list_tuple_types):
+        X_col = np.array(X_col, np.object_)
+    elif isinstance(X_col, (str, bytes)):
+        # isinstance(, str) also works for np.str_
+
+        # don't allow strings to get to the np.array conversion below
+        X_col_tmp = np.empty(1, np.object_)
+        X_col_tmp[0] = X_col
+        X_col = X_col_tmp
+    else:
+        try:
+            # TODO: we need to iterate though all the columns in preclean_X to handle iterable columns
+
+            # we don't support iterables that get exhausted on their first examination.  This condition
+            # should be detected though in preclean_X where we get the length or bin_native where we check the
+            # number of samples on the 2nd run through the generator
+            X_col = np.array(list(X_col), np.object_)
+        except TypeError:
+            # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
+            X_col_tmp = np.empty(1, np.object_)
+            X_col_tmp[0] = X_col
+            X_col = X_col_tmp
+
+    return _process_numpy_column_nonschematized(
+        feature_idx,
+        _reshape_1D_if_possible(X_col),
+        is_schematized,
+        feature_type,
+        min_unique_continuous,
+        get_col_schematized,
+    )
+
+
 def unify_columns_schematized(
     X,
     n_samples,
     feature_names_in,
-    feature_types,
+    feature_types_ignore,
 ):
     # TODO: replace all the calls to _local_process_continuous and _local_encode_categorical_existing
     # with the same functionality inside this function.  That will allow us to eliminate some of the
@@ -1694,7 +2153,6 @@ def unify_columns_schematized(
         _local_encode_categorical_existing = _encode_categorical_existing
         _local_process_continuous = _process_continuous
         _local_slice_none = _slice_none
-        feature_types_get = feature_types.__getitem__
         eq_continuous = "continuous".__eq__
 
         if len(feature_names_in) == X.shape[1]:
@@ -1709,7 +2167,7 @@ def unify_columns_schematized(
                         if _pandas_installed:
                             _local_pd_notna = pd.notna
 
-                            def internal(feature_idx):
+                            def internal(feature_idx, feature_type):
                                 index = (_local_slice_none, feature_idx)
                                 nonmissings = mask_get(index)
 
@@ -1742,7 +2200,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_types_get(feature_idx)):
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -1757,7 +2215,7 @@ def unify_columns_schematized(
                         else:
                             _local_none_ndarray = _none_ndarray
 
-                            def internal(feature_idx):
+                            def internal(feature_idx, feature_type):
                                 index = (_local_slice_none, feature_idx)
                                 nonmissings = mask_get(index)
 
@@ -1786,7 +2244,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_types_get(feature_idx)):
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -1800,7 +2258,7 @@ def unify_columns_schematized(
                                 )
                     else:
 
-                        def internal(feature_idx):
+                        def internal(feature_idx, feature_type):
                             index = (_local_slice_none, feature_idx)
                             nonmissings = mask_get(index)
 
@@ -1812,7 +2270,7 @@ def unify_columns_schematized(
                                 X_col = X_get(index)
                                 nonmissings = None
 
-                            if eq_continuous(feature_types_get(feature_idx)):
+                            if eq_continuous(feature_type):
                                 return (
                                     None,
                                     None,
@@ -1830,7 +2288,7 @@ def unify_columns_schematized(
                 if _pandas_installed:
                     _local_pd_notna = pd.notna
 
-                    def internal(feature_idx):
+                    def internal(feature_idx, feature_type):
                         X_col = X_get((_local_slice_none, feature_idx))
 
                         # pandas also has the pd.NA value that indicates missing. If Pandas is
@@ -1844,7 +2302,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                        if eq_continuous(feature_types_get(feature_idx)):
+                        if eq_continuous(feature_type):
                             return (
                                 None,
                                 None,
@@ -1857,7 +2315,7 @@ def unify_columns_schematized(
                 else:
                     _local_none_ndarray = _none_ndarray
 
-                    def internal(feature_idx):
+                    def internal(feature_idx, feature_type):
                         X_col = X_get((_local_slice_none, feature_idx))
 
                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
@@ -1869,7 +2327,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                        if eq_continuous(feature_types_get(feature_idx)):
+                        if eq_continuous(feature_type):
                             return (
                                 None,
                                 None,
@@ -1884,8 +2342,8 @@ def unify_columns_schematized(
                 # _encode_categorical_existing to eliminate more per feature
                 # execution.
 
-                def internal(feature_idx):
-                    if eq_continuous(feature_types_get(feature_idx)):
+                def internal(feature_idx, feature_type):
+                    if eq_continuous(feature_type):
                         return (
                             None,
                             None,
@@ -1903,9 +2361,9 @@ def unify_columns_schematized(
             return internal
         else:
             keep_cols = np.fromiter(
-                map("ignore".__ne__, feature_types),
+                map("ignore".__ne__, feature_types_ignore),
                 np.bool_,
-                len(feature_types),
+                len(feature_types_ignore),
             )
             n_keep = keep_cols.sum()
             if n_keep != X.shape[1]:
@@ -1928,7 +2386,7 @@ def unify_columns_schematized(
                         if _pandas_installed:
                             _local_pd_notna = pd.notna
 
-                            def internal(feature_idx):
+                            def internal(feature_idx, feature_type):
                                 index = (
                                     _local_slice_none,
                                     col_map_get(feature_idx),
@@ -1965,7 +2423,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_types_get(feature_idx)):
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -1980,7 +2438,7 @@ def unify_columns_schematized(
                         else:
                             _local_none_ndarray = _none_ndarray
 
-                            def internal(feature_idx):
+                            def internal(feature_idx, feature_type):
                                 index = (
                                     _local_slice_none,
                                     col_map_get(feature_idx),
@@ -2013,7 +2471,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_types_get(feature_idx)):
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -2027,7 +2485,7 @@ def unify_columns_schematized(
                                 )
                     else:
 
-                        def internal(feature_idx):
+                        def internal(feature_idx, feature_type):
                             index = (_local_slice_none, col_map_get(feature_idx))
                             nonmissings = mask_get(index)
 
@@ -2039,7 +2497,7 @@ def unify_columns_schematized(
                                 X_col = X_get(index)
                                 nonmissings = None
 
-                            if eq_continuous(feature_types_get(feature_idx)):
+                            if eq_continuous(feature_type):
                                 return (
                                     None,
                                     None,
@@ -2057,7 +2515,7 @@ def unify_columns_schematized(
                 if _pandas_installed:
                     _local_pd_notna = pd.notna
 
-                    def internal(feature_idx):
+                    def internal(feature_idx, feature_type):
                         X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
 
                         # pandas also has the pd.NA value that indicates missing. If Pandas is
@@ -2071,7 +2529,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                        if eq_continuous(feature_types_get(feature_idx)):
+                        if eq_continuous(feature_type):
                             return (
                                 None,
                                 None,
@@ -2084,7 +2542,7 @@ def unify_columns_schematized(
                 else:
                     _local_none_ndarray = _none_ndarray
 
-                    def internal(feature_idx):
+                    def internal(feature_idx, feature_type):
                         X_col = X_get((_local_slice_none, col_map_get(feature_idx)))
 
                         # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
@@ -2096,7 +2554,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                        if eq_continuous(feature_types_get(feature_idx)):
+                        if eq_continuous(feature_type):
                             return (
                                 None,
                                 None,
@@ -2111,8 +2569,8 @@ def unify_columns_schematized(
                 # _encode_categorical_existing to eliminate more per feature
                 # execution.
 
-                def internal(feature_idx):
-                    if eq_continuous(feature_types_get(feature_idx)):
+                def internal(feature_idx, feature_type):
+                    if eq_continuous(feature_type):
                         return (
                             None,
                             None,
@@ -2144,14 +2602,13 @@ def unify_columns_schematized(
                 del mapping[name]
 
         _local_process_pandas_column_schematized = _process_pandas_column_schematized
-        feature_types_get = feature_types.__getitem__
 
         if all(
             map(
                 mapping.__contains__,
                 compress(
                     feature_names_in,
-                    map("ignore".__ne__, feature_types),
+                    map("ignore".__ne__, feature_types_ignore),
                 ),
             )
         ):
@@ -2165,10 +2622,10 @@ def unify_columns_schematized(
             mapping_get = mapping.__getitem__
             X_get = X.__getitem__
 
-            def internal(feature_idx):
+            def internal(feature_idx, feature_type):
                 return _local_process_pandas_column_schematized(
                     X_get(mapping_get(feature_names_in_get(feature_idx))),
-                    feature_types_get(feature_idx),
+                    feature_type,
                     None,
                 )
 
@@ -2183,19 +2640,19 @@ def unify_columns_schematized(
 
             if len(feature_names_in) == n_cols:
 
-                def internal(feature_idx):
+                def internal(feature_idx, feature_type):
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, feature_idx)),
-                        feature_types_get(feature_idx),
+                        feature_type,
                         None,
                     )
 
                 return internal
             else:
                 keep_cols = np.fromiter(
-                    map("ignore".__ne__, feature_types),
+                    map("ignore".__ne__, feature_types_ignore),
                     np.bool_,
-                    len(feature_types),
+                    len(feature_types_ignore),
                 )
                 n_keep = keep_cols.sum()
                 if n_keep != n_cols:
@@ -2207,10 +2664,10 @@ def unify_columns_schematized(
                 col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
                 col_map_get = col_map.__getitem__
 
-                def internal(feature_idx):
+                def internal(feature_idx, feature_type):
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, col_map_get(feature_idx))),
-                        feature_types_get(feature_idx),
+                        feature_type,
                         None,
                     )
 
@@ -2222,43 +2679,39 @@ def unify_columns_schematized(
         n_cols = X.shape[1]
         X_get = X.__getitem__
         _local_slice_none = _slice_none
-        _local_process_sparse_column = _process_sparse_column
-        feature_types_get = feature_types.__getitem__
+        _local_process_sparse_column = _process_sparse_column_schematized
 
         if len(feature_names_in) == n_cols:
 
-            def internal(feature_idx):
+            def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get((_local_slice_none, (feature_idx,))),
                     True,
-                    feature_types_get(feature_idx),
+                    feature_type,
                     None,
                 )[1:]
 
             return internal
         else:
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map("ignore".__ne__, feature_types),
+                map("ignore".__ne__, feature_types_ignore),
                 np.bool_,
-                len(feature_types),
+                len(feature_types_ignore),
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), np.int64)
+            col_map = np.empty(len(feature_types_ignore), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
             col_map_get = col_map.__getitem__
 
-            def internal(feature_idx):
+            def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
                     True,
-                    feature_types_get(feature_idx),
+                    feature_type,
                     None,
                 )[1:]
 
@@ -2266,43 +2719,39 @@ def unify_columns_schematized(
     elif isinstance(X, _spmatrix):
         n_cols = X.shape[1]
         X_get = X.getcol
-        _local_process_sparse_column = _process_sparse_column
-        feature_types_get = feature_types.__getitem__
+        _local_process_sparse_column = _process_sparse_column_schematized
 
         if len(feature_names_in) == n_cols:
 
-            def internal(feature_idx):
+            def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get(feature_idx),
                     True,
-                    feature_types_get(feature_idx),
+                    feature_type,
                     None,
                 )[1:]
 
             return internal
         else:
-            # during fit time unify_feature_names would only allow us to get here if this was legal, which requires
-            # feature_types to not be None.  During predict time feature_types_in cannot be None, but we need
-            # to check for legality on the dimensions of X
             keep_cols = np.fromiter(
-                map("ignore".__ne__, feature_types),
+                map("ignore".__ne__, feature_types_ignore),
                 np.bool_,
-                len(feature_types),
+                len(feature_types_ignore),
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), np.int64)
+            col_map = np.empty(len(feature_types_ignore), np.int64)
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
             col_map_get = col_map.__getitem__
 
-            def internal(feature_idx):
+            def internal(feature_idx, feature_type):
                 return _local_process_sparse_column(
                     X_get(col_map_get(feature_idx)),
                     True,
-                    feature_types_get(feature_idx),
+                    feature_type,
                     None,
                 )[1:]
 
@@ -2313,16 +2762,15 @@ def unify_columns_schematized(
         _log.error(msg)
         raise ValueError(msg)
     elif isinstance(X, dict):
-        _local_process_dict_column = _process_dict_column
+        _local_process_dict_column = _process_dict_column_schematized
         feature_names_in_get = feature_names_in.__getitem__
         X_get = X.__getitem__
-        feature_types_get = feature_types.__getitem__
 
-        def internal(feature_idx):
+        def internal(feature_idx, feature_type):
             _, nonmissings, uniques, X_col, bad = _local_process_dict_column(
                 X_get(feature_names_in_get(feature_idx)),
                 True,
-                feature_types_get(feature_idx),
+                feature_type,
                 None,
             )
 
@@ -2353,6 +2801,7 @@ def unify_columns_nonschematized(
     feature_names_in,
     feature_types,
     min_unique_continuous,
+    get_col_schematized,
 ):
     # preclean_X is always called on X prior to calling this function
 
@@ -2399,11 +2848,13 @@ def unify_columns_nonschematized(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
         def internal(feature_idx):
-            return _process_numpy_column(
+            return _process_numpy_column_nonschematized(
+                feature_idx,
                 X[:, col_map[feature_idx]],
                 False,
                 feature_types[feature_idx],
                 min_unique_continuous,
+                get_col_schematized,
             )
 
         return internal
@@ -2431,9 +2882,11 @@ def unify_columns_nonschematized(
 
             def internal(feature_idx):
                 return _process_pandas_column_nonschematized(
+                    feature_idx,
                     X[mapping[feature_names_in[feature_idx]]],
                     feature_types[feature_idx],
                     min_unique_continuous,
+                    get_col_schematized,
                 )
 
             return internal
@@ -2462,9 +2915,11 @@ def unify_columns_nonschematized(
 
             def internal(feature_idx):
                 return _process_pandas_column_nonschematized(
+                    feature_idx,
                     X[:, col_map[feature_idx]],
                     feature_types[feature_idx],
                     min_unique_continuous,
+                    get_col_schematized,
                 )
 
             return internal
@@ -2491,11 +2946,13 @@ def unify_columns_nonschematized(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
         def internal(feature_idx):
-            return _process_sparse_column(
+            return _process_sparse_column_nonschematized(
+                feature_idx,
                 X[:, (col_map[feature_idx],)],
                 False,
                 feature_types[feature_idx],
                 min_unique_continuous,
+                get_col_schematized,
             )
 
         return internal
@@ -2520,11 +2977,13 @@ def unify_columns_nonschematized(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
         def internal(feature_idx):
-            return _process_sparse_column(
+            return _process_sparse_column_nonschematized(
+                feature_idx,
                 X_get(col_map[feature_idx]),
                 False,
                 feature_types[feature_idx],
                 min_unique_continuous,
+                get_col_schematized,
             )
 
         return internal
@@ -2536,11 +2995,15 @@ def unify_columns_nonschematized(
     elif isinstance(X, dict):
 
         def internal(feature_idx):
-            feature_type, nonmissings, uniques, X_col, bad = _process_dict_column(
-                X[feature_names_in[feature_idx]],
-                False,
-                feature_types[feature_idx],
-                min_unique_continuous,
+            feature_type, nonmissings, uniques, X_col, bad = (
+                _process_dict_column_nonschematized(
+                    feature_idx,
+                    X[feature_names_in[feature_idx]],
+                    False,
+                    feature_types[feature_idx],
+                    min_unique_continuous,
+                    get_col_schematized,
+                )
             )
 
             # unlike other datasets, dict must be checked for content length
