@@ -542,100 +542,6 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
     return indexes_tmp
 
 
-def _process_column_initial_schematized(
-    X_col, nonmissings, processing, min_unique_continuous
-):
-    # called under: fit
-
-    if issubclass(X_col.dtype.type, np.floating):
-        m = np.isnan(X_col)
-        if m.any():
-            np.logical_not(m, out=m)
-            X_col = X_col[m]
-            if nonmissings is None:
-                nonmissings = m
-            else:
-                np.place(nonmissings, nonmissings, m)
-    elif X_col.dtype.type is np.object_:
-        X_col = _densify_object_ndarray(X_col)
-
-    uniques, indexes, counts = np.unique(X_col, return_inverse=True, return_counts=True)
-
-    if issubclass(uniques.dtype.type, np.floating):
-        floats = uniques.astype(np.float64, copy=False)
-        uniques = floats.astype(np.str_)
-    else:
-        uniques = uniques.astype(np.str_, copy=False)
-        try:
-            # we rely here on there being a round trip format within this language from float64 to text to float64
-
-            # TODO: does this work if there are spaces or bools?
-
-            floats = uniques.astype(np.float64)
-        except ValueError:
-            # ValueError occurs when a string could not be converted to a float
-            floats = None
-
-    if min_unique_continuous is not None and floats is not None:
-        # floats can have more than one string representation, so run unique again to check if we have
-        # min_unique_continuous unique float64s in binary representation
-        if min_unique_continuous <= len(np.unique(floats)):
-            floats = floats[indexes]  # expand from the unique floats to expanded floats
-            if nonmissings is not None:
-                floats_tmp = np.full(len(nonmissings), np.nan, np.float64)
-                floats_tmp[nonmissings] = floats
-                floats = floats_tmp
-
-            return None, None, floats
-
-    # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
-    # np.unicode_ array here.  There are two issues with keeping it here
-    #   1) If the user wants 'nominal_prevalence' in a DP model, then we need to order the prevalence
-    #      by the publically visible noisy weights rather than the private non-noisy prevalences,
-    #      but we don't have access to the noisy weights here.  We haven't documented 'nominal_prevalence'
-    #      yet, so nobody should be using it yet, but before we make it public we need to solve this issue
-    #   2) If we someday want to have an 'eval_set' that has a separate X_eval, then we'll need
-    #      two iterators that operate on different X's.  If that happens then the categories dictionary
-    #      needs to be synchronized, so we need access to all the possible categories which is not available
-    #      here
-    # Since we only really care about speed during predict time, and at predict time we already have a
-    # categories dictionary, moving this to EBMPreprocessor.fit(...) won't cause any performance issues
-    # but it's a bit more complicated.  Also, we need to think through how we handle categoricals from
-    # pandas.  We can't return an np.unicode_ array there since then we'd loose the ordering that pandas
-    # gives us, which at a minimum is required for ordinals, and is nice to preserve for nominals because
-    # it gives the user an easy way to order the nominals on the graph and in the models (for model editing).
-    #
-    # Alternatively, if we decide to expose the integer bag definitions instead of having an eval_set then
-    # we could probably just keep the ordering here and then re-order them again in
-    # EBMPreprocessor.fit(...) for DP models.  If we destroy the information about prevalence and resort
-    # by noisy prevalence then that would be ok.
-
-    # TODO: add a callback function option here that allows the caller to sort, remove, combine
-    if processing == "nominal_prevalence":
-        if floats is None:
-            categories = [(-item[0], item[1]) for item in zip(counts, uniques)]
-        else:
-            categories = [
-                (-item[0], item[1], item[2]) for item in zip(counts, floats, uniques)
-            ]
-        categories.sort()
-        categories = [x[-1] for x in categories]
-    elif processing != "nominal_alphabetical" and floats is not None:
-        categories = [(item[0], item[1]) for item in zip(floats, uniques)]
-        categories.sort()
-        categories = [x[1] for x in categories]
-    else:
-        categories = uniques.tolist()
-        categories.sort()
-
-    mapping = np.fromiter(
-        map(dict(zip(categories, count())).__getitem__, uniques),
-        np.int64,
-        len(uniques),
-    )
-    return nonmissings, np.array(categories, np.str_), mapping[indexes]
-
-
 def _process_column_initial_nonschematized(
     feature_idx, processing, min_unique_continuous, get_col_schematized
 ):
@@ -888,228 +794,29 @@ def _process_continuous(X_col, nonmissings):
             return _process_continuous_strings(X_col, nonmissings)
 
 
-def _process_arrayish_schematized(
-    X_col, nonmissings, processing, min_unique_continuous
-):
-    if processing == "nominal":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.array
-            return (
-                processing,
-                False,
-                X_col.categories.to_numpy(np.str_),
-                X_col.codes,
-                None,
-            )
-        return (
-            processing,
-            *_process_column_initial_schematized(X_col, nonmissings, None, None),
-            None,
-        )
-    if processing == "ordinal":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.array
-            return (
-                processing,
-                False,
-                X_col.categories.to_numpy(np.str_),
-                X_col.codes,
-                None,
-            )
-
-        warn(
-            "During fitting you should usually specify the ordered strings instead of specifying 'ordinal' as the feature type. When 'ordinal' is specified then alphabetic ordering is used."
-        )
-
-        # if the caller passes "ordinal" during fit, the only order that makes sense is either
-        # alphabetical or based on float values. Frequency doesn't make sense
-        # if the caller would prefer an error, they can check feature_types themselves
-        return (
-            processing,
-            *_process_column_initial_schematized(X_col, nonmissings, None, None),
-            None,
-        )
-    if processing is None or processing == "auto":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            X_col = X_col.array
-            return (
-                "ordinal" if X_col.ordered else "nominal",
-                False,
-                X_col.categories.to_numpy(np.str_),
-                X_col.codes,
-                None,
-            )
-
-        nonmissings, uniques, indexes = _process_column_initial_schematized(
-            X_col, nonmissings, None, min_unique_continuous
-        )
-        return (
-            "continuous" if uniques is None else "nominal",
-            nonmissings,
-            uniques,
-            indexes,
-            None,
-        )
-    if processing in ("nominal_prevalence", "nominal_alphabetical"):
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            # TODO: add re-ordering here to support this
-            msg = f"{processing} currently unsupported"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        return (
-            "nominal",
-            *_process_column_initial_schematized(X_col, nonmissings, processing, None),
-            None,
-        )
-    if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            # TODO: we could make this more efficient by only converting the categories.values to strings
-            if X_col.hasnans:
-                return (
-                    "continuous",
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().to_numpy(np.str_), X_col.notna()
-                    ),
-                )
-            else:
-                return (
-                    "continuous",
-                    None,
-                    None,
-                    *_process_continuous(X_col.to_numpy(np.str_), None),
-                )
-
-        return "continuous", None, None, *_process_continuous(X_col, nonmissings)
-    if isinstance(processing, _all_int_types):
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            # TODO: add support for specifying the threshold between continuous and nominal
-            msg = "integer feature_types currently unsupported"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        nonmissings, uniques, indexes = _process_column_initial_schematized(
-            X_col, nonmissings, None, processing
-        )
-        return (
-            "continuous" if uniques is None else "nominal",
-            nonmissings,
-            uniques,
-            indexes,
-            None,
-        )
-    if isinstance(processing, (str, bytes)):
-        # don't allow strings to get to the np.array conversion below
-        # isinstance(, str) also works for np.str_
-        msg = f"{processing} type invalid"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    n_items = 0
-    n_ordinals = 0
-    n_continuous = 0
-    try:
-        for item in processing:
-            n_items += 1
-            if isinstance(item, str):
-                # isinstance(, str) also works for np.str_
-                n_ordinals += 1
-            elif isinstance(item, _float_int_types):
-                n_continuous += 1
-    except TypeError:
-        msg = f"{processing} type invalid"
-        _log.error(msg)
-        raise TypeError(msg)
-
-    if n_continuous == n_items:
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            # TODO: we could make this more efficient by only converting the categories.values to strings
-            if X_col.hasnans:
-                return (
-                    "continuous",
-                    None,
-                    None,
-                    *_process_continuous(
-                        X_col.dropna().to_numpy(np.str_), X_col.notna()
-                    ),
-                )
-            else:
-                return (
-                    "continuous",
-                    None,
-                    None,
-                    *_process_continuous(X_col.to_numpy(np.str_), None),
-                )
-
-        # if n_items == 0 then it must be continuous since we
-        # can have zero cut points, but not zero ordinal categories
-        return "continuous", None, None, *_process_continuous(X_col, nonmissings)
-    if n_ordinals == n_items:
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            # TODO: add support for specifying the order of ordinal features
-            msg = "reordering ordinals unsupported for CategoricalDtype"
-            _log.error(msg)
-            raise ValueError(msg)
-
-        if isinstance(X_col.dtype, pd.StringDtype):
-            indexes, uniques = pd.factorize(X_col)
-            uniques = uniques.to_numpy(dtype=np.str_)
-        else:
-            nonmissings, uniques, indexes = _encode_categorical_existing(
-                X_col, nonmissings
-            )
-
-        try:
-            processing_dict = dict(zip(processing, count()))
-
-            if len(processing) != len(processing_dict):
-                msg = "feature_types contains duplicate ordinal categories."
-                _log.error(msg)
-                raise Exception(msg)
-
-            mapping = np.fromiter(
-                map(processing_dict.__getitem__, uniques),
-                np.int64,
-                len(uniques),
-            )
-        except KeyError:
-            # TODO: warn the user, but allow them to make unseen values
-
-            msg = "X contains values outside of the ordinal set."
-            _log.error(msg)
-            raise Exception(msg)
-
-        return (
-            "ordinal",
-            nonmissings,
-            np.array(processing, np.str_),
-            mapping[indexes],
-            None,
-        )
-    msg = f"{processing} type invalid"
-    _log.error(msg)
-    raise TypeError(msg)
-
-
 def _process_arrayish_nonschematized(
-    feature_idx, X_col, processing, min_unique_continuous, get_col_schematized
+    feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
 ):
-    if processing == "nominal":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
-            return (processing, *get_col_schematized(feature_idx, "nominal"))
+    if feature_type == "continuous":
+        # called under: fit or predict
         return (
-            processing,
+            "continuous",
+            *get_col_schematized(feature_idx, "continuous"),
+        )
+    if feature_type == "nominal":
+        if isinstance(X_col.dtype, pd.CategoricalDtype):
+            return (feature_type, *get_col_schematized(feature_idx, "nominal"))
+        return (
+            feature_type,
             *_process_column_initial_nonschematized(
                 feature_idx, None, None, get_col_schematized
             ),
             None,
         )
-    if processing == "ordinal":
+    if feature_type == "ordinal":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
             return (
-                processing,
+                feature_type,
                 *get_col_schematized(feature_idx, "ordinal"),
             )
 
@@ -1121,13 +828,13 @@ def _process_arrayish_nonschematized(
         # alphabetical or based on float values. Frequency doesn't make sense
         # if the caller would prefer an error, they can check feature_types themselves
         return (
-            processing,
+            feature_type,
             *_process_column_initial_nonschematized(
                 feature_idx, None, None, get_col_schematized
             ),
             None,
         )
-    if processing is None or processing == "auto":
+    if feature_type is None or feature_type == "auto":
         if isinstance(X_col.dtype, pd.CategoricalDtype):
             feature_type = "ordinal" if X_col.array.ordered else "nominal"
 
@@ -1146,23 +853,23 @@ def _process_arrayish_nonschematized(
             indexes,
             None,
         )
-    if processing in ("nominal_prevalence", "nominal_alphabetical"):
+    if feature_type in ("nominal_prevalence", "nominal_alphabetical"):
         if isinstance(X_col.dtype, pd.CategoricalDtype):
             # TODO: add re-ordering here to support this
-            msg = f"{processing} currently unsupported"
+            msg = f"{feature_type} currently unsupported"
             _log.error(msg)
             raise ValueError(msg)
 
         return (
             "nominal",
             *_process_column_initial_nonschematized(
-                feature_idx, processing, None, get_col_schematized
+                feature_idx, feature_type, None, get_col_schematized
             ),
             None,
         )
-    if processing in ("quantile", "rounded_quantile", "uniform", "winsorized"):
+    if feature_type in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         return "continuous", *get_col_schematized(feature_idx, "continuous")
-    if isinstance(processing, _all_int_types):
+    if isinstance(feature_type, _all_int_types):
         if isinstance(X_col.dtype, pd.CategoricalDtype):
             # TODO: add support for specifying the threshold between continuous and nominal
             msg = "integer feature_types currently unsupported"
@@ -1170,7 +877,7 @@ def _process_arrayish_nonschematized(
             raise ValueError(msg)
 
         nonmissings, uniques, indexes = _process_column_initial_nonschematized(
-            feature_idx, None, processing, get_col_schematized
+            feature_idx, None, feature_type, get_col_schematized
         )
         return (
             "continuous" if uniques is None else "nominal",
@@ -1179,10 +886,10 @@ def _process_arrayish_nonschematized(
             indexes,
             None,
         )
-    if isinstance(processing, (str, bytes)):
+    if isinstance(feature_type, (str, bytes)):
         # don't allow strings to get to the np.array conversion below
         # isinstance(, str) also works for np.str_
-        msg = f"{processing} type invalid"
+        msg = f"{feature_type} type invalid"
         _log.error(msg)
         raise ValueError(msg)
 
@@ -1190,7 +897,7 @@ def _process_arrayish_nonschematized(
     n_ordinals = 0
     n_continuous = 0
     try:
-        for item in processing:
+        for item in feature_type:
             n_items += 1
             if isinstance(item, str):
                 # isinstance(, str) also works for np.str_
@@ -1198,7 +905,7 @@ def _process_arrayish_nonschematized(
             elif isinstance(item, _float_int_types):
                 n_continuous += 1
     except TypeError:
-        msg = f"{processing} type invalid"
+        msg = f"{feature_type} type invalid"
         _log.error(msg)
         raise TypeError(msg)
 
@@ -1223,15 +930,15 @@ def _process_arrayish_nonschematized(
                 indexes = indexes[nonmissings]
 
         try:
-            processing_dict = dict(zip(processing, count()))
+            feature_type_dict = dict(zip(feature_type, count()))
 
-            if len(processing) != len(processing_dict):
+            if len(feature_type) != len(feature_type_dict):
                 msg = "feature_types contains duplicate ordinal categories."
                 _log.error(msg)
                 raise Exception(msg)
 
             mapping = np.fromiter(
-                map(processing_dict.__getitem__, uniques),
+                map(feature_type_dict.__getitem__, uniques),
                 np.int64,
                 len(uniques),
             )
@@ -1245,11 +952,11 @@ def _process_arrayish_nonschematized(
         return (
             "ordinal",
             nonmissings,
-            np.array(processing, np.str_),
+            np.array(feature_type, np.str_),
             mapping[indexes],
             None,
         )
-    msg = f"{processing} type invalid"
+    msg = f"{feature_type} type invalid"
     _log.error(msg)
     raise TypeError(msg)
 
@@ -1371,14 +1078,6 @@ def _process_numpy_column_nonschematized(
                         X_col = X_col[nonmissings2]
                         np.place(nonmissings, nonmissings, nonmissings2)
 
-                if feature_type == "continuous":
-                    # called under: fit or predict
-                    return (
-                        feature_type,
-                        None,
-                        None,
-                        *_process_continuous(X_col, nonmissings),
-                    )
                 return _process_arrayish_nonschematized(
                     feature_idx,
                     X_col,
@@ -1401,14 +1100,6 @@ def _process_numpy_column_nonschematized(
             nonmissings &= X_col != _none_ndarray
 
         if not nonmissings.all():
-            if feature_type == "continuous":
-                # called under: fit or predict
-                return (
-                    feature_type,
-                    None,
-                    None,
-                    *_process_continuous(X_col[nonmissings], nonmissings),
-                )
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col[nonmissings],
@@ -1417,9 +1108,6 @@ def _process_numpy_column_nonschematized(
                 get_col_schematized,
             )
 
-    if feature_type == "continuous":
-        # called under: fit or predict
-        return feature_type, None, None, *_process_continuous(X_col, None)
     return _process_arrayish_nonschematized(
         feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
     )
@@ -1657,8 +1345,6 @@ def _process_pandas_column_nonschematized(
     tt = dt.type
     if isinstance(dt, np.dtype):
         if issubclass(tt, _float_int_bool_types):
-            if feature_type == "continuous":
-                return (feature_type, *get_col_schematized(feature_idx, "continuous"))
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col.to_numpy(),
@@ -1669,12 +1355,6 @@ def _process_pandas_column_nonschematized(
         if tt is np.object_:
             if X_col.hasnans:
                 # if hasnans is true then there is definetly a real missing value in there and not just a mask
-                if feature_type == "continuous":
-                    # called under: fit or predict
-                    return (
-                        feature_type,
-                        *get_col_schematized(feature_idx, "continuous"),
-                    )
                 return _process_arrayish_nonschematized(
                     feature_idx,
                     X_col.dropna().to_numpy(),
@@ -1683,12 +1363,6 @@ def _process_pandas_column_nonschematized(
                     get_col_schematized,
                 )
 
-            if feature_type == "continuous":
-                # called under: fit or predict
-                return (
-                    feature_type,
-                    *get_col_schematized(feature_idx, "continuous"),
-                )
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col.to_numpy(),
@@ -1698,29 +1372,10 @@ def _process_pandas_column_nonschematized(
             )
     elif isinstance(dt, pd.CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
-
-        if feature_type == "continuous":
-            # called under: fit or predict
-
-            # TODO: a faster way to handle this would be to convert the categories
-            #       first, then use the indexes to create the full float64 array.
-
-            return (
-                feature_type,
-                *get_col_schematized(feature_idx, "continuous"),
-            )
         return _process_arrayish_nonschematized(
             feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
         )
     elif isinstance(dt, pd.StringDtype):
-        if feature_type == "continuous":
-            # called under: fit or predict
-
-            return (
-                feature_type,
-                *get_col_schematized(feature_idx, "continuous"),
-            )
-
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
             return _process_arrayish_nonschematized(
@@ -1739,13 +1394,6 @@ def _process_pandas_column_nonschematized(
         )
     elif issubclass(tt, _float_int_bool_types):
         # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-
-        if feature_type == "continuous":
-            # called under: fit or predict
-            return (
-                feature_type,
-                *get_col_schematized(feature_idx, "continuous"),
-            )
 
         if X_col.hasnans:
             # if hasnans is true then there is definetly a real missing value in there and not just a mask
@@ -1838,9 +1486,6 @@ def _process_sparse_column_nonschematized(
             nonmissings &= X_col != _none_ndarray
 
         if nonmissings.all():
-            if feature_type == "continuous":
-                # called under: fit or predict
-                return feature_type, None, None, *_process_continuous(X_col, None)
             return _process_arrayish_nonschematized(
                 feature_idx,
                 X_col,
@@ -1849,14 +1494,6 @@ def _process_sparse_column_nonschematized(
                 get_col_schematized,
             )
 
-        if feature_type == "continuous":
-            # called under: fit or predict
-            return (
-                feature_type,
-                None,
-                None,
-                *_process_continuous(X_col[nonmissings], nonmissings),
-            )
         return _process_arrayish_nonschematized(
             feature_idx,
             X_col[nonmissings],
@@ -1865,9 +1502,6 @@ def _process_sparse_column_nonschematized(
             get_col_schematized,
         )
 
-    if feature_type == "continuous":
-        # called under: fit or predict
-        return feature_type, None, None, *_process_continuous(X_col, None)
     return _process_arrayish_nonschematized(
         feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
     )
