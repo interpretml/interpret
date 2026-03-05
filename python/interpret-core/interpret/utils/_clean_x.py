@@ -543,10 +543,8 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
 
 
 def _process_column_initial_nonschematized(
-    feature_idx, processing, min_unique_continuous, get_col_schematized
+    feature_idx, feature_type, min_unique_continuous, get_col_schematized
 ):
-    # called under: fit
-
     nonmissings, uniques, indexes, _ = get_col_schematized(feature_idx, "nominal")
     if nonmissings is False:
         nonmissings = 0 <= indexes
@@ -569,8 +567,11 @@ def _process_column_initial_nonschematized(
         # floats can have more than one string representation, so run unique again to check if we have
         # min_unique_continuous unique float64s in binary representation
         if min_unique_continuous <= len(np.unique(floats)):
-            _, _, floats, _ = get_col_schematized(feature_idx, "continuous")
-            return None, None, floats
+            _, _, floats, bad = get_col_schematized(feature_idx, "continuous")
+            if bad is None:
+                # the schematized code could have slight string to float differences
+                # so check that both accept all the floats
+                return None, None, floats
 
     # TODO: we need to move this re-ordering functionality to EBMPreprocessor.fit(...) and return a
     # np.unicode_ array here.  There are two issues with keeping it here
@@ -595,7 +596,7 @@ def _process_column_initial_nonschematized(
     # by noisy prevalence then that would be ok.
 
     # TODO: add a callback function option here that allows the caller to sort, remove, combine
-    if processing == "nominal_prevalence":
+    if feature_type == "nominal_prevalence":
         counts = np.bincount(indexes)
         if floats is None:
             categories = [(-item[0], item[1]) for item in zip(counts, uniques)]
@@ -605,12 +606,12 @@ def _process_column_initial_nonschematized(
             ]
         categories.sort()
         categories = [x[-1] for x in categories]
-    elif processing != "nominal_alphabetical" and floats is not None:
+    elif feature_type != "nominal_alphabetical" and floats is not None:
         categories = [(item[0], item[1]) for item in zip(floats, uniques)]
         categories.sort()
         categories = [x[1] for x in categories]
     else:
-        categories = uniques.tolist()
+        categories = [item for item in uniques]
         categories.sort()
 
     mapping = np.fromiter(
