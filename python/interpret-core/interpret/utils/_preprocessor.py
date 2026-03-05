@@ -402,7 +402,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 else:
                     # categorical feature
 
-                    categories = dict(zip(uniques, count(1)))
+                    # use map(str,...) to convert numpy strins to python strings
+                    categories = dict(zip(map(str, uniques), count(1)))
 
                     X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
