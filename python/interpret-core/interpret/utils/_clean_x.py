@@ -625,8 +625,6 @@ def _process_column_initial_nonschematized(
 
 
 def _encode_categorical_existing(X_col, nonmissings):
-    # called under: predict
-
     # TODO: add special case handling if there is only 1 sample to make that faster
     # if we have just 1 sample, we can avoid making the mapping below
 
@@ -637,16 +635,25 @@ def _encode_categorical_existing(X_col, nonmissings):
             np.logical_not(m, out=m)
             X_col = X_col[m]
             if nonmissings is None:
-                uniques, indexes = np.unique(X_col, return_inverse=True)
+                if _pandas_installed:
+                    indexes, uniques = pd.factorize(X_col)
+                else:
+                    uniques, indexes = np.unique(X_col, return_inverse=True)
                 return m, uniques.astype(np.str_), indexes
             np.place(nonmissings, nonmissings, m)
-        uniques, indexes = np.unique(X_col, return_inverse=True)
+        if _pandas_installed:
+            indexes, uniques = pd.factorize(X_col)
+        else:
+            uniques, indexes = np.unique(X_col, return_inverse=True)
         return nonmissings, uniques.astype(np.str_), indexes
 
     if tt is np.object_:
-        uniques, indexes = np.unique(
-            _densify_object_ndarray(X_col), return_inverse=True
-        )
+        if _pandas_installed:
+            indexes, uniques = pd.factorize(_densify_object_ndarray(X_col))
+        else:
+            uniques, indexes = np.unique(
+                _densify_object_ndarray(X_col), return_inverse=True
+            )
         if issubclass(uniques.dtype.type, np.floating):
             # Convert all non-float64 floats to float64 to ensure consistent strings.
             return (
@@ -656,7 +663,10 @@ def _encode_categorical_existing(X_col, nonmissings):
             )
         return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
-    uniques, indexes = np.unique(X_col, return_inverse=True)
+    if _pandas_installed:
+        indexes, uniques = pd.factorize(X_col)
+    else:
+        uniques, indexes = np.unique(X_col, return_inverse=True)
     return nonmissings, uniques.astype(np.str_, copy=False), indexes
 
 
@@ -1014,7 +1024,7 @@ def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous
                         None,
                         *_process_continuous(X_col, nonmissings),
                     )
-                # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+                # feature_type == "nominal" or feature_type == "ordinal"
                 return *_encode_categorical_existing(X_col, nonmissings), None
         X_col = X_col.data
 
@@ -1038,7 +1048,7 @@ def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous
                     None,
                     *_process_continuous(X_col[nonmissings], nonmissings),
                 )
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            # feature_type == "nominal" or feature_type == "ordinal"
             return (
                 *_encode_categorical_existing(X_col[nonmissings], nonmissings),
                 None,
@@ -1047,7 +1057,7 @@ def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous
     if feature_type == "continuous":
         # called under: fit or predict
         return None, None, *_process_continuous(X_col, None)
-    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+    # feature_type == "nominal" or feature_type == "ordinal"
     return *_encode_categorical_existing(X_col, None), None
 
 
@@ -1444,7 +1454,7 @@ def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuou
             if feature_type == "continuous":
                 # called under: fit or predict
                 return None, None, *_process_continuous(X_col, None)
-            # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+            # feature_type == "nominal" or feature_type == "ordinal"
             return *_encode_categorical_existing(X_col, None), None
 
         if feature_type == "continuous":
@@ -1454,7 +1464,7 @@ def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuou
                 None,
                 *_process_continuous(X_col[nonmissings], nonmissings),
             )
-        # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+        # feature_type == "nominal" or feature_type == "ordinal"
         return (
             *_encode_categorical_existing(X_col[nonmissings], nonmissings),
             None,
@@ -1463,7 +1473,7 @@ def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuou
     if feature_type == "continuous":
         # called under: fit or predict
         return None, None, *_process_continuous(X_col, None)
-    # called under: predict. feature_type == "nominal" or feature_type == "ordinal"
+    # feature_type == "nominal" or feature_type == "ordinal"
     return *_encode_categorical_existing(X_col, None), None
 
 
@@ -1700,7 +1710,6 @@ def unify_columns_schematized(
         # Allocate an empty fortran array here in python and have C++ fill it.  Then we can keep all the
         # rest of the code below the same since it'll just be accessed internally more efficiently.
         # if X.flags.c_contiguous:
-        #    # called under: predict
         #    # during predict we don't care as much about memory consumption, so speed it by transposing everything
         #    X = np.asfortranarray(X)
 
@@ -1921,7 +1930,6 @@ def unify_columns_schematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != X.shape[1]:
-                # called under: predict
                 msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
@@ -2210,7 +2218,6 @@ def unify_columns_schematized(
                 )
                 n_keep = keep_cols.sum()
                 if n_keep != n_cols:
-                    # called under: predict
                     msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
