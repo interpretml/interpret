@@ -343,7 +343,9 @@ _repeat_bools = repeat((bool, np.bool_))
 _repeat_negativeone = repeat(-1)
 _repeat_floatable = repeat((float, int, bool, np.floating, np.integer, np.bool_))
 _array_zero = np.zeros(1, np.int64)
-_stringable = (pd.CategoricalDtype, pd.StringDtype)
+_stringable = (
+    (pd.CategoricalDtype, pd.StringDtype) if _pandas_installed else _ImpossibleType
+)
 _slice_none = slice(None)
 _repeat_str = repeat(str)
 _not_one = (1).__ne__
@@ -2155,7 +2157,7 @@ def unify_columns_schematized(
 
         _local_process_pandas_column_schematized = _process_pandas_column_schematized
 
-        if all(
+        if all(map(mapping.__contains__, feature_names_in)) or all(
             map(
                 mapping.__contains__,
                 compress(
@@ -2829,12 +2831,12 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 break
             # we don't support iterators for dict, so len should work
             if n_samples is not None and n_samples != len(val):
-                msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+                msg = f"{sample_source} has {n_samples} samples, but X has {len(val)}"
                 _log.error(msg)
                 raise ValueError(msg)
             return X, len(val)
         if n_samples is not None and n_samples != 0:
-            msg = f"{sample_source} has {n_samples} samples, but X has {X.shape[0]}"
+            msg = f"{sample_source} has {n_samples} samples, but X has 0"
             _log.error(msg)
             raise ValueError(msg)
         return X, 0
