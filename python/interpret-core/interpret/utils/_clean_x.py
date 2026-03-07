@@ -947,154 +947,6 @@ def _reshape_1D_if_possible(col):
     return col
 
 
-def _process_numpy_column_schematized(X_col, feature_type, min_unique_continuous):
-    tt = X_col.dtype.type
-    if isinstance(X_col, ma.masked_array):
-        nonmissings = X_col.mask
-        if nonmissings is not ma.nomask:
-            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-            if nonmissings.any():
-                nonmissings = ~nonmissings
-                X_col = X_col.compressed()
-                if tt is np.object_:
-                    if _pandas_installed:
-                        # pandas also has the pd.NA value that indicates missing. If Pandas is
-                        # available we can use the pd.notna function that checks for
-                        # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-                        # alternative (X_col == X_col) & (X_col != np.array(None)) below
-                        nonmissings2 = pd.notna(X_col)
-                    else:
-                        # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-                        nonmissings2 = X_col == X_col
-                        nonmissings2 &= X_col != _none_ndarray
-
-                    if not nonmissings2.all():
-                        X_col = X_col[nonmissings2]
-                        np.place(nonmissings, nonmissings, nonmissings2)
-
-                    if feature_type == "continuous":
-                        # called under: fit or predict
-                        return (
-                            None,
-                            None,
-                            *_process_continuous(X_col, nonmissings),
-                        )
-
-                    # feature_type == "nominal" or feature_type == "ordinal"
-                    if _pandas_installed:
-                        indexes, uniques = pd.factorize(_densify_object_ndarray(X_col))
-                    else:
-                        uniques, indexes = np.unique(
-                            _densify_object_ndarray(X_col), return_inverse=True
-                        )
-
-                    if issubclass(uniques.dtype.type, np.floating):
-                        # Convert all non-float64 floats to float64 to ensure consistent strings.
-                        return (
-                            nonmissings,
-                            uniques.astype(np.float64, copy=False).astype(np.str_),
-                            indexes,
-                            None,
-                        )
-
-                    return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
-                else:
-                    if feature_type == "continuous":
-                        # called under: fit or predict
-                        return (
-                            None,
-                            None,
-                            *_process_continuous(X_col, nonmissings),
-                        )
-
-                    # feature_type == "nominal" or feature_type == "ordinal"
-
-                    if issubclass(tt, np.floating):
-                        m = np.isnan(X_col)
-                        if m.any():
-                            np.logical_not(m, out=m)
-                            X_col = X_col[m]
-                            np.place(nonmissings, nonmissings, m)
-                        if _pandas_installed:
-                            indexes, uniques = pd.factorize(X_col)
-                        else:
-                            uniques, indexes = np.unique(X_col, return_inverse=True)
-                        return nonmissings, uniques.astype(np.str_), indexes, None
-
-                    if _pandas_installed:
-                        indexes, uniques = pd.factorize(X_col)
-                    else:
-                        uniques, indexes = np.unique(X_col, return_inverse=True)
-                    return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
-        X_col = X_col.data
-
-    if X_col.dtype.type is np.object_:
-        if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing. If Pandas is
-            # available we can use the pd.notna function that checks for
-            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-            nonmissings = pd.notna(X_col)
-        else:
-            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-            nonmissings = X_col == X_col
-            nonmissings &= X_col != _none_ndarray
-
-        if not nonmissings.all():
-            if feature_type == "continuous":
-                # called under: fit or predict
-                return (
-                    None,
-                    None,
-                    *_process_continuous(X_col[nonmissings], nonmissings),
-                )
-            # feature_type == "nominal" or feature_type == "ordinal"
-
-            if _pandas_installed:
-                indexes, uniques = pd.factorize(_densify_object_ndarray(X_col[nonmissings]))
-            else:
-                uniques, indexes = np.unique(
-                    _densify_object_ndarray(X_col[nonmissings]), return_inverse=True
-                )
-            if issubclass(uniques.dtype.type, np.floating):
-                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                return (
-                    nonmissings,
-                    uniques.astype(np.float64, copy=False).astype(np.str_),
-                    indexes,
-                    None,
-                )
-            return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
-
-    if feature_type == "continuous":
-        # called under: fit or predict
-        return None, None, *_process_continuous(X_col, None)
-
-    # feature_type == "nominal" or feature_type == "ordinal"
-
-    if issubclass(tt, np.floating):
-        m = np.isnan(X_col)
-        if m.any():
-            np.logical_not(m, out=m)
-            X_col = X_col[m]
-            if _pandas_installed:
-                indexes, uniques = pd.factorize(X_col)
-            else:
-                uniques, indexes = np.unique(X_col, return_inverse=True)
-            return m, uniques.astype(np.str_), indexes, None
-        if _pandas_installed:
-            indexes, uniques = pd.factorize(X_col)
-        else:
-            uniques, indexes = np.unique(X_col, return_inverse=True)
-        return None, uniques.astype(np.str_), indexes, None
-
-    if _pandas_installed:
-        indexes, uniques = pd.factorize(X_col)
-    else:
-        uniques, indexes = np.unique(X_col, return_inverse=True)
-    return None, uniques.astype(np.str_, copy=False), indexes, None
-
-
 def _process_numpy_column_nonschematized(
     feature_idx,
     X_col,
@@ -1489,7 +1341,7 @@ def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuou
             if feature_type == "continuous":
                 # called under: fit or predict
                 return None, None, *_process_continuous(X_col, None)
-            
+
             # feature_type == "nominal" or feature_type == "ordinal"
 
             if _pandas_installed:
@@ -1603,67 +1455,6 @@ def _process_sparse_column_nonschematized(
 
     return _process_arrayish_nonschematized(
         feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
-    )
-
-
-def _process_dict_column_schematized(X_col, feature_type, min_unique_continuous):
-    if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
-        pass
-    elif isinstance(X_col, _SeriesType):
-        return _process_pandas_column_schematized(
-            X_col, feature_type, min_unique_continuous
-        )
-    elif isinstance(X_col, _DataFrameType):
-        if X_col.shape[1] == 1:
-            return _process_pandas_column_schematized(
-                X_col.iloc[:, 0], feature_type, min_unique_continuous
-            )
-        if X_col.shape[0] == 1:
-            X_col = X_col.to_numpy(np.object_).ravel()
-        elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
-            X_col = np.empty(0, np.object_)
-        else:
-            msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif isinstance(X_col, _spmatrix_or_sparray):
-        if X_col.shape[1] == 1 or X_col.shape[0] == 1:
-            return _process_sparse_column_schematized(
-                X_col, feature_type, min_unique_continuous
-            )
-        if X_col.shape[1] == 0 or X_col.shape[0] == 0:
-            X_col = np.empty(0, np.object_)
-        else:
-            msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
-            _log.error(msg)
-            raise ValueError(msg)
-    elif isinstance(X_col, _list_tuple_types):
-        X_col = np.array(X_col, np.object_)
-    elif isinstance(X_col, (str, bytes)):
-        # isinstance(, str) also works for np.str_
-
-        # don't allow strings to get to the np.array conversion below
-        X_col_tmp = np.empty(1, np.object_)
-        X_col_tmp[0] = X_col
-        X_col = X_col_tmp
-    else:
-        try:
-            # TODO: we need to iterate though all the columns in preclean_X to handle iterable columns
-
-            # we don't support iterables that get exhausted on their first examination.  This condition
-            # should be detected though in preclean_X where we get the length or bin_native where we check the
-            # number of samples on the 2nd run through the generator
-            X_col = np.array(list(X_col), np.object_)
-        except TypeError:
-            # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
-            X_col_tmp = np.empty(1, np.object_)
-            X_col_tmp[0] = X_col
-            X_col = X_col_tmp
-
-    return _process_numpy_column_schematized(
-        _reshape_1D_if_possible(X_col),
-        feature_type,
-        min_unique_continuous,
     )
 
 
@@ -1855,16 +1646,25 @@ def unify_columns_schematized(
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
 
-                                indexes, uniques = pd.factorize(_densify_object_ndarray(X_col))
+                                indexes, uniques = pd.factorize(
+                                    _densify_object_ndarray(X_col)
+                                )
                                 if issubclass(uniques.dtype.type, np.floating):
                                     # Convert all non-float64 floats to float64 to ensure consistent strings.
                                     return (
                                         nonmissings,
-                                        uniques.astype(np.float64, copy=False).astype(np.str_),
+                                        uniques.astype(np.float64, copy=False).astype(
+                                            np.str_
+                                        ),
                                         indexes,
                                         None,
                                     )
-                                return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
                         else:
                             _local_none_ndarray = _none_ndarray
 
@@ -1904,7 +1704,6 @@ def unify_columns_schematized(
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
 
-
                                 uniques, indexes = np.unique(
                                     _densify_object_ndarray(X_col), return_inverse=True
                                 )
@@ -1912,11 +1711,18 @@ def unify_columns_schematized(
                                     # Convert all non-float64 floats to float64 to ensure consistent strings.
                                     return (
                                         nonmissings,
-                                        uniques.astype(np.float64, copy=False).astype(np.str_),
+                                        uniques.astype(np.float64, copy=False).astype(
+                                            np.str_
+                                        ),
                                         indexes,
                                         None,
                                     )
-                                return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
                     else:
 
                         def internal(feature_idx, feature_type):
@@ -1948,20 +1754,34 @@ def unify_columns_schematized(
                                         if _pandas_installed:
                                             indexes, uniques = pd.factorize(X_col)
                                         else:
-                                            uniques, indexes = np.unique(X_col, return_inverse=True)
+                                            uniques, indexes = np.unique(
+                                                X_col, return_inverse=True
+                                            )
                                         return m, uniques.astype(np.str_), indexes, None
                                     np.place(nonmissings, nonmissings, m)
                                 if _pandas_installed:
                                     indexes, uniques = pd.factorize(X_col)
                                 else:
-                                    uniques, indexes = np.unique(X_col, return_inverse=True)
-                                return nonmissings, uniques.astype(np.str_), indexes, None
+                                    uniques, indexes = np.unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_),
+                                    indexes,
+                                    None,
+                                )
 
                             if _pandas_installed:
                                 indexes, uniques = pd.factorize(X_col)
                             else:
                                 uniques, indexes = np.unique(X_col, return_inverse=True)
-                            return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                            return (
+                                nonmissings,
+                                uniques.astype(np.str_, copy=False),
+                                indexes,
+                                None,
+                            )
 
                     return internal
 
@@ -2000,7 +1820,12 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
-                        return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                        return (
+                            nonmissings,
+                            uniques.astype(np.str_, copy=False),
+                            indexes,
+                            None,
+                        )
                 else:
                     _local_none_ndarray = _none_ndarray
 
@@ -2034,8 +1859,14 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
-                        return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                        return (
+                            nonmissings,
+                            uniques.astype(np.str_, copy=False),
+                            indexes,
+                            None,
+                        )
             else:
+
                 def internal(feature_idx, feature_type):
                     X_col = X_get((_local_slice_none, feature_idx))
 
@@ -2043,9 +1874,7 @@ def unify_columns_schematized(
                         return (
                             None,
                             None,
-                            *_local_process_continuous(
-                                X_col, None
-                            ),
+                            *_local_process_continuous(X_col, None),
                         )
 
                     # TODO: duplicate this internal function and move this out
@@ -2142,16 +1971,25 @@ def unify_columns_schematized(
                                         *_local_process_continuous(X_col, nonmissings),
                                     )
 
-                                indexes, uniques = pd.factorize(_densify_object_ndarray(X_col))
+                                indexes, uniques = pd.factorize(
+                                    _densify_object_ndarray(X_col)
+                                )
                                 if issubclass(uniques.dtype.type, np.floating):
                                     # Convert all non-float64 floats to float64 to ensure consistent strings.
                                     return (
                                         nonmissings,
-                                        uniques.astype(np.float64, copy=False).astype(np.str_),
+                                        uniques.astype(np.float64, copy=False).astype(
+                                            np.str_
+                                        ),
                                         indexes,
                                         None,
                                     )
-                                return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
                         else:
                             _local_none_ndarray = _none_ndarray
 
@@ -2202,11 +2040,18 @@ def unify_columns_schematized(
                                     # Convert all non-float64 floats to float64 to ensure consistent strings.
                                     return (
                                         nonmissings,
-                                        uniques.astype(np.float64, copy=False).astype(np.str_),
+                                        uniques.astype(np.float64, copy=False).astype(
+                                            np.str_
+                                        ),
                                         indexes,
                                         None,
                                     )
-                                return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
                     else:
 
                         def internal(feature_idx, feature_type):
@@ -2238,20 +2083,34 @@ def unify_columns_schematized(
                                         if _pandas_installed:
                                             indexes, uniques = pd.factorize(X_col)
                                         else:
-                                            uniques, indexes = np.unique(X_col, return_inverse=True)
+                                            uniques, indexes = np.unique(
+                                                X_col, return_inverse=True
+                                            )
                                         return m, uniques.astype(np.str_), indexes, None
                                     np.place(nonmissings, nonmissings, m)
                                 if _pandas_installed:
                                     indexes, uniques = pd.factorize(X_col)
                                 else:
-                                    uniques, indexes = np.unique(X_col, return_inverse=True)
-                                return nonmissings, uniques.astype(np.str_), indexes, None
+                                    uniques, indexes = np.unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_),
+                                    indexes,
+                                    None,
+                                )
 
                             if _pandas_installed:
                                 indexes, uniques = pd.factorize(X_col)
                             else:
                                 uniques, indexes = np.unique(X_col, return_inverse=True)
-                            return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                            return (
+                                nonmissings,
+                                uniques.astype(np.str_, copy=False),
+                                indexes,
+                                None,
+                            )
 
                     return internal
 
@@ -2290,7 +2149,12 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
-                        return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                        return (
+                            nonmissings,
+                            uniques.astype(np.str_, copy=False),
+                            indexes,
+                            None,
+                        )
                 else:
                     _local_none_ndarray = _none_ndarray
 
@@ -2324,9 +2188,14 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
-                        return nonmissings, uniques.astype(np.str_, copy=False), indexes, None
+                        return (
+                            nonmissings,
+                            uniques.astype(np.str_, copy=False),
+                            indexes,
+                            None,
+                        )
             else:
-                # TODO: we can further extract code from _process_continuous 
+                # TODO: we can further extract code from _process_continuous
                 #  to eliminate more per feature
                 # execution.
 
@@ -2537,30 +2406,277 @@ def unify_columns_schematized(
         _log.error(msg)
         raise ValueError(msg)
     elif isinstance(X, dict):
-        _local_process_dict_column = _process_dict_column_schematized
         feature_names_in_get = feature_names_in.__getitem__
         X_get = X.__getitem__
 
         def internal(feature_idx, feature_type):
-            nonmissings, uniques, X_col, bad = _local_process_dict_column(
-                X_get(feature_names_in_get(feature_idx)),
-                feature_type,
-                None,
-            )
+            X_col = X_get(feature_names_in_get(feature_idx))
+            # eliminate this
+            min_unique_continuous = None
 
-            # unlike other datasets, dict must be checked for content length
-            if nonmissings is None or nonmissings is False:
+            if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
+                pass
+            elif isinstance(X_col, _SeriesType):
+                # unlike other datasets, dict must be checked for content length
                 if n_samples != X_col.shape[0]:
                     msg = "The columns of X are mismatched in the number of of samples"
                     _log.error(msg)
                     raise ValueError(msg)
-            else:
-                if n_samples != nonmissings.shape[0]:
-                    msg = "The columns of X are mismatched in the number of of samples"
+
+                return _process_pandas_column_schematized(
+                    X_col, feature_type, min_unique_continuous
+                )
+            elif isinstance(X_col, _DataFrameType):
+                if X_col.shape[1] == 1:
+                    # unlike other datasets, dict must be checked for content length
+                    if n_samples != X_col.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    return _process_pandas_column_schematized(
+                        X_col.iloc[:, 0], feature_type, min_unique_continuous
+                    )
+                if X_col.shape[0] == 1:
+                    X_col = X_col.to_numpy(np.object_).ravel()
+                elif X_col.shape[1] == 0 or X_col.shape[0] == 0:
+                    X_col = np.empty(0, np.object_)
+                else:
+                    msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
                     _log.error(msg)
                     raise ValueError(msg)
+            elif isinstance(X_col, _spmatrix_or_sparray):
+                if X_col.shape[1] == 1:
+                    # unlike other datasets, dict must be checked for content length
+                    if n_samples != X_col.shape[0]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
 
-            return nonmissings, uniques, X_col, bad
+                    return _process_sparse_column_schematized(
+                        X_col, feature_type, min_unique_continuous
+                    )
+                if X_col.shape[0] == 1:
+                    # unlike other datasets, dict must be checked for content length
+                    if n_samples != X_col.shape[1]:
+                        msg = "The columns of X are mismatched in the number of of samples"
+                        _log.error(msg)
+                        raise ValueError(msg)
+
+                    return _process_sparse_column_schematized(
+                        X_col, feature_type, min_unique_continuous
+                    )
+                if X_col.shape[1] == 0 or X_col.shape[0] == 0:
+                    X_col = np.empty(0, np.object_)
+                else:
+                    msg = f"Cannot reshape to 1D. Original shape was {X_col.shape}"
+                    _log.error(msg)
+                    raise ValueError(msg)
+            elif isinstance(X_col, _list_tuple_types):
+                X_col = np.array(X_col, np.object_)
+            elif isinstance(X_col, (str, bytes)):
+                # isinstance(, str) also works for np.str_
+
+                # don't allow strings to get to the np.array conversion below
+                X_col_tmp = np.empty(1, np.object_)
+                X_col_tmp[0] = X_col
+                X_col = X_col_tmp
+            else:
+                try:
+                    # TODO: we need to iterate though all the columns in preclean_X to handle iterable columns
+
+                    # we don't support iterables that get exhausted on their first examination.  This condition
+                    # should be detected though in preclean_X where we get the length or bin_native where we check the
+                    # number of samples on the 2nd run through the generator
+                    X_col = np.array(list(X_col), np.object_)
+                except TypeError:
+                    # if our item isn't iterable, assume it has just 1 item and we'll check below if that's consistent
+                    X_col_tmp = np.empty(1, np.object_)
+                    X_col_tmp[0] = X_col
+                    X_col = X_col_tmp
+
+            X_col = _reshape_1D_if_possible(X_col)
+
+            # unlike other datasets, dict must be checked for content length
+            if n_samples != X_col.shape[0]:
+                msg = "The columns of X are mismatched in the number of of samples"
+                _log.error(msg)
+                raise ValueError(msg)
+
+            tt = X_col.dtype.type
+            if isinstance(X_col, ma.masked_array):
+                nonmissings = X_col.mask
+                if nonmissings is not ma.nomask:
+                    # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                    if nonmissings.any():
+                        nonmissings = ~nonmissings
+                        X_col = X_col.compressed()
+                        if tt is np.object_:
+                            if _pandas_installed:
+                                # pandas also has the pd.NA value that indicates missing. If Pandas is
+                                # available we can use the pd.notna function that checks for
+                                # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                                # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                                nonmissings2 = pd.notna(X_col)
+                            else:
+                                # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                                nonmissings2 = X_col == X_col
+                                nonmissings2 &= X_col != _none_ndarray
+
+                            if not nonmissings2.all():
+                                X_col = X_col[nonmissings2]
+                                np.place(nonmissings, nonmissings, nonmissings2)
+
+                            if feature_type == "continuous":
+                                # called under: fit or predict
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous(X_col, nonmissings),
+                                )
+
+                            # feature_type == "nominal" or feature_type == "ordinal"
+                            if _pandas_installed:
+                                indexes, uniques = pd.factorize(
+                                    _densify_object_ndarray(X_col)
+                                )
+                            else:
+                                uniques, indexes = np.unique(
+                                    _densify_object_ndarray(X_col), return_inverse=True
+                                )
+
+                            if issubclass(uniques.dtype.type, np.floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.float64, copy=False).astype(
+                                        np.str_
+                                    ),
+                                    indexes,
+                                    None,
+                                )
+
+                            return (
+                                nonmissings,
+                                uniques.astype(np.str_, copy=False),
+                                indexes,
+                                None,
+                            )
+                        else:
+                            if feature_type == "continuous":
+                                # called under: fit or predict
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous(X_col, nonmissings),
+                                )
+
+                            # feature_type == "nominal" or feature_type == "ordinal"
+
+                            if issubclass(tt, np.floating):
+                                m = np.isnan(X_col)
+                                if m.any():
+                                    np.logical_not(m, out=m)
+                                    X_col = X_col[m]
+                                    np.place(nonmissings, nonmissings, m)
+                                if _pandas_installed:
+                                    indexes, uniques = pd.factorize(X_col)
+                                else:
+                                    uniques, indexes = np.unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(np.str_),
+                                    indexes,
+                                    None,
+                                )
+
+                            if _pandas_installed:
+                                indexes, uniques = pd.factorize(X_col)
+                            else:
+                                uniques, indexes = np.unique(X_col, return_inverse=True)
+                            return (
+                                nonmissings,
+                                uniques.astype(np.str_, copy=False),
+                                indexes,
+                                None,
+                            )
+                X_col = X_col.data
+
+            if X_col.dtype.type is np.object_:
+                if _pandas_installed:
+                    # pandas also has the pd.NA value that indicates missing. If Pandas is
+                    # available we can use the pd.notna function that checks for
+                    # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
+                    # alternative (X_col == X_col) & (X_col != np.array(None)) below
+                    nonmissings = pd.notna(X_col)
+                else:
+                    # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
+                    nonmissings = X_col == X_col
+                    nonmissings &= X_col != _none_ndarray
+
+                if not nonmissings.all():
+                    if feature_type == "continuous":
+                        # called under: fit or predict
+                        return (
+                            None,
+                            None,
+                            *_process_continuous(X_col[nonmissings], nonmissings),
+                        )
+                    # feature_type == "nominal" or feature_type == "ordinal"
+
+                    if _pandas_installed:
+                        indexes, uniques = pd.factorize(
+                            _densify_object_ndarray(X_col[nonmissings])
+                        )
+                    else:
+                        uniques, indexes = np.unique(
+                            _densify_object_ndarray(X_col[nonmissings]),
+                            return_inverse=True,
+                        )
+                    if issubclass(uniques.dtype.type, np.floating):
+                        # Convert all non-float64 floats to float64 to ensure consistent strings.
+                        return (
+                            nonmissings,
+                            uniques.astype(np.float64, copy=False).astype(np.str_),
+                            indexes,
+                            None,
+                        )
+                    return (
+                        nonmissings,
+                        uniques.astype(np.str_, copy=False),
+                        indexes,
+                        None,
+                    )
+
+            if feature_type == "continuous":
+                # called under: fit or predict
+                return None, None, *_process_continuous(X_col, None)
+
+            # feature_type == "nominal" or feature_type == "ordinal"
+
+            if issubclass(tt, np.floating):
+                m = np.isnan(X_col)
+                if m.any():
+                    np.logical_not(m, out=m)
+                    X_col = X_col[m]
+                    if _pandas_installed:
+                        indexes, uniques = pd.factorize(X_col)
+                    else:
+                        uniques, indexes = np.unique(X_col, return_inverse=True)
+                    return m, uniques.astype(np.str_), indexes, None
+                if _pandas_installed:
+                    indexes, uniques = pd.factorize(X_col)
+                else:
+                    uniques, indexes = np.unique(X_col, return_inverse=True)
+                return None, uniques.astype(np.str_), indexes, None
+
+            if _pandas_installed:
+                indexes, uniques = pd.factorize(X_col)
+            else:
+                uniques, indexes = np.unique(X_col, return_inverse=True)
+            return None, uniques.astype(np.str_, copy=False), indexes, None
 
         return internal
     else:
