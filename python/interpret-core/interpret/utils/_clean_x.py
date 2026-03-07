@@ -1012,7 +1012,7 @@ def _process_numpy_column_nonschematized(
     )
 
 
-def _process_pandas_column_schematized(X_col, feature_type, min_unique_continuous):
+def _process_pandas_column_schematized(X_col, feature_type):
     dt = X_col.dtype
     tt = dt.type
     if feature_type == "continuous":
@@ -1321,7 +1321,7 @@ def _process_pandas_column_nonschematized(
     raise TypeError(msg)
 
 
-def _process_sparse_column_schematized(X_col, feature_type, min_unique_continuous):
+def _process_sparse_column_schematized(X_col, feature_type):
     X_col = X_col.toarray().ravel()
 
     tt = X_col.dtype.type
@@ -2275,7 +2275,6 @@ def unify_columns_schematized(
                 return _local_process_pandas_column_schematized(
                     X_get(mapping_get(feature_names_in_get(feature_idx))),
                     feature_type,
-                    None,
                 )
 
             return internal
@@ -2293,7 +2292,6 @@ def unify_columns_schematized(
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, feature_idx)),
                         feature_type,
-                        None,
                     )
 
                 return internal
@@ -2316,7 +2314,6 @@ def unify_columns_schematized(
                     return _local_process_pandas_column_schematized(
                         X_get((_local_slice_none, col_map_get(feature_idx))),
                         feature_type,
-                        None,
                     )
 
                 return internal
@@ -2327,15 +2324,14 @@ def unify_columns_schematized(
         n_cols = X.shape[1]
         X_get = X.__getitem__
         _local_slice_none = _slice_none
-        _local_process_sparse_column = _process_sparse_column_schematized
+        _local_process_sparse_column_schematized = _process_sparse_column_schematized
 
         if len(feature_names_in) == n_cols:
 
             def internal(feature_idx, feature_type):
-                return _local_process_sparse_column(
+                return _local_process_sparse_column_schematized(
                     X_get((_local_slice_none, (feature_idx,))),
                     feature_type,
-                    None,
                 )
 
             return internal
@@ -2355,25 +2351,23 @@ def unify_columns_schematized(
             col_map_get = col_map.__getitem__
 
             def internal(feature_idx, feature_type):
-                return _local_process_sparse_column(
+                return _local_process_sparse_column_schematized(
                     X_get((_local_slice_none, (col_map_get(feature_idx),))),
                     feature_type,
-                    None,
                 )
 
             return internal
     elif isinstance(X, _spmatrix):
         n_cols = X.shape[1]
         X_get = X.getcol
-        _local_process_sparse_column = _process_sparse_column_schematized
+        _local_process_sparse_column_schematized = _process_sparse_column_schematized
 
         if len(feature_names_in) == n_cols:
 
             def internal(feature_idx, feature_type):
-                return _local_process_sparse_column(
+                return _local_process_sparse_column_schematized(
                     X_get(feature_idx),
                     feature_type,
-                    None,
                 )
 
             return internal
@@ -2393,10 +2387,9 @@ def unify_columns_schematized(
             col_map_get = col_map.__getitem__
 
             def internal(feature_idx, feature_type):
-                return _local_process_sparse_column(
+                return _local_process_sparse_column_schematized(
                     X_get(col_map_get(feature_idx)),
                     feature_type,
-                    None,
                 )
 
             return internal
@@ -2411,8 +2404,6 @@ def unify_columns_schematized(
 
         def internal(feature_idx, feature_type):
             X_col = X_get(feature_names_in_get(feature_idx))
-            # eliminate this
-            min_unique_continuous = None
 
             if isinstance(X_col, np.ndarray):  # this includes ma.masked_array
                 pass
@@ -2423,9 +2414,7 @@ def unify_columns_schematized(
                     _log.error(msg)
                     raise ValueError(msg)
 
-                return _process_pandas_column_schematized(
-                    X_col, feature_type, min_unique_continuous
-                )
+                return _process_pandas_column_schematized(X_col, feature_type)
             elif isinstance(X_col, _DataFrameType):
                 if X_col.shape[1] == 1:
                     # unlike other datasets, dict must be checked for content length
@@ -2435,7 +2424,7 @@ def unify_columns_schematized(
                         raise ValueError(msg)
 
                     return _process_pandas_column_schematized(
-                        X_col.iloc[:, 0], feature_type, min_unique_continuous
+                        X_col.iloc[:, 0], feature_type
                     )
                 if X_col.shape[0] == 1:
                     X_col = X_col.to_numpy(np.object_).ravel()
@@ -2453,9 +2442,7 @@ def unify_columns_schematized(
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    return _process_sparse_column_schematized(
-                        X_col, feature_type, min_unique_continuous
-                    )
+                    return _process_sparse_column_schematized(X_col, feature_type)
                 if X_col.shape[0] == 1:
                     # unlike other datasets, dict must be checked for content length
                     if n_samples != X_col.shape[1]:
@@ -2463,9 +2450,7 @@ def unify_columns_schematized(
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    return _process_sparse_column_schematized(
-                        X_col, feature_type, min_unique_continuous
-                    )
+                    return _process_sparse_column_schematized(X_col, feature_type)
                 if X_col.shape[1] == 0 or X_col.shape[0] == 0:
                     X_col = np.empty(0, np.object_)
                 else:
