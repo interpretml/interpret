@@ -378,6 +378,8 @@ _repeat_str = repeat(str)
 _not_one = (1).__ne__
 _spmatrix_or_sparray = (_spmatrix, _sparray)
 _hard_sparse = (_dia_array, _bsr_array, _coo_array)
+_eq_continuous = "continuous".__eq__
+_str_bytes_types = (str, bytes)
 
 
 def _densify_object_ndarray(X_col):
@@ -1631,7 +1633,7 @@ def unify_columns_schematized(
                             _slice_none=_slice_none,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             ascontiguousarray=ascontiguousarray,
                             factorize=factorize,
@@ -1652,7 +1654,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                     X_col_tmp[nonmissings] = X_col
                                     return None, None, X_col_tmp, None
@@ -1676,7 +1678,7 @@ def unify_columns_schematized(
                                 )
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     # force C contiguous here for a later call to native.discretize
                                     return (
                                         None,
@@ -1717,7 +1719,7 @@ def unify_columns_schematized(
                             _slice_none=_slice_none,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             factorize=factorize,
                             float64=float64,
@@ -1737,7 +1739,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                     X_col_tmp[nonmissings] = X_col
@@ -1763,7 +1765,7 @@ def unify_columns_schematized(
 
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -1806,7 +1808,7 @@ def unify_columns_schematized(
                                 X_get=X.__getitem__,
                                 notna=notna,
                                 place=place,
-                                eq_continuous="continuous".__eq__,
+                                _eq_continuous=_eq_continuous,
                                 _densify_object_ndarray=_densify_object_ndarray,
                                 _process_continuous_objects=_process_continuous_objects,
                                 factorize=factorize,
@@ -1815,6 +1817,7 @@ def unify_columns_schematized(
                                 full=full,
                                 nan=nan,
                                 str_=str_,
+                                issubclass=issubclass,
                             ):
                                 index = (_slice_none, feature_idx)
                                 nonmissings = mask_get(index)
@@ -1846,7 +1849,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         if nonmissings is None:
                                             return (
@@ -1900,7 +1903,7 @@ def unify_columns_schematized(
                                 X_get=X.__getitem__,
                                 _none_ndarray=_none_ndarray,
                                 place=place,
-                                eq_continuous="continuous".__eq__,
+                                _eq_continuous=_eq_continuous,
                                 _densify_object_ndarray=_densify_object_ndarray,
                                 _process_continuous_objects=_process_continuous_objects,
                                 float64=float64,
@@ -1909,6 +1912,7 @@ def unify_columns_schematized(
                                 nan=nan,
                                 str_=str_,
                                 unique=unique,
+                                issubclass=issubclass,
                             ):
                                 index = (_slice_none, feature_idx)
                                 nonmissings = mask_get(index)
@@ -1936,7 +1940,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         if nonmissings is None:
                                             return (
@@ -1988,7 +1992,7 @@ def unify_columns_schematized(
                             _slice_none=_slice_none,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             _process_continuous_strings=_process_continuous_strings,
                             factorize=factorize,
@@ -2006,7 +2010,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         X_col = X_col.astype(float64)
                                         X_col_tmp = full(
@@ -2038,7 +2042,7 @@ def unify_columns_schematized(
 
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         return (
                                             None,
@@ -2076,7 +2080,7 @@ def unify_columns_schematized(
                     feature_type,
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     ascontiguousarray=ascontiguousarray,
                     factorize=factorize,
@@ -2087,7 +2091,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, feature_idx))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         # force C contiguous here for a later call to native.discretize
                         return None, None, ascontiguousarray(X_col), None
 
@@ -2113,7 +2117,7 @@ def unify_columns_schematized(
                     feature_type,
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     factorize=factorize,
                     float64=float64,
@@ -2124,7 +2128,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, feature_idx))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         # force C contiguous here for a later call to native.discretize
                         return None, None, X_col.astype(float64, "C"), None
 
@@ -2152,7 +2156,7 @@ def unify_columns_schematized(
                         X_get=X.__getitem__,
                         _slice_none=_slice_none,
                         notna=notna,
-                        eq_continuous="continuous".__eq__,
+                        _eq_continuous=_eq_continuous,
                         _densify_object_ndarray=_densify_object_ndarray,
                         _process_continuous_objects=_process_continuous_objects,
                         factorize=factorize,
@@ -2161,6 +2165,7 @@ def unify_columns_schematized(
                         full=full,
                         nan=nan,
                         str_=str_,
+                        issubclass=issubclass,
                     ):
                         X_col = X_get((_slice_none, feature_idx))
 
@@ -2170,7 +2175,7 @@ def unify_columns_schematized(
                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
                         nonmissings = notna(X_col)
                         if nonmissings.all():
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     return (
                                         None,
@@ -2204,7 +2209,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
@@ -2242,7 +2247,7 @@ def unify_columns_schematized(
                         X_get=X.__getitem__,
                         _slice_none=_slice_none,
                         _none_ndarray=_none_ndarray,
-                        eq_continuous="continuous".__eq__,
+                        _eq_continuous=_eq_continuous,
                         _densify_object_ndarray=_densify_object_ndarray,
                         _process_continuous_objects=_process_continuous_objects,
                         float64=float64,
@@ -2251,6 +2256,7 @@ def unify_columns_schematized(
                         nan=nan,
                         str_=str_,
                         unique=unique,
+                        issubclass=issubclass,
                     ):
                         X_col = X_get((_slice_none, feature_idx))
 
@@ -2259,7 +2265,7 @@ def unify_columns_schematized(
                         nonmissings &= X_col != _none_ndarray
 
                         if nonmissings.all():
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     return (
                                         None,
@@ -2295,7 +2301,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
@@ -2334,7 +2340,7 @@ def unify_columns_schematized(
                     feature_type,
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     _process_continuous_strings=_process_continuous_strings,
                     factorize=factorize,
@@ -2344,7 +2350,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, feature_idx))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         try:
                             # force C contiguous here for a later call to native.discretize
                             return None, None, X_col.astype(float64, "C"), None
@@ -2384,7 +2390,7 @@ def unify_columns_schematized(
                             col_map_get=col_map.__getitem__,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             ascontiguousarray=ascontiguousarray,
                             factorize=factorize,
@@ -2405,7 +2411,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                     X_col_tmp[nonmissings] = X_col
                                     return None, None, X_col_tmp, None
@@ -2430,7 +2436,7 @@ def unify_columns_schematized(
 
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     # force C contiguous here for a later call to native.discretize
                                     return (
                                         None,
@@ -2472,7 +2478,7 @@ def unify_columns_schematized(
                             col_map_get=col_map.__getitem__,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             factorize=factorize,
                             float64=float64,
@@ -2492,7 +2498,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                     X_col_tmp[nonmissings] = X_col
@@ -2518,7 +2524,7 @@ def unify_columns_schematized(
 
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -2562,7 +2568,7 @@ def unify_columns_schematized(
                                 X_get=X.__getitem__,
                                 notna=notna,
                                 place=place,
-                                eq_continuous="continuous".__eq__,
+                                _eq_continuous=_eq_continuous,
                                 _densify_object_ndarray=_densify_object_ndarray,
                                 _process_continuous_objects=_process_continuous_objects,
                                 factorize=factorize,
@@ -2571,6 +2577,7 @@ def unify_columns_schematized(
                                 full=full,
                                 nan=nan,
                                 str_=str_,
+                                issubclass=issubclass,
                             ):
                                 index = (
                                     _slice_none,
@@ -2606,7 +2613,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         if nonmissings is None:
                                             return (
@@ -2661,7 +2668,7 @@ def unify_columns_schematized(
                                 X_get=X.__getitem__,
                                 _none_ndarray=_none_ndarray,
                                 place=place,
-                                eq_continuous="continuous".__eq__,
+                                _eq_continuous=_eq_continuous,
                                 _densify_object_ndarray=_densify_object_ndarray,
                                 _process_continuous_objects=_process_continuous_objects,
                                 float64=float64,
@@ -2670,6 +2677,7 @@ def unify_columns_schematized(
                                 nan=nan,
                                 str_=str_,
                                 unique=unique,
+                                issubclass=issubclass,
                             ):
                                 index = (
                                     _slice_none,
@@ -2701,7 +2709,7 @@ def unify_columns_schematized(
                                     else:
                                         X_col = X_col[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         if nonmissings is None:
                                             return (
@@ -2754,7 +2762,7 @@ def unify_columns_schematized(
                             col_map_get=col_map.__getitem__,
                             mask_get=mask.__getitem__,
                             X_get=X.__getitem__,
-                            eq_continuous="continuous".__eq__,
+                            _eq_continuous=_eq_continuous,
                             _pandas_installed=_pandas_installed,
                             _process_continuous_strings=_process_continuous_strings,
                             factorize=factorize,
@@ -2772,7 +2780,7 @@ def unify_columns_schematized(
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
 
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         X_col = X_col.astype(float64)
                                         X_col_tmp = full(
@@ -2804,7 +2812,7 @@ def unify_columns_schematized(
 
                             else:
                                 X_col = X_get(index)
-                                if eq_continuous(feature_type):
+                                if _eq_continuous(feature_type):
                                     try:
                                         return (
                                             None,
@@ -2842,7 +2850,7 @@ def unify_columns_schematized(
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
                     col_map_get=col_map.__getitem__,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     ascontiguousarray=ascontiguousarray,
                     factorize=factorize,
@@ -2853,7 +2861,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         # force C contiguous here for a later call to native.discretize
                         return None, None, ascontiguousarray(X_col), None
 
@@ -2880,7 +2888,7 @@ def unify_columns_schematized(
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
                     col_map_get=col_map.__getitem__,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     factorize=factorize,
                     float64=float64,
@@ -2891,7 +2899,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         # force C contiguous here for a later call to native.discretize
                         return None, None, X_col.astype(float64, "C"), None
 
@@ -2920,7 +2928,7 @@ def unify_columns_schematized(
                         _slice_none=_slice_none,
                         col_map_get=col_map.__getitem__,
                         notna=notna,
-                        eq_continuous="continuous".__eq__,
+                        _eq_continuous=_eq_continuous,
                         _densify_object_ndarray=_densify_object_ndarray,
                         _process_continuous_objects=_process_continuous_objects,
                         factorize=factorize,
@@ -2929,6 +2937,7 @@ def unify_columns_schematized(
                         full=full,
                         nan=nan,
                         str_=str_,
+                        issubclass=issubclass,
                     ):
                         X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
@@ -2939,7 +2948,7 @@ def unify_columns_schematized(
                         nonmissings = notna(X_col)
 
                         if nonmissings.all():
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     return (
                                         None,
@@ -2973,7 +2982,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
@@ -3012,7 +3021,7 @@ def unify_columns_schematized(
                         _slice_none=_slice_none,
                         col_map_get=col_map.__getitem__,
                         _none_ndarray=_none_ndarray,
-                        eq_continuous="continuous".__eq__,
+                        _eq_continuous=_eq_continuous,
                         _densify_object_ndarray=_densify_object_ndarray,
                         _process_continuous_objects=_process_continuous_objects,
                         float64=float64,
@@ -3021,6 +3030,7 @@ def unify_columns_schematized(
                         nan=nan,
                         str_=str_,
                         unique=unique,
+                        issubclass=issubclass,
                     ):
                         X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
@@ -3029,7 +3039,7 @@ def unify_columns_schematized(
                         nonmissings &= X_col != _none_ndarray
 
                         if nonmissings.all():
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     return (
                                         None,
@@ -3066,7 +3076,7 @@ def unify_columns_schematized(
                         else:
                             X_col = X_col[nonmissings]
 
-                            if eq_continuous(feature_type):
+                            if _eq_continuous(feature_type):
                                 try:
                                     X_col = X_col.astype(float64)
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
@@ -3107,7 +3117,7 @@ def unify_columns_schematized(
                     X_get=X.__getitem__,
                     _slice_none=_slice_none,
                     col_map_get=col_map.__getitem__,
-                    eq_continuous="continuous".__eq__,
+                    _eq_continuous=_eq_continuous,
                     _pandas_installed=_pandas_installed,
                     _process_continuous_strings=_process_continuous_strings,
                     factorize=factorize,
@@ -3117,7 +3127,7 @@ def unify_columns_schematized(
                 ):
                     X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if eq_continuous(feature_type):
+                    if _eq_continuous(feature_type):
                         try:
                             # force C contiguous here for a later call to native.discretize
                             return None, None, X_col.astype(float64, "C"), None
@@ -3356,6 +3366,10 @@ def unify_columns_schematized(
             unique=unique,
             masked_array=masked_array,
             nomask=nomask,
+            isinstance=isinstance,
+            issubclass=issubclass,
+            list=list,
+            _str_bytes_types=_str_bytes_types,
         ):
             X_col = X_get(feature_names_in_get(feature_idx))
 
@@ -3413,7 +3427,7 @@ def unify_columns_schematized(
                     raise ValueError(msg)
             elif isinstance(X_col, _list_tuple_types):
                 X_col = np_array(X_col, object_)
-            elif isinstance(X_col, (str, bytes)):
+            elif isinstance(X_col, _str_bytes_types):
                 # isinstance(, str) also works for np.str_
 
                 # don't allow strings to get to the np.array conversion below
