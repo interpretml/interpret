@@ -1626,176 +1626,306 @@ def unify_columns_schematized(
                 X = X.data
                 if mask is not nomask:
                     if tt is float64:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            ascontiguousarray=ascontiguousarray,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            isnan=isnan,
-                            logical_not=logical_not,
-                            nan=nan,
-                            place=place,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                ascontiguousarray=ascontiguousarray,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if _eq_continuous(feature_type):
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                if _pandas_installed:
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        indexes, uniques = factorize(X_col)
+                                        return m, uniques.astype(str_), indexes, None
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                ascontiguousarray=ascontiguousarray,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
-                                    # force C contiguous here for a later call to native.discretize
                                     return (
-                                        None,
-                                        None,
-                                        ascontiguousarray(X_col),
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
                                         None,
                                     )
+                                else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    if _pandas_installed:
-                                        indexes, uniques = factorize(X_col)
-                                    else:
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                    return m, uniques.astype(str_), indexes, None
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
-                                else:
+                                        return m, uniques.astype(str_), indexes, None
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
 
                     elif tt is floating:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            isnan=isnan,
-                            logical_not=logical_not,
-                            nan=nan,
-                            place=place,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if _eq_continuous(feature_type):
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                if _pandas_installed:
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        indexes, uniques = factorize(X_col)
+                                        return m, uniques.astype(str_), indexes, None
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
-
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
                                     return (
-                                        None,
-                                        None,
-                                        X_col.astype(float64, "C"),
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    if _pandas_installed:
-                                        indexes, uniques = factorize(X_col)
-                                    else:
+                                else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                    return m, uniques.astype(str_), indexes, None
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
-                                else:
+                                        return m, uniques.astype(str_), indexes, None
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
 
                     elif tt is object_:
                         if _pandas_installed:
@@ -1985,167 +2115,289 @@ def unify_columns_schematized(
                                     None,
                                 )
                     else:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            _process_continuous_strings=_process_continuous_strings,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            nan=nan,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                _process_continuous_strings=_process_continuous_strings,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                nan=nan,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    try:
-                                        X_col = X_col.astype(float64)
-                                        X_col_tmp = full(
-                                            nonmissings.shape[0], nan, float64
-                                        )
-                                        X_col_tmp[nonmissings] = X_col
-                                        return None, None, X_col_tmp, None
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
-                                        return (
-                                            None,
-                                            None,
-                                            *_process_continuous_strings(
-                                                X_col, nonmissings
-                                            ),
-                                        )
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
 
-                                if _pandas_installed:
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
+
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                _process_continuous_strings=_process_continuous_strings,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                nan=nan,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_, copy=False),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
 
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
-                                    try:
-                                        return (
-                                            None,
-                                            None,
-                                            X_col.astype(float64, "C"),
-                                            None,
-                                        )
-
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
-                                        return (
-                                            None,
-                                            None,
-                                            *_process_continuous_strings(X_col, None),
-                                        )
-
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_, copy=False),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
 
                     return internal
 
             if tt is float64:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    ascontiguousarray=ascontiguousarray,
-                    factorize=factorize,
-                    isnan=isnan,
-                    logical_not=logical_not,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, feature_idx))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        ascontiguousarray=ascontiguousarray,
+                        factorize=factorize,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
 
-                    if _eq_continuous(feature_type):
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, ascontiguousarray(X_col), None
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
-                        if _pandas_installed:
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                        else:
-                            uniques, indexes = unique(X_col, return_inverse=True)
-                        return m, uniques.astype(str_), indexes, None
-                    if _pandas_installed:
+                            return m, uniques.astype(str_), indexes, None
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        ascontiguousarray=ascontiguousarray,
+                        factorize=factorize,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
+
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+                            return m, uniques.astype(str_), indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_), indexes, None
+                        return None, uniques.astype(str_), indexes, None
 
             elif tt is floating:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    factorize=factorize,
-                    float64=float64,
-                    isnan=isnan,
-                    logical_not=logical_not,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, feature_idx))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        factorize=factorize,
+                        float64=float64,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
 
-                    if _eq_continuous(feature_type):
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, X_col.astype(float64, "C"), None
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
-                        if _pandas_installed:
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                        else:
-                            uniques, indexes = unique(X_col, return_inverse=True)
-                        return m, uniques.astype(str_), indexes, None
-                    if _pandas_installed:
+                            return m, uniques.astype(str_), indexes, None
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        factorize=factorize,
+                        float64=float64,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
+
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+                            return m, uniques.astype(str_), indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_), indexes, None
+                        return None, uniques.astype(str_), indexes, None
 
             elif tt is object_:
                 if _pandas_installed:
@@ -2334,34 +2586,65 @@ def unify_columns_schematized(
                                 None,
                             )
             else:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    _process_continuous_strings=_process_continuous_strings,
-                    factorize=factorize,
-                    float64=float64,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, feature_idx))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        _process_continuous_strings=_process_continuous_strings,
+                        factorize=factorize,
+                        float64=float64,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
 
-                    if _eq_continuous(feature_type):
-                        try:
-                            # force C contiguous here for a later call to native.discretize
-                            return None, None, X_col.astype(float64, "C"), None
-                        except:  # object conversion can throw any exception in their __float__ or __str__
-                            return None, None, *_process_continuous_strings(X_col, None)
+                        if _eq_continuous(feature_type):
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
 
-                    if _pandas_installed:
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_, copy=False), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        _eq_continuous=_eq_continuous,
+                        _process_continuous_strings=_process_continuous_strings,
+                        factorize=factorize,
+                        float64=float64,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, feature_idx))
+
+                        if _eq_continuous(feature_type):
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_, copy=False), indexes, None
+                        return None, uniques.astype(str_, copy=False), indexes, None
 
             return internal
         else:
@@ -2382,179 +2665,312 @@ def unify_columns_schematized(
                 X = X.data
                 if mask is not nomask:
                     if tt is float64:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            col_map_get=col_map.__getitem__,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            ascontiguousarray=ascontiguousarray,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            isnan=isnan,
-                            logical_not=logical_not,
-                            nan=nan,
-                            place=place,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, col_map_get(feature_idx))
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                ascontiguousarray=ascontiguousarray,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if _eq_continuous(feature_type):
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                if _pandas_installed:
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        indexes, uniques = factorize(X_col)
+                                        return m, uniques.astype(str_), indexes, None
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                ascontiguousarray=ascontiguousarray,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
-
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
-                                    # force C contiguous here for a later call to native.discretize
                                     return (
-                                        None,
-                                        None,
-                                        ascontiguousarray(X_col),
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    if _pandas_installed:
-                                        indexes, uniques = factorize(X_col)
-                                    else:
+                                else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                    return m, uniques.astype(str_), indexes, None
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
-                                else:
+                                        return m, uniques.astype(str_), indexes, None
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
 
                     elif tt is floating:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            col_map_get=col_map.__getitem__,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            isnan=isnan,
-                            logical_not=logical_not,
-                            nan=nan,
-                            place=place,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, col_map_get(feature_idx))
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if _eq_continuous(feature_type):
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                if _pandas_installed:
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        indexes, uniques = factorize(X_col)
+                                        return m, uniques.astype(str_), indexes, None
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                isnan=isnan,
+                                logical_not=logical_not,
+                                nan=nan,
+                                place=place,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
-
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
                                     return (
-                                        None,
-                                        None,
-                                        X_col.astype(float64, "C"),
+                                        nonmissings,
+                                        uniques.astype(str_),
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    if _pandas_installed:
-                                        indexes, uniques = factorize(X_col)
-                                    else:
+                                else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                    return m, uniques.astype(str_), indexes, None
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
-                                else:
+                                        return m, uniques.astype(str_), indexes, None
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_),
+                                        indexes,
+                                        None,
+                                    )
 
                     elif tt is object_:
                         if _pandas_installed:
@@ -2754,169 +3170,293 @@ def unify_columns_schematized(
                                     None,
                                 )
                     else:
+                        if _pandas_installed:
 
-                        def internal(
-                            feature_idx,
-                            feature_type,
-                            _slice_none=_slice_none,
-                            col_map_get=col_map.__getitem__,
-                            mask_get=mask.__getitem__,
-                            X_get=X.__getitem__,
-                            _eq_continuous=_eq_continuous,
-                            _pandas_installed=_pandas_installed,
-                            _process_continuous_strings=_process_continuous_strings,
-                            factorize=factorize,
-                            float64=float64,
-                            full=full,
-                            nan=nan,
-                            str_=str_,
-                            unique=unique,
-                        ):
-                            index = (_slice_none, col_map_get(feature_idx))
-                            nonmissings = mask_get(index)
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                _process_continuous_strings=_process_continuous_strings,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                nan=nan,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X_get(index)[nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
 
-                                if _eq_continuous(feature_type):
-                                    try:
-                                        X_col = X_col.astype(float64)
-                                        X_col_tmp = full(
-                                            nonmissings.shape[0], nan, float64
-                                        )
-                                        X_col_tmp[nonmissings] = X_col
-                                        return None, None, X_col_tmp, None
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
-                                        return (
-                                            None,
-                                            None,
-                                            *_process_continuous_strings(
-                                                X_col, nonmissings
-                                            ),
-                                        )
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
 
-                                if _pandas_installed:
                                     indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
+
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(
+                                feature_idx,
+                                feature_type,
+                                _slice_none=_slice_none,
+                                col_map_get=col_map.__getitem__,
+                                mask_get=mask.__getitem__,
+                                X_get=X.__getitem__,
+                                _eq_continuous=_eq_continuous,
+                                _process_continuous_strings=_process_continuous_strings,
+                                factorize=factorize,
+                                float64=float64,
+                                full=full,
+                                nan=nan,
+                                str_=str_,
+                                unique=unique,
+                            ):
+                                index = (_slice_none, col_map_get(feature_idx))
+                                nonmissings = mask_get(index)
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X_get(index)[nonmissings]
+
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    nonmissings,
-                                    uniques.astype(str_, copy=False),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        nonmissings,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
 
-                            else:
-                                X_col = X_get(index)
-                                if _eq_continuous(feature_type):
-                                    try:
-                                        return (
-                                            None,
-                                            None,
-                                            X_col.astype(float64, "C"),
-                                            None,
-                                        )
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
-                                        return (
-                                            None,
-                                            None,
-                                            *_process_continuous_strings(X_col, None),
-                                        )
-
-                                if _pandas_installed:
-                                    indexes, uniques = factorize(X_col)
                                 else:
+                                    X_col = X_get(index)
+                                    if _eq_continuous(feature_type):
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
-                                return (
-                                    None,
-                                    uniques.astype(str_, copy=False),
-                                    indexes,
-                                    None,
-                                )
+                                    return (
+                                        None,
+                                        uniques.astype(str_, copy=False),
+                                        indexes,
+                                        None,
+                                    )
 
                     return internal
 
             if tt is float64:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    col_map_get=col_map.__getitem__,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    ascontiguousarray=ascontiguousarray,
-                    factorize=factorize,
-                    isnan=isnan,
-                    logical_not=logical_not,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, col_map_get(feature_idx)))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        ascontiguousarray=ascontiguousarray,
+                        factorize=factorize,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if _eq_continuous(feature_type):
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, ascontiguousarray(X_col), None
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
-                        if _pandas_installed:
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                        else:
-                            uniques, indexes = unique(X_col, return_inverse=True)
-                        return m, uniques.astype(str_), indexes, None
-                    if _pandas_installed:
+                            return m, uniques.astype(str_), indexes, None
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        ascontiguousarray=ascontiguousarray,
+                        factorize=factorize,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
+
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+                            return m, uniques.astype(str_), indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_), indexes, None
+                        return None, uniques.astype(str_), indexes, None
 
             elif tt is floating:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    col_map_get=col_map.__getitem__,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    factorize=factorize,
-                    float64=float64,
-                    isnan=isnan,
-                    logical_not=logical_not,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, col_map_get(feature_idx)))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        factorize=factorize,
+                        float64=float64,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if _eq_continuous(feature_type):
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, X_col.astype(float64, "C"), None
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
-                        if _pandas_installed:
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                        else:
-                            uniques, indexes = unique(X_col, return_inverse=True)
-                        return m, uniques.astype(str_), indexes, None
-                    if _pandas_installed:
+                            return m, uniques.astype(str_), indexes, None
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        factorize=factorize,
+                        float64=float64,
+                        isnan=isnan,
+                        logical_not=logical_not,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
+
+                        if _eq_continuous(feature_type):
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+                            return m, uniques.astype(str_), indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_), indexes, None
+                        return None, uniques.astype(str_), indexes, None
 
             elif tt is object_:
                 if _pandas_installed:
@@ -3110,35 +3650,67 @@ def unify_columns_schematized(
                             )
 
             else:
+                if _pandas_installed:
 
-                def internal(
-                    feature_idx,
-                    feature_type,
-                    X_get=X.__getitem__,
-                    _slice_none=_slice_none,
-                    col_map_get=col_map.__getitem__,
-                    _eq_continuous=_eq_continuous,
-                    _pandas_installed=_pandas_installed,
-                    _process_continuous_strings=_process_continuous_strings,
-                    factorize=factorize,
-                    float64=float64,
-                    str_=str_,
-                    unique=unique,
-                ):
-                    X_col = X_get((_slice_none, col_map_get(feature_idx)))
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        _process_continuous_strings=_process_continuous_strings,
+                        factorize=factorize,
+                        float64=float64,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
 
-                    if _eq_continuous(feature_type):
-                        try:
-                            # force C contiguous here for a later call to native.discretize
-                            return None, None, X_col.astype(float64, "C"), None
-                        except:  # object conversion can throw any exception in their __float__ or __str__
-                            return None, None, *_process_continuous_strings(X_col, None)
+                        if _eq_continuous(feature_type):
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
 
-                    if _pandas_installed:
                         indexes, uniques = factorize(X_col)
-                    else:
+                        return None, uniques.astype(str_, copy=False), indexes, None
+
+                else:
+
+                    def internal(
+                        feature_idx,
+                        feature_type,
+                        X_get=X.__getitem__,
+                        _slice_none=_slice_none,
+                        col_map_get=col_map.__getitem__,
+                        _eq_continuous=_eq_continuous,
+                        _process_continuous_strings=_process_continuous_strings,
+                        factorize=factorize,
+                        float64=float64,
+                        str_=str_,
+                        unique=unique,
+                    ):
+                        X_col = X_get((_slice_none, col_map_get(feature_idx)))
+
+                        if _eq_continuous(feature_type):
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return None, uniques.astype(str_, copy=False), indexes, None
+                        return None, uniques.astype(str_, copy=False), indexes, None
 
             return internal
     elif isinstance(X, _DataFrameType):
