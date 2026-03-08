@@ -20,6 +20,8 @@ _float_type_eq = np.dtype(np.float64).__eq__
 _dtype = attrgetter("dtype")
 _continuous_eq = "continuous".__eq__
 _from_iterable = chain.from_iterable
+_array_zero = np.zeros(1, np.int64)
+_repeat_negativeone = repeat(-1)
 
 
 def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
@@ -91,9 +93,77 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                         discretized[bad] = -1
                 else:
                     # categorical feature
-                    discretized = categorical_encode(
-                        uniques, raw[2], raw[0], bin_levels[bin_level - 1]
+                    nonmissings = raw[0]
+                    categories = bin_levels[bin_level - 1]
+
+                    mapping = np.fromiter(
+                        map(categories.get, uniques, _repeat_negativeone),
+                        np.int64,
+                        uniques.shape[0],
                     )
+
+                    n_cat = len(categories)
+                    if mapping.shape[0] <= n_cat:
+                        if np.array_equal(
+                            mapping, np.arange(1, mapping.shape[0] + 1, dtype=np.int64)
+                        ):
+                            # CategoricalDType can encode values as np.int8. We cannot allow an
+                            # int8 to overflow when we add 1, so convert to int64 first, and we
+                            # also need to make a copy here because we cache the raw data and
+                            # re-use it for different binning levels on the same feature.
+
+                            discretized = raw[2].astype(np.int64)
+                            discretized += 1
+
+                            if nonmissings is not None and nonmissings is not False:
+                                discretized_tmp = np.zeros(
+                                    nonmissings.shape[0], np.int64
+                                )
+                                discretized_tmp[nonmissings] = discretized
+                                discretized = discretized_tmp
+                        else:
+                            if nonmissings is None:
+                                # discretized should be all positive if nonmissings is None
+                                discretized = mapping[raw[2]]
+                            elif nonmissings is False:
+                                # missing values are -1 in discretized, so append 0 to the map, which is index -1
+                                discretized = np.concatenate((mapping, _array_zero))[
+                                    raw[2]
+                                ]
+                            else:
+                                discretized = np.zeros(nonmissings.shape[0], np.int64)
+                                discretized[nonmissings] = mapping[raw[2]]
+                    else:
+                        if np.array_equal(
+                            mapping[:n_cat], np.arange(1, n_cat + 1, dtype=np.int64)
+                        ):
+                            # CategoricalDType can encode values as np.int8. We cannot allow an
+                            # int8 to overflow when we add 1, so convert to int64 first, and we
+                            # also need to make a copy here because we cache the raw data and
+                            # re-use it for different binning levels on the same feature.
+
+                            discretized = raw[2].astype(np.int64)
+                            discretized += 1
+                            discretized[n_cat < discretized] = -1
+
+                            if nonmissings is not None and nonmissings is not False:
+                                discretized_tmp = np.zeros(
+                                    nonmissings.shape[0], np.int64
+                                )
+                                discretized_tmp[nonmissings] = discretized
+                                discretized = discretized_tmp
+                        else:
+                            if nonmissings is None:
+                                # discretized should be all positive if nonmissings is None
+                                discretized = mapping[raw[2]]
+                            elif nonmissings is False:
+                                # missing values are -1 in discretized, so append 0 to the map, which is index -1
+                                discretized = np.concatenate((mapping, _array_zero))[
+                                    raw[2]
+                                ]
+                            else:
+                                discretized = np.zeros(nonmissings.shape[0], np.int64)
+                                discretized[nonmissings] = mapping[raw[2]]
 
                 cached_discretized_set(key, discretized)
             term_discretized.append(discretized)
