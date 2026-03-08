@@ -1651,13 +1651,32 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
+                                    place(nonmissings, nonmissings, m)
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            # TODO: separate the nonmissing == None from non-None above
-                            if eq_continuous(feature_type):
-                                if nonmissings is None:
+                                if eq_continuous(feature_type):
                                     # force C contiguous here for a later call to native.discretize
                                     return (
                                         None,
@@ -1666,15 +1685,10 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-
-                            m = isnan(X_col)
-                            if m.any():
-                                logical_not(m, out=m)
-                                X_col = X_col[m]
-                                if nonmissings is None:
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
                                     if _pandas_installed:
                                         indexes, uniques = factorize(X_col)
                                     else:
@@ -1682,17 +1696,18 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
                                     return m, uniques.astype(str_), indexes, None
-                                place(nonmissings, nonmissings, m)
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_),
-                                indexes,
-                                None,
-                            )
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    None,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is floating:
 
@@ -1721,13 +1736,34 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
+                                    place(nonmissings, nonmissings, m)
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
+
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            # TODO: separate the nonmissing == None from non-None above
-                            if eq_continuous(feature_type):
-                                if nonmissings is None:
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -1735,16 +1771,10 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-
-                            m = isnan(X_col)
-                            if m.any():
-                                logical_not(m, out=m)
-                                X_col = X_col[m]
-                                if nonmissings is None:
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
                                     if _pandas_installed:
                                         indexes, uniques = factorize(X_col)
                                     else:
@@ -1752,17 +1782,18 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
                                     return m, uniques.astype(str_), indexes, None
-                                place(nonmissings, nonmissings, m)
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_),
-                                indexes,
-                                None,
-                            )
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    None,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is object_:
                         if _pandas_installed:
@@ -1974,14 +2005,41 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    try:
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                        return (
+                                            None,
+                                            None,
+                                            *_process_continuous_strings(
+                                                X_col, nonmissings
+                                            ),
+                                        )
+
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
+
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            # TODO: separate the nonmissing == None from non-None above
-                            if eq_continuous(feature_type):
-                                try:
-                                    if nonmissings is None:
+                                if eq_continuous(feature_type):
+                                    try:
                                         return (
                                             None,
                                             None,
@@ -1989,29 +2047,25 @@ def unify_columns_schematized(
                                             None,
                                         )
 
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
-                                except:  # object conversion can throw any exception in their __float__ or __str__
-                                    return (
-                                        None,
-                                        None,
-                                        *_process_continuous_strings(
-                                            X_col, nonmissings
-                                        ),
-                                    )
+                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                        return (
+                                            None,
+                                            None,
+                                            *_process_continuous_strings(X_col, None),
+                                        )
 
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_, copy=False),
-                                indexes,
-                                None,
-                            )
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    None,
+                                    uniques.astype(str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
 
                     return internal
 
@@ -2115,48 +2169,71 @@ def unify_columns_schematized(
                         # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
                         # alternative (X_col == X_col) & (X_col != np.array(None)) below
                         nonmissings = notna(X_col)
-
                         if nonmissings.all():
-                            nonmissings = None
-                        else:
-                            X_col = X_col[nonmissings]
-
-                        if eq_continuous(feature_type):
-                            try:
-                                if nonmissings is None:
+                            if eq_continuous(feature_type):
+                                try:
                                     return (
                                         None,
                                         None,
                                         X_col.astype(float64, "C"),
                                         None,
                                     )
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(X_col, None),
+                                    )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
                                 return (
                                     None,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
                                     None,
-                                    *_process_continuous_objects(X_col, nonmissings),
                                 )
-
-                        indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                        if issubclass(uniques.dtype.type, floating):
-                            # Convert all non-float64 floats to float64 to ensure consistent strings.
                             return (
-                                nonmissings,
-                                uniques.astype(float64, copy=False).astype(str_),
+                                None,
+                                uniques.astype(str_, copy=False),
                                 indexes,
                                 None,
                             )
-                        return (
-                            nonmissings,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+
+                        else:
+                            X_col = X_col[nonmissings]
+
+                            if eq_continuous(feature_type):
+                                try:
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(
+                                            X_col, nonmissings
+                                        ),
+                                    )
+
+                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                                return (
+                                    nonmissings,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
+                                    None,
+                                )
+                            return (
+                                nonmissings,
+                                uniques.astype(str_, copy=False),
+                                indexes,
+                                None,
+                            )
                 else:
 
                     def internal(
@@ -2182,48 +2259,74 @@ def unify_columns_schematized(
                         nonmissings &= X_col != _none_ndarray
 
                         if nonmissings.all():
-                            nonmissings = None
-                        else:
-                            X_col = X_col[nonmissings]
-
-                        if eq_continuous(feature_type):
-                            try:
-                                if nonmissings is None:
+                            if eq_continuous(feature_type):
+                                try:
                                     return (
                                         None,
                                         None,
                                         X_col.astype(float64, "C"),
                                         None,
                                     )
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(X_col, None),
+                                    )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            uniques, indexes = unique(
+                                _densify_object_ndarray(X_col), return_inverse=True
+                            )
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
                                 return (
                                     None,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
                                     None,
-                                    *_process_continuous_objects(X_col, nonmissings),
                                 )
-
-                        uniques, indexes = unique(
-                            _densify_object_ndarray(X_col), return_inverse=True
-                        )
-                        if issubclass(uniques.dtype.type, floating):
-                            # Convert all non-float64 floats to float64 to ensure consistent strings.
                             return (
-                                nonmissings,
-                                uniques.astype(float64, copy=False).astype(str_),
+                                None,
+                                uniques.astype(str_, copy=False),
                                 indexes,
                                 None,
                             )
-                        return (
-                            nonmissings,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+
+                        else:
+                            X_col = X_col[nonmissings]
+
+                            if eq_continuous(feature_type):
+                                try:
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(
+                                            X_col, nonmissings
+                                        ),
+                                    )
+
+                            uniques, indexes = unique(
+                                _densify_object_ndarray(X_col), return_inverse=True
+                            )
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                                return (
+                                    nonmissings,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
+                                    None,
+                                )
+                            return (
+                                nonmissings,
+                                uniques.astype(str_, copy=False),
+                                indexes,
+                                None,
+                            )
             else:
 
                 def internal(
@@ -2301,12 +2404,33 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
+                                    place(nonmissings, nonmissings, m)
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
+
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            if eq_continuous(feature_type):
-                                if nonmissings is None:
+                                if eq_continuous(feature_type):
                                     # force C contiguous here for a later call to native.discretize
                                     return (
                                         None,
@@ -2315,15 +2439,10 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-
-                            m = isnan(X_col)
-                            if m.any():
-                                logical_not(m, out=m)
-                                X_col = X_col[m]
-                                if nonmissings is None:
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
                                     if _pandas_installed:
                                         indexes, uniques = factorize(X_col)
                                     else:
@@ -2331,17 +2450,18 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
                                     return m, uniques.astype(str_), indexes, None
-                                place(nonmissings, nonmissings, m)
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_),
-                                indexes,
-                                None,
-                            )
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    None,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is floating:
 
@@ -2371,12 +2491,34 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
+                                    place(nonmissings, nonmissings, m)
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
+
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            if eq_continuous(feature_type):
-                                if nonmissings is None:
+                                if eq_continuous(feature_type):
                                     return (
                                         None,
                                         None,
@@ -2384,16 +2526,10 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-
-                            m = isnan(X_col)
-                            if m.any():
-                                logical_not(m, out=m)
-                                X_col = X_col[m]
-                                if nonmissings is None:
+                                m = isnan(X_col)
+                                if m.any():
+                                    logical_not(m, out=m)
+                                    X_col = X_col[m]
                                     if _pandas_installed:
                                         indexes, uniques = factorize(X_col)
                                     else:
@@ -2401,17 +2537,18 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
                                     return m, uniques.astype(str_), indexes, None
-                                place(nonmissings, nonmissings, m)
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_),
-                                indexes,
-                                None,
-                            )
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    None,
+                                    uniques.astype(str_),
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is object_:
                         if _pandas_installed:
@@ -2634,43 +2771,66 @@ def unify_columns_schematized(
                             if nonmissings.any():
                                 nonmissings = ~nonmissings
                                 X_col = X_get(index)[nonmissings]
+
+                                if eq_continuous(feature_type):
+                                    try:
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                        return (
+                                            None,
+                                            None,
+                                            *_process_continuous_strings(
+                                                X_col, nonmissings
+                                            ),
+                                        )
+
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                return (
+                                    nonmissings,
+                                    uniques.astype(str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
+
                             else:
                                 X_col = X_get(index)
-                                nonmissings = None
-
-                            if eq_continuous(feature_type):
-                                try:
-                                    if nonmissings is None:
+                                if eq_continuous(feature_type):
+                                    try:
                                         return (
                                             None,
                                             None,
                                             X_col.astype(float64, "C"),
                                             None,
                                         )
+                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                        return (
+                                            None,
+                                            None,
+                                            *_process_continuous_strings(X_col, None),
+                                        )
 
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
-                                except:  # object conversion can throw any exception in their __float__ or __str__
-                                    return (
-                                        None,
-                                        None,
-                                        *_process_continuous_strings(
-                                            X_col, nonmissings
-                                        ),
+                                if _pandas_installed:
+                                    indexes, uniques = factorize(X_col)
+                                else:
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
-
-                            if _pandas_installed:
-                                indexes, uniques = factorize(X_col)
-                            else:
-                                uniques, indexes = unique(X_col, return_inverse=True)
-                            return (
-                                nonmissings,
-                                uniques.astype(str_, copy=False),
-                                indexes,
-                                None,
-                            )
+                                return (
+                                    None,
+                                    uniques.astype(str_, copy=False),
+                                    indexes,
+                                    None,
+                                )
 
                     return internal
 
@@ -2779,46 +2939,70 @@ def unify_columns_schematized(
                         nonmissings = notna(X_col)
 
                         if nonmissings.all():
-                            nonmissings = None
-                        else:
-                            X_col = X_col[nonmissings]
-
-                        if eq_continuous(feature_type):
-                            try:
-                                if nonmissings is None:
+                            if eq_continuous(feature_type):
+                                try:
                                     return (
                                         None,
                                         None,
                                         X_col.astype(float64, "C"),
                                         None,
                                     )
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(X_col, None),
+                                    )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
                                 return (
                                     None,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
                                     None,
-                                    *_process_continuous_objects(X_col, nonmissings),
                                 )
-
-                        indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                        if issubclass(uniques.dtype.type, floating):
-                            # Convert all non-float64 floats to float64 to ensure consistent strings.
                             return (
-                                nonmissings,
-                                uniques.astype(float64, copy=False).astype(str_),
+                                None,
+                                uniques.astype(str_, copy=False),
                                 indexes,
                                 None,
                             )
-                        return (
-                            nonmissings,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+
+                        else:
+                            X_col = X_col[nonmissings]
+
+                            if eq_continuous(feature_type):
+                                try:
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(
+                                            X_col, nonmissings
+                                        ),
+                                    )
+
+                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                                return (
+                                    nonmissings,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
+                                    None,
+                                )
+                            return (
+                                nonmissings,
+                                uniques.astype(str_, copy=False),
+                                indexes,
+                                None,
+                            )
                 else:
 
                     def internal(
@@ -2845,13 +3029,8 @@ def unify_columns_schematized(
                         nonmissings &= X_col != _none_ndarray
 
                         if nonmissings.all():
-                            nonmissings = None
-                        else:
-                            X_col = X_col[nonmissings]
-
-                        if eq_continuous(feature_type):
-                            try:
-                                if nonmissings is None:
+                            if eq_continuous(feature_type):
+                                try:
                                     return (
                                         None,
                                         None,
@@ -2859,34 +3038,66 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                X_col = X_col.astype(float64)
-                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                X_col_tmp[nonmissings] = X_col
-                                return None, None, X_col_tmp, None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(X_col, None),
+                                    )
+
+                            uniques, indexes = unique(
+                                _densify_object_ndarray(X_col), return_inverse=True
+                            )
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
                                 return (
                                     None,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
                                     None,
-                                    *_process_continuous_objects(X_col, nonmissings),
                                 )
-
-                        uniques, indexes = unique(
-                            _densify_object_ndarray(X_col), return_inverse=True
-                        )
-                        if issubclass(uniques.dtype.type, floating):
-                            # Convert all non-float64 floats to float64 to ensure consistent strings.
                             return (
-                                nonmissings,
-                                uniques.astype(float64, copy=False).astype(str_),
+                                None,
+                                uniques.astype(str_, copy=False),
                                 indexes,
                                 None,
                             )
-                        return (
-                            nonmissings,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+
+                        else:
+                            X_col = X_col[nonmissings]
+
+                            if eq_continuous(feature_type):
+                                try:
+                                    X_col = X_col.astype(float64)
+                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                    X_col_tmp[nonmissings] = X_col
+                                    return None, None, X_col_tmp, None
+                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                    return (
+                                        None,
+                                        None,
+                                        *_process_continuous_objects(
+                                            X_col, nonmissings
+                                        ),
+                                    )
+
+                            uniques, indexes = unique(
+                                _densify_object_ndarray(X_col), return_inverse=True
+                            )
+                            if issubclass(uniques.dtype.type, floating):
+                                # Convert all non-float64 floats to float64 to ensure consistent strings.
+                                return (
+                                    nonmissings,
+                                    uniques.astype(float64, copy=False).astype(str_),
+                                    indexes,
+                                    None,
+                                )
+                            return (
+                                nonmissings,
+                                uniques.astype(str_, copy=False),
+                                indexes,
+                                None,
+                            )
 
             else:
 
