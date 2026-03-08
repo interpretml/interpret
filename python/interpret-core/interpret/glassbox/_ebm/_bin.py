@@ -4,6 +4,15 @@
 import logging
 
 import numpy as np
+from numpy import (
+    arange as arange,
+    array_equal as array_equal,
+    concatenate as concatenate,
+    empty as empty,
+    fromiter as fromiter,
+    int64 as int64,
+    zeros as zeros,
+)
 from itertools import repeat, chain, compress
 from operator import itemgetter, is_not, attrgetter
 
@@ -24,24 +33,54 @@ _array_zero = np.zeros(1, np.int64)
 _repeat_negativeone = repeat(-1)
 
 
-def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_features):
+def eval_terms(
+    X,
+    n_samples,
+    feature_names_in,
+    feature_types_in,
+    bins,
+    term_features,
+    _list=list,
+    _tuple=tuple,
+    _map=map,
+    _zip=zip,
+    _all=all,
+    _min=min,
+    _len=len,
+    arange=arange,
+    array_equal=array_equal,
+    concatenate=concatenate,
+    empty=empty,
+    fromiter=fromiter,
+    int64=int64,
+    zeros=zeros,
+    _compress=compress,
+    _from_iterable=_from_iterable,
+    _continuous_eq=_continuous_eq,
+    _float_type_eq=_float_type_eq,
+    _dtype=_dtype,
+    _is_contiguous=_is_contiguous,
+    _unify_columns_schematized=unify_columns_schematized,
+    _repeat_negativeone=_repeat_negativeone,
+    _array_zero=_array_zero,
+):
     # Prior to calling this function, call remove_extra_bins which will
     # eliminate extra work in this function. The only place we need fast
     # performance here is when called from ebm_predict_scores or ebm_eval_terms.
 
-    continuous_bins = list(
-        _from_iterable(compress(bins, map(_continuous_eq, feature_types_in)))
+    continuous_bins = _list(
+        _from_iterable(_compress(bins, _map(_continuous_eq, feature_types_in)))
     )
-    if not all(map(_float_type_eq, map(_dtype, continuous_bins))):
+    if not _all(_map(_float_type_eq, _map(_dtype, continuous_bins))):
         raise ValueError(
             "All bins for continuous features must be of dtype np.float64."
         )
-    if not all(map(_is_contiguous, continuous_bins)):
+    if not _all(_map(_is_contiguous, continuous_bins)):
         raise ValueError(
             "All bins for continuous features must be C-contiguous arrays."
         )
 
-    get_col = unify_columns_schematized(
+    get_col = _unify_columns_schematized(
         X, n_samples, feature_names_in, feature_types_in
     )
 
@@ -55,11 +94,11 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
     cached_discretized_set = cached_discretized.__setitem__
     Discretize = Native.get_native_singleton()._unsafe.Discretize
     bins_getitem = bins.__getitem__
-    for feature_idxs, num_features in zip(term_features, map(len, term_features)):
+    for feature_idxs, num_features in _zip(term_features, _map(_len, term_features)):
         term_discretized = []
         for feature_idx in feature_idxs:
             bin_levels = bins_getitem(feature_idx)
-            bin_level = min(len(bin_levels), num_features)
+            bin_level = _min(_len(bin_levels), num_features)
             key = (feature_idx, bin_level)
             discretized = cached_discretized_get(key)
             if discretized is None:
@@ -76,7 +115,7 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     # continuous feature
 
                     cuts = bin_levels[bin_level - 1]
-                    discretized = np.empty(n_samples, np.int64)
+                    discretized = empty(n_samples, int64)
 
                     return_code = Discretize(
                         n_samples,
@@ -96,29 +135,27 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                     nonmissings = raw[0]
                     categories = bin_levels[bin_level - 1]
 
-                    mapping = np.fromiter(
-                        map(categories.get, uniques, _repeat_negativeone),
-                        np.int64,
+                    mapping = fromiter(
+                        _map(categories.get, uniques, _repeat_negativeone),
+                        int64,
                         uniques.shape[0],
                     )
 
-                    n_cat = len(categories)
+                    n_cat = _len(categories)
                     if mapping.shape[0] <= n_cat:
-                        if np.array_equal(
-                            mapping, np.arange(1, mapping.shape[0] + 1, dtype=np.int64)
+                        if array_equal(
+                            mapping, arange(1, mapping.shape[0] + 1, dtype=int64)
                         ):
                             # CategoricalDType can encode values as np.int8. We cannot allow an
                             # int8 to overflow when we add 1, so convert to int64 first, and we
                             # also need to make a copy here because we cache the raw data and
                             # re-use it for different binning levels on the same feature.
 
-                            discretized = raw[2].astype(np.int64)
+                            discretized = raw[2].astype(int64)
                             discretized += 1
 
                             if nonmissings is not None and nonmissings is not False:
-                                discretized_tmp = np.zeros(
-                                    nonmissings.shape[0], np.int64
-                                )
+                                discretized_tmp = zeros(nonmissings.shape[0], int64)
                                 discretized_tmp[nonmissings] = discretized
                                 discretized = discretized_tmp
                         else:
@@ -127,29 +164,27 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                                 discretized = mapping[raw[2]]
                             elif nonmissings is False:
                                 # missing values are -1 in discretized, so append 0 to the map, which is index -1
-                                discretized = np.concatenate((mapping, _array_zero))[
+                                discretized = concatenate((mapping, _array_zero))[
                                     raw[2]
                                 ]
                             else:
-                                discretized = np.zeros(nonmissings.shape[0], np.int64)
+                                discretized = zeros(nonmissings.shape[0], int64)
                                 discretized[nonmissings] = mapping[raw[2]]
                     else:
-                        if np.array_equal(
-                            mapping[:n_cat], np.arange(1, n_cat + 1, dtype=np.int64)
+                        if array_equal(
+                            mapping[:n_cat], arange(1, n_cat + 1, dtype=int64)
                         ):
                             # CategoricalDType can encode values as np.int8. We cannot allow an
                             # int8 to overflow when we add 1, so convert to int64 first, and we
                             # also need to make a copy here because we cache the raw data and
                             # re-use it for different binning levels on the same feature.
 
-                            discretized = raw[2].astype(np.int64)
+                            discretized = raw[2].astype(int64)
                             discretized += 1
                             discretized[n_cat < discretized] = -1
 
                             if nonmissings is not None and nonmissings is not False:
-                                discretized_tmp = np.zeros(
-                                    nonmissings.shape[0], np.int64
-                                )
+                                discretized_tmp = zeros(nonmissings.shape[0], int64)
                                 discretized_tmp[nonmissings] = discretized
                                 discretized = discretized_tmp
                         else:
@@ -158,16 +193,16 @@ def eval_terms(X, n_samples, feature_names_in, feature_types_in, bins, term_feat
                                 discretized = mapping[raw[2]]
                             elif nonmissings is False:
                                 # missing values are -1 in discretized, so append 0 to the map, which is index -1
-                                discretized = np.concatenate((mapping, _array_zero))[
+                                discretized = concatenate((mapping, _array_zero))[
                                     raw[2]
                                 ]
                             else:
-                                discretized = np.zeros(nonmissings.shape[0], np.int64)
+                                discretized = zeros(nonmissings.shape[0], int64)
                                 discretized[nonmissings] = mapping[raw[2]]
 
                 cached_discretized_set(key, discretized)
             term_discretized.append(discretized)
-        yield tuple(term_discretized)
+        yield _tuple(term_discretized)
 
 
 def ebm_predict_scores(
