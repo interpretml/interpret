@@ -991,9 +991,9 @@ def _process_numpy_column_nonschematized(
 
 
 def _process_pandas_column_schematized(X_col, feature_type):
-    dt = X_col.dtype
-    tt = dt.type
     if feature_type == "continuous":
+        dt = X_col.dtype
+        tt = dt.type
         if isinstance(dt, dtype):
             if tt is float64:
                 return (
@@ -1133,11 +1133,13 @@ def _process_pandas_column_schematized(X_col, feature_type):
             nonmissings = X_col.isna()
             if nonmissings.any():
                 nonmissings = ~nonmissings
-                X_col = X_col[nonmissings]
+                # convert to numpy str_ so that we can process strings
+                # with the same float conversion code. Mostly IEEE 754 should
+                # be identical, but there are edge cases with different conversions
+                X_col = X_col[nonmissings].to_numpy(str_)
 
                 try:
-                    # numpy, pandas, and python all have identical conversions (IEEE-754)
-                    X_col = X_col.to_numpy(float64)
+                    X_col = X_col.astype(float64, "C")
                 except ValueError:
                     # ValueError occurs when a string could not be converted to a float
                     return (
@@ -1157,9 +1159,14 @@ def _process_pandas_column_schematized(X_col, feature_type):
                     None,
                 )
             else:
+                # convert to numpy str_ so that we can process strings
+                # with the same float conversion code. Mostly IEEE 754 should
+                # be identical, but there are edge cases with different conversions
+                X_col = X_col.to_numpy(str_)
+
                 try:
                     # numpy, pandas, and python all have identical conversions (IEEE-754)
-                    X_col = X_col.to_numpy(float64)
+                    X_col = X_col.astype(float64, "C")
                 except ValueError:
                     # ValueError occurs when a string could not be converted to a float
                     return (
@@ -1182,6 +1189,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
 
     # feature_type == "nominal" or feature_type == "ordinal"
 
+    dt = X_col.dtype
     if isinstance(dt, CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.array
@@ -1200,111 +1208,113 @@ def _process_pandas_column_schematized(X_col, feature_type):
             indexes,
             None,
         )
-    elif isinstance(dt, dtype):
-        if tt is object_:
-            X_col = X_col.values
-            nonmissings = notna(X_col)
-            if nonmissings.all():
-                indexes, uniques = factorize(_densify_object_ndarray(X_col))
+    else:
+        tt = dt.type
+        if isinstance(dt, dtype):
+            if tt is object_:
+                X_col = X_col.values
+                nonmissings = notna(X_col)
+                if nonmissings.all():
+                    indexes, uniques = factorize(_densify_object_ndarray(X_col))
 
-                tt = uniques.dtype.type
-                if tt is float64:
-                    return (
-                        None,
-                        uniques.astype(str_),
-                        indexes,
-                        None,
-                    )
-                elif issubclass(tt, floating):
-                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                    return (
-                        None,
-                        uniques.astype(float64).astype(str_),
-                        indexes,
-                        None,
-                    )
+                    tt = uniques.dtype.type
+                    if tt is float64:
+                        return (
+                            None,
+                            uniques.astype(str_),
+                            indexes,
+                            None,
+                        )
+                    elif issubclass(tt, floating):
+                        # Convert all non-float64 floats to float64 to ensure consistent strings.
+                        return (
+                            None,
+                            uniques.astype(float64).astype(str_),
+                            indexes,
+                            None,
+                        )
+                    else:
+                        return (
+                            None,
+                            uniques.astype(str_, copy=False),
+                            indexes,
+                            None,
+                        )
                 else:
-                    return (
-                        None,
-                        uniques.astype(str_, copy=False),
-                        indexes,
-                        None,
-                    )
-            else:
-                X_col = X_col[nonmissings]
+                    X_col = X_col[nonmissings]
 
-                indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                    indexes, uniques = factorize(_densify_object_ndarray(X_col))
 
-                tt = uniques.dtype.type
-                if tt is float64:
-                    return (
-                        nonmissings,
-                        uniques.astype(str_),
-                        indexes,
-                        None,
-                    )
-                elif issubclass(tt, floating):
-                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                    return (
-                        nonmissings,
-                        uniques.astype(float64).astype(str_),
-                        indexes,
-                        None,
-                    )
-                else:
-                    return (
-                        nonmissings,
-                        uniques.astype(str_, copy=False),
-                        indexes,
-                        None,
-                    )
-        elif tt is float64:
-            indexes, uniques = factorize(X_col.values)
-            return (
-                False,
-                uniques.astype(str_),
-                indexes,
-                None,
-            )
+                    tt = uniques.dtype.type
+                    if tt is float64:
+                        return (
+                            nonmissings,
+                            uniques.astype(str_),
+                            indexes,
+                            None,
+                        )
+                    elif issubclass(tt, floating):
+                        # Convert all non-float64 floats to float64 to ensure consistent strings.
+                        return (
+                            nonmissings,
+                            uniques.astype(float64).astype(str_),
+                            indexes,
+                            None,
+                        )
+                    else:
+                        return (
+                            nonmissings,
+                            uniques.astype(str_, copy=False),
+                            indexes,
+                            None,
+                        )
+            elif tt is float64:
+                indexes, uniques = factorize(X_col.values)
+                return (
+                    False,
+                    uniques.astype(str_),
+                    indexes,
+                    None,
+                )
+            elif issubclass(tt, floating):
+                indexes, uniques = factorize(X_col.values)
+                return (
+                    False,
+                    uniques.astype(float64).astype(str_),
+                    indexes,
+                    None,
+                )
+            elif issubclass(tt, _intbool_types):
+                indexes, uniques = factorize(X_col.values)
+                return None, uniques.astype(str_), indexes, None
+
+            # pandas never uses np.str_ or np.bytes_
+
+            # fall through to the default handler
         elif issubclass(tt, floating):
-            indexes, uniques = factorize(X_col.values)
+            # this handles Float64Dtype, Float32Dtype
+
+            indexes, uniques = factorize(X_col.array)
             return (
                 False,
-                uniques.astype(float64).astype(str_),
+                uniques.to_numpy(float64).astype(str_),
                 indexes,
                 None,
             )
         elif issubclass(tt, _intbool_types):
-            indexes, uniques = factorize(X_col.values)
-            return None, uniques.astype(str_), indexes, None
+            # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+            indexes, uniques = factorize(X_col.array)
+            return (
+                False,
+                uniques.to_numpy(str_),
+                indexes,
+                None,
+            )
 
-        # pandas never uses np.str_ or np.bytes_
-
-        # fall through to the default handler
-    elif issubclass(tt, floating):
-        # this handles Float64Dtype, Float32Dtype
-
-        indexes, uniques = factorize(X_col.array)
-        return (
-            False,
-            uniques.to_numpy(float64).astype(str_),
-            indexes,
-            None,
-        )
-    elif issubclass(tt, _intbool_types):
-        # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-        indexes, uniques = factorize(X_col.array)
-        return (
-            False,
-            uniques.to_numpy(str_),
-            indexes,
-            None,
-        )
-
-    # TODO: implement pd.SparseDtype
-    msg = f"{type(dt)} not supported"
-    _log.error(msg)
-    raise TypeError(msg)
+        # TODO: implement pd.SparseDtype
+        msg = f"{type(dt)} not supported"
+        _log.error(msg)
+        raise TypeError(msg)
 
 
 def _process_pandas_column_nonschematized(
