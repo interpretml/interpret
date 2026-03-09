@@ -1010,12 +1010,12 @@ def _process_pandas_column_schematized(X_col, feature_type):
                     None,
                 )
             elif tt is object_:
-                nonmissings = X_col.notna()
+                X_col = X_col.values
+                nonmissings = notna(X_col)
                 if nonmissings.all():
                     nonmissings = None
-                    X_col = X_col.values
                 else:
-                    X_col = X_col.values[nonmissings]
+                    X_col = X_col[nonmissings]
 
                 bad = None
                 try:
@@ -1074,12 +1074,14 @@ def _process_pandas_column_schematized(X_col, feature_type):
             return (
                 None,
                 None,
-                X_col.to_numpy(float64),  # missing becomes nan for these types
+                X_col.array.to_numpy(float64),  # missing becomes nan for these types
                 None,
             )
         elif isinstance(dt, _stringable):
-            if X_col.hasnans:
-                nonmissings = X_col.notna()
+            X_col = X_col.array
+            nonmissings = X_col.isna()
+            if nonmissings.any():
+                nonmissings = ~nonmissings
                 X_col = X_col[nonmissings]
             else:
                 nonmissings = None
@@ -1125,7 +1127,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
         )
     elif isinstance(dt, StringDtype):
         # factorize uses -1 for missing values
-        indexes, uniques = factorize(X_col)
+        indexes, uniques = factorize(X_col.array)
         return (
             False,
             uniques.to_numpy(str_),
@@ -1134,12 +1136,12 @@ def _process_pandas_column_schematized(X_col, feature_type):
         )
     elif isinstance(dt, dtype):
         if tt is object_:
-            nonmissings = X_col.notna()
+            X_col = X_col.values
+            nonmissings = notna(X_col)
             if nonmissings.all():
                 nonmissings = None
-                X_col = X_col.values
             else:
-                X_col = X_col.values[nonmissings]
+                X_col = X_col[nonmissings]
 
             indexes, uniques = factorize(_densify_object_ndarray(X_col))
 
@@ -1167,24 +1169,24 @@ def _process_pandas_column_schematized(X_col, feature_type):
                     None,
                 )
         elif tt is float64:
-            indexes, uniques = factorize(X_col)
+            indexes, uniques = factorize(X_col.values)
             return (
                 False,
-                uniques.values.astype(str_),
+                uniques.astype(str_),
                 indexes,
                 None,
             )
         elif issubclass(tt, floating):
-            indexes, uniques = factorize(X_col)
+            indexes, uniques = factorize(X_col.values)
             return (
                 False,
-                uniques.values.astype(float64).astype(str_),
+                uniques.astype(float64).astype(str_),
                 indexes,
                 None,
             )
         elif issubclass(tt, _intbool_types):
-            indexes, uniques = factorize(X_col)
-            return None, uniques.values.astype(str_), indexes, None
+            indexes, uniques = factorize(X_col.values)
+            return None, uniques.astype(str_), indexes, None
 
         # pandas never uses np.str_ or np.bytes_
 
@@ -1192,7 +1194,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
     elif issubclass(tt, floating):
         # this handles Float64Dtype, Float32Dtype
 
-        indexes, uniques = factorize(X_col)
+        indexes, uniques = factorize(X_col.array)
         return (
             False,
             uniques.to_numpy(float64).astype(str_),
@@ -1201,7 +1203,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
         )
     elif issubclass(tt, _intbool_types):
         # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-        indexes, uniques = factorize(X_col)
+        indexes, uniques = factorize(X_col.array)
         return (
             False,
             uniques.to_numpy(str_),
