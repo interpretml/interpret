@@ -356,7 +356,7 @@ _disallowed_types = frozenset(
 _none_ndarray = np.array(None)
 _float_types = (float, np.floating)
 _all_int_types = (int, np.integer)
-_strconv_types = (str, int, bool, np.integer, np.bool_, np.float64)
+_strconv_types = (str, bytes, int, bool, np.integer, np.bool_)
 _intbool_types = (np.integer, np.bool_)
 _float_int_bool_types = (np.floating, np.integer, np.bool_)
 _complex_void_types = (np.complexfloating, np.void)
@@ -379,6 +379,7 @@ _not_one = (1).__ne__
 _spmatrix_or_sparray = (_spmatrix, _sparray)
 _hard_sparse = (_dia_array, _bsr_array, _coo_array)
 _str_bytes_types = (str, bytes)
+_repeat_str_bytes = repeat(_str_bytes_types)
 
 
 def _densify_object_ndarray(X_col):
@@ -397,8 +398,8 @@ def _densify_object_ndarray(X_col):
 
     types = set(map(type, X_col))
 
-    if len(types) == 1 and issubclass(next(iter(types)), str):
-        # this also works for np.str_
+    if all(map(issubclass, types, _repeat_str_bytes)):
+        # this also catches np.str_ and np.bytes_
         return X_col.astype(np.str_)
 
     if all(map(issubclass, types, _repeat_bools)):
@@ -463,10 +464,10 @@ def _densify_object_ndarray(X_col):
     for one_type in types:
         if issubclass(one_type, _strconv_types):
             # issubclass(, str) also works for np.str_
-            # str objects have __iter__, so special case this to allow
+            # issubclass(, bytes) also works for np.bytes_
+            # str/bytes objects have __iter__, so special case this to allow
             # int objects use the default __str__ function, so special case this to allow
             # bool objects use the default __str__ function, so special case this to allow
-            # np.float64 is what we convert to for floats, so no need to convert this
             pass
         elif issubclass(one_type, _float_types):
             # force to np.float64 to guarantee consistent string formatting
@@ -502,8 +503,6 @@ def _densify_object_ndarray(X_col):
             raise TypeError(msg)
 
     if is_float_conversion:
-        # TODO: handle ints here too which need to be checked if they are larger than the safe int max value
-
         if not X_col.flags.owndata:
             X_col = X_col.copy()  # we place into this array below so we need to own it
         places = np.fromiter(
@@ -3747,11 +3746,12 @@ def unify_columns_nonschematized(
 
     # feature_names_in is guranteed not to contain duplicate names because unify_feature_names checks this.
 
+    # clean the feature_types since feature types can contain non-strings
     get_col_schematized = unify_columns_schematized(
         X,
         n_samples,
         feature_names_in,
-        feature_types,
+        [x if x == "ignore" else "" for x in feature_types],
     )
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
