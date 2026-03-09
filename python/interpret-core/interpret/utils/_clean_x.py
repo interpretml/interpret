@@ -1013,57 +1013,108 @@ def _process_pandas_column_schematized(X_col, feature_type):
                 X_col = X_col.values
                 nonmissings = notna(X_col)
                 if nonmissings.all():
-                    nonmissings = None
+                    try:
+                        # Since both python and numpy support correct rounding,
+                        # conversions from string to np.float64 should be the same
+                        X_col = X_col.astype(float64, "C")
+
+                        return (
+                            None,
+                            None,
+                            X_col,
+                            None,
+                        )
+                    except:  # object can throw anything in their __float__ function
+                        floatable = fromiter(
+                            map(issubclass, map(type, X_col), _repeat_floatable),
+                            bool_,
+                            X_col.shape[0],
+                        )
+
+                        if floatable.any():
+                            floats = X_col[floatable].astype(float64)
+                            nonfloatable = ~floatable
+                            X_col = X_col[nonfloatable]
+
+                            X_col, bad = _process_continuous_objects(X_col, None)
+
+                            X_col_tmp = empty(nonfloatable.shape[0], float64)
+                            X_col_tmp[nonfloatable] = X_col
+                            X_col_tmp[floatable] = floats
+                            X_col = X_col_tmp
+
+                            if bad is not None:
+                                bad_tmp = zeros(nonfloatable.shape[0], bool_)
+                                bad_tmp[nonfloatable] = bad
+                                bad = bad_tmp
+                        else:
+                            X_col, bad = _process_continuous_objects(X_col, None)
+
+                        return (
+                            None,
+                            None,
+                            X_col,
+                            bad,
+                        )
                 else:
                     X_col = X_col[nonmissings]
 
-                bad = None
-                try:
-                    # Since both python and numpy support correct rounding,
-                    # conversions from string to np.float64 should be the same
-                    X_col = X_col.astype(float64, "C")
-                except:  # object can throw anything in their __float__ function
-                    floatable = fromiter(
-                        map(issubclass, map(type, X_col), _repeat_floatable),
-                        bool_,
-                        X_col.shape[0],
-                    )
+                    try:
+                        # Since both python and numpy support correct rounding,
+                        # conversions from string to np.float64 should be the same
+                        X_col = X_col.astype(float64, "C")
 
-                    if floatable.any():
-                        floats = X_col[floatable].astype(float64)
-                        nonfloatable = ~floatable
-                        X_col = X_col[nonfloatable]
+                        X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                        X_col_tmp[nonmissings] = X_col
+                        X_col = X_col_tmp
 
-                        X_col, bad = _process_continuous_objects(X_col, None)
+                        return (
+                            None,
+                            None,
+                            X_col,
+                            None,
+                        )
+                    except:  # object can throw anything in their __float__ function
+                        floatable = fromiter(
+                            map(issubclass, map(type, X_col), _repeat_floatable),
+                            bool_,
+                            X_col.shape[0],
+                        )
 
-                        X_col_tmp = empty(nonfloatable.shape[0], float64)
-                        X_col_tmp[nonfloatable] = X_col
-                        X_col_tmp[floatable] = floats
+                        if floatable.any():
+                            floats = X_col[floatable].astype(float64)
+                            nonfloatable = ~floatable
+                            X_col = X_col[nonfloatable]
+
+                            X_col, bad = _process_continuous_objects(X_col, None)
+
+                            X_col_tmp = empty(nonfloatable.shape[0], float64)
+                            X_col_tmp[nonfloatable] = X_col
+                            X_col_tmp[floatable] = floats
+                            X_col = X_col_tmp
+
+                            if bad is not None:
+                                bad_tmp = zeros(nonfloatable.shape[0], bool_)
+                                bad_tmp[nonfloatable] = bad
+                                bad = bad_tmp
+                        else:
+                            X_col, bad = _process_continuous_objects(X_col, None)
+
+                        X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                        X_col_tmp[nonmissings] = X_col
                         X_col = X_col_tmp
 
                         if bad is not None:
-                            bad_tmp = zeros(nonfloatable.shape[0], bool_)
-                            bad_tmp[nonfloatable] = bad
+                            bad_tmp = zeros(nonmissings.shape[0], bool_)
+                            bad_tmp[nonmissings] = bad
                             bad = bad_tmp
-                    else:
-                        X_col, bad = _process_continuous_objects(X_col, None)
 
-                if nonmissings is not None:
-                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                    X_col_tmp[nonmissings] = X_col
-                    X_col = X_col_tmp
-
-                    if bad is not None:
-                        bad_tmp = zeros(nonmissings.shape[0], bool_)
-                        bad_tmp[nonmissings] = bad
-                        bad = bad_tmp
-
-                return (
-                    None,
-                    None,
-                    X_col,
-                    bad,
-                )
+                        return (
+                            None,
+                            None,
+                            X_col,
+                            bad,
+                        )
 
             # pandas never uses np.str_ or np.bytes_
 
@@ -1083,31 +1134,46 @@ def _process_pandas_column_schematized(X_col, feature_type):
             if nonmissings.any():
                 nonmissings = ~nonmissings
                 X_col = X_col[nonmissings]
-            else:
-                nonmissings = None
 
-            try:
-                # numpy, pandas, and python all have identical conversions (IEEE-754)
-                X_col = X_col.to_numpy(float64)
-            except ValueError:
-                # ValueError occurs when a string could not be converted to a float
-                return (
-                    None,
-                    None,
-                    *_process_continuous_strings(X_col, nonmissings),
-                )
+                try:
+                    # numpy, pandas, and python all have identical conversions (IEEE-754)
+                    X_col = X_col.to_numpy(float64)
+                except ValueError:
+                    # ValueError occurs when a string could not be converted to a float
+                    return (
+                        None,
+                        None,
+                        *_process_continuous_strings(X_col, nonmissings),
+                    )
 
-            if nonmissings is not None:
                 X_col_tmp = full(nonmissings.shape[0], nan, float64)
                 X_col_tmp[nonmissings] = X_col
                 X_col = X_col_tmp
 
-            return (
-                None,
-                None,
-                X_col,
-                None,
-            )
+                return (
+                    None,
+                    None,
+                    X_col,
+                    None,
+                )
+            else:
+                try:
+                    # numpy, pandas, and python all have identical conversions (IEEE-754)
+                    X_col = X_col.to_numpy(float64)
+                except ValueError:
+                    # ValueError occurs when a string could not be converted to a float
+                    return (
+                        None,
+                        None,
+                        *_process_continuous_strings(X_col, None),
+                    )
+
+                return (
+                    None,
+                    None,
+                    X_col,
+                    None,
+                )
 
         # TODO: implement pd.SparseDtype
         msg = f"{type(dt)} not supported"
@@ -1139,35 +1205,59 @@ def _process_pandas_column_schematized(X_col, feature_type):
             X_col = X_col.values
             nonmissings = notna(X_col)
             if nonmissings.all():
-                nonmissings = None
+                indexes, uniques = factorize(_densify_object_ndarray(X_col))
+
+                tt = uniques.dtype.type
+                if tt is float64:
+                    return (
+                        None,
+                        uniques.astype(str_),
+                        indexes,
+                        None,
+                    )
+                elif issubclass(tt, floating):
+                    # Convert all non-float64 floats to float64 to ensure consistent strings.
+                    return (
+                        None,
+                        uniques.astype(float64).astype(str_),
+                        indexes,
+                        None,
+                    )
+                else:
+                    return (
+                        None,
+                        uniques.astype(str_, copy=False),
+                        indexes,
+                        None,
+                    )
             else:
                 X_col = X_col[nonmissings]
 
-            indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                indexes, uniques = factorize(_densify_object_ndarray(X_col))
 
-            tt = uniques.dtype.type
-            if tt is float64:
-                return (
-                    nonmissings,
-                    uniques.astype(str_),
-                    indexes,
-                    None,
-                )
-            elif issubclass(tt, floating):
-                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                return (
-                    nonmissings,
-                    uniques.astype(float64).astype(str_),
-                    indexes,
-                    None,
-                )
-            else:
-                return (
-                    nonmissings,
-                    uniques.astype(str_, copy=False),
-                    indexes,
-                    None,
-                )
+                tt = uniques.dtype.type
+                if tt is float64:
+                    return (
+                        nonmissings,
+                        uniques.astype(str_),
+                        indexes,
+                        None,
+                    )
+                elif issubclass(tt, floating):
+                    # Convert all non-float64 floats to float64 to ensure consistent strings.
+                    return (
+                        nonmissings,
+                        uniques.astype(float64).astype(str_),
+                        indexes,
+                        None,
+                    )
+                else:
+                    return (
+                        nonmissings,
+                        uniques.astype(str_, copy=False),
+                        indexes,
+                        None,
+                    )
         elif tt is float64:
             indexes, uniques = factorize(X_col.values)
             return (
