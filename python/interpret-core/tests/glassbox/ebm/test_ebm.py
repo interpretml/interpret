@@ -920,6 +920,7 @@ def skip_sklearn() -> set:
         "check_requires_y_none",  # error message differs
         "check_valid_tag_types",  # EBM uses custom tag classes
         "check_n_features_in_after_fitting",  # EBM is more permissive and allows more features
+        "check_complex_data",  # EBM does not support complex numbers
     }
 
 

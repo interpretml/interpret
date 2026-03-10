@@ -337,26 +337,26 @@ except ImportError:
 #   This also aligns nicely with the pandas.CategoricalDtype which is used to specify both ordinals and nominals.
 
 
-_disallowed_types = frozenset(
-    [
-        complex,
-        list,
-        tuple,
-        range,
-        bytes,
-        bytearray,
-        memoryview,
-        set,
-        frozenset,
-        dict,
-        Ellipsis,
-        np.void,
-    ]
+_disallowed_types = (
+    complex,
+    list,
+    tuple,
+    range,
+    bytearray,
+    memoryview,
+    set,
+    frozenset,
+    dict,
+    type(Ellipsis),
+    np.void,
+    np.complexfloating,
 )
 _none_ndarray = np.array(None)
 _float_types = (float, np.floating)
+_bool_types = (bool, np.bool_)
 _all_int_types = (int, np.integer)
-_strconv_types = (str, bytes, int, bool, np.integer, np.bool_)
+# np.str_ derrives from str and np.bytes_ derrives from bytes so no need to include
+_strconv_types = (str, bytes, int, np.integer, np.datetime64, np.timedelta64)
 _intbool_types = (np.integer, np.bool_)
 _intboolpython_types = (int, bool, np.integer, np.bool_)
 _float_int_bool_types = (np.floating, np.integer, np.bool_)
@@ -364,10 +364,8 @@ _complex_void_types = (np.complexfloating, np.void)
 _float_int_types = (float, int, np.floating, np.integer)
 _list_tuple_types = (list, tuple)
 _repeat_float_types = repeat(_float_types)
-_repeat_all_int_types = repeat(_all_int_types)
-_repeat_uint_type = repeat(np.unsignedinteger)
+_repeat_bool_types = repeat(_bool_types)
 _repeat_ignore = repeat("ignore")
-_repeat_bools = repeat((bool, np.bool_))
 _repeat_negativeone = repeat(-1)
 _floatable = (float, int, bool, np.floating, np.integer, np.bool_)
 _repeat_floatable = repeat(_floatable)
@@ -394,105 +392,41 @@ _str_bytes_types_and_prev = (
 _repeat_str_bytes = repeat(_str_bytes_types)
 
 
-def _densify_object_ndarray(X_col):
-    # TODO: this function isn't consistent when we have mixed types like np.float32 mixed in with strings
-    # we should eliminate this function and replace it with something that extracts the pure floats for
-    # binary conversion into float64 followed by conversion IN NUMPY ONLY OR OUR OWN STRING CONVERTER to strings.
-    # floats = np.fromiter(map(issubclass, map(type, X_col), repeat((float, np.floating))), np.bool_, X_col.shape[0])
-    # Maybe instead we should check for the existance of a __float__ function?
-
-    # called under: fit or predict
+def _densify_categorical(X_col):
+    # TODO: this function could be optimized more
 
     # numpy hierarchy of types
     # https://numpy.org/doc/stable/reference/arrays.scalars.html
 
-    # TODO: add special case handling if there is only 1 sample to make that faster
-
     types = set(map(type, X_col))
 
-    if all(map(issubclass, types, _repeat_str_bytes)):
-        # this also catches np.str_ and np.bytes_
-        return X_col.astype(np.str_)
+    if all(issubclass(t, _float_types) for t in types):
+        return X_col.astype(float64).astype(str_)
 
-    if all(map(issubclass, types, _repeat_bools)):
-        return X_col.astype(np.bool_)
+    if all(issubclass(t, _bool_types) for t in types):
+        return X_col.astype(bool_).astype(str_)
 
-    if all(map(issubclass, types, _repeat_all_int_types)):
-        if all(map(issubclass, types, _repeat_uint_type)):
-            types.discard(np.uint8)
-            if len(types) == 0:
-                return X_col.astype(np.uint8)
+    if all(issubclass(t, _strconv_types) for t in types):
+        return X_col.astype(str_)
 
-            types.discard(np.uint16)
-            if len(types) == 0:
-                return X_col.astype(np.uint16)
-
-            types.discard(np.uint32)
-            if len(types) == 0:
-                return X_col.astype(np.uint32)
-
-            return X_col.astype(np.uint64)
-
-        types.discard(np.int8)
-        if len(types) == 0:
-            return X_col.astype(np.int8)
-
-        types.discard(np.uint8)
-        types.discard(np.int16)
-        if len(types) == 0:
-            return X_col.astype(np.int16)
-
-        types.discard(np.uint16)
-        types.discard(np.int32)
-        if len(types) == 0:
-            return X_col.astype(np.int32)
-
-        try:
-            return X_col.astype(np.int64)
-        except OverflowError:
-            # We must have a big number that can only be represented by np.uint64
-            # AND also signed integers mixed together.
-            #
-            # If we do X_col.astype(np.uint64), it will silently convert negative
-            # integers to unsigned, so go directly to strings.
-
-            # TODO : should this be np.float64 with a check for big integers
-            return X_col.astype(np.str_)
-
-    if all(map(issubclass, types, _repeat_float_types)):
-        types.discard(np.float16)
-        if len(types) == 0:
-            # density it first before converting to float64 later
-            return X_col.astype(np.float16)
-
-        types.discard(np.float32)
-        if len(types) == 0:
-            # density it first before converting to float64 later
-            return X_col.astype(np.float32)
-
-        return X_col.astype(np.float64)
-
-    is_float_conversion = False
+    is_float = False
+    is_bool = False
     for one_type in types:
-        if issubclass(one_type, _strconv_types):
+        if issubclass(one_type, _float_types):
+            is_float = True
+        elif issubclass(one_type, _bool_types):
+            is_bool = True
+        elif issubclass(one_type, _strconv_types):
             # issubclass(, str) also works for np.str_
             # issubclass(, bytes) also works for np.bytes_
             # str/bytes objects have __iter__, so special case this to allow
             # int objects use the default __str__ function, so special case this to allow
-            # bool objects use the default __str__ function, so special case this to allow
-            pass
-        elif issubclass(one_type, _float_types):
-            # force to np.float64 to guarantee consistent string formatting
-            is_float_conversion = True
-        elif issubclass(one_type, np.complexfloating) or one_type in _disallowed_types:
+            continue
+        elif issubclass(one_type, _disallowed_types):
             # list of python types primarily from: https://docs.python.org/3/library/stdtypes.html
             msg = f"X contains the disallowed type {one_type}"
             _log.error(msg)
             raise TypeError(msg)
-        elif issubclass(one_type, np.generic):
-            # numpy objects have __getitem__, so special case this to allow
-            # numpy hierarchy: https://numpy.org/doc/stable/reference/arrays.scalars.html
-            pass
         elif hasattr(one_type, "__iter__") or hasattr(one_type, "__getitem__"):
             # check for __iter__ and __getitem__ to filter out iterables
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
@@ -506,31 +440,74 @@ def _densify_object_ndarray(X_col):
         elif one_type.__str__ is object.__str__:
             # if any object in our list uses the default object __str__ function then it'll
             # include the id(val) pointer in the string text, which isn't going to be useful as a categorical
-
-            # use type(val) instead of val.__str__ to detect inherited __str__ functions per:
             # https://stackoverflow.com/questions/19628421/how-to-check-if-str-is-implemented-by-an-object
 
             msg = f"X contains the type {one_type} which does not define a __str__ function"
             _log.error(msg)
             raise TypeError(msg)
 
-    if is_float_conversion:
-        if not X_col.flags.owndata:
-            X_col = X_col.copy()  # we place into this array below so we need to own it
-        places = np.fromiter(
-            map(isinstance, X_col, _repeat_float_types), np.bool_, X_col.shape[0]
+    non = None
+    if is_float:
+        floatable = fromiter(
+            map(issubclass, map(type, X_col), _repeat_float_types),
+            bool_,
+            X_col.shape[0],
         )
-        X_col[places] = X_col[places].astype(np.float64)
 
-    # TODO: converting object types first to pd.CatigoricalDType is somewhat faster than our code here which converts
-    # to unicode.  We should consider either using a CatigoricalDTypes conversion first if pandas is installed, or
-    # writing our own cython code that can be more efficient at walking through items in an array.  If we write
-    # our own cython there is the added advantage that we can check types in the same loop and therefore eliminate
-    # the costly "set(map(type, X_col))" calls above
-    return X_col.astype(np.str_)
+        floats = X_col[floatable].astype(float64).astype(str_)
+        non = ~floatable
+        X_col = X_col[non]
+
+    if is_bool:
+        boolable = fromiter(
+            map(issubclass, map(type, X_col), _repeat_bool_types),
+            bool_,
+            X_col.shape[0],
+        )
+
+        bools = X_col[boolable].astype(bool_).astype(str_)
+        nonboolable = ~boolable
+        X_col = X_col[nonboolable]
+
+        if non is None:
+            non = nonboolable
+        else:
+            # convert to positions in the original array
+            tmp = zeros(non.shape[0], bool_)
+            tmp[non] = boolable
+            boolable = tmp
+
+            tmp = zeros(non.shape[0], bool_)
+            tmp[non] = nonboolable
+            non = tmp
+
+    # bytes and np.bytes_ are converted to strings cleanly when calling .astype(str_)
+    X_col = X_col.astype(str_)
+
+    if is_float or is_bool:
+        types = [X_col.dtype]
+        if is_float:
+            types.append(floats.dtype)
+        if is_bool:
+            types.append(bools.dtype)
+
+        X_col_tmp = empty(non.shape[0], np.result_type(*types))
+        X_col_tmp[non] = X_col
+
+        if is_float:
+            X_col_tmp[floatable] = floats
+
+        if is_bool:
+            X_col_tmp[boolable] = bools
+
+        X_col = X_col_tmp
+
+    return X_col
 
 
 def _densify_continuous(X_col):
+    # TODO: this function could be optimized more
+
     # numpy hierarchy of types
     # https://numpy.org/doc/stable/reference/arrays.scalars.html
 
@@ -1220,59 +1197,17 @@ def _process_pandas_column_schematized(X_col, feature_type):
                 X_col = X_col.values
                 nonmissings = notna(X_col)
                 if nonmissings.all():
-                    indexes, uniques = factorize(_densify_object_ndarray(X_col))
-
-                    tt = uniques.dtype.type
-                    if tt is float64:
-                        return (
-                            None,
-                            uniques.astype(str_),
-                            indexes,
-                            None,
-                        )
-                    elif issubclass(tt, floating):
-                        # Convert all non-float64 floats to float64 to ensure consistent strings.
-                        return (
-                            None,
-                            uniques.astype(float64).astype(str_),
-                            indexes,
-                            None,
-                        )
-                    else:
-                        return (
-                            None,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+                    nonmissings = None
                 else:
                     X_col = X_col[nonmissings]
 
-                    indexes, uniques = factorize(_densify_object_ndarray(X_col))
-
-                    tt = uniques.dtype.type
-                    if tt is float64:
-                        return (
-                            nonmissings,
-                            uniques.astype(str_),
-                            indexes,
-                            None,
-                        )
-                    elif issubclass(tt, floating):
-                        # Convert all non-float64 floats to float64 to ensure consistent strings.
-                        return (
-                            nonmissings,
-                            uniques.astype(float64).astype(str_),
-                            indexes,
-                            None,
-                        )
-                    else:
-                        return (
-                            nonmissings,
-                            uniques.astype(str_, copy=False),
-                            indexes,
-                            None,
-                        )
+                indexes, uniques = factorize(_densify_categorical(X_col))
+                return (
+                    nonmissings,
+                    uniques,
+                    indexes,
+                    None,
+                )
             elif tt is float64:
                 indexes, uniques = factorize(X_col.values)
                 return (
@@ -1429,25 +1364,15 @@ def _process_sparse_column_schematized(X_col, feature_type):
             # feature_type == "nominal" or feature_type == "ordinal"
 
             if _pandas_installed:
-                indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                indexes, uniques = factorize(_densify_categorical(X_col))
             else:
                 uniques, indexes = unique(
-                    _densify_object_ndarray(X_col), return_inverse=True
+                    _densify_categorical(X_col), return_inverse=True
                 )
-            if issubclass(uniques.dtype.type, floating):
-                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                return (
-                    None,
-                    uniques.astype(float64, copy=False).astype(str_),
-                    indexes,
-                    None,
-                )
-            return None, uniques.astype(str_, copy=False), indexes, None
+            return None, uniques, indexes, None
 
         if feature_type == "continuous":
-            X_col = X_col[nonmissings]
-
-            X_col, bad = _densify_continuous(X_col)
+            X_col, bad = _densify_continuous(X_col[nonmissings])
 
             X_col_tmp = full(nonmissings.shape[0], nan, float64)
             X_col_tmp[nonmissings] = X_col
@@ -1468,20 +1393,12 @@ def _process_sparse_column_schematized(X_col, feature_type):
         # feature_type == "nominal" or feature_type == "ordinal"
 
         if _pandas_installed:
-            indexes, uniques = factorize(_densify_object_ndarray(X_col[nonmissings]))
+            indexes, uniques = factorize(_densify_categorical(X_col[nonmissings]))
         else:
             uniques, indexes = unique(
-                _densify_object_ndarray(X_col[nonmissings]), return_inverse=True
+                _densify_categorical(X_col[nonmissings]), return_inverse=True
             )
-        if issubclass(uniques.dtype.type, floating):
-            # Convert all non-float64 floats to float64 to ensure consistent strings.
-            return (
-                nonmissings,
-                uniques.astype(float64, copy=False).astype(str_),
-                indexes,
-                None,
-            )
-        return nonmissings, uniques.astype(str_, copy=False), indexes, None
+        return nonmissings, uniques, indexes, None
 
     if feature_type == "continuous":
         if tt is float64:
@@ -1657,14 +1574,9 @@ def unify_columns_schematized(
     if isinstance(X, ndarray):  # this includes ma.masked_array
         tt = X.dtype.type
         if issubclass(tt, _complex_void_types):
-            if issubclass(tt, complexfloating):
-                msg = "Complex data not supported"
-                _log.error(msg)
-                raise ValueError(msg)
-            else:
-                msg = "np.void data not supported"
-                _log.error(msg)
-                raise TypeError(msg)
+            msg = f"{X.dtype.type} type not supported."
+            _log.error(msg)
+            raise ValueError(msg)
 
         # TODO: in the future special case this to make single samples faster at predict time
 
@@ -1987,21 +1899,11 @@ def unify_columns_schematized(
                                     )
 
                                 indexes, uniques = factorize(
-                                    _densify_object_ndarray(X_col)
+                                    _densify_categorical(X_col)
                                 )
-                                if issubclass(uniques.dtype.type, floating):
-                                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                    return (
-                                        nonmissings,
-                                        uniques.astype(float64, copy=False).astype(
-                                            str_
-                                        ),
-                                        indexes,
-                                        None,
-                                    )
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques,
                                     indexes,
                                     None,
                                 )
@@ -2057,21 +1959,11 @@ def unify_columns_schematized(
                                     )
 
                                 uniques, indexes = unique(
-                                    _densify_object_ndarray(X_col), return_inverse=True
+                                    _densify_categorical(X_col), return_inverse=True
                                 )
-                                if issubclass(uniques.dtype.type, floating):
-                                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                    return (
-                                        nonmissings,
-                                        uniques.astype(float64, copy=False).astype(
-                                            str_
-                                        ),
-                                        indexes,
-                                        None,
-                                    )
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques,
                                     indexes,
                                     None,
                                 )
@@ -2303,27 +2195,17 @@ def unify_columns_schematized(
                                     *_densify_continuous(X_col),
                                 )
 
-                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    None,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                            indexes, uniques = factorize(_densify_categorical(X_col))
                             return (
                                 None,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
 
                         else:
-                            X_col = X_col[nonmissings]
-
                             if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
                                 X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                 X_col_tmp[nonmissings] = X_col
@@ -2341,18 +2223,12 @@ def unify_columns_schematized(
                                     bad,
                                 )
 
-                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    nonmissings,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                            indexes, uniques = factorize(
+                                _densify_categorical(X_col[nonmissings])
+                            )
                             return (
                                 nonmissings,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
@@ -2374,28 +2250,18 @@ def unify_columns_schematized(
                                 )
 
                             uniques, indexes = unique(
-                                _densify_object_ndarray(X_col), return_inverse=True
+                                _densify_categorical(X_col), return_inverse=True
                             )
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    None,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
                             return (
                                 None,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
 
                         else:
-                            X_col = X_col[nonmissings]
-
                             if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
                                 X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                 X_col_tmp[nonmissings] = X_col
@@ -2414,19 +2280,12 @@ def unify_columns_schematized(
                                 )
 
                             uniques, indexes = unique(
-                                _densify_object_ndarray(X_col), return_inverse=True
+                                _densify_categorical(X_col[nonmissings]),
+                                return_inverse=True,
                             )
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    nonmissings,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
                             return (
                                 nonmissings,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
@@ -2783,21 +2642,11 @@ def unify_columns_schematized(
                                     )
 
                                 indexes, uniques = factorize(
-                                    _densify_object_ndarray(X_col)
+                                    _densify_categorical(X_col)
                                 )
-                                if issubclass(uniques.dtype.type, floating):
-                                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                    return (
-                                        nonmissings,
-                                        uniques.astype(float64, copy=False).astype(
-                                            str_
-                                        ),
-                                        indexes,
-                                        None,
-                                    )
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques,
                                     indexes,
                                     None,
                                 )
@@ -2854,21 +2703,11 @@ def unify_columns_schematized(
                                     )
 
                                 uniques, indexes = unique(
-                                    _densify_object_ndarray(X_col), return_inverse=True
+                                    _densify_categorical(X_col), return_inverse=True
                                 )
-                                if issubclass(uniques.dtype.type, floating):
-                                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                    return (
-                                        nonmissings,
-                                        uniques.astype(float64, copy=False).astype(
-                                            str_
-                                        ),
-                                        indexes,
-                                        None,
-                                    )
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques,
                                     indexes,
                                     None,
                                 )
@@ -3099,27 +2938,17 @@ def unify_columns_schematized(
                                     *_densify_continuous(X_col),
                                 )
 
-                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    None,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                            indexes, uniques = factorize(_densify_categorical(X_col))
                             return (
                                 None,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
 
                         else:
-                            X_col = X_col[nonmissings]
-
                             if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
                                 X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                 X_col_tmp[nonmissings] = X_col
@@ -3137,18 +2966,12 @@ def unify_columns_schematized(
                                     bad,
                                 )
 
-                            indexes, uniques = factorize(_densify_object_ndarray(X_col))
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    nonmissings,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
+                            indexes, uniques = factorize(
+                                _densify_categorical(X_col[nonmissings])
+                            )
                             return (
                                 nonmissings,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
@@ -3170,28 +2993,18 @@ def unify_columns_schematized(
                                 )
 
                             uniques, indexes = unique(
-                                _densify_object_ndarray(X_col), return_inverse=True
+                                _densify_categorical(X_col), return_inverse=True
                             )
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    None,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
                             return (
                                 None,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
 
                         else:
-                            X_col = X_col[nonmissings]
-
                             if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
                                 X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                 X_col_tmp[nonmissings] = X_col
@@ -3210,19 +3023,12 @@ def unify_columns_schematized(
                                 )
 
                             uniques, indexes = unique(
-                                _densify_object_ndarray(X_col), return_inverse=True
+                                _densify_categorical(X_col[nonmissings]),
+                                return_inverse=True,
                             )
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    nonmissings,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
-                                )
                             return (
                                 nonmissings,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
@@ -3550,25 +3356,16 @@ def unify_columns_schematized(
                             # feature_type == "nominal" or feature_type == "ordinal"
                             if _pandas_installed:
                                 indexes, uniques = factorize(
-                                    _densify_object_ndarray(X_col)
+                                    _densify_categorical(X_col)
                                 )
                             else:
                                 uniques, indexes = unique(
-                                    _densify_object_ndarray(X_col), return_inverse=True
-                                )
-
-                            if issubclass(uniques.dtype.type, floating):
-                                # Convert all non-float64 floats to float64 to ensure consistent strings.
-                                return (
-                                    nonmissings,
-                                    uniques.astype(float64, copy=False).astype(str_),
-                                    indexes,
-                                    None,
+                                    _densify_categorical(X_col), return_inverse=True
                                 )
 
                             return (
                                 nonmissings,
-                                uniques.astype(str_, copy=False),
+                                uniques,
                                 indexes,
                                 None,
                             )
@@ -3665,23 +3462,15 @@ def unify_columns_schematized(
                 # feature_type == "nominal" or feature_type == "ordinal"
 
                 if _pandas_installed:
-                    indexes, uniques = factorize(_densify_object_ndarray(X_col))
+                    indexes, uniques = factorize(_densify_categorical(X_col))
                 else:
                     uniques, indexes = unique(
-                        _densify_object_ndarray(X_col),
+                        _densify_categorical(X_col),
                         return_inverse=True,
-                    )
-                if issubclass(uniques.dtype.type, floating):
-                    # Convert all non-float64 floats to float64 to ensure consistent strings.
-                    return (
-                        nonmissings,
-                        uniques.astype(float64, copy=False).astype(str_),
-                        indexes,
-                        None,
                     )
                 return (
                     nonmissings,
-                    uniques.astype(str_, copy=False),
+                    uniques,
                     indexes,
                     None,
                 )
@@ -3749,14 +3538,9 @@ def unify_columns_nonschematized(
 
     if isinstance(X, np.ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):
-            if issubclass(X.dtype.type, np.complexfloating):
-                msg = "Complex data not supported"
-                _log.error(msg)
-                raise ValueError(msg)
-            else:
-                msg = "np.void data not supported"
-                _log.error(msg)
-                raise TypeError(msg)
+            msg = f"{X.dtype.type} type not supported."
+            _log.error(msg)
+            raise ValueError(msg)
 
         # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
         # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
