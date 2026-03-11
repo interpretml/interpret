@@ -21,11 +21,13 @@ from numpy import (
     logical_not,
     ascontiguousarray,
     full,
+    where,
     ndarray,
     dtype,
     bool_,
     int64,
     float64,
+    integer,
     str_,
     object_,
     floating,
@@ -34,6 +36,7 @@ from numpy import (
 )
 
 from numpy.ma import masked_array, nomask
+from numpy.char import endswith, rstrip
 
 
 _log = logging.getLogger(__name__)
@@ -83,43 +86,6 @@ except ImportError:
 
 
 # BIG TODO LIST:
-# - review this entire bin.py file
-# - write a cython single instance prediction pathway
-# - consider re-writing most of this bin.py functionality in cython for anything that gets used during prediction for speed
-# - test: clean_dimensions with ma.masked_array... and other stuff in there
-# - test: preclean_X with pd.Series with missing values and maybe a categorical -> gets converted as N features and 1 sample
-# - test: preclean_X with list that CONTAINS a ma.masked_array sample entry with missing data and without missing data
-# - add better processing for ignored columsn where we return the existing data if we can, and we return all None
-#  values if not which our caller can detect.  Then unify_data can convert that to int(0) values which should work for
-#  all feature types
-# - disable 'ignore' columns temporarily.  We need to update C++ to make a distinction because you can have 3 real columns and 5 referencable columsn and our datastructures need to be updated to handle this in C++ first
-# - handle the thorny questions of converting float to int for categorical strings
-#  - in the object converter, convert all int64/uint64 and all floats objects to float64, then use the floor check
-#    and compare with +-9007199254740991 to decide if they should be expressed as integers or floats
-#  - after np.unique for categoricals, convert int64 and uint64 types to float64 and then re-run np.unique on those
-#    values to figure out if there are collisions in the float64 space for integers.  We actually have more
-#    work to do in this case since we'll also get bad reverse indexes with more categories than we have unique values
-#    Perhaps we can just detect this scenario in the integer space by checking for 9007199254740991 < abs(x) with
-#    integers and if it's true then convert to float64 before calling np.unique again?  It'll be infrequent to have
-#    such large integers, and we only need to check with int64 and np.uint64 since they are the only ones that can make non-unique floats
-#  - leave bools as "False"/"True", BUT we have a corner case in _densify_object_ndarray if we have mixed types
-#    we convert to unicode, and bools become "False"/"True" and then subequently fail the test of being able to
-#    be converted to floats, so we need to record the bool types and convert them to 0/1 for the conversion to float
-#    test.  First, we can detect if there are any bools via "types = set(map(type, X_col))", then we can
-#    find all the bools with np.logical_or(X_col == np.array(False), X_col == np.array(True)) or something like that
-#  - strip leading and trailing spaces when attempting to convert to float BUT NOT FOR STRING CATEGORICALS!
-#  - def convert_float_category_str(vals):
-#        vals = vals.astype(np.float64, copy=False)
-#        integerizable = np.logical_and(vals == np.floor(vals), vals.abs() <= THE_MAX_FLOAT)
-#        integers = vals[integerizable]
-#        floats = vals[~integerizable]
-#        integers = integers.astype(np.int64).astype(np.unicode_)
-#        floats = integers.astype(np.unicode_) # or perhaps shuttle it to C++
-#        objs = np.empty(len(vals), dtype=np.object)
-#        np.place(objs, integerizable, integers)
-#        np.place(objs, ~integerizable, floats)
-#        vals = objs.astype(np.unicode_)
-#        return vals
 # - add support for a "ordinal_fast" and "nominal_fast".  We would accept these in feature_types as
 #   a dict of (int/float -> string) for 'ordinal_fast', and (string -> int/float) for 'nominal_fast'
 #   the we'd write our feature_types_in values as "ordinal_fast" and "nominal_fast" and we'd exepct
@@ -133,21 +99,7 @@ except ImportError:
 #   { 1: "low", 2: "medium", 3: "high" } => int to object(string) mapping -> ordinals
 #   We still record these as ["low", "medium", "high"] and ["Canada", "Japan", "Seychelles"] and we use the
 #   feature type value to know that these are "ordinal_fast" and "nominal_fast"
-
-
-# FUTURE TODOS in our callers and in JSON:
-# - look into ISO 6093:1985 -> https://www.titanwolf.org/Network/q/4d680399-6711-4742-9900-74a42ad9f5d7/y
-# - support "category compression" where we take a number like 10 and compress any categories together that
-#   have less than that number of samples.  Internally, this works well for the prior_categories parameter since
-#   we can have multiple strings map to identical numbers, so "low" and "medium" can be groups and separate from high
-#   with {"low": 1, "medium": 1, "high":2} and in JSON we can record these as [["low", "medium"], "high"]
-#   We support different category compressions for pairs or even individual features since we allow
-#   separate category definitios per pair axis.  Our unify_columns generator can support these by extracting the
-#   raw data once and then applying different category dictionaries to the raw data and then yielding those
-#   the caller to the generator can quickly determine which categories we're responding to using the pointer id(..)
-#   comparisons without examining all the internal dictionary definitions, and we can minimize
-#   work done by having a single object with a single id(..) pointer that is shared between prior_categories objects
-#   if they are identical at model load time.
+#
 # - if we recieve an unseen float64 value in a 'nominal' or 'ordinal', then check if all the categorical
 #   value strings are convertible to float64.  If that's the case then find the mid-point between the categories
 #   after they are converted to strings and create a pseudo-continuous value of the feature and figure out where
@@ -156,118 +108,12 @@ except ImportError:
 #   converted to floats and then look at the distance between the upper and lower category and choose the one
 #   that is closest, and choose the upper one if the distance is equal since then the cut would be on the value
 #   and we use lower bound semantics (where the value gets into the upper bin if it's exactly the cut value)
-# - eventually, we'll want to have an EBMData data frame that'll store just
-#   floats and integers and convert strings to integers on the fly as data is added
-#   AND more importantly, you could create this EBMData with a reference to a model
-#   and then you could populate it with the correct integer mapping, so "low", "medium", "high"
-#   get populated internally as 1, 2, 3 IDENTICALLY to the model from which the
-#   EBMData frame was created from.  If we get a dataframe from anywhere else then
-#   we can't be confident the mapping is identical, and we need to use a dictionary
-#   of some kind, either from string to integer or integer to integer to do the mapping
-#   so having our own dataframe makes it possible to have faster prediction scenarios
-#   Unfortunately, taking a Pandas dataframe as input doesn't allow us to escape the hashtable
-#   step, so whehter we get strings or integers is kind of similar in terms of processing speed
-#   although hashing strings is slower.
-# - the EBMData frame should be constructable by itself without a model reference if it's going to
-#   be used to train a model, so we sort of have 2 states:
-#   - 1: no model reference, convert strings to integers using hashes on the fly
-#   - 2: model reference.  Use the model's dictionary mapping initially, but allow new strings or integers
-#     to be added as necessary, but anything below what the model knows about we map diretly to the right integers
+#
 # - we should create post-model modification routines so someone could construct an integer based
 #   ordinal/categorical and build their model and evaluate it efficiently, BUT when they want
 #   to view the model they can replace the "1", "2", "3" values with "low", "medium", "high" for graphing
-
-
+#
 # NOTES:
-# - IMPORTANT INFO FOR BELOW: All newer hardware (including all Intel processors) use the IEEE-754 floating point
-#   standard when encoding floating point numbers.  In IEEE-754, smaller whole integers have perfect representations
-#   in float64 representation.  Float64 looses the ability to distinquish between integers though above the number
-#   9007199254740991. 9007199254740992 and 9007199254740993 both become 9007199254740992 when converted to float64
-#   and back to ints.  All int32 and uint32 values have perfect float64 representation, but there are collisions
-#   for int64 and uint64 values above these high numbers.
-# - a desirable property for EBM models is that we can serialize them and evaluate them in different
-#   programming languages like C++, R, JavaScript, etc
-# - ideally, we'd have just 1 serialization format, and JSON is a good choice as that format since we can then
-#   load models into JavaScript easily, and it's also well supported accross other languages as well.
-# - JSON also has the benefit that it's human readable, which is important for an intelligible model.
-# - JSON and JavaScript have fairly limited support for data types.  Only strings and float64 numbers are recognized.
-#   There are no integer datatypes in JavaScript or JSON.  This works for us though since we can use strings to
-#   encode nominals/ordinals, and float64 values to define 'continuous' cut points.
-# - 'continuous' features should always be converted to float64 before discretization because:
-#   - float64 is more universal accross programming languages.  Python's float type is a float64.  R only supports
-#     float64.  JavaScript is only float64, etc.  GPUs are the excpetion where only float32 are sometimes supported
-#     but we only do discretization at the injestion point before any GPUs get used, so that isn't a concern.
-#   - our model definition in JSON is exclusively float64, and we don't to add complexity to indicate if a number
-#     is a float64 or float32, and even then what would we do with a float32 in JavaScript?
-#   - float64 continuous values gives us perfect separation and conversion of float32 values, which isn't true
-#     for the inverse
-#   - The long double (float80) equivalent is pretty much dead and new hardware doesn't support it.  In the off
-#     chance someone has data with this type then we loose some precision and some values which might have been
-#     separable will be lumped together, but for continuous values the cut points are somewhat arbitary anyways, so
-#     this is acceptable.
-#   - Some big int64 or uint64 values collide when converting to float64 for numbers above 9007199254740991,
-#     so we loose the ability to distinquish them, but like for float80 values
-#     this loss in precision is acceptable since continuous features by nature group similar values together.
-#     The problem is worse for float32, so float64 is better in this regard.
-# - 'nominal' and 'ordinal' features are pretty compatible between languages when presented to us as strings
-#   but the caller can specify that integer/boolean/float values should be treated as 'nominal'/'ordinal' and
-#   then things become tricky for a number of reasons:
-#   - it's pretty easy in python and in other languages to silently convert integers to floats.  Let's say
-#     we have a categorical where the possible values are 1, 2, 3, and 4.1, but 4.1 is very unlikely and might
-#     occur zero times in any particular dataset.  If during training our unique values are np.array([1, 2, 3]),
-#     but during predict time let's say we observe np.array([1, 2, 3, 4.1]).  Python will silently convert these to
-#     floats resulting in np.array([1.0, 2.0, 3.0, 4.1]), and then when we convert to strings we get
-#     ["1.0", "2.0", "3.0", "4.1"] instead of our original categories of ["1", "2", "3"], so now none of our
-#     categories match.  This would be a very easy mistake to make and would result in a hard to diagnose bug.
-#     A solution to this problem of silently converting integers to floats would be to change our text conversion
-#     such that floats which are whole numbers are converted to integers in text.  So then we'd get
-#     ["1", "2", "3", "4.1"] as our categories.  We can do this efficiently in python and in many other languages
-#     by checking if floor(x) == x for float64 values.  I think it's also nicer visually in graphs of categoricals
-#     that any numbers are shown as integers when possible
-#   - another benefit of making whole number floats as integers is that integer to string conversions are relatively
-#     easy to do cross-language, but floats are almost never converted to identical strings the same way across
-#     languages since there are many legal conversions.
-#     "33.3", "33.299999999999997", "3.3e1", "3.3e+01" are all legal text representations for the float value of 33.3
-#   - we have an issue in that all numbers above 9007199254740991 (and in fact some numbers below that) will
-#     be equal to their floor, so will appear to be whole numbers.  We don't want 1.0e300 to be converted
-#     to an integer, so we need some kind of maximum value above which we change to floating point representation
-#     Since integers don't exist in JavaScript, we can't really represent all numbers above 9007199254740991
-#     with unique categoricals, so we can't have truely cross-platform integers above that value, so it makes
-#     sense for us to make all whole numbers equal to or less than 9007199254740991 integers, and any number
-#     above that point as a floating point.  This has the disadvantage that some integers above 9007199254740991
-#     will have the same categorical strings and be non-separable, but having some collisions in extreme values
-#     is probably better than the alternative of getting different categorical strings in different programming
-#     languages where integers do not exist.  By making all numbers larger than 9007199254740991 as floating
-#     point values, the caller will at least see that we're using exponential float representations instead of
-#     integers, so although they may not understand why we switch to float representation above 9007199254740991
-#     it will at least be apparent what is happening so they can correct the issues by converting to strings themselves.
-#   - The only way we could guarantee that identical float64 values in different programming languages generate
-#     the same text would be if we implemented a float to text converter in C++ (the standard library provides no
-#     cross platform guarantees), and if we sent our floating point values into C++ for conversion.  This is possible
-#     to do because we only care about performance during predict time for this converstion to strings, and at predict
-#     time we already know if a feature is nominal/ordinal/continuous, and presumably there aren't too many
-#     categories because otherwise the feature wouldn't be very useful, so we can pass the relatively few floating
-#     point values into C++ and get back a single string separated by spaces of the text conversions.
-#   - if we're presented with an array of np.object_, we can't give a guarantee that unique inputs will generate unique
-#     categories since the caller could present us with int(0) and "0", or some object type who's __str__ function
-#     generates a "0".  We can't obviously support generalized object types when we serialize to JSON, or any
-#     other cross-language model serialization format.
-#   - here's an interesting conundrum.  np.float64(np.float32("1.1")) != np.float64("1.1").  Also,
-#     np.float64(np.float32(1.1)) gives "1.100000023841858".  The problem here is that the float32 converter finds
-#     the float32 value that is closest to 1.1.  That value is a float though so if you convert that to a float64
-#     value all the lower mantissa bits are zeros in the float64 value.  If you take the string "1.1" and convert
-#     it to float64 though the converter will find the closest float64 value where the text after the 1.1... isn't
-#     required for roundtripping.  That float64 will have non-zero bits in the lower mantissa where the float32
-#     value for "1.1" does not, so they are not equal.  This is a problem because if we build an EBM model in one
-#     language with a float32 and in annother language with a float64 that is the same value we expect them to have
-#     the same nominal or ordinal string, but they don't.  In the language with the float32 value we get "1.1"
-#     and in the language with the float64 we get "1.100000023841858" and they don't match.  The solution is to
-#     convert all float32 values to float64 in all languages so that we get "1.100000023841858" in both.  This feels
-#     odd since str(my_float32) might give "1.1" so it'll be confusing to the caller, but at least we'll get
-#     consistent results.  I think we need to make the assumption that the caller has the same binary float
-#     represetation in both langauges.  If that's true then any errors are caused by the caller really since
-#     they are presenting slightly different data in both languages.  They should be able to resolve it by using
-#     float64 everywhere which should be available in all mainstream languages, unlike float32.
 #   - other double to text and text to double:
 #     https://github.com/google/double-conversion/blob/master/LICENSE -> BSD-3
 #     https://stackoverflow.com/questions/28494758/how-does-javascript-print-0-1-with-such-accuracy -> https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf
@@ -289,52 +135,6 @@ except ImportError:
 #     that available in other languages to call into the C++ to harmonize floating point formats.
 #     Python is our premier language and has poor performance if you try to do operations in loops, so we'll
 #     force all the other platforms to conform to python specifications.
-#   - when we recieve bool values in python we can probably keep the python string representations of "False" and "True".
-#     Unlike float64 values, there are just 2 possible bool values and we express them as JavaScript bool items,
-#     and with just 2 possible values there are no issues with different
-#     hard to standardize string formats.  I like giving the user a little more context of the underlying value in
-#     the graphs, and "True", "False" are a bit nicer than "false" and "true" or "FALSE" and "TRUE"
-#   - If our caller gives us strings [" a ", "a"] we will consider those to be two separate categories since the caller
-#     could have some requirement to keep these as separate categories.  Eliminating the whitespace makes it impossible
-#     for our caller to differentiate these.  If the caller wants these to be the same string then they can preprocess this
-#     aspect themselves.
-# - np.unique has some issues.  It doesn't like None values.  It considers int(4) and float(4.0) to be identical
-#   it sucks in performance with np.object_ arrays since it uses python comparers.  It doesn't call
-#   __str__ on objects, so we get collisions if the object later converts to a string that is already a category.
-#   If there are many np.nan values, then the uniques array has many np.nan entries!  We've fixed all of these
-#   by filtering out None and np.nan values, and we've converted objects to a strong types
-# - If we aren't given a feature type and we get data that is just [0, 1], should we treat this as
-#   'nominal' or a 'continuous' value with a split at 0.5?  We'd rather our graphs be bar graphs showing
-#   a bar for 0 and annother bar for 1, which implies nominal, but this has a problem if the
-#   feature can rarely be something like 1.1.  Maybe we just never saw a 1.1 in our data even though
-#   it can occur.  If this happens then a string label of 1.1 doesn't match '1' and we fail.  If
-#   we treated data this way then it wouldn't really be legal for production systems to not
-#   specify one of the feature types since an unlikely occurence could produce a nominal type
-#   from a continuous type and then fail at predict time.  Our solution is if we see new categories at predict time
-#   to check if the new categories are convertible to float64 and if that's true and if all the other prior categories
-#   that we saw during fit time are also convertible to float64, then we are allowed to switch to treating them as continuous
-#   during predict time.  This way we get to have nice bar graphs of '0' and '1', but we won't generate an error
-#   if we see 1.1 at predict time since it gets put into the [0.5 +inf) bin.  We treat
-#   [0, 1, 2] and [0, 1, 9] and [1.1, 2.2] the same way and have a threshold of categories below which we treat these
-#   as cateogoricals during training.
-# - If we recieve pure floats from the caller we'll either generate a continuous feature_type and any differences
-#   in the floating point cut points should be fairly minor.  Alternatively, we'll get a 'nominal' which is
-#   also ok since our floating point strings won't match the ones at fit time and then they'll be converted to
-#   continuous values and very likely end up in the same bin as the original floats as they'll be very close in value
-#   since we soft-convert nominals with all float64 values into continuous values when necessary/possible
-# - Let's say we get the strings ['0', '00', '0.0', '0.0e10'].  If the caller forced this as a nominal we'd have
-#   4 values, but if we decided that this should be a 'continuous_auto' value then we'd be converting this to only
-#   one floating point value, which makes it useless.  What this is highlighting is that our unique cutoff point
-#   where we choose whether a feature should be 'nominal_auto' or 'continuous_auto' should be decided by the number
-#   of unique float64 values that the strings convert into.  Hopefully different platforms get the same floating point
-#   values based on string inputs, which is annother reason why we should have a consistent C++ implementation.
-# - we use the terms ordinal and nominal to indicate different types of categoricals
-#   (https://en.wikipedia.org/wiki/Ordinal_data).  A lot of ML pacakges use categorical instead of the more
-#   specific term nominal since they don't support ordinals (requiring ordinal data to be handled as
-#   continuous/numerical).  We however, being an interpretable package, want to have a built in oridinal
-#   feature type so that we can display "low", "medium", "high" instead of 1, 2, 3 on graphs, so
-#   it makes sense for us to make the distinction of having nominal and ordinal features which are both categoricals
-#   This also aligns nicely with the pandas.CategoricalDtype which is used to specify both ordinals and nominals.
 
 
 _disallowed_types = (
@@ -357,7 +157,6 @@ _bool_types = (bool, np.bool_)
 _all_int_types = (int, np.integer)
 # np.str_ derrives from str and np.bytes_ derrives from bytes so no need to include
 _strconv_types = (str, bytes, int, np.integer, np.datetime64, np.timedelta64)
-_intbool_types = (np.integer, np.bool_)
 _intboolpython_types = (int, bool, np.integer, np.bool_)
 _float_int_bool_types = (np.floating, np.integer, np.bool_)
 _complex_void_types = (np.complexfloating, np.void)
@@ -401,10 +200,15 @@ def _densify_categorical(X_col):
     types = set(map(type, X_col))
 
     if all(issubclass(t, _float_types) for t in types):
-        return X_col.astype(float64).astype(str_)
+        # strip trailing ".0" for floats so that floats and integers are the same for integer representable floats
+        X_col = X_col.astype(float64).astype(str_)
+        wholes = endswith(X_col, ".0")
+        if wholes.any():
+            X_col[wholes] = rstrip(rstrip(X_col[wholes], "0"), ".")
+        return X_col
 
     if all(issubclass(t, _bool_types) for t in types):
-        return X_col.astype(bool_).astype(str_)
+        return where(X_col.astype(bool_), "1", "0")
 
     if all(issubclass(t, _strconv_types) for t in types):
         return X_col.astype(str_)
@@ -455,6 +259,9 @@ def _densify_categorical(X_col):
         )
 
         floats = X_col[floatable].astype(float64).astype(str_)
+        wholes = endswith(floats, ".0")
+        if wholes.any():
+            floats[wholes] = rstrip(rstrip(floats[wholes], "0"), ".")
         non = ~floatable
         X_col = X_col[non]
 
@@ -464,8 +271,7 @@ def _densify_categorical(X_col):
             bool_,
             X_col.shape[0],
         )
-
-        bools = X_col[boolable].astype(bool_).astype(str_)
+        bools = where(X_col[boolable].astype(bool_), "1", "0")
         nonboolable = ~boolable
         X_col = X_col[nonboolable]
 
@@ -1175,9 +981,21 @@ def _process_pandas_column_schematized(X_col, feature_type):
     if isinstance(dt, CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.array
+        categories = X_col.categories
+        tt = categories.dtype.type
+        if issubclass(tt, floating):
+            categories = categories.to_numpy(float64).astype(str_)
+            wholes = endswith(categories, ".0")
+            if wholes.any():
+                categories[wholes] = rstrip(rstrip(categories[wholes], "0"), ".")
+        elif tt is bool_:
+            categories = where(categories.to_numpy(bool_), "1", "0")
+        else:
+            categories = categories.to_numpy(str_)
+
         return (
             False,
-            X_col.categories.to_numpy(str_),
+            categories,
             X_col.codes,
             None,
         )
@@ -1210,21 +1028,36 @@ def _process_pandas_column_schematized(X_col, feature_type):
                 )
             elif tt is float64:
                 indexes, uniques = factorize(X_col.values)
+
+                uniques = uniques.astype(str_)
+                wholes = endswith(uniques, ".0")
+                if wholes.any():
+                    uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
                 return (
                     False,
-                    uniques.astype(str_),
+                    uniques,
                     indexes,
                     None,
                 )
             elif issubclass(tt, floating):
                 indexes, uniques = factorize(X_col.values)
+
+                uniques = uniques.astype(float64).astype(str_)
+                wholes = endswith(uniques, ".0")
+                if wholes.any():
+                    uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
                 return (
                     False,
-                    uniques.astype(float64).astype(str_),
+                    uniques,
                     indexes,
                     None,
                 )
-            elif issubclass(tt, _intbool_types):
+            elif tt is bool_:
+                indexes, uniques = factorize(X_col.values)
+                return None, where(uniques, "1", "0"), indexes, None
+            elif issubclass(tt, integer):
                 indexes, uniques = factorize(X_col.values)
                 return None, uniques.astype(str_), indexes, None
 
@@ -1235,14 +1068,29 @@ def _process_pandas_column_schematized(X_col, feature_type):
             # this handles Float64Dtype, Float32Dtype
 
             indexes, uniques = factorize(X_col.array)
+
+            uniques = uniques.to_numpy(float64).astype(str_)
+            wholes = endswith(uniques, ".0")
+            if wholes.any():
+                uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
             return (
                 False,
-                uniques.to_numpy(float64).astype(str_),
+                uniques,
                 indexes,
                 None,
             )
-        elif issubclass(tt, _intbool_types):
-            # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
+        elif tt is bool_:
+            # BooleanDtype
+            indexes, uniques = factorize(X_col.array)
+            return (
+                False,
+                where(uniques.to_numpy(bool_), "1", "0"),
+                indexes,
+                None,
+            )
+        elif issubclass(tt, integer):
+            # Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype
             indexes, uniques = factorize(X_col.array)
             return (
                 False,
@@ -1356,7 +1204,8 @@ def _process_sparse_column_schematized(X_col, feature_type):
 
     # feature_type == "nominal" or feature_type == "ordinal"
 
-    if issubclass(X_col.dtype.type, floating):
+    tt = X_col.dtype.type
+    if issubclass(tt, floating):
         m = isnan(X_col)
         if m.any():
             logical_not(m, out=m)
@@ -1365,17 +1214,33 @@ def _process_sparse_column_schematized(X_col, feature_type):
                 indexes, uniques = factorize(X_col)
             else:
                 uniques, indexes = unique(X_col, return_inverse=True)
-            return m, uniques.astype(str_), indexes, None
+
+            uniques = uniques.astype(float64, copy=False).astype(str_)
+            wholes = endswith(uniques, ".0")
+            if wholes.any():
+                uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+            return m, uniques, indexes, None
         if _pandas_installed:
             indexes, uniques = factorize(X_col)
         else:
             uniques, indexes = unique(X_col, return_inverse=True)
-        return None, uniques.astype(str_), indexes, None
+
+        uniques = uniques.astype(float64, copy=False).astype(str_)
+        wholes = endswith(uniques, ".0")
+        if wholes.any():
+            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+        return None, uniques, indexes, None
 
     if _pandas_installed:
         indexes, uniques = factorize(X_col)
     else:
         uniques, indexes = unique(X_col, return_inverse=True)
+
+    if tt is bool_:
+        return None, where(uniques, "1", "0"), indexes, None
+
     return None, uniques.astype(str_, copy=False), indexes, None
 
 
@@ -1532,9 +1397,17 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1554,11 +1427,28 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1586,12 +1476,21 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1613,13 +1512,30 @@ def unify_columns_schematized(
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1650,9 +1566,17 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1672,11 +1596,27 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(float64).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1708,9 +1648,17 @@ def unify_columns_schematized(
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1732,13 +1680,30 @@ def unify_columns_schematized(
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(float64).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -1868,6 +1833,101 @@ def unify_columns_schematized(
                                     indexes,
                                     None,
                                 )
+                    elif tt is bool_:
+                        if _pandas_installed:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        nonmissings,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        None,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
                     else:
                         if _pandas_installed:
 
@@ -2018,9 +2078,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
                 else:
 
@@ -2036,9 +2110,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif issubclass(tt, floating):
                 if _pandas_installed:
@@ -2055,9 +2143,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(float64).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(float64).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
                 else:
 
@@ -2073,9 +2175,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(float64).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(float64).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif tt is object_:
                 if _pandas_installed:
@@ -2190,6 +2306,29 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
+            elif tt is np.bool_:
+                if _pandas_installed:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        indexes, uniques = factorize(X_col)
+                        return None, where(uniques, "1", "0"), indexes, None
+
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+                        return None, where(uniques, "1", "0"), indexes, None
+
             else:
                 if _pandas_installed:
 
@@ -2272,9 +2411,17 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2295,11 +2442,27 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2327,12 +2490,21 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2355,13 +2527,30 @@ def unify_columns_schematized(
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2392,9 +2581,17 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2414,11 +2611,27 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(float64).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
                                     indexes, uniques = factorize(X_col)
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2447,12 +2660,21 @@ def unify_columns_schematized(
                                         logical_not(m, out=m)
                                         X_col = X_col[m]
                                         place(nonmissings, nonmissings, m)
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         nonmissings,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2474,13 +2696,30 @@ def unify_columns_schematized(
                                         uniques, indexes = unique(
                                             X_col, return_inverse=True
                                         )
-                                        return m, uniques.astype(str_), indexes, None
+
+                                        uniques = uniques.astype(float64).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                    uniques = uniques.astype(float64).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        uniques.astype(str_),
+                                        uniques,
                                         indexes,
                                         None,
                                     )
@@ -2612,6 +2851,101 @@ def unify_columns_schematized(
                                     indexes,
                                     None,
                                 )
+                    elif tt is bool_:
+                        if _pandas_installed:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    indexes, uniques = factorize(X_col)
+                                    return (
+                                        None,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        nonmissings,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        None,
+                                        where(uniques, "1", "0"),
+                                        indexes,
+                                        None,
+                                    )
+
                     else:
                         if _pandas_installed:
 
@@ -2760,9 +3094,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
                 else:
 
@@ -2778,9 +3126,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif issubclass(tt, floating):
                 if _pandas_installed:
@@ -2797,9 +3159,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(float64).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(float64).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
                 else:
 
@@ -2815,9 +3191,23 @@ def unify_columns_schematized(
                             logical_not(m, out=m)
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
-                            return m, uniques.astype(str_), indexes, None
+
+                            uniques = uniques.astype(float64).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
-                        return None, uniques.astype(str_), indexes, None
+
+                        uniques = uniques.astype(float64).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif tt is object_:
                 if _pandas_installed:
@@ -2934,6 +3324,30 @@ def unify_columns_schematized(
                                 None,
                             )
 
+            elif tt is bool_:
+                if _pandas_installed:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        indexes, uniques = factorize(X_col)
+                        return None, where(uniques, "1", "0"), indexes, None
+
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+                        return None, where(uniques, "1", "0"), indexes, None
             else:
                 if _pandas_installed:
 
@@ -3298,15 +3712,26 @@ def unify_columns_schematized(
                                     logical_not(m, out=m)
                                     X_col = X_col[m]
                                     place(nonmissings, nonmissings, m)
+
                                 if _pandas_installed:
                                     indexes, uniques = factorize(X_col)
                                 else:
                                     uniques, indexes = unique(
                                         X_col, return_inverse=True
                                     )
+
+                                uniques = uniques.astype(float64, copy=False).astype(
+                                    str_
+                                )
+                                wholes = endswith(uniques, ".0")
+                                if wholes.any():
+                                    uniques[wholes] = rstrip(
+                                        rstrip(uniques[wholes], "0"), "."
+                                    )
+
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_),
+                                    uniques,
                                     indexes,
                                     None,
                                 )
@@ -3315,6 +3740,15 @@ def unify_columns_schematized(
                                 indexes, uniques = factorize(X_col)
                             else:
                                 uniques, indexes = unique(X_col, return_inverse=True)
+
+                            if tt is bool_:
+                                return (
+                                    nonmissings,
+                                    where(uniques, "1", "0"),
+                                    indexes,
+                                    None,
+                                )
+
                             return (
                                 nonmissings,
                                 uniques.astype(str_, copy=False),
@@ -3396,17 +3830,33 @@ def unify_columns_schematized(
                         indexes, uniques = factorize(X_col)
                     else:
                         uniques, indexes = unique(X_col, return_inverse=True)
-                    return m, uniques.astype(str_), indexes, None
+
+                    uniques = uniques.astype(float64, copy=False).astype(str_)
+                    wholes = endswith(uniques, ".0")
+                    if wholes.any():
+                        uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                    return m, uniques, indexes, None
                 if _pandas_installed:
                     indexes, uniques = factorize(X_col)
                 else:
                     uniques, indexes = unique(X_col, return_inverse=True)
-                return None, uniques.astype(str_), indexes, None
+
+                uniques = uniques.astype(float64, copy=False).astype(str_)
+                wholes = endswith(uniques, ".0")
+                if wholes.any():
+                    uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                return None, uniques, indexes, None
 
             if _pandas_installed:
                 indexes, uniques = factorize(X_col)
             else:
                 uniques, indexes = unique(X_col, return_inverse=True)
+
+            if tt is bool_:
+                return None, where(uniques, "1", "0"), indexes, None
+
             return None, uniques.astype(str_, copy=False), indexes, None
 
         return internal
