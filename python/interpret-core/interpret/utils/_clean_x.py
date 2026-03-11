@@ -1344,64 +1344,8 @@ def _process_pandas_column_nonschematized(
 def _process_sparse_column_schematized(X_col, feature_type):
     X_col = X_col.toarray().ravel()
 
-    tt = X_col.dtype.type
-    if tt is object_:
-        if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing. If Pandas is
-            # available we can use the pd.notna function that checks for
-            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-            nonmissings = notna(X_col)
-        else:
-            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-            nonmissings = X_col == X_col
-            nonmissings &= X_col != _none_ndarray
-
-        if nonmissings.all():
-            if feature_type == "continuous":
-                return None, None, *_densify_continuous(X_col)
-
-            # feature_type == "nominal" or feature_type == "ordinal"
-
-            if _pandas_installed:
-                indexes, uniques = factorize(_densify_categorical(X_col))
-            else:
-                uniques, indexes = unique(
-                    _densify_categorical(X_col), return_inverse=True
-                )
-            return None, uniques, indexes, None
-
-        if feature_type == "continuous":
-            X_col, bad = _densify_continuous(X_col[nonmissings])
-
-            X_col_tmp = full(nonmissings.shape[0], nan, float64)
-            X_col_tmp[nonmissings] = X_col
-            X_col = X_col_tmp
-
-            if bad is not None:
-                bad_tmp = zeros(nonmissings.shape[0], bool_)
-                bad_tmp[nonmissings] = bad
-                bad = bad_tmp
-
-            return (
-                None,
-                None,
-                X_col,
-                bad,
-            )
-
-        # feature_type == "nominal" or feature_type == "ordinal"
-
-        if _pandas_installed:
-            indexes, uniques = factorize(_densify_categorical(X_col[nonmissings]))
-        else:
-            uniques, indexes = unique(
-                _densify_categorical(X_col[nonmissings]), return_inverse=True
-            )
-        return nonmissings, uniques, indexes, None
-
     if feature_type == "continuous":
-        if tt is float64:
+        if X_col.dtype.type is float64:
             # force C contiguous here for a later call to native.discretize
             return None, None, ascontiguousarray(X_col), None
         try:
@@ -1412,7 +1356,7 @@ def _process_sparse_column_schematized(X_col, feature_type):
 
     # feature_type == "nominal" or feature_type == "ordinal"
 
-    if issubclass(tt, floating):
+    if issubclass(X_col.dtype.type, floating):
         m = isnan(X_col)
         if m.any():
             logical_not(m, out=m)
@@ -1433,49 +1377,6 @@ def _process_sparse_column_schematized(X_col, feature_type):
     else:
         uniques, indexes = unique(X_col, return_inverse=True)
     return None, uniques.astype(str_, copy=False), indexes, None
-
-
-def _process_sparse_column_nonschematized(
-    feature_idx,
-    X_col,
-    feature_type,
-    min_unique_continuous,
-    get_col_schematized,
-):
-    X_col = X_col.toarray().ravel()
-
-    if X_col.dtype.type is np.object_:
-        if _pandas_installed:
-            # pandas also has the pd.NA value that indicates missing. If Pandas is
-            # available we can use the pd.notna function that checks for
-            # pd.NA, np.nan, math.nan, and None.  pd.notna is also faster than the
-            # alternative (X_col == X_col) & (X_col != np.array(None)) below
-            nonmissings = pd.notna(X_col)
-        else:
-            # X_col == X_col is a check for nan that works even with mixed types, since nan != nan
-            nonmissings = X_col == X_col
-            nonmissings &= X_col != _none_ndarray
-
-        if nonmissings.all():
-            return _process_arrayish_nonschematized(
-                feature_idx,
-                X_col,
-                feature_type,
-                min_unique_continuous,
-                get_col_schematized,
-            )
-
-        return _process_arrayish_nonschematized(
-            feature_idx,
-            X_col[nonmissings],
-            feature_type,
-            min_unique_continuous,
-            get_col_schematized,
-        )
-
-    return _process_arrayish_nonschematized(
-        feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
-    )
 
 
 def _process_dict_column_nonschematized(
@@ -1514,9 +1415,9 @@ def _process_dict_column_nonschematized(
             raise ValueError(msg)
     elif isinstance(X_col, _spmatrix_or_sparray):
         if X_col.shape[1] == 1 or X_col.shape[0] == 1:
-            return _process_sparse_column_nonschematized(
+            return _process_arrayish_nonschematized(
                 feature_idx,
-                X_col,
+                X_col.toarray().ravel(),
                 feature_type,
                 min_unique_continuous,
                 get_col_schematized,
@@ -3663,9 +3564,9 @@ def unify_columns_nonschematized(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
         def internal(feature_idx):
-            return _process_sparse_column_nonschematized(
+            return _process_arrayish_nonschematized(
                 feature_idx,
-                X[:, (col_map[feature_idx],)],
+                X[:, (col_map[feature_idx],)].toarray().ravel(),
                 feature_types[feature_idx],
                 min_unique_continuous,
                 get_col_schematized,
@@ -3693,9 +3594,9 @@ def unify_columns_nonschematized(
             col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
 
         def internal(feature_idx):
-            return _process_sparse_column_nonschematized(
+            return _process_arrayish_nonschematized(
                 feature_idx,
-                X_get(col_map[feature_idx]),
+                X_get(col_map[feature_idx]).toarray().ravel(),
                 feature_types[feature_idx],
                 min_unique_continuous,
                 get_col_schematized,
