@@ -52,37 +52,31 @@ try:
     _pandas_installed = True
     _SeriesType = pd.Series
     _DataFrameType = pd.DataFrame
-    from pandas import factorize, notna, CategoricalDtype, StringDtype
+    _CategoricalDtype = pd.CategoricalDtype
+    _StringDtype = pd.StringDtype
+    from pandas import factorize, notna
 except ImportError:
     _pandas_installed = False
 
     _SeriesType = _ImpossibleType
     _DataFrameType = _ImpossibleType
+    _CategoricalDtype = _ImpossibleType
+    _StringDtype = _ImpossibleType
 
 try:
-    from scipy.sparse import sparray as _sparray
+    import scipy as sp
+
+    _sparray = sp.sparse.sparray
+    _spmatrix = sp.sparse.spmatrix
+    _dia_array = sp.sparse.dia_array
+    _bsr_array = sp.sparse.bsr_array
+    _coo_array = sp.sparse.coo_array
 except ImportError:
     _sparray = _ImpossibleType
-
-try:
-    from scipy.sparse import dia_array as _dia_array
-except ImportError:
-    _dia_array = _ImpossibleType
-
-try:
-    from scipy.sparse import bsr_array as _bsr_array
-except ImportError:
-    _bsr_array = _ImpossibleType
-
-try:
-    from scipy.sparse import coo_array as _coo_array
-except ImportError:
-    _coo_array = _ImpossibleType
-
-try:
-    from scipy.sparse import spmatrix as _spmatrix
-except ImportError:
     _spmatrix = _ImpossibleType
+    _dia_array = _ImpossibleType
+    _bsr_array = _ImpossibleType
+    _coo_array = _ImpossibleType
 
 
 # BIG TODO LIST:
@@ -159,6 +153,7 @@ _all_int_types = (int, np.integer)
 _strconv_types = (str, bytes, int, np.integer, np.datetime64, np.timedelta64)
 _intboolpython_types = (int, bool, np.integer, np.bool_)
 _float_int_bool_types = (np.floating, np.integer, np.bool_)
+_float_int_bool_object_types = (np.floating, np.integer, np.bool_, np.object_)
 _complex_void_types = (np.complexfloating, np.void)
 _float_int_types = (float, int, np.floating, np.integer)
 _list_tuple_types = (list, tuple)
@@ -169,9 +164,7 @@ _repeat_negativeone = repeat(-1)
 _floatable = (float, int, bool, np.floating, np.integer, np.bool_)
 _repeat_floatable = repeat(_floatable)
 _array_zero = np.zeros(1, np.int64)
-_stringable = (
-    (pd.CategoricalDtype, pd.StringDtype) if _pandas_installed else _ImpossibleType
-)
+_stringable = (_CategoricalDtype, _StringDtype)
 _slice_none = slice(None)
 _repeat_str = repeat(str)
 _not_one = (1).__ne__
@@ -614,7 +607,7 @@ def _process_arrayish_nonschematized(
             *get_col_schematized(feature_idx, "continuous"),
         )
     if feature_type == "nominal":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             return (feature_type, *get_col_schematized(feature_idx, "nominal"))
         return (
             feature_type,
@@ -624,7 +617,7 @@ def _process_arrayish_nonschematized(
             None,
         )
     if feature_type == "ordinal":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             return (
                 feature_type,
                 *get_col_schematized(feature_idx, "ordinal"),
@@ -645,7 +638,7 @@ def _process_arrayish_nonschematized(
             None,
         )
     if feature_type is None or feature_type == "auto":
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             feature_type = "ordinal" if X_col.array.ordered else "nominal"
 
             return (
@@ -664,7 +657,7 @@ def _process_arrayish_nonschematized(
             None,
         )
     if feature_type in ("nominal_prevalence", "nominal_alphabetical"):
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             # TODO: add re-ordering here to support this
             msg = f"{feature_type} currently unsupported"
             _log.error(msg)
@@ -680,7 +673,7 @@ def _process_arrayish_nonschematized(
     if feature_type in ("quantile", "rounded_quantile", "uniform", "winsorized"):
         return "continuous", *get_col_schematized(feature_idx, "continuous")
     if isinstance(feature_type, _all_int_types):
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             # TODO: add support for specifying the threshold between continuous and nominal
             msg = "integer feature_types currently unsupported"
             _log.error(msg)
@@ -725,7 +718,7 @@ def _process_arrayish_nonschematized(
 
         return "continuous", *get_col_schematized(feature_idx, "continuous")
     if n_ordinals == n_items:
-        if isinstance(X_col.dtype, pd.CategoricalDtype):
+        if isinstance(X_col.dtype, _CategoricalDtype):
             # TODO: add support for specifying the order of ordinal features
             msg = "reordering ordinals unsupported for CategoricalDtype"
             _log.error(msg)
@@ -978,7 +971,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
     # feature_type == "nominal" or feature_type == "ordinal"
 
     dt = X_col.dtype
-    if isinstance(dt, CategoricalDtype):
+    if isinstance(dt, _CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         X_col = X_col.array
         categories = X_col.categories
@@ -999,7 +992,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
             X_col.codes,
             None,
         )
-    elif isinstance(dt, StringDtype):
+    elif isinstance(dt, _StringDtype):
         # factorize uses -1 for missing values
         indexes, uniques = factorize(X_col.array)
         return (
@@ -1108,76 +1101,24 @@ def _process_pandas_column_schematized(X_col, feature_type):
 def _process_pandas_column_nonschematized(
     feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
 ):
-    dt = X_col.dtype
-    tt = dt.type
-    if isinstance(dt, np.dtype):
-        if issubclass(tt, _float_int_bool_types):
-            return _process_arrayish_nonschematized(
-                feature_idx,
-                X_col.to_numpy(),
-                feature_type,
-                min_unique_continuous,
-                get_col_schematized,
-            )
-        if tt is np.object_:
-            if X_col.hasnans:
-                # if hasnans is true then there is definetly a real missing value in there and not just a mask
-                return _process_arrayish_nonschematized(
-                    feature_idx,
-                    X_col.dropna().to_numpy(),
-                    feature_type,
-                    min_unique_continuous,
-                    get_col_schematized,
-                )
-
-            return _process_arrayish_nonschematized(
-                feature_idx,
-                X_col.to_numpy(),
-                feature_type,
-                min_unique_continuous,
-                get_col_schematized,
-            )
-    elif isinstance(dt, pd.CategoricalDtype):
+    if isinstance(X_col.dtype, _CategoricalDtype):
         # unlike other missing value types, we get back -1's for missing here, so no need to drop them
         return _process_arrayish_nonschematized(
             feature_idx, X_col, feature_type, min_unique_continuous, get_col_schematized
         )
-    elif isinstance(dt, pd.StringDtype):
-        if X_col.hasnans:
-            # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            return _process_arrayish_nonschematized(
-                feature_idx,
-                X_col.dropna().array,
-                feature_type,
-                min_unique_continuous,
-                get_col_schematized,
-            )
+    elif isinstance(X_col.dtype, _StringDtype):
         return _process_arrayish_nonschematized(
             feature_idx,
-            X_col.array,
+            X_col.dropna().array,  # keep as pandas to preserve compact strings
             feature_type,
             min_unique_continuous,
             get_col_schematized,
         )
-    elif issubclass(tt, _float_int_bool_types):
+    elif issubclass(X_col.dtype.type, _float_int_bool_object_types):
         # this handles Float64Dtype, Float32Dtype, Int8Dtype to Int64Dtype, UInt8Dtype to UInt64Dtype, and BooleanDtype
-
-        if X_col.hasnans:
-            # if hasnans is true then there is definetly a real missing value in there and not just a mask
-            # if X_col is a special type like UInt64Dtype convert it to numpy using astype
-
-            return _process_arrayish_nonschematized(
-                feature_idx,
-                X_col.dropna().to_numpy(),
-                feature_type,
-                min_unique_continuous,
-                get_col_schematized,
-            )
-        # if X_col is a special type like UInt64Dtype convert it to numpy using astype
-
         return _process_arrayish_nonschematized(
             feature_idx,
-            X_col.to_numpy(),
+            X_col.dropna().to_numpy(),
             feature_type,
             min_unique_continuous,
             get_col_schematized,
