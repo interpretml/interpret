@@ -201,7 +201,7 @@ def _densify_categorical(X_col):
 
     if all(issubclass(t, _float_types) for t in types):
         # strip trailing ".0" for floats so that floats and integers are the same for integer representable floats
-        X_col = X_col.astype(float64).astype(str_)
+        X_col = (X_col.astype(float64) + 0.0).astype(str_)
         wholes = endswith(X_col, ".0")
         if wholes.any():
             X_col[wholes] = rstrip(rstrip(X_col[wholes], "0"), ".")
@@ -258,7 +258,7 @@ def _densify_categorical(X_col):
             X_col.shape[0],
         )
 
-        floats = X_col[floatable].astype(float64).astype(str_)
+        floats = (X_col[floatable].astype(float64) + 0.0).astype(str_)
         wholes = endswith(floats, ".0")
         if wholes.any():
             floats[wholes] = rstrip(rstrip(floats[wholes], "0"), ".")
@@ -984,7 +984,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
         categories = X_col.categories
         tt = categories.dtype.type
         if issubclass(tt, floating):
-            categories = categories.to_numpy(float64).astype(str_)
+            categories = (categories.to_numpy(float64) + 0.0).astype(str_)
             wholes = endswith(categories, ".0")
             if wholes.any():
                 categories[wholes] = rstrip(rstrip(categories[wholes], "0"), ".")
@@ -1029,7 +1029,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
             elif tt is float64:
                 indexes, uniques = factorize(X_col.values)
 
-                uniques = uniques.astype(str_)
+                uniques = (uniques + 0.0).astype(str_)
                 wholes = endswith(uniques, ".0")
                 if wholes.any():
                     uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -1043,7 +1043,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
             elif issubclass(tt, floating):
                 indexes, uniques = factorize(X_col.values)
 
-                uniques = uniques.astype(float64).astype(str_)
+                uniques = (uniques.astype(float64) + 0.0).astype(str_)
                 wholes = endswith(uniques, ".0")
                 if wholes.any():
                     uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -1069,7 +1069,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
 
             indexes, uniques = factorize(X_col.array)
 
-            uniques = uniques.to_numpy(float64).astype(str_)
+            uniques = (uniques.to_numpy(float64) + 0.0).astype(str_)
             wholes = endswith(uniques, ".0")
             if wholes.any():
                 uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -1215,7 +1215,7 @@ def _process_sparse_column_schematized(X_col, feature_type):
             else:
                 uniques, indexes = unique(X_col, return_inverse=True)
 
-            uniques = uniques.astype(float64, copy=False).astype(str_)
+            uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
             wholes = endswith(uniques, ".0")
             if wholes.any():
                 uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -1226,7 +1226,7 @@ def _process_sparse_column_schematized(X_col, feature_type):
         else:
             uniques, indexes = unique(X_col, return_inverse=True)
 
-        uniques = uniques.astype(float64, copy=False).astype(str_)
+        uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
         wholes = endswith(uniques, ".0")
         if wholes.any():
             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -1398,7 +1398,7 @@ def unify_columns_schematized(
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1428,7 +1428,7 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
 
-                                        uniques = uniques.astype(str_)
+                                        uniques = (uniques + 0.0).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -1439,7 +1439,7 @@ def unify_columns_schematized(
 
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1481,7 +1481,7 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1513,7 +1513,7 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
 
-                                        uniques = uniques.astype(str_)
+                                        uniques = (uniques + 0.0).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -1526,7 +1526,7 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1567,7 +1567,9 @@ def unify_columns_schematized(
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1597,7 +1599,9 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
 
-                                        uniques = uniques.astype(float64).astype(str_)
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -1605,9 +1609,12 @@ def unify_columns_schematized(
                                             )
 
                                         return m, uniques, indexes, None
+
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1649,7 +1656,9 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -1681,7 +1690,9 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
 
-                                        uniques = uniques.astype(float64).astype(str_)
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -1694,7 +1705,9 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2079,7 +2092,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
 
-                            uniques = uniques.astype(str_)
+                            uniques = (uniques + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -2089,7 +2102,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
 
-                        uniques = uniques.astype(str_)
+                        uniques = (uniques + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -2111,7 +2124,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
 
-                            uniques = uniques.astype(str_)
+                            uniques = (uniques + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -2121,7 +2134,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
 
-                        uniques = uniques.astype(str_)
+                        uniques = (uniques + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -2144,7 +2157,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
 
-                            uniques = uniques.astype(float64).astype(str_)
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -2154,7 +2167,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
 
-                        uniques = uniques.astype(float64).astype(str_)
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -2176,7 +2189,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
 
-                            uniques = uniques.astype(float64).astype(str_)
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -2186,7 +2199,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
 
-                        uniques = uniques.astype(float64).astype(str_)
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -2412,7 +2425,7 @@ def unify_columns_schematized(
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2443,7 +2456,7 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
 
-                                        uniques = uniques.astype(str_)
+                                        uniques = (uniques + 0.0).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -2453,7 +2466,7 @@ def unify_columns_schematized(
                                         return m, uniques, indexes, None
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2495,7 +2508,7 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2528,7 +2541,7 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
 
-                                        uniques = uniques.astype(str_)
+                                        uniques = (uniques + 0.0).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -2541,7 +2554,7 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(str_)
+                                    uniques = (uniques + 0.0).astype(str_)
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2582,7 +2595,9 @@ def unify_columns_schematized(
                                         place(nonmissings, nonmissings, m)
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2612,7 +2627,9 @@ def unify_columns_schematized(
                                         X_col = X_col[m]
                                         indexes, uniques = factorize(X_col)
 
-                                        uniques = uniques.astype(float64).astype(str_)
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -2622,7 +2639,9 @@ def unify_columns_schematized(
                                         return m, uniques, indexes, None
                                     indexes, uniques = factorize(X_col)
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2665,7 +2684,9 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -2697,7 +2718,9 @@ def unify_columns_schematized(
                                             X_col, return_inverse=True
                                         )
 
-                                        uniques = uniques.astype(float64).astype(str_)
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
                                         wholes = endswith(uniques, ".0")
                                         if wholes.any():
                                             uniques[wholes] = rstrip(
@@ -2710,7 +2733,9 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                    uniques = uniques.astype(float64).astype(str_)
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
                                     wholes = endswith(uniques, ".0")
                                     if wholes.any():
                                         uniques[wholes] = rstrip(
@@ -3095,7 +3120,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
 
-                            uniques = uniques.astype(str_)
+                            uniques = (uniques + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -3105,7 +3130,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
 
-                        uniques = uniques.astype(str_)
+                        uniques = (uniques + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -3127,7 +3152,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
 
-                            uniques = uniques.astype(str_)
+                            uniques = (uniques + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -3137,7 +3162,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
 
-                        uniques = uniques.astype(str_)
+                        uniques = (uniques + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -3160,7 +3185,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             indexes, uniques = factorize(X_col)
 
-                            uniques = uniques.astype(float64).astype(str_)
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -3170,7 +3195,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         indexes, uniques = factorize(X_col)
 
-                        uniques = uniques.astype(float64).astype(str_)
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -3192,7 +3217,7 @@ def unify_columns_schematized(
                             X_col = X_col[m]
                             uniques, indexes = unique(X_col, return_inverse=True)
 
-                            uniques = uniques.astype(float64).astype(str_)
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
                             wholes = endswith(uniques, ".0")
                             if wholes.any():
                                 uniques[wholes] = rstrip(
@@ -3202,7 +3227,7 @@ def unify_columns_schematized(
                             return m, uniques, indexes, None
                         uniques, indexes = unique(X_col, return_inverse=True)
 
-                        uniques = uniques.astype(float64).astype(str_)
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
                         wholes = endswith(uniques, ".0")
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -3720,9 +3745,9 @@ def unify_columns_schematized(
                                         X_col, return_inverse=True
                                     )
 
-                                uniques = uniques.astype(float64, copy=False).astype(
-                                    str_
-                                )
+                                uniques = (
+                                    uniques.astype(float64, copy=False) + 0.0
+                                ).astype(str_)
                                 wholes = endswith(uniques, ".0")
                                 if wholes.any():
                                     uniques[wholes] = rstrip(
@@ -3831,7 +3856,7 @@ def unify_columns_schematized(
                     else:
                         uniques, indexes = unique(X_col, return_inverse=True)
 
-                    uniques = uniques.astype(float64, copy=False).astype(str_)
+                    uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
                     wholes = endswith(uniques, ".0")
                     if wholes.any():
                         uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
@@ -3842,7 +3867,7 @@ def unify_columns_schematized(
                 else:
                     uniques, indexes = unique(X_col, return_inverse=True)
 
-                uniques = uniques.astype(float64, copy=False).astype(str_)
+                uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
                 wholes = endswith(uniques, ".0")
                 if wholes.any():
                     uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
