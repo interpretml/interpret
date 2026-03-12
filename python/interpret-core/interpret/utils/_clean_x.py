@@ -11,6 +11,9 @@ import numpy as np
 from numpy import ma
 from numpy import (
     array as np_array,
+    array_equal,
+    concatenate,
+    result_type,
     zeros,
     empty,
     arange,
@@ -290,7 +293,7 @@ def _densify_categorical(X_col):
         if is_bool:
             types.append(bools.dtype)
 
-        X_col_tmp = empty(non.shape[0], np.result_type(*types))
+        X_col_tmp = empty(non.shape[0], result_type(*types))
         X_col_tmp[non] = X_col
 
         if is_float:
@@ -423,42 +426,42 @@ def _densify_continuous(X_col):
 
 
 def categorical_encode(uniques, indexes, nonmissings, categories):
-    mapping = np.fromiter(
-        map(categories.get, uniques, _repeat_negativeone), np.int64, uniques.shape[0]
+    mapping = fromiter(
+        map(categories.get, uniques, _repeat_negativeone), int64, uniques.shape[0]
     )
 
     n_cat = len(categories)
     if mapping.shape[0] <= n_cat:
-        if np.array_equal(mapping, np.arange(1, mapping.shape[0] + 1, dtype=np.int64)):
+        if array_equal(mapping, arange(1, mapping.shape[0] + 1, dtype=int64)):
             # CategoricalDType can encode values as np.int8. We cannot allow an
             # int8 to overflow when we add 1, so convert to int64 first, and we
             # also need to make a copy here because we cache the raw data and
             # re-use it for different binning levels on the same feature.
 
-            indexes = indexes.astype(np.int64)
+            indexes = indexes.astype(int64)
             indexes += 1
 
             if nonmissings is None or nonmissings is False:
                 return indexes
 
-            indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
+            indexes_tmp = zeros(nonmissings.shape[0], int64)
             indexes_tmp[nonmissings] = indexes
             return indexes_tmp
     else:
-        if np.array_equal(mapping[:n_cat], np.arange(1, n_cat + 1, dtype=np.int64)):
+        if array_equal(mapping[:n_cat], arange(1, n_cat + 1, dtype=int64)):
             # CategoricalDType can encode values as np.int8. We cannot allow an
             # int8 to overflow when we add 1, so convert to int64 first, and we
             # also need to make a copy here because we cache the raw data and
             # re-use it for different binning levels on the same feature.
 
-            indexes = indexes.astype(np.int64)
+            indexes = indexes.astype(int64)
             indexes += 1
             indexes[n_cat < indexes] = -1
 
             if nonmissings is None or nonmissings is False:
                 return indexes
 
-            indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
+            indexes_tmp = zeros(nonmissings.shape[0], int64)
             indexes_tmp[nonmissings] = indexes
             return indexes_tmp
 
@@ -468,9 +471,9 @@ def categorical_encode(uniques, indexes, nonmissings, categories):
 
     if nonmissings is False:
         # missing values are -1 in indexes, so append 0 to the map, which is index -1
-        return np.concatenate((mapping, _array_zero))[indexes]
+        return concatenate((mapping, _array_zero))[indexes]
 
-    indexes_tmp = np.zeros(nonmissings.shape[0], np.int64)
+    indexes_tmp = zeros(nonmissings.shape[0], int64)
     indexes_tmp[nonmissings] = mapping[indexes]
     return indexes_tmp
 
@@ -570,13 +573,13 @@ def _process_continuous_strings(X_col, nonmissings):
     # within the data and progressively growing/shrinking the windows
 
     n_samples = X_col.shape[0]
-    bad = np.zeros(n_samples, np.bool_)
-    floats = np.zeros(n_samples, np.float64)
+    bad = zeros(n_samples, bool_)
+    floats = zeros(n_samples, float64)
     for idx in range(n_samples):
-        # slice one item at a time keeping as an np.ndarray for consistency
+        # slice one item at a time keeping as an ndarray for consistency
         one_item_array = X_col[idx : idx + 1]
         try:
-            floats[idx] = one_item_array.astype(np.float64).item()
+            floats[idx] = one_item_array.astype(float64).item()
         except ValueError:
             bad[idx] = True
 
@@ -586,13 +589,13 @@ def _process_continuous_strings(X_col, nonmissings):
     if nonmissings is None:
         return floats, bad
 
-    floats_tmp = np.full(nonmissings.shape[0], np.nan, np.float64)
+    floats_tmp = full(nonmissings.shape[0], nan, float64)
     floats_tmp[nonmissings] = floats
 
     if bad is None:
         return floats_tmp, None
 
-    bad_tmp = np.zeros(nonmissings.shape[0], np.bool_)
+    bad_tmp = zeros(nonmissings.shape[0], bool_)
     bad_tmp[nonmissings] = bad
     return floats_tmp, bad_tmp
 
@@ -768,7 +771,7 @@ def _reshape_1D_if_possible(col):
     if col.ndim != 1:
         if col.ndim == 0:
             # 0 dimensional items exist, but are weird/unexpected. len fails, shape is length 0.
-            return np.empty(0, col.dtype)
+            return empty(0, col.dtype)
 
         # ignore dimensions that have just 1 item and assume the intent was to give us 1D
         is_found = False
@@ -2260,7 +2263,7 @@ def unify_columns_schematized(
                                 indexes,
                                 None,
                             )
-            elif tt is np.bool_:
+            elif tt is bool_:
                 if _pandas_installed:
 
                     def internal(feature_idx, feature_type):
@@ -3853,7 +3856,7 @@ def unify_columns_nonschematized(
         [x if x == "ignore" else "" for x in feature_types],
     )
 
-    if isinstance(X, np.ndarray):  # this includes ma.masked_array
+    if isinstance(X, ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):
             msg = f"{X.dtype.type} type not supported."
             _log.error(msg)
@@ -3867,11 +3870,11 @@ def unify_columns_nonschematized(
         # memoryview
 
         if len(feature_names_in) == X.shape[1]:
-            col_map = np.arange(len(feature_names_in), dtype=np.int64)
+            col_map = arange(len(feature_names_in), dtype=int64)
         else:
-            keep_cols = np.fromiter(
+            keep_cols = fromiter(
                 map(ne, _repeat_ignore, feature_types),
-                np.bool_,
+                bool_,
                 len(feature_types),
             )
             n_keep = keep_cols.sum()
@@ -3879,8 +3882,8 @@ def unify_columns_nonschematized(
                 msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(keep_cols.shape[0], np.int64)
-            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map = empty(keep_cols.shape[0], int64)
+            col_map[keep_cols] = arange(n_keep, dtype=int64)
 
         def internal(feature_idx):
             return _process_numpy_column_nonschematized(
@@ -3928,11 +3931,11 @@ def unify_columns_nonschematized(
             X = X.iloc
 
             if len(feature_names_in) == n_cols:
-                col_map = np.arange(len(feature_names_in), dtype=np.int64)
+                col_map = arange(len(feature_names_in), dtype=int64)
             else:
-                keep_cols = np.fromiter(
+                keep_cols = fromiter(
                     map(ne, _repeat_ignore, feature_types),
-                    np.bool_,
+                    bool_,
                     len(feature_types),
                 )
                 n_keep = keep_cols.sum()
@@ -3940,8 +3943,8 @@ def unify_columns_nonschematized(
                     msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                     _log.error(msg)
                     raise ValueError(msg)
-                col_map = np.empty(keep_cols.shape[0], np.int64)
-                col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+                col_map = empty(keep_cols.shape[0], int64)
+                col_map[keep_cols] = arange(n_keep, dtype=int64)
 
             warn(
                 "Pandas dataframe X does not contain all feature names. Falling back to positional columns."
@@ -3964,11 +3967,11 @@ def unify_columns_nonschematized(
         n_cols = X.shape[1]
 
         if len(feature_names_in) == n_cols:
-            col_map = np.arange(len(feature_names_in), dtype=np.int64)
+            col_map = arange(len(feature_names_in), dtype=int64)
         else:
-            keep_cols = np.fromiter(
+            keep_cols = fromiter(
                 map(ne, _repeat_ignore, feature_types),
-                np.bool_,
+                bool_,
                 len(feature_types),
             )
             n_keep = keep_cols.sum()
@@ -3976,8 +3979,8 @@ def unify_columns_nonschematized(
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), np.int64)
-            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map = empty(len(feature_types), int64)
+            col_map[keep_cols] = arange(n_keep, dtype=int64)
 
         def internal(feature_idx):
             return _process_arrayish_nonschematized(
@@ -3994,11 +3997,11 @@ def unify_columns_nonschematized(
         X_get = X.getcol
 
         if len(feature_names_in) == n_cols:
-            col_map = np.arange(len(feature_names_in), dtype=np.int64)
+            col_map = arange(len(feature_names_in), dtype=int64)
         else:
-            keep_cols = np.fromiter(
+            keep_cols = fromiter(
                 map(ne, _repeat_ignore, feature_types),
-                np.bool_,
+                bool_,
                 len(feature_types),
             )
             n_keep = keep_cols.sum()
@@ -4006,8 +4009,8 @@ def unify_columns_nonschematized(
                 msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
                 _log.error(msg)
                 raise ValueError(msg)
-            col_map = np.empty(len(feature_types), np.int64)
-            col_map[keep_cols] = np.arange(n_keep, dtype=np.int64)
+            col_map = empty(len(feature_types), int64)
+            col_map[keep_cols] = arange(n_keep, dtype=int64)
 
         def internal(feature_idx):
             return _process_arrayish_nonschematized(
@@ -4250,7 +4253,7 @@ def _reshape_X(X, min_cols, n_samples, sample_source):
     if (
         X.ndim == 0 or X.shape[0] == 0
     ):  # zero dimensional arrays are possible, but really weird
-        return np.empty((0, 0), X.dtype)
+        return empty((0, 0), X.dtype)
     if X.ndim != 1:
         # our caller will not call this function with 2 dimensions
         # we also accept 1 dimension as below, but do not encourage it
@@ -4279,7 +4282,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
     # called under: fit or predict
     min_cols = _determine_min_cols(feature_names, feature_types)
 
-    if isinstance(X, np.ndarray):  # this includes ma.masked_array
+    if isinstance(X, ndarray):  # this includes ma.masked_array
         if X.ndim != 2:
             X = _reshape_X(X, min_cols, n_samples, sample_source)
         if n_samples is not None and n_samples != X.shape[0]:
@@ -4311,7 +4314,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
         return X, X.shape[0]
     if isinstance(X, dict):
         for val in X.values():
-            if isinstance(val, np.ndarray) and val.ndim == 0:
+            if isinstance(val, ndarray) and val.ndim == 0:
                 break
             # we don't support iterators for dict, so len should work
             if n_samples is not None and n_samples != len(val):
@@ -4367,14 +4370,14 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
         if isinstance(sample, _list_tuple_types):
             pass
         elif isinstance(sample, masked_array):
-            # do this before np.ndarray since ma.masked_array is a subclass of np.ndarray
+            # do this before ndarray since ma.masked_array is a subclass of ndarray
             if not is_copied:
                 is_copied = True
                 X = list(X)
             X[idx] = _reshape_1D_if_possible(
-                sample.astype(np.object_, copy=False).filled(np.nan)
+                sample.astype(object_, copy=False).filled(nan)
             )
-        elif isinstance(sample, np.ndarray):
+        elif isinstance(sample, ndarray):
             if sample.ndim == 1:
                 pass
             else:
@@ -4386,18 +4389,18 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             if not is_copied:
                 is_copied = True
                 X = list(X)
-            X[idx] = sample.to_numpy(np.object_)
+            X[idx] = sample.to_numpy(object_)
         elif isinstance(sample, _DataFrameType):
             if sample.shape[1] == 1 or sample.shape[0] == 1:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = sample.to_numpy(np.object_).ravel()
+                X[idx] = sample.to_numpy(object_).ravel()
             elif sample.shape[1] == 0 or sample.shape[0] == 0:
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = np.empty(0, np.object_)
+                X[idx] = empty(0, object_)
             else:
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
@@ -4412,7 +4415,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 if not is_copied:
                     is_copied = True
                     X = list(X)
-                X[idx] = np.empty(0, np.object_)
+                X[idx] = empty(0, object_)
             else:
                 msg = f"Cannot reshape to 1D. Original shape was {sample.shape}"
                 _log.error(msg)
@@ -4436,9 +4439,9 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
             except TypeError:
                 break  # this only legal if we have one sample
 
-    # leave these as np.object_ for now and we'll try to densify per column where we're more likely to
+    # leave these as object_ for now and we'll try to densify per column where we're more likely to
     # succeed in densification since columns should generally be a single type
-    X = np.array(X, np.object_)
+    X = np_array(X, object_)
     if X.ndim != 2:
         X = _reshape_X(X, min_cols, n_samples, sample_source)
     if n_samples is not None and n_samples != X.shape[0]:

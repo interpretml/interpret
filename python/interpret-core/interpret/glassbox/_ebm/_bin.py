@@ -9,7 +9,9 @@ from numpy import (
     array_equal as array_equal,
     concatenate as concatenate,
     empty as empty,
+    float64 as float64,
     fromiter as fromiter,
+    full as full,
     int64 as int64,
     zeros as zeros,
 )
@@ -40,11 +42,8 @@ def eval_terms(
     feature_types_in,
     bins,
     term_features,
-    _list=list,
     _tuple=tuple,
     _map=map,
-    _zip=zip,
-    _all=all,
     _min=min,
     _len=len,
     arange=arange,
@@ -54,13 +53,6 @@ def eval_terms(
     fromiter=fromiter,
     int64=int64,
     zeros=zeros,
-    _compress=compress,
-    _from_iterable=_from_iterable,
-    _continuous_eq=_continuous_eq,
-    _float_type_eq=_float_type_eq,
-    _dtype=_dtype,
-    _is_contiguous=_is_contiguous,
-    _unify_columns_schematized=unify_columns_schematized,
     _repeat_negativeone=_repeat_negativeone,
     _array_zero=_array_zero,
 ):
@@ -68,19 +60,19 @@ def eval_terms(
     # eliminate extra work in this function. The only place we need fast
     # performance here is when called from ebm_predict_scores or ebm_eval_terms.
 
-    continuous_bins = _list(
-        _from_iterable(_compress(bins, _map(_continuous_eq, feature_types_in)))
+    continuous_bins = list(
+        _from_iterable(compress(bins, _map(_continuous_eq, feature_types_in)))
     )
-    if not _all(_map(_float_type_eq, _map(_dtype, continuous_bins))):
+    if not all(_map(_float_type_eq, _map(_dtype, continuous_bins))):
         raise ValueError(
             "All bins for continuous features must be of dtype np.float64."
         )
-    if not _all(_map(_is_contiguous, continuous_bins)):
+    if not all(_map(_is_contiguous, continuous_bins)):
         raise ValueError(
             "All bins for continuous features must be C-contiguous arrays."
         )
 
-    get_col = _unify_columns_schematized(
+    get_col = unify_columns_schematized(
         X, n_samples, feature_names_in, feature_types_in
     )
 
@@ -94,7 +86,7 @@ def eval_terms(
     cached_discretized_set = cached_discretized.__setitem__
     Discretize = Native.get_native_singleton()._unsafe.Discretize
     bins_getitem = bins.__getitem__
-    for feature_idxs, num_features in _zip(term_features, _map(_len, term_features)):
+    for feature_idxs, num_features in zip(term_features, _map(_len, term_features)):
         term_discretized = []
         for feature_idx in feature_idxs:
             bin_levels = bins_getitem(feature_idx)
@@ -217,12 +209,12 @@ def ebm_predict_scores(
     term_features,
 ):
     sample_scores = (
-        np.full(
+        full(
             n_samples
             if isinstance(intercept, float) or intercept.shape[0] == 1
             else (n_samples, intercept.shape[0]),
             intercept,
-            np.float64,
+            float64,
         )
         if init_score is None
         else init_score + intercept
