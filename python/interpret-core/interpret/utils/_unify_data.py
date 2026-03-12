@@ -82,7 +82,7 @@ def unify_data(
                 X_unified[:, feature_idx] = np.nan
                 continue
 
-            nonmissings, uniques, X_col, bad = get_col(
+            bad, X_col, uniques, nonmissings = get_col(
                 feature_idx, feature_types[feature_idx]
             )
         else:
@@ -99,7 +99,7 @@ def unify_data(
                 feature_types_in[feature_idx] = "ignore"
                 continue
 
-            feature_types_in[feature_idx], nonmissings, uniques, X_col, bad = get_col(
+            feature_types_in[feature_idx], bad, X_col, uniques, nonmissings = get_col(
                 feature_idx
             )
         if uniques is None:

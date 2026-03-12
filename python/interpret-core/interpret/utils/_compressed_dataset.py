@@ -65,7 +65,7 @@ def bin_native(
             # TODO: exclude ignored features from the compressed dataset
             raise Exception("ignored features not supported yet")
 
-        nonmissings, uniques, X_col, bad = get_col(feature_idx, feature_type)
+        bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
 
         if isinstance(feature_bins, dict):
             # categorical feature
@@ -127,7 +127,7 @@ def bin_native(
                 # TODO: exclude ignored features from the compressed dataset
                 raise Exception("ignored features not supported yet")
 
-            nonmissings, uniques, X_col, bad = get_col(feature_idx, feature_type)
+            bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
 
             if isinstance(feature_bins, dict):
                 # categorical feature
