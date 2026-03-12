@@ -249,8 +249,8 @@ def gen_overall_plot(exp, model_idx):
     else:  # pragma: no cover
         _type = type(figure)
         _log.warning(f"Visualization type not supported: {_type}")
-        msg = f"Not supported visualization type: {_type}"
-        raise Exception(msg)
+        msg = f"Unsupported visualization type: {_type}. Expected NDFrame, str, go.Figure, or dash Component."
+        raise TypeError(msg)
 
     name = exp.name
     return html.Div(
@@ -303,8 +303,8 @@ def gen_plot(exp, picker, model_idx, counter):
     else:  # pragma: no cover
         _type = type(figure)
         _log.warning(f"Visualization type not supported: {_type}")
-        msg = f"Not supported visualization type: {_type}"
-        raise Exception(msg)
+        msg = f"Unsupported visualization type: {_type}. Expected NDFrame, str, go.Figure, or dash Component."
+        raise TypeError(msg)
 
     idx_str = str(picker)
     name = exp.name
@@ -908,8 +908,8 @@ def generate_app(
     elif isinstance(share_tables, dict):
         shared_frames = share_tables
     else:  # pragma: no cover
-        msg = "share_tables option must be True|False|None or dict."
-        raise Exception(msg)
+        msg = f"share_tables must be True, False, None, or a dict, got {type(share_tables).__name__}."
+        raise TypeError(msg)
 
     new_options["share_tables"] = shared_frames
     _log.debug(f"POST shared_tables: {shared_frames}")

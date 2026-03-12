@@ -173,9 +173,11 @@ class TreeExplanation(ExplanationMixin):
                 stylesheet=stylesheet,
             )
         # pragma: no cover
-        msg = f"Cannot handle type {self.explanation_type}"
+        msg = (
+            f"Unsupported explanation type '{self.explanation_type}' for visualization."
+        )
         _log.error(msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
     def _weight_edges(self, edges, decision_nodes):
         edges = deepcopy(edges)
@@ -320,7 +322,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
         if len(y) == 0:
             msg = "y cannot have 0 samples"
@@ -450,7 +452,7 @@ class BaseShallowDecisionTree(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 

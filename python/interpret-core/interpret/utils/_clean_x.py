@@ -39,7 +39,9 @@ from numpy import (
 )
 
 from numpy.ma import masked_array, nomask
-from numpy.char import endswith, rstrip
+
+endswith = np.char.endswith
+rstrip = np.char.rstrip
 
 _log = logging.getLogger(__name__)
 
@@ -754,7 +756,7 @@ def _process_arrayish_nonschematized(
             if len(feature_type) != len(feature_type_dict):
                 msg = "feature_types contains duplicate ordinal categories."
                 _log.error(msg)
-                raise Exception(msg)
+                raise ValueError(msg)
 
             mapping = np.fromiter(
                 map(feature_type_dict.__getitem__, uniques),
@@ -766,7 +768,7 @@ def _process_arrayish_nonschematized(
 
             msg = "X contains values outside of the ordinal set."
             _log.error(msg)
-            raise Exception(msg)
+            raise ValueError(msg)
 
         return (
             "ordinal",
@@ -962,7 +964,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
                 )
 
         # TODO: implement pd.SparseDtype
-        msg = f"{type(dt)} not supported"
+        msg = f"Unsupported pandas dtype: {dt}"
         _log.error(msg)
         raise TypeError(msg)
 
@@ -1089,7 +1091,7 @@ def _process_pandas_column_schematized(X_col, feature_type):
             )
 
         # TODO: implement pd.SparseDtype
-        msg = f"{type(dt)} not supported"
+        msg = f"Unsupported pandas dtype: {dt}"
         _log.error(msg)
         raise TypeError(msg)
 
@@ -1121,7 +1123,7 @@ def _process_pandas_column_nonschematized(
         )
 
     # TODO: implement pd.SparseDtype
-    msg = f"{type(dt)} not supported"
+    msg = f"Unsupported pandas dtype: {dt}"
     _log.error(msg)
     raise TypeError(msg)
 

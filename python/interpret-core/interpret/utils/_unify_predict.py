@@ -37,7 +37,7 @@ def determine_classes(model, data, n_samples):
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
             if preds.ndim != 1:
-                msg = "model.predict_proba(data) returned inconsistent number of dimensions"
+                msg = f"model.predict_proba(data) returned {preds.ndim} dimensions (shape {preds.shape}), expected 1 dimension for a single sample"
                 _log.error(msg)
                 raise ValueError(msg)
             n_classes = preds.shape[0]
@@ -45,7 +45,7 @@ def determine_classes(model, data, n_samples):
             # we have at least 2 samples, so this means classes was an empty dimension
             n_classes = 0
         elif preds.shape[0] != n_samples:
-            msg = "model.predict_proba(data) returned inconsistent number of samples compared to data"
+            msg = f"model.predict_proba(data) returned {preds.shape[0]} samples but data has {n_samples} samples"
             _log.error(msg)
             raise ValueError(msg)
         elif preds.ndim == 1:
@@ -61,8 +61,14 @@ def determine_classes(model, data, n_samples):
             orig_model = model
             original_class = classes[0]
 
-            print(
-                f"Warning: Model was trained on single-class data. Model will always predict class {original_class}."
+            import warnings
+
+            warnings.warn(
+                f"Model was trained on single-class data (class={original_class!r}). "
+                "Model will always predict this class. A synthetic second class has been "
+                "added for compatibility with binary classification evaluation.",
+                UserWarning,
+                stacklevel=2,
             )
 
             def mono_classification_model(data):
@@ -78,7 +84,7 @@ def determine_classes(model, data, n_samples):
             classes = np.array([original_class, synthetic_class])
 
         if n_classes != len(classes):
-            msg = "class number mismatch"
+            msg = f"Class count mismatch: predict_proba returned {n_classes} classes but model.classes_ has {len(classes)} entries"
             _log.error(msg)
             raise ValueError(msg)
     elif _is_regressor(model):
@@ -86,20 +92,18 @@ def determine_classes(model, data, n_samples):
         model = model.predict
         preds = clean_dimensions(model(data), "model")
         if preds.ndim != 1:
-            msg = "model.predict(data) must have only 1 dimension"
+            msg = f"model.predict(data) must return 1 dimension, but got {preds.ndim} dimensions with shape {preds.shape}"
             _log.error(msg)
             raise ValueError(msg)
         if preds.shape[0] != n_samples:
-            msg = "model.predict(data) returned inconsistent number of samples compared to data"
+            msg = f"model.predict(data) returned {preds.shape[0]} samples but data has {n_samples} samples"
             _log.error(msg)
             raise ValueError(msg)
     else:
         preds = clean_dimensions(model(data), "model")
         if n_samples == 1:  # then the sample dimension would have been eliminated
             if preds.ndim != 1:
-                msg = (
-                    "model(data) has an inconsistent number of samples compared to data"
-                )
+                msg = f"model(data) returned {preds.ndim} dimensions (shape {preds.shape}), expected 1 dimension for a single sample"
                 _log.error(msg)
                 raise ValueError(msg)
             if preds.shape[0] != 1:
@@ -112,7 +116,7 @@ def determine_classes(model, data, n_samples):
             # we have at least 2 samples, so this means classes was an empty dimension
             n_classes = 0
         elif preds.shape[0] != n_samples:
-            msg = "model(data) has an inconsistent number of samples compared to data"
+            msg = f"model(data) returned {preds.shape[0]} samples but data has {n_samples} samples"
             _log.error(msg)
             raise ValueError(msg)
         elif preds.ndim == 1:

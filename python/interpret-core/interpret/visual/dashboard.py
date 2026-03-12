@@ -60,9 +60,7 @@ class AppRunner:
                 port = random.randint(7002, 7999)
 
             else:  # pragma: no cover
-                msg = """Could not find open port.
-                Consider calling `interpret.set_show_addr(("127.0.0.1", 7001))` first.
-                """
+                msg = 'Could not find an open port after checking range 7001-7999. Consider calling interpret.set_show_addr(("127.0.0.1", <port>)) to specify a port manually.'
                 _log.error(msg)
                 raise RuntimeError(msg)
         else:

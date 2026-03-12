@@ -63,7 +63,9 @@ def bin_native(
         feature_type = feature_types_in[feature_idx]
         if feature_type == "ignore":
             # TODO: exclude ignored features from the compressed dataset
-            raise Exception("ignored features not supported yet")
+            raise NotImplementedError(
+                "Ignored features are not yet supported in native dataset binning."
+            )
 
         bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
 
@@ -100,9 +102,9 @@ def bin_native(
     elif y.dtype == np.int64:
         n_bytes += native.measure_classification_target(n_classes, y)
     else:
-        msg = "y must be either float64 or int64"
+        msg = f"y must be either float64 or int64, got {y.dtype}"
         _log.error(msg)
-        raise ValueError(msg)
+        raise TypeError(msg)
 
     if shared is not None:
         # shared_mem = shared_memory.SharedMemory(create=True, size=n_bytes, name=None)
@@ -125,7 +127,9 @@ def bin_native(
             feature_type = feature_types_in[feature_idx]
             if feature_type == "ignore":
                 # TODO: exclude ignored features from the compressed dataset
-                raise Exception("ignored features not supported yet")
+                raise NotImplementedError(
+                    "Ignored features are not yet supported in native dataset binning."
+                )
 
             bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
 
@@ -166,9 +170,9 @@ def bin_native(
         elif y.dtype == np.int64:
             native.fill_classification_target(n_classes, y, dataset)
         else:
-            msg = "y must be either float64 or int64"
+            msg = f"y must be either float64 or int64, got {y.dtype}"
             _log.error(msg)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     return n_bytes
 

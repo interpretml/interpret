@@ -79,7 +79,9 @@ def measure_interactions(
 
     y = clean_dimensions(y, "y")
     if y.ndim != 1:
-        msg = "y must be 1 dimensional"
+        msg = (
+            f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
+        )
         _log.error(msg)
         raise ValueError(msg)
     if len(y) == 0:

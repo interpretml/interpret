@@ -37,8 +37,8 @@ def get_option(name):
 
 def set_option(name, value):
     if name not in _develop_options:
-        msg = f"Unrecognized development option {name}."
-        raise Exception(msg)
+        msg = f"Unrecognized development option '{name}'. Valid options are: {', '.join(sorted(_develop_options.keys()))}"
+        raise ValueError(msg)
 
     _develop_options[name] = value
 
@@ -179,7 +179,7 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
     # Exit fast on second call.
     if _current_module.is_debug_mode:
         msg = "Cannot call debug_mode more than once in the same session."
-        raise Exception(msg)
+        raise RuntimeError(msg)
     _current_module.is_debug_mode = True
 
     # Register log

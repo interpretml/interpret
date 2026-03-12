@@ -182,7 +182,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -577,7 +577,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 

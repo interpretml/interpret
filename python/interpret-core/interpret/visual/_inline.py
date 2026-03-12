@@ -212,7 +212,7 @@ def _render_databricks(js):  # pragma: no cover
                 break
 
         if not found:
-            msg = "Could not find DataBrick's displayHTML function"
+            msg = "Could not find Databricks' displayHTML function. Ensure this code is running in a Databricks notebook environment."
             _log.error(msg)
             raise RuntimeError(msg)
 
