@@ -1010,11 +1010,9 @@ def _process_pandas_column_schematized(X_col, feature_type):
                 else:
                     X_col = X_col[nonmissings]
 
-                indexes, uniques = _factorize(_densify_categorical(X_col))
                 return (
                     None,
-                    indexes,
-                    uniques,
+                    *_factorize(_densify_categorical(X_col)),
                     nonmissings,
                 )
             elif tt is float64:
@@ -1507,11 +1505,9 @@ def unify_columns_schematized(
                                     None,
                                 )
 
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
                             return (
                                 None,
-                                indexes,
-                                uniques,
+                                *_factorize(_densify_categorical(X_col)),
                                 nonmissings,
                             )
 
@@ -1696,11 +1692,9 @@ def unify_columns_schematized(
                                 None,
                             )
 
-                        indexes, uniques = _factorize(_densify_categorical(X_col))
                         return (
                             None,
-                            indexes,
-                            uniques,
+                            *_factorize(_densify_categorical(X_col)),
                             None,
                         )
 
@@ -1724,13 +1718,9 @@ def unify_columns_schematized(
                                 None,
                             )
 
-                        indexes, uniques = _factorize(
-                            _densify_categorical(X_col[nonmissings])
-                        )
                         return (
                             None,
-                            indexes,
-                            uniques,
+                            *_factorize(_densify_categorical(X_col[nonmissings])),
                             nonmissings,
                         )
 
@@ -1986,11 +1976,9 @@ def unify_columns_schematized(
                                     None,
                                 )
 
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
                             return (
                                 None,
-                                indexes,
-                                uniques,
+                                *_factorize(_densify_categorical(X_col)),
                                 nonmissings,
                             )
 
@@ -2175,11 +2163,9 @@ def unify_columns_schematized(
                                 None,
                             )
 
-                        indexes, uniques = _factorize(_densify_categorical(X_col))
                         return (
                             None,
-                            indexes,
-                            uniques,
+                            *_factorize(_densify_categorical(X_col)),
                             None,
                         )
 
@@ -2203,13 +2189,9 @@ def unify_columns_schematized(
                                 None,
                             )
 
-                        indexes, uniques = _factorize(
-                            _densify_categorical(X_col[nonmissings])
-                        )
                         return (
                             None,
-                            indexes,
-                            uniques,
+                            *_factorize(_densify_categorical(X_col[nonmissings])),
                             nonmissings,
                         )
 
@@ -2517,12 +2499,10 @@ def unify_columns_schematized(
                                 )
 
                             # feature_type == "nominal" or feature_type == "ordinal"
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
 
                             return (
                                 None,
-                                indexes,
-                                uniques,
+                                *_factorize(_densify_categorical(X_col)),
                                 nonmissings,
                             )
                         else:
@@ -2620,12 +2600,9 @@ def unify_columns_schematized(
 
                 # feature_type == "nominal" or feature_type == "ordinal"
 
-                indexes, uniques = _factorize(_densify_categorical(X_col))
-
                 return (
                     None,
-                    indexes,
-                    uniques,
+                    *_factorize(_densify_categorical(X_col)),
                     nonmissings,
                 )
 
