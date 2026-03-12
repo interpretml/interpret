@@ -7,7 +7,7 @@
   "author": "The InterpretML Contributors",
   "license": "MIT",
   "scripts": {
-    "clean": "rm dist/interpret-inline.js",
+    "clean": "node -e \"require('fs').rmSync('dist/interpret-inline.js',{force:true})\"",
     "build-dev": "webpack --mode development",
     "build-prod": "webpack --mode production",
     "start": "webpack-dev-server --hot --mode development"
@@ -37,8 +37,8 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-react": "^7.28.0",
-    "node-sass": "^7.0.1",
     "prettier": "^2.5.1",
+    "sass": "^1.98.0",
     "sass-loader": "^12.4.0",
     "style-loader": "^3.3.1",
     "webpack": "^5.65.0",
