@@ -5,7 +5,7 @@ Distributed under the MIT software license
 /* eslint-disable react/prop-types */
 
 import * as React from "react";
-import * as ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
 import Plot from "react-plotly.js";
 import Select from "react-select";
 import { useState } from "react";
@@ -158,9 +158,9 @@ const App = props => {
 
 const RenderApp = (elementId, explanations, defaultSelectValue = -1) => {
   const mountNode = document.getElementById(elementId);
-  ReactDOM.render(
-    <App explanations={explanations} defaultSelectValue={defaultSelectValue} />,
-    mountNode
+  const root = createRoot(mountNode);
+  root.render(
+    <App explanations={explanations} defaultSelectValue={defaultSelectValue} />
   );
 };
 
