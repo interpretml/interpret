@@ -1,0 +1,5 @@
+# Direct dependencies for building the InterpretML documentation.
+# Regenerate requirements.txt using Python 3.10 (matching CI) with:
+#   pip-compile --upgrade --strip-extras requirements.in
+
+jupyter-book>=0.15,<1

@@ -1302,8 +1302,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 intercept=bagged_intercept[idx],
                                 bag=internal_bags[idx],
                                 init_scores=scores_bags[idx],
-                                iter_term_features=combinations(
-                                    range(n_features_in), 2
+                                iter_term_features=list(
+                                    combinations(range(n_features_in), 2)
                                 ),
                                 exclude=exclude,
                                 exclude_features=exclude_features,

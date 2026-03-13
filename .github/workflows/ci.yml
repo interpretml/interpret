@@ -184,7 +184,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Build sdist package
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -211,7 +211,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Download sdist artifact
         uses: actions/download-artifact@v7
         with:
@@ -266,7 +266,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Download libebm artifacts
         uses: actions/download-artifact@v7
         with:
@@ -302,7 +302,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Build powerlift package
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -433,7 +433,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Download libebm artifact
         if: ${{ matrix.existing != '' }}
         uses: actions/download-artifact@v7
@@ -468,9 +468,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux_310_python
-            python_ver: "3.10"
-            image: ubuntu-latest
           - name: linux_311_python
             python_ver: "3.11"
             image: ubuntu-latest
@@ -480,9 +477,9 @@ jobs:
           - name: linux_313_python
             python_ver: "3.13"
             image: ubuntu-latest
-          - name: linuxarm_310_python
-            python_ver: "3.10"
-            image: ubuntu-22.04-arm
+          - name: linux_314_python
+            python_ver: "3.14"
+            image: ubuntu-latest
           - name: linuxarm_311_python
             python_ver: "3.11"
             image: ubuntu-22.04-arm
@@ -492,9 +489,9 @@ jobs:
           - name: linuxarm_313_python
             python_ver: "3.13"
             image: ubuntu-22.04-arm
-          - name: mac_310_python
-            python_ver: "3.10"
-            image: macos-latest
+          - name: linuxarm_314_python
+            python_ver: "3.14"
+            image: ubuntu-22.04-arm
           - name: mac_311_python
             python_ver: "3.11"
             image: macos-latest
@@ -504,9 +501,9 @@ jobs:
           - name: mac_313_python
             python_ver: "3.13"
             image: macos-latest
-          - name: win_310_python
-            python_ver: "3.10"
-            image: windows-latest
+          - name: mac_314_python
+            python_ver: "3.14"
+            image: macos-latest
           - name: win_311_python
             python_ver: "3.11"
             image: windows-latest
@@ -515,6 +512,9 @@ jobs:
             image: windows-latest
           - name: win_313_python
             python_ver: "3.13"
+            image: windows-latest
+          - name: win_314_python
+            python_ver: "3.14"
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
@@ -569,9 +569,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux_310_python
-            python_ver: "3.10"
-            image: ubuntu-latest
           - name: linux_311_python
             python_ver: "3.11"
             image: ubuntu-latest
@@ -581,9 +578,9 @@ jobs:
           - name: linux_313_python
             python_ver: "3.13"
             image: ubuntu-latest
-          - name: linuxarm_310_python
-            python_ver: "3.10"
-            image: ubuntu-24.04-arm
+          - name: linux_314_python
+            python_ver: "3.14"
+            image: ubuntu-latest
           - name: linuxarm_311_python
             python_ver: "3.11"
             image: ubuntu-24.04-arm
@@ -593,9 +590,9 @@ jobs:
           - name: linuxarm_313_python
             python_ver: "3.13"
             image: ubuntu-24.04-arm
-          - name: mac_310_python
-            python_ver: "3.10"
-            image: macos-latest
+          - name: linuxarm_314_python
+            python_ver: "3.14"
+            image: ubuntu-24.04-arm
           - name: mac_311_python
             python_ver: "3.11"
             image: macos-latest
@@ -605,9 +602,9 @@ jobs:
           - name: mac_313_python
             python_ver: "3.13"
             image: macos-latest
-          - name: win_310_python
-            python_ver: "3.10"
-            image: windows-latest
+          - name: mac_314_python
+            python_ver: "3.14"
+            image: macos-latest
           - name: win_311_python
             python_ver: "3.11"
             image: windows-latest
@@ -616,6 +613,9 @@ jobs:
             image: windows-latest
           - name: win_313_python
             python_ver: "3.13"
+            image: windows-latest
+          - name: win_314_python
+            python_ver: "3.14"
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:

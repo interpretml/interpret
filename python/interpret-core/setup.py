@@ -215,7 +215,7 @@ https://github.com/interpretml/interpret
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
@@ -267,7 +267,7 @@ https://github.com/interpretml/interpret
         "aplr": ["aplr>=10.6.1"],
         # Dash
         "dash": [
-            "dash>=2.0.0,<3.0.0",
+            "dash>=2.0.0",
             "dash-cytoscape>=0.1.1",
             "gevent>=1.3.6",
             "requests>=2.19.0",
