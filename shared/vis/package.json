@@ -19,23 +19,16 @@
   },
   "dependencies": {
     "cytoscape": "^3.33.1",
-    "plotly.js": "^2.35.3",
-    "react": "^18.3.1",
-    "react-cytoscapejs": "^2.0.0",
-    "react-dom": "^18.3.1",
-    "react-plotly.js": "^2.6.0",
-    "react-select": "^5.10.2"
+    "plotly.js-dist-min": "^2.35.3"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
-    "@babel/preset-react": "^7.28.5",
     "babel-loader": "^10.1.1",
     "css-loader": "^7.1.4",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
-    "eslint-plugin-react": "^7.37.5",
     "prettier": "^3.8.1",
     "sass": "^1.98.0",
     "sass-loader": "^16.0.7",

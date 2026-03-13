@@ -18,7 +18,7 @@ const config = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.js$/,
         use: "babel-loader",
         exclude: /node_modules/
       },
@@ -29,10 +29,10 @@ const config = {
     ]
   },
   resolve: {
-    extensions: [".js", ".jsx"]
+    extensions: [".js"]
   },
   devServer: {
-    contentBase: "./dist"
+    static: "./dist"
   }
 };
 
