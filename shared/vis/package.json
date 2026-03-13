@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "cytoscape": "^3.33.1",
-    "plotly.js-dist-min": "^2.35.3"
+    "plotly.js-cartesian-dist-min": "^2.35.3"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",

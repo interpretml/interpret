@@ -3,7 +3,7 @@ Copyright (c) 2023 The InterpretML Contributors
 Distributed under the MIT software license
 */
 
-import Plotly from "plotly.js-dist-min";
+import Plotly from "plotly.js-cartesian-dist-min";
 import cytoscape from "cytoscape";
 import "./styles.scss";
 
