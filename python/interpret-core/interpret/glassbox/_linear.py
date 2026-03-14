@@ -186,7 +186,13 @@ class BaseLinear(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         return self._model().predict(X)
@@ -232,7 +238,13 @@ class BaseLinear(ExplainerMixin):
             raise ValueError(msg)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         model = self._model()
@@ -581,7 +593,13 @@ class LogisticRegression(ClassifierMixin, BaseLinear):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         return self._model().predict_proba(X)

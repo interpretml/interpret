@@ -379,7 +379,13 @@ class BaseShallowDecisionTree(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         return self._model().predict(X)
@@ -474,7 +480,13 @@ class BaseShallowDecisionTree(ExplainerMixin):
         nodes, edges = self._graph_from_tree(self._model(), self.feature_names_in_)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         decisions = [
@@ -705,7 +717,13 @@ class ClassificationTree(ClassifierMixin, BaseShallowDecisionTree):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
+            X,
+            n_samples,
+            self.feature_names_in_,
+            self.feature_types_in_,
+            False,
+            0,
+            is_schematized=True,
         )
 
         return self._model().predict_proba(X)
