@@ -246,6 +246,7 @@ https://github.com/interpretml/interpret
             "nbformat>=4.4.0",
             "selenium>=3.141.0",
             "pytest-cov>=2.6.1",
+            "ipywidgets>=7.4.2",
         ],
     },
 )

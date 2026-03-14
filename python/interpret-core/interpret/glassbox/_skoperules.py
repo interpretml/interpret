@@ -316,7 +316,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         scores = self._scores(X)
@@ -406,7 +406,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         predictions = self.predict_proba(X)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         scores = self._scores(X)

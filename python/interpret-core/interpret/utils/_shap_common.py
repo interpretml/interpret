@@ -45,7 +45,7 @@ def shap_explain_local(explainer, X, y, name, is_treeshap, **kwargs):
     predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
     X, feature_names, feature_types = unify_data(
-        X, n_samples, feature_names, feature_types, False, 0
+        X, n_samples, feature_names, feature_types, False, 0, is_schematized=explainer.feature_names_in_ is not None
     )
 
     # SHAP does not support string categoricals, and np.object_ is slower,

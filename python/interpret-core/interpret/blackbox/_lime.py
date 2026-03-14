@@ -91,7 +91,7 @@ class LimeTabular(ExplainerMixin):
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,

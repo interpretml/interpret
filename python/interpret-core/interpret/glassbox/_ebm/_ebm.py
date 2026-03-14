@@ -2374,7 +2374,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
         else:
             X_unified, _, _ = unify_data(
-                X, n_samples, self.feature_names_in_, self.feature_types_in_, True
+                X, n_samples, self.feature_names_in_, self.feature_types_in_, True, is_schematized=True
             )
 
             intercept = self.intercept_
