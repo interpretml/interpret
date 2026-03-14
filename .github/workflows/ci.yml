@@ -561,6 +561,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   testB:
+    permissions:
+      contents: read
     needs: [bdist]
     strategy:
       matrix:
