@@ -111,7 +111,13 @@ class TreeInterpreter(ExplainerMixin):
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data(
-            X, n_samples, feature_names, feature_types, False, 0, is_schematized=self.feature_types_in_ is not None
+            X,
+            n_samples,
+            feature_names,
+            feature_types,
+            False,
+            0,
+            is_schematized=self.feature_types_in_ is not None,
         )
 
         is_classification = n_classes >= 0
