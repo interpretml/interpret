@@ -114,7 +114,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - uses: actions/setup-node@v6
         with:
-          node-version: '18.x'
+          node-version: '22.x'
       - name: Build vis
         run: |
           cd shared/vis
@@ -136,7 +136,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - uses: actions/setup-node@v6
         with:
-          node-version: '18.x'
+          node-version: '22.x'
       - name: Build npm package
         run: |
           cd shared/vis
