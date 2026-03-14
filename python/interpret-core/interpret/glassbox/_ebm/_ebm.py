@@ -190,8 +190,8 @@ class EBMExplanation(FeatureValueExplanation):
                     "made by the model."
                 )
             else:  # pragma: no cover
-                msg = f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
-                raise Exception(msg)
+                msg = f"Unsupported configuration: explanation_type='{self.explanation_type}', feature_type='{self.feature_types[key]}'"
+                raise ValueError(msg)
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "
@@ -678,7 +678,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             _log.error(msg)
             raise ValueError(msg)
         if len(y) == 0:
@@ -1302,8 +1302,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                                 intercept=bagged_intercept[idx],
                                 bag=internal_bags[idx],
                                 init_scores=scores_bags[idx],
-                                iter_term_features=combinations(
-                                    range(n_features_in), 2
+                                iter_term_features=list(
+                                    combinations(range(n_features_in), 2)
                                 ),
                                 exclude=exclude,
                                 exclude_features=exclude_features,
@@ -1670,7 +1670,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             n_classes = Native.Task_Unknown
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 _log.error(msg)
                 raise ValueError(msg)
             if len(y) == 0:
@@ -2349,7 +2349,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -2374,7 +2374,7 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             X_unified = np.empty((0, len(self.feature_names_in_)), dtype=np.object_)
         else:
             X_unified, _, _ = unify_data(
-                X, n_samples, self.feature_names_in_, self.feature_types_in_, True
+                X, n_samples, self.feature_names_in_, self.feature_types_in_, True, is_schematized=True
             )
 
             intercept = self.intercept_

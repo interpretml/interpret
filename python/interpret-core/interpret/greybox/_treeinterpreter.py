@@ -90,7 +90,7 @@ class TreeInterpreter(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -111,7 +111,7 @@ class TreeInterpreter(ExplainerMixin):
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data(
-            X, n_samples, feature_names, feature_types, False, 0
+            X, n_samples, feature_names, feature_types, False, 0, is_schematized=self.feature_types_in_ is not None
         )
 
         is_classification = n_classes >= 0

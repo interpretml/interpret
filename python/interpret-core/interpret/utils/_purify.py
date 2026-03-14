@@ -45,13 +45,13 @@ def purify(scores, weights, tolerance=0.0, is_randomized=True):
     """
 
     if scores.ndim != weights.ndim and scores.ndim != weights.ndim + 1:
-        msg = "scores and weights do not match in terms of dimensionality."
-        raise Exception(msg)
+        msg = f"scores ndim ({scores.ndim}) must equal weights ndim ({weights.ndim}) or weights ndim + 1."
+        raise ValueError(msg)
 
     n_dim = weights.ndim
     if n_dim == 0:
-        msg = "scores cannot have zero dimensions."
-        raise Exception(msg)
+        msg = "weights (and scores) must have at least 1 dimension."
+        raise ValueError(msg)
 
     scores = scores.copy()
     native = Native.get_native_singleton()

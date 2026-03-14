@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.image }}
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Build for Windows
@@ -94,13 +94,13 @@ jobs:
         run: |
           /bin/sh ./build.sh ${{ matrix.options }} ${{ matrix.asm }}
       - name: Publish shared library
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libebm_${{ matrix.name }}
           path: bld/lib
       - name: Publish assembly
         if: ${{ matrix.asm != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: asm_${{ matrix.name }}
           path: bld/asm/
@@ -109,19 +109,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '18.x'
+          node-version: '22.x'
       - name: Build vis
         run: |
           cd shared/vis
           npm install
           npm run build-prod
       - name: Publish interpret-inline.js library
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vis
           path: shared/vis/dist
@@ -131,12 +131,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '18.x'
+          node-version: '22.x'
       - name: Build npm package
         run: |
           cd shared/vis
@@ -146,7 +146,7 @@ jobs:
           mkdir pkg
           cp *.tgz pkg/
       - name: Publish npm package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm
           path: shared/vis/pkg
@@ -156,7 +156,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Build R package
@@ -169,7 +169,7 @@ jobs:
         if: failure()
         run: cat bld/tmp/R/interpret.Rcheck/00install.out
       - name: Publish R package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: R
           path: bld/R
@@ -178,13 +178,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Build sdist package
         run: |
           python -m pip install --upgrade pip setuptools wheel
@@ -193,7 +193,7 @@ jobs:
           cd ../interpret
           python setup.py sdist -d ../../bld/sdist
       - name: Publish sdist package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: bld/sdist
@@ -205,15 +205,15 @@ jobs:
       checks: write
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.12"
       - name: Download sdist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: sdist
           path: bld/sdist
@@ -233,7 +233,7 @@ jobs:
           fi
       - name: Mark step with a warning
         if: ${{ steps.build_docs.outcome == 'failure' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.checks.create({
@@ -250,7 +250,7 @@ jobs:
               }
             })
       - name: Publish docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           path: docs/interpret/_build/html/
@@ -260,21 +260,21 @@ jobs:
     needs: [bld, vis]
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Download libebm artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: libebm_*
           merge-multiple: true
           path: python/interpret-core/interpret/root/bld/lib/
       - name: Download vis artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: vis
           path: python/interpret-core/interpret/root/bld/lib/
@@ -286,7 +286,7 @@ jobs:
           cd ../interpret
           python setup.py bdist_wheel -d ../../bld/bdist
       - name: Publish bdist package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bdist
           path: bld/bdist
@@ -296,20 +296,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
       - name: Build powerlift package
         run: |
           python -m pip install --upgrade pip setuptools wheel
           cd python/powerlift
           python setup.py bdist_wheel -d ../../bld/powerlift
       - name: Publish powerlift package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: powerlift
           path: bld/powerlift
@@ -331,15 +331,15 @@ jobs:
     runs-on: ${{ matrix.image }}
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
       - name: Download powerlift artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: powerlift
           path: bld/powerlift
@@ -427,16 +427,12 @@ jobs:
     runs-on: ${{ matrix.image }}
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
       - name: Download libebm artifact
         if: ${{ matrix.existing != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: libebm_${{ matrix.name }}
           path: bld/lib
@@ -468,9 +464,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: linux_310_python
-            python_ver: "3.10"
-            image: ubuntu-latest
           - name: linux_311_python
             python_ver: "3.11"
             image: ubuntu-latest
@@ -480,9 +473,9 @@ jobs:
           - name: linux_313_python
             python_ver: "3.13"
             image: ubuntu-latest
-          - name: linuxarm_310_python
-            python_ver: "3.10"
-            image: ubuntu-22.04-arm
+          - name: linux_314_python
+            python_ver: "3.14"
+            image: ubuntu-latest
           - name: linuxarm_311_python
             python_ver: "3.11"
             image: ubuntu-22.04-arm
@@ -492,9 +485,9 @@ jobs:
           - name: linuxarm_313_python
             python_ver: "3.13"
             image: ubuntu-22.04-arm
-          - name: mac_310_python
-            python_ver: "3.10"
-            image: macos-latest
+          - name: linuxarm_314_python
+            python_ver: "3.14"
+            image: ubuntu-22.04-arm
           - name: mac_311_python
             python_ver: "3.11"
             image: macos-latest
@@ -504,9 +497,9 @@ jobs:
           - name: mac_313_python
             python_ver: "3.13"
             image: macos-latest
-          - name: win_310_python
-            python_ver: "3.10"
-            image: windows-latest
+          - name: mac_314_python
+            python_ver: "3.14"
+            image: macos-latest
           - name: win_311_python
             python_ver: "3.11"
             image: windows-latest
@@ -516,18 +509,21 @@ jobs:
           - name: win_313_python
             python_ver: "3.13"
             image: windows-latest
+          - name: win_314_python
+            python_ver: "3.14"
+            image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
       - name: Download sdist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: sdist
           path: bld/sdist
@@ -557,7 +553,7 @@ jobs:
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: tmp/zqmr/t/coverage.xml
           flags: sdist_${{ matrix.name }}
@@ -565,13 +561,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   testB:
+    permissions:
+      contents: read
     needs: [bdist]
     strategy:
       matrix:
         include:
-          - name: linux_310_python
-            python_ver: "3.10"
-            image: ubuntu-latest
           - name: linux_311_python
             python_ver: "3.11"
             image: ubuntu-latest
@@ -581,9 +576,9 @@ jobs:
           - name: linux_313_python
             python_ver: "3.13"
             image: ubuntu-latest
-          - name: linuxarm_310_python
-            python_ver: "3.10"
-            image: ubuntu-24.04-arm
+          - name: linux_314_python
+            python_ver: "3.14"
+            image: ubuntu-latest
           - name: linuxarm_311_python
             python_ver: "3.11"
             image: ubuntu-24.04-arm
@@ -593,9 +588,9 @@ jobs:
           - name: linuxarm_313_python
             python_ver: "3.13"
             image: ubuntu-24.04-arm
-          - name: mac_310_python
-            python_ver: "3.10"
-            image: macos-latest
+          - name: linuxarm_314_python
+            python_ver: "3.14"
+            image: ubuntu-24.04-arm
           - name: mac_311_python
             python_ver: "3.11"
             image: macos-latest
@@ -605,9 +600,9 @@ jobs:
           - name: mac_313_python
             python_ver: "3.13"
             image: macos-latest
-          - name: win_310_python
-            python_ver: "3.10"
-            image: windows-latest
+          - name: mac_314_python
+            python_ver: "3.14"
+            image: macos-latest
           - name: win_311_python
             python_ver: "3.11"
             image: windows-latest
@@ -617,18 +612,21 @@ jobs:
           - name: win_313_python
             python_ver: "3.13"
             image: windows-latest
+          - name: win_314_python
+            python_ver: "3.14"
+            image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
       - name: Download bdist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: bdist
           path: bld/bdist
@@ -658,7 +656,7 @@ jobs:
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: tmp/zqmr/t/coverage.xml
           flags: bdist_${{ matrix.name }}
@@ -679,7 +677,7 @@ jobs:
         with:
           r-version: 'latest'
       - name: Download R artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: R
           path: bld/R
@@ -702,7 +700,7 @@ jobs:
       checks: write
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Check C++ code formatting with clang-format
@@ -720,7 +718,7 @@ jobs:
           fi
       - name: Mark step with a warning
         if: ${{ steps.check_cpp.outcome == 'failure' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.checks.create({
@@ -743,7 +741,7 @@ jobs:
       checks: write
     steps:
       - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Check python matches ruff format
@@ -758,7 +756,7 @@ jobs:
           fi
       - name: Mark step with a warning
         if: ${{ steps.check_python.outcome == 'failure' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.checks.create({

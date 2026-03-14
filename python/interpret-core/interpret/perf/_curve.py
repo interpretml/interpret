@@ -54,15 +54,15 @@ class PR(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
-            msg = "Only binary classification supported in the PR class"
-            raise Exception(msg)
+            msg = "Only binary classification is supported by the PR class. The model must have exactly 2 classes."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data(
@@ -74,7 +74,7 @@ class PR(ExplainerMixin):
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
             if len(classes) != n_classes:
-                msg = "class number mismatch"
+                msg = f"Class count mismatch: model predicted {n_classes} classes but y contains {len(classes)} unique values"
                 raise ValueError(msg)
         else:
             invert_classes = dict(zip(classes, count()))
@@ -142,15 +142,15 @@ class ROC(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes != 2:
-            msg = "Only binary classification supported in the ROC class"
-            raise Exception(msg)
+            msg = "Only binary classification is supported by the ROC class. The model must have exactly 2 classes."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1)
 
         X, feature_names, feature_types = unify_data(
@@ -162,7 +162,7 @@ class ROC(ExplainerMixin):
             # scikit-learn requires that the self.classes_ are sorted with np.unique, so rely on this
             classes, y = np.unique(y, return_inverse=True)
             if len(classes) != n_classes:
-                msg = "class number mismatch"
+                msg = f"Class count mismatch: model predicted {n_classes} classes but y contains {len(classes)} unique values"
                 raise ValueError(msg)
         else:
             invert_classes = dict(zip(classes, count()))

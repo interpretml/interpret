@@ -34,6 +34,8 @@ _none_ndarray = np.array(None)
 
 
 def _remove_extra_dimensions(arr):
+    if arr.ndim == 1:
+        return arr
     arr = arr.squeeze()
     shape = arr.shape
     if len(shape) == 0 or 0 in shape:

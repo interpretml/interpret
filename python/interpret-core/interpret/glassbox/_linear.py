@@ -122,7 +122,7 @@ class BaseLinear(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
         if len(y) == 0:
             msg = "y cannot have 0 samples"
@@ -186,7 +186,7 @@ class BaseLinear(ExplainerMixin):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         return self._model().predict(X)
@@ -213,7 +213,7 @@ class BaseLinear(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -232,7 +232,7 @@ class BaseLinear(ExplainerMixin):
             raise ValueError(msg)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         model = self._model()
@@ -473,7 +473,7 @@ class LinearExplanation(FeatureValueExplanation):
                     title="Overall Importance:<br>Coefficients",
                 )
             # pragma: no cover
-            msg = f"Visual provider {provider} not supported"
+            msg = f"Visual provider '{provider}' is not supported for linear model explanations."
             raise RuntimeError(msg)
         data_dict = self.data(key)
         if data_dict is None:
@@ -581,7 +581,7 @@ class LogisticRegression(ClassifierMixin, BaseLinear):
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         return self._model().predict_proba(X)

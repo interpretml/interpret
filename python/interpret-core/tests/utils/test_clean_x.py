@@ -13,6 +13,20 @@ from interpret.utils._unify_data import unify_data
 from interpret.utils._clean_x import preclean_X
 
 
+def _to_cat_str(val):
+    """Convert a value to the expected categorical string representation.
+    Bools become '0'/'1', integer-representable floats drop the '.0' suffix."""
+    if isinstance(val, (bool, np.bool_)):
+        return "1" if val else "0"
+    if isinstance(val, (float, np.floating)):
+        if not np.isnan(val):  # not nan
+            as_int = int(val)
+            if float(as_int) == val:
+                return str(as_int)
+        return str(val)
+    return str(val)
+
+
 def compare_bins(bins, expected_bins):
     assert len(bins) == len(expected_bins)
     for a, b in zip(bins, expected_bins):
@@ -258,7 +272,9 @@ class NothingHolder:
 
 
 def check_pandas_normal(dtype, val1, val2):
-    vals = [x[1] for x in sorted([(str(val1), val1), (str(val2), val2)])]
+    vals = [
+        x[1] for x in sorted([(_to_cat_str(val1), val1), (_to_cat_str(val2), val2)])
+    ]
 
     X = pd.DataFrame()
     X["feature1"] = pd.Series(np.array(vals, dtype=np.object_), dtype=dtype)
@@ -273,27 +289,31 @@ def check_pandas_normal(dtype, val1, val2):
     )
     assert feature_names_in == ["feature1"]
     assert feature_types_in == ["nominal"]
-    assert np.array_equal(X_check, np.array([[str(val1)], [str(val2)]], np.object_))
+    assert np.array_equal(
+        X_check, np.array([[_to_cat_str(val1)], [_to_cat_str(val2)]], np.object_)
+    )
 
     pre = EBMPreprocessor(feature_names, feature_types)
     pre.fit(X)
 
     assert pre.feature_names_in_ == ["feature1"]
     assert pre.feature_types_in_ == ["nominal"]
-    expected_bins = [dict(zip(map(str, vals), count(1)))]
+    expected_bins = [dict(zip(map(_to_cat_str, vals), count(1)))]
     compare_bins(pre.bins_, expected_bins)
 
     binned = pre.transform(X)
     assert np.array_equal(binned, np.array([[1], [2]], np.int64))
 
     # force reverse the categorical order
-    pre.bins_ = [{str(vals[1]): 1, str(vals[0]): 2}]
+    pre.bins_ = [{_to_cat_str(vals[1]): 1, _to_cat_str(vals[0]): 2}]
     binned = pre.transform(X)
     assert np.array_equal(binned, np.array([[2], [1]], np.int64))
 
 
 def check_pandas_missings(dtype, val1, val2):
-    vals = [x[1] for x in sorted([(str(val1), val1), (str(val2), val2)])]
+    vals = [
+        x[1] for x in sorted([(_to_cat_str(val1), val1), (_to_cat_str(val2), val2)])
+    ]
     val1, val2 = vals
 
     X = pd.DataFrame()
@@ -324,9 +344,9 @@ def check_pandas_missings(dtype, val1, val2):
         X_check,
         np.array(
             [
-                [str(val2), None, str(val1), str(val2)],
-                [str(val1), str(val2), None, str(val1)],
-                [str(val1), str(val1), str(val2), None],
+                [_to_cat_str(val2), None, _to_cat_str(val1), _to_cat_str(val2)],
+                [_to_cat_str(val1), _to_cat_str(val2), None, _to_cat_str(val1)],
+                [_to_cat_str(val1), _to_cat_str(val1), _to_cat_str(val2), None],
             ],
             np.object_,
         ),
@@ -337,7 +357,7 @@ def check_pandas_missings(dtype, val1, val2):
 
     assert pre.feature_names_in_ == ["feature1", "feature2", "feature3", "feature4"]
     assert pre.feature_types_in_ == ["nominal", "nominal", "nominal", "nominal"]
-    expected_bins = list(repeat(dict(zip(map(str, vals), count(1))), 4))
+    expected_bins = list(repeat(dict(zip(map(_to_cat_str, vals), count(1))), 4))
     compare_bins(pre.bins_, expected_bins)
 
     binned = pre.transform(X)
@@ -346,7 +366,7 @@ def check_pandas_missings(dtype, val1, val2):
     )
 
     # force reverse the categorical order
-    pre.bins_ = list(repeat({str(val2): 1, str(val1): 2}, 4))
+    pre.bins_ = list(repeat({_to_cat_str(val2): 1, _to_cat_str(val1): 2}, 4))
     binned = pre.transform(X)
     assert np.array_equal(
         binned, np.array([[1, 0, 2, 1], [2, 1, 0, 2], [2, 2, 1, 0]], np.int64)
@@ -658,7 +678,7 @@ def test_process_column_initial_alphabetical_nomissing_one_bool():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"True": 1}]
+    expected_bins = [{"1": 1}]
     compare_bins(pre.bins_, expected_bins)
 
 
@@ -676,7 +696,7 @@ def test_process_column_initial_alphabetical_nomissing_two_bool():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"False": 1, "True": 2}]
+    expected_bins = [{"0": 1, "1": 2}]
     compare_bins(pre.bins_, expected_bins)
 
 
@@ -694,7 +714,7 @@ def test_process_column_initial_prevalence_nomissing_one_bool():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"True": 1}]
+    expected_bins = [{"1": 1}]
     compare_bins(pre.bins_, expected_bins)
 
 
@@ -712,7 +732,7 @@ def test_process_column_initial_prevalence_nomissing_two_bool():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"True": 1, "False": 2}]
+    expected_bins = [{"1": 1, "0": 2}]
     compare_bins(pre.bins_, expected_bins)
 
 
@@ -842,7 +862,7 @@ def test_encode_categorical_existing_int_float():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"4": 1, "4.0": 2}]
+    expected_bins = [{"4": 1}]
     compare_bins(pre.bins_, expected_bins)
 
 
@@ -1148,9 +1168,9 @@ def test_unify_columns_list2():
         np.array(
             [
                 ["1", "2", "3"],
-                ["4.0", None, None],
-                ["1", "2.0", "hi"],
-                ["4.0", "bye", None],
+                ["4", None, None],
+                ["1", "2", "hi"],
+                ["4", "bye", None],
                 ["1", "2", "3"],
                 ["abc", "def", "ghi"],
                 ["1", "2", "3"],
@@ -1160,7 +1180,7 @@ def test_unify_columns_list2():
                 ["1", "2", "3"],
                 ["1", "2", "3"],
                 ["1", None, None],
-                ["1.0", None, None],
+                ["1", None, None],
                 ["1", "2", "3"],
                 ["1", "2", "3"],
             ],
@@ -1221,8 +1241,8 @@ def test_unify_columns_tuple2():
             [
                 ["1", "2", "3"],
                 ["4", "5", "6"],
-                ["1", "2.0", "hi"],
-                ["4.0", "bye", None],
+                ["1", "2", "hi"],
+                ["4", "bye", None],
                 ["1", "2", "3"],
                 ["abc", "def", "ghi"],
                 ["1", "2", "3"],
@@ -1290,8 +1310,8 @@ def test_unify_columns_generator2():
             [
                 ["1", "2", "3"],
                 ["4", "5", "6"],
-                ["1", "2.0", "hi"],
-                ["4.0", "bye", None],
+                ["1", "2", "hi"],
+                ["4", "bye", None],
                 ["1", "2", "3"],
                 ["abc", "def", "ghi"],
                 ["1", "2", "3"],
@@ -2414,9 +2434,7 @@ def test_unify_columns_ma_objects_categorical():
     assert feature_types_in == ["nominal"]
     assert np.array_equal(
         X_check,
-        np.array(
-            [[None], [None], ["1.0"], [None], [None], ["3.0"], [None]], np.object_
-        ),
+        np.array([[None], [None], ["1"], [None], [None], ["3"], [None]], np.object_),
     )
 
     pre = EBMPreprocessor(feature_names, feature_types)
@@ -2425,7 +2443,7 @@ def test_unify_columns_ma_objects_categorical():
     assert pre.feature_names_in_ == ["feature_0000"]
     assert pre.feature_types_in_ == ["nominal"]
 
-    expected_bins = [{"1.0": 1, "3.0": 2}]
+    expected_bins = [{"1": 1, "3": 2}]
     compare_bins(pre.bins_, expected_bins)
 
     binned = pre.transform(X)

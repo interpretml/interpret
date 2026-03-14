@@ -254,7 +254,7 @@ class Native:
 
         if prod(out_tensor.shape) != n_distant * n_close:
             msg = f"in {in_tensor.shape} and out {out_tensor.shape} tensors must have a reducible shape along axis {axis}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         return_code = self._unsafe.SafeSum(
             n_distant,
@@ -270,7 +270,7 @@ class Native:
         if weights is not None:
             if vals.shape != weights.shape:
                 msg = "vals and weights must have the same shape to call flat_mean."
-                raise Exception(msg)
+                raise ValueError(msg)
 
         n_tensor_bins = prod(vals.shape)
 
@@ -295,10 +295,10 @@ class Native:
                 msg = (
                     f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
                 )
-                raise Exception(msg)
+                raise ValueError(msg)
             if len(weights) != n_bags:
                 msg = "weights must contain the same number of items as there are bags in tensor."
-                raise Exception(msg)
+                raise ValueError(msg)
 
         n_tensor_bins = 1
         for n_bins in tensor.shape[1:]:
@@ -325,10 +325,10 @@ class Native:
                 msg = (
                     f"weights must be 1 dimensional, but has {weights.ndim} dimensions."
                 )
-                raise Exception(msg)
+                raise ValueError(msg)
             if len(weights) != n_bags:
                 msg = "weights must contain the same number of items as there are bags in tensor."
-                raise Exception(msg)
+                raise ValueError(msg)
 
         n_tensor_bins = 1
         for n_bins in tensor.shape[1:]:
@@ -367,7 +367,7 @@ class Native:
         if random_state < -2147483648 or random_state > 2147483647:
             msg = f'random_state of "{random_state}" must be cleaned to be a 32-bit signed integer before calling create_rng'
             _log.error(msg)
-            raise Exception(msg)
+            raise ValueError(msg)
 
         n_bytes = self._unsafe.MeasureRNG()
         rng = np.empty(n_bytes, np.ubyte)
@@ -446,7 +446,7 @@ class Native:
 
         if shape_classless != weights.shape:
             msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         if not scores.flags.c_contiguous:
             scores = scores.copy()
@@ -479,11 +479,11 @@ class Native:
             msg = (
                 f"tolerance must be between 0.0 and less than 1.0, but is {tolerance}."
             )
-            raise Exception(msg)
+            raise ValueError(msg)
 
         if is_randomized is not True and is_randomized is not False:
             msg = "is_randomized must be True or False."
-            raise Exception(msg)
+            raise TypeError(msg)
 
         shape_all = scores.shape
         shape_classless = scores.shape
@@ -495,7 +495,7 @@ class Native:
 
         if shape_classless != weights.shape:
             msg = f"scores with shape {scores.shape} needs to match the weights with shape {weights.shape}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         intercept = np.zeros(n_multi_scores, np.float64)
 
@@ -559,7 +559,7 @@ class Native:
     def cut_uniform(self, X_col, max_cuts):
         if max_cuts < 0:
             msg = f"max_cuts can't be negative: {max_cuts}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = self._unsafe.CutUniform(
@@ -573,7 +573,7 @@ class Native:
     def cut_quantile(self, X_col, min_samples_bin, is_rounded, max_cuts):
         if max_cuts < 0:
             msg = f"max_cuts can't be negative: {max_cuts}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -593,7 +593,7 @@ class Native:
     def cut_winsorized(self, X_col, max_cuts):
         if max_cuts < 0:
             msg = f"max_cuts can't be negative: {max_cuts}."
-            raise Exception(msg)
+            raise ValueError(msg)
 
         cuts = np.empty(max_cuts, dtype=np.float64, order="C")
         count_cuts = ct.c_int64(max_cuts)
@@ -911,7 +911,7 @@ class Native:
         if not link:  # pragma: no cover
             msg = "internal error in call to GetLinkFunctionStr"
             _log.error(msg)
-            raise Exception(msg)
+            raise RuntimeError(msg)
 
         return (
             objective_code.value,
@@ -938,7 +938,7 @@ class Native:
         else:
             msg = f"Unsupported platform {plat}"
             _log.error(msg)
-            raise Exception(msg)
+            raise OSError(msg)
 
         if debug:
             extension = "_debug" + extension
@@ -1045,7 +1045,7 @@ class Native:
         else:
             msg = "Could not find libebm shared library."
         _log.error(msg)
-        raise Exception(msg)
+        raise OSError(msg)
 
     def _initialize(self, is_debug):
         self.is_debug = is_debug
@@ -1788,7 +1788,7 @@ class Booster(AbstractContextManager):
         if self.objective is None or len(self.objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
-            raise Exception(msg)
+            raise ValueError(msg)
 
         dimension_counts = np.empty(len(self.term_features), ct.c_int64)
         feature_indexes = []
@@ -2229,7 +2229,7 @@ class InteractionDetector(AbstractContextManager):
         if self.objective is None or len(self.objective.strip()) == 0:
             msg = "objective must be specified"
             _log.error(msg)
-            raise Exception(msg)
+            raise ValueError(msg)
 
         native = Native.get_native_singleton()
 

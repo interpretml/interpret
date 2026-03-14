@@ -19,6 +19,10 @@ sphinx:
     napoleon_use_ivar: True
     autoclass_content: 'both'
     autodoc_typehints: 'none'
+    # Suppress warnings from sklearn inherited docstrings that reference
+    # labels (accuracy_score, r2_score) defined in sklearn's own docs.
+    suppress_warnings:
+      - 'ref.ref'
   extra_extensions:
     - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'

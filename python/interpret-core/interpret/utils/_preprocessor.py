@@ -182,7 +182,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -287,7 +287,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             if feature_type == "ignore":
                 feature_type_in = "ignore"
             else:
-                feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
+                feature_type_in, bad, X_col, uniques, nonmissings = get_col(feature_idx)
 
                 # TODO: in the future allow this to be per-feature
                 max_bins = self.max_bins
@@ -402,7 +402,8 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 else:
                     # categorical feature
 
-                    categories = dict(zip(uniques, count(1)))
+                    # use map(str,...) to convert numpy strins to python strings
+                    categories = dict(zip(map(str, uniques), count(1)))
 
                     X_col = categorical_encode(uniques, X_col, nonmissings, categories)
 
@@ -537,7 +538,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col = 0
                 else:
-                    nonmissings, uniques, X_col, bad = get_col(
+                    bad, X_col, uniques, nonmissings = get_col(
                         feature_idx, self.feature_types_in_[feature_idx]
                     )
                     if isinstance(bins, dict):
@@ -576,7 +577,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 

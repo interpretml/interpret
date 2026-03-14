@@ -104,8 +104,8 @@ class PartialDependence(ExplainerMixin):
 
         predict_fn, n_classes, _ = determine_classes(model, data, n_samples)
         if n_classes >= 3:
-            msg = "multiclass PDP not supported"
-            raise Exception(msg)
+            msg = "Multiclass partial dependence is not supported. Only binary classification and regression models are accepted."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data(
@@ -258,8 +258,8 @@ class PDPExplanation(ExplanationMixin):
         elif feature_type in ("nominal", "ordinal"):
             figure = plot_bar(data_dict, title=feature_name)
         else:
-            msg = f"Feature type {feature_type} is not supported."
-            raise Exception(msg)
+            msg = f"Feature type '{feature_type}' is not supported for visualization. Expected 'continuous', 'nominal', or 'ordinal'."
+            raise ValueError(msg)
 
         figure["layout"]["yaxis1"].update(title="Average Response")
         return figure

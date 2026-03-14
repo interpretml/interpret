@@ -33,7 +33,7 @@ def set_visualize_provider(provider):
     if provider is None or has_render_method:
         _current_module.visualize_provider = provider
     else:  # pragma: no cover
-        msg = f"Object of type {type(provider)} is not a visualize provider."
+        msg = f"Object of type {type(provider).__name__} is not a valid visualize provider. Expected an object with a 'render' method."
         raise ValueError(msg)
 
 
@@ -126,7 +126,7 @@ def _get_integer_key(key, explanation):
     if key is not None and not isinstance(key, int):
         series = explanation.selector[explanation.selector.columns[0]]
         if key not in series.values:  # pragma: no cover
-            msg = f"Key {key} not in explanation's selector"
+            msg = f"Key '{key}' not found in explanation's selector. Available keys: {list(series.values)}"
             raise ValueError(msg)
         key = series[series == key].index[0]
 

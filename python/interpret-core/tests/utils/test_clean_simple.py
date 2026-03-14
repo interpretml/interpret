@@ -25,6 +25,29 @@ def test_clean_dimensions_2d():
     assert init_score[3, 1] == 8
 
 
+def test_clean_dimensions_string_array():
+    try:
+        import pandas as pd
+    except ImportError:
+        import pytest
+
+        pytest.skip("pandas not available")
+
+    y = pd.array(["a", "b", "c"], dtype="string")
+    result = clean_dimensions(y, "y")
+    assert result.shape == (3,)
+    assert result[0] == "a"
+    assert result[1] == "b"
+    assert result[2] == "c"
+
+    y = pd.Series(["a", "b", "c"], dtype="string")
+    result = clean_dimensions(y, "y")
+    assert result.shape == (3,)
+    assert result[0] == "a"
+    assert result[1] == "b"
+    assert result[2] == "c"
+
+
 def test_shap_kernel_float64_classification_labels():
     """Test ShapKernel with float64 classification labels (reproduces issue #609)"""
     try:

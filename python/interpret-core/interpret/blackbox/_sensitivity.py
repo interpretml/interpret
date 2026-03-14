@@ -78,8 +78,8 @@ class MorrisSensitivity(ExplainerMixin):
 
         predict_fn, n_classes, _ = determine_classes(model, data, n_samples)
         if n_classes >= 3:
-            msg = "multiclass MorrisSensitivity not supported"
-            raise Exception(msg)
+            msg = "Multiclass MorrisSensitivity is not supported. Only binary classification and regression models are accepted."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, data, 1 if n_classes == 2 else -1)
 
         data, self.feature_names_in_, self.feature_types_in_ = unify_data(

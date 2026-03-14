@@ -126,8 +126,8 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
                         perf=perf[key],
                     )
                 # pragma: no cover
-                msg = f"Visual provider {provider} not supported"
-                raise RuntimeError(msg)
+                msg = f"Visual provider '{provider}' is not supported for local explanations."
+                raise ValueError(msg)
             is_multiclass = is_multiclass_local_data_dict(data_dict)
             if is_multiclass:
                 # Sort by predicted class' abs feature values
@@ -162,7 +162,7 @@ class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
             )
 
         # Handle everything else as invalid
-        msg = f"Not supported configuration: {self.explanation_type}, {feature_type}"
-        raise Exception(  # pragma: no cover
+        msg = f"Unsupported configuration: explanation_type='{self.explanation_type}', feature_type='{feature_type}'"
+        raise ValueError(  # pragma: no cover
             msg
         )

@@ -46,15 +46,15 @@ class RegressionPerf(ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
         predict_fn, n_classes, _ = determine_classes(self.model, X, n_samples)
         if n_classes >= 0:
-            msg = "Classification not supported by the RegressionPerf class"
-            raise Exception(msg)
+            msg = "Classification models are not supported by RegressionPerf. Use ROC or PR for classification metrics."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, X, -1)
 
         X, feature_names, feature_types = unify_data(

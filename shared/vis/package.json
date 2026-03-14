@@ -7,7 +7,7 @@
   "author": "The InterpretML Contributors",
   "license": "MIT",
   "scripts": {
-    "clean": "rm dist/interpret-inline.js",
+    "clean": "node -e \"require('fs').rmSync('dist/interpret-inline.js',{force:true})\"",
     "build-dev": "webpack --mode development",
     "build-prod": "webpack --mode production",
     "start": "webpack-dev-server --hot --mode development"
@@ -18,32 +18,24 @@
     "directory": "python/interpret-core/js"
   },
   "dependencies": {
-    "cytoscape": "^3.20.0",
-    "plotly.js": "^2.8.3",
-    "react": "^17.0.2",
-    "react-cytoscapejs": "^1.2.1",
-    "react-dom": "^17.0.2",
-    "react-hot-loader": "^4.13.0",
-    "react-plotly.js": "^2.5.1",
-    "react-select": "^5.2.1"
+    "cytoscape": "^3.33.1",
+    "plotly.js-cartesian-dist-min": "^2.35.3"
   },
   "devDependencies": {
-    "@babel/core": "^7.16.7",
-    "@babel/preset-env": "^7.16.7",
-    "@babel/preset-react": "^7.16.7",
-    "babel-loader": "^8.2.3",
-    "css-loader": "^6.5.1",
-    "eslint": "^8.6.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-react": "^7.28.0",
-    "node-sass": "^7.0.1",
-    "prettier": "^2.5.1",
-    "sass-loader": "^12.4.0",
-    "style-loader": "^3.3.1",
-    "webpack": "^5.65.0",
-    "webpack-cli": "^4.9.1",
-    "webpack-dev-server": "^5.2.2"
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
+    "babel-loader": "^10.1.1",
+    "css-loader": "^7.1.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "prettier": "^3.8.1",
+    "sass": "^1.98.0",
+    "sass-loader": "^16.0.7",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.3"
   },
   "files": [
     "dist/*"

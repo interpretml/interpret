@@ -288,8 +288,8 @@ def merge_ebms(models):
     """
 
     if len(models) == 0:  # pragma: no cover
-        msg = "0 models to merge."
-        raise Exception(msg)
+        msg = "At least one model is required for merging."
+        raise ValueError(msg)
 
     model_types = list(set(map(type, models)))
     if len(model_types) == 2:
@@ -309,8 +309,8 @@ def merge_ebms(models):
             is_classification = False
             is_dp = False
         else:
-            msg = "Inconsistent model types attempting to be merged."
-            raise Exception(msg)
+            msg = f"Inconsistent model types cannot be merged: {[t.__name__ for t in model_types]}"
+            raise TypeError(msg)
     elif len(model_types) == 1:
         ebm_type = model_types[0]
         if ebm_type.__name__ == "ExplainableBoostingClassifier":
@@ -326,11 +326,11 @@ def merge_ebms(models):
             is_classification = False
             is_dp = True
         else:
-            msg = f"Invalid EBM model type {ebm_type.__name__} attempting to be merged."
-            raise Exception(msg)
+            msg = f"Invalid EBM model type '{ebm_type.__name__}'. Expected ExplainableBoostingClassifier, ExplainableBoostingRegressor, DPExplainableBoostingClassifier, or DPExplainableBoostingRegressor."
+            raise TypeError(msg)
     else:
-        msg = "Inconsistent model types being merged."
-        raise Exception(msg)
+        msg = f"Cannot merge more than 2 distinct model types, got: {[t.__name__ for t in model_types]}"
+        raise TypeError(msg)
 
     # TODO: create the ExplainableBoostingClassifier etc, type directly
     # by name instead of using __new__ from ebm_type
@@ -339,24 +339,24 @@ def merge_ebms(models):
     if any(
         not getattr(model, "has_fitted_", False) for model in models
     ):  # pragma: no cover
-        msg = "All models must be fitted."
-        raise Exception(msg)
+        msg = "All models must be fitted before merging."
+        raise ValueError(msg)
     ebm.has_fitted_ = True
 
     link = models[0].link_
     if any(model.link_ != link for model in models):
-        msg = "Models with different link functions cannot be merged"
-        raise Exception(msg)
+        msg = "Models with different link functions cannot be merged."
+        raise ValueError(msg)
     ebm.link_ = link
 
     link_param = models[0].link_param_
     if isnan(link_param):
         if not all(isnan(model.link_param_) for model in models):
-            msg = "Models with different link param values cannot be merged"
-            raise Exception(msg)
+            msg = "Models with different link_param values cannot be merged."
+            raise ValueError(msg)
     elif any(model.link_param_ != link_param for model in models):
-        msg = "Models with different link param values cannot be merged"
-        raise Exception(msg)
+        msg = "Models with different link_param values cannot be merged."
+        raise ValueError(msg)
     ebm.link_param_ = link_param
 
     # self.bins_ is the only feature based attribute that we absolutely require
@@ -364,46 +364,46 @@ def merge_ebms(models):
 
     for model in models:
         if n_features != len(model.bins_):  # pragma: no cover
-            msg = "Inconsistent numbers of features in the models."
-            raise Exception(msg)
+            msg = f"Inconsistent number of features across models: expected {n_features} bins, got {len(model.bins_)}."
+            raise ValueError(msg)
 
         feature_names_in = getattr(model, "feature_names_in_", None)
         if feature_names_in is not None:
             if n_features != len(feature_names_in):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+                msg = f"Inconsistent number of features: expected {n_features}, but feature_names_in_ has {len(feature_names_in)}."
+                raise ValueError(msg)
 
         feature_types_in = getattr(model, "feature_types_in_", None)
         if feature_types_in is not None:
             if n_features != len(feature_types_in):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+                msg = f"Inconsistent number of features: expected {n_features}, but feature_types_in_ has {len(feature_types_in)}."
+                raise ValueError(msg)
 
         feature_bounds = getattr(model, "feature_bounds_", None)
         if feature_bounds is not None:
             if n_features != feature_bounds.shape[0]:  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+                msg = f"Inconsistent number of features: expected {n_features}, but feature_bounds_ has {feature_bounds.shape[0]}."
+                raise ValueError(msg)
 
         histogram_weights = getattr(model, "histogram_weights_", None)
         if histogram_weights is not None:
             if n_features != len(histogram_weights):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+                msg = f"Inconsistent number of features: expected {n_features}, but histogram_weights_ has {len(histogram_weights)}."
+                raise ValueError(msg)
 
         unique_val_counts = getattr(model, "unique_val_counts_", None)
         if unique_val_counts is not None:
             if n_features != len(unique_val_counts):  # pragma: no cover
-                msg = "Inconsistent numbers of features in the models."
-                raise Exception(msg)
+                msg = f"Inconsistent number of features: expected {n_features}, but unique_val_counts_ has {len(unique_val_counts)}."
+                raise ValueError(msg)
 
     old_bounds = []
     old_mapping = []
     old_bins = []
     for model in models:
         if any(len(set(map(type, bin_levels))) != 1 for bin_levels in model.bins_):
-            msg = "Inconsistent bin types within a model."
-            raise Exception(msg)
+            msg = "Inconsistent bin types within a single feature's bin levels."
+            raise ValueError(msg)
 
         feature_bounds = getattr(model, "feature_bounds_", None)
         if feature_bounds is None:
@@ -442,8 +442,8 @@ def merge_ebms(models):
         else:
             # continuous
             if any(bin_type not in {dict, np.ndarray} for bin_type in bin_types):
-                msg = "Invalid bin type."
-                raise Exception(msg)
+                msg = "Invalid bin type. Expected all dict or all ndarray."
+                raise TypeError(msg)
             new_feature_type = "continuous"
         new_feature_types.append(new_feature_type)
 
@@ -523,8 +523,8 @@ def merge_ebms(models):
                     if feature_name_merged is None:
                         feature_names_merged[feature_idx] = feature_name
                     elif feature_name != feature_name_merged:
-                        msg = "All models should have the same feature names."
-                        raise Exception(msg)
+                        msg = f"Feature name mismatch at index {feature_idx}: '{feature_name_merged}' vs '{feature_name}'. All models must have the same feature names."
+                        raise ValueError(msg)
     if any(feature_name is not None for feature_name in feature_names_merged):
         ebm.feature_names_in_ = feature_names_merged
 
@@ -559,8 +559,8 @@ def merge_ebms(models):
         ebm.classes_ = models[0].classes_.copy()
         if any(not np.array_equal(ebm.classes_, model.classes_) for model in models):
             # pragma: no cover
-            msg = "The target classes should be identical."
-            raise Exception(msg)
+            msg = "All models must have identical target classes for merging."
+            raise ValueError(msg)
 
         n_classes = len(ebm.classes_)
     else:
@@ -593,8 +593,8 @@ def merge_ebms(models):
             # the model weights and they don't agree.  We handle these by taking the average
             model_bag_weights = [avg_weight] * n_outer_bags
         elif len(model_bag_weights) != n_outer_bags:
-            msg = "self.bagged_weights_ should have the same length as n_outer_bags."
-            raise Exception(msg)
+            msg = f"bagged_weights_ length ({len(model_bag_weights)}) does not match n_outer_bags ({n_outer_bags})."
+            raise ValueError(msg)
 
         model_bag_intercept = getattr(model, "bagged_intercept_", None)
         if model_bag_intercept is None:

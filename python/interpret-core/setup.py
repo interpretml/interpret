@@ -1,14 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import glob
 import os
 import shutil
 import subprocess
 
 from setuptools import find_packages, setup
 from setuptools.command.build import build
-from setuptools.command.install import install
 from setuptools.command.sdist import sdist
 
 # NOTE: Version is replaced by a regex script.
@@ -35,7 +33,7 @@ def _copy_native_code_to_setup():
             )
     elif not os.path.exists(target_shared_path):
         msg = "Shared directory in symbolic not found. This should be configured either by setup.py or alternative build processes."
-        raise Exception(msg)
+        raise FileNotFoundError(msg)
 
 
 def build_libebm():
@@ -49,34 +47,6 @@ def build_libebm():
     else:
         build_script = os.path.join(sym_path, "build.sh")
         subprocess.check_call(["/bin/sh", build_script], cwd=sym_path)
-
-
-def build_copy_root_libebm():
-    # this function is unused since we rely on the build pipeline to make
-    # the multi-OS shared libraries .dll, .so, and .dylib
-
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    root_path = os.path.join(script_path, "..", "..")
-
-    # Native compile
-    if os.name == "nt":
-        build_script = os.path.join(root_path, "build.bat")
-        subprocess.check_call([build_script], cwd=root_path)
-    else:
-        build_script = os.path.join(root_path, "build.sh")
-        subprocess.check_call(["/bin/sh", build_script], cwd=root_path)
-
-    from_path = os.path.join(root_path, "bld", "lib")
-    to_path = os.path.join(script_path, "interpret", "root", "bld", "lib")
-
-    for filename in glob.glob(os.path.join(from_path, "*.dll")):
-        shutil.copy(filename, to_path)
-    for filename in glob.glob(os.path.join(from_path, "*.pdb")):
-        shutil.copy(filename, to_path)
-    for filename in glob.glob(os.path.join(from_path, "*.so")):
-        shutil.copy(filename, to_path)
-    for filename in glob.glob(os.path.join(from_path, "*.dylib")):
-        shutil.copy(filename, to_path)
 
 
 def build_vis_if_needed():
@@ -145,11 +115,6 @@ class BuildCommand(build):
         build.run(self)
 
 
-class InstallCommand(install):
-    def run(self):
-        install.run(self)
-
-
 class SDistCommand(sdist):
     def run(self):
         # This needs to run pre-build to store native code in the sdist.
@@ -172,7 +137,6 @@ https://github.com/interpretml/interpret
 """,
     url="https://github.com/interpretml/interpret",
     cmdclass={
-        "install": InstallCommand,
         "sdist": SDistCommand,
         "build": BuildCommand,
     },
@@ -215,7 +179,7 @@ https://github.com/interpretml/interpret
         "Programming Language :: Python :: 3.13",
         "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
@@ -247,7 +211,7 @@ https://github.com/interpretml/interpret
     ],
     extras_require={
         "debug": ["psutil>=5.6.2"],
-        "notebook": ["ipykernel>=4.10.0", "ipython>=5.5.0"],
+        "notebook": ["ipython>=5.5.0"],
         # Plotly (required if .visualize is ever called)
         "plotly": ["plotly>=3.8.1"],
         # Export
@@ -260,15 +224,16 @@ https://github.com/interpretml/interpret
         # Explainers
         "lime": ["lime>=0.1.1.33"],
         "sensitivity": ["SALib>=1.3.3"],
-        "shap": ["shap>=0.28.5", "dill>=0.2.5"],
-        "linear": [],
+        "shap": ["shap>=0.28.5"],
+        "linear": ["scikit-learn>=1.6.0"],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
         "aplr": ["aplr>=10.6.1"],
         # Dash
         "dash": [
-            "dash>=2.0.0,<3.0.0",
+            "dash>=2.0.0",
             "dash-cytoscape>=0.1.1",
+            "flask>=1.0.4",
             "gevent>=1.3.6",
             "requests>=2.19.0",
         ],
@@ -276,12 +241,11 @@ https://github.com/interpretml/interpret
         "testing": [
             "scipy>=0.18.1",
             "pytest>=4.3.0",
-            "pytest-runner>=4.4",
             "pytest-xdist>=1.29",
             "nbconvert>=5.4.1",
+            "nbformat>=4.4.0",
             "selenium>=3.141.0",
             "pytest-cov>=2.6.1",
-            "jupyter>=1.0.0",
             "ipywidgets>=7.4.2",
         ],
     },

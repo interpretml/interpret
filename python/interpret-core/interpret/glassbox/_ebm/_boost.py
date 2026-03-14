@@ -213,8 +213,8 @@ def boost(
                                 Native.TermBoostFlags_MissingSeparate
                             )
                         elif missing != "gain":
-                            msg = f"Unrecognized missing option {missing}."
-                            raise Exception(msg)
+                            msg = f"Unrecognized missing option '{missing}'. Expected 'low', 'high', 'separate', or 'gain'."
+                            raise ValueError(msg)
 
                         if smoothing_rounds > 0 and (
                             nominal_smoothing or not contains_nominals

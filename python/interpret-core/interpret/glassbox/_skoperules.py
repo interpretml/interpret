@@ -106,9 +106,9 @@ class RulesExplanation(ExplanationMixin):
             )
         # Handle everything else as invalid
         # pragma: no cover
-        msg = f"Not suppported: {self.explanation_type}, {key}"
+        msg = f"Unsupported configuration: explanation_type='{self.explanation_type}', key={key}"
         _log.error(msg)
-        raise Exception(msg)
+        raise ValueError(msg)
 
 
 @dataclass
@@ -207,7 +207,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
-            msg = "y must be 1 dimensional"
+            msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             _log.error(msg)
             raise ValueError(msg)
         if len(y) == 0:
@@ -316,7 +316,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         scores = self._scores(X)
@@ -390,7 +390,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -406,7 +406,7 @@ class DecisionListClassifier(ClassifierMixin, ExplainerMixin):
         predictions = self.predict_proba(X)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         scores = self._scores(X)

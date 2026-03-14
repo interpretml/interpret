@@ -76,7 +76,7 @@ class LimeTabular(ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             n_samples = len(y)
 
@@ -86,12 +86,12 @@ class LimeTabular(ExplainerMixin):
 
         predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
         if n_classes >= 3:
-            msg = "multiclass LIME not supported"
-            raise Exception(msg)
+            msg = "Multiclass LIME is not supported. Only binary classification and regression models are accepted."
+            raise ValueError(msg)
         predict_fn = unify_predict_fn(predict_fn, X, 1 if n_classes == 2 else -1)
 
         X, _, _ = unify_data(
-            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0
+            X, n_samples, self.feature_names_in_, self.feature_types_in_, False, 0, is_schematized=True
         )
 
         # LimeTabularExplainer does not support string categoricals, and np.object_ is slower,

@@ -255,7 +255,7 @@ class APLRRegressor(APLRRegressorNative, RegressorMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             y = y.astype(np.float64, copy=False)
         X_values = create_values(X, explanations, term_names, self.feature_names_in_)
@@ -331,7 +331,7 @@ def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[floa
 def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
     if isinstance(X, np.ndarray):
         if not np.issubdtype(X.dtype, np.number):
-            msg = "If X is a numpy array, it must contain only numeric values."
+            msg = f"If X is a numpy array, it must contain only numeric values, but got dtype '{X.dtype}'."
             raise TypeError(msg)
         return X.astype(np.float64, copy=False)
     if isinstance(X, pd.DataFrame) and not X.empty:
@@ -346,7 +346,7 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
         except (ValueError, TypeError) as e:
             msg = "If X is a list, it must be a list of lists containing only numeric values."
             raise TypeError(msg) from e
-    msg = "X must be a numpy matrix, a pandas dataframe, or a list of float lists."
+    msg = f"X must be a numpy array, pandas DataFrame, or list of numeric lists, but got {type(X).__name__}."
     raise TypeError(msg)
 
 
@@ -579,7 +579,7 @@ class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
         if y is not None:
             y = clean_dimensions(y, "y")
             if y.ndim != 1:
-                msg = "y must be 1 dimensional"
+                msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             if not all(isinstance(val, str) for val in y):
                 y = [str(val) for val in y]
@@ -754,8 +754,8 @@ class APLRExplanation(FeatureValueExplanation):
                     transform_vals=False,
                 )
             else:  # pragma: no cover
-                msg = f"Not supported configuration: {self.explanation_type}, {self.feature_types[key]}"
-                raise Exception(msg)
+                msg = f"Unsupported configuration: explanation_type='{self.explanation_type}', feature_type='{self.feature_types[key]}'"
+                raise ValueError(msg)
 
             figure._interpret_help_text = (
                 "The contribution (score) of the term "

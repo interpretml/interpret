@@ -270,13 +270,15 @@ def remove_extra_bins(term_features, bins):
     for bin_levels, i in zip(bins, highest_levels):
         if i != 0:
             if len(bin_levels) == 0:
-                raise Exception("Empty bin cannot be used in a term.")
+                raise ValueError("Empty bin cannot be used in a term.")
 
             i = min(i, len(bin_levels)) - 1
             types = set(map(type, bin_levels))
 
             if len(types) != 1:
-                raise Exception("Inconsistent bin types.")
+                raise ValueError(
+                    "Inconsistent bin types within a single feature's bin levels."
+                )
 
             if next(iter(types)) == dict:
                 key = frozenset(bin_levels[i].items())
@@ -303,13 +305,13 @@ def convert_to_intervals(cuts):  # pragma: no cover
 
     if not np.isfinite(cuts).all():
         msg = "cuts must contain only finite numbers"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     intervals = [(-np.inf, cuts[0]), *zip(cuts[:-1], cuts[1:]), (cuts[-1], np.inf)]
 
     if any(higher <= lower for (lower, higher) in intervals):
-        msg = "cuts must contain increasing values"
-        raise Exception(msg)
+        msg = "cuts must contain strictly increasing values"
+        raise ValueError(msg)
 
     return intervals
 
@@ -317,34 +319,34 @@ def convert_to_intervals(cuts):  # pragma: no cover
 def convert_to_cuts(intervals):  # pragma: no cover
     if len(intervals) == 0:
         msg = "intervals must have at least one interval"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     if any(len(x) != 2 for x in intervals):
-        msg = "intervals must be a list of tuples"
-        raise Exception(msg)
+        msg = "intervals must be a list of tuples of length 2"
+        raise ValueError(msg)
 
     if intervals[0][0] != -np.inf:
         msg = "intervals must start from -inf"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     if intervals[-1][-1] != np.inf:
         msg = "intervals must end with inf"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     cuts = [lower for (lower, _) in intervals[1:]]
     cuts_verify = [higher for (_, higher) in intervals[:-1]]
 
     if np.isnan(cuts).any():
         msg = "intervals cannot contain NaN"
-        raise Exception(msg)
+        raise ValueError(msg)
 
     if any(x[0] != x[1] for x in zip(cuts, cuts_verify)):
-        msg = "intervals must contain adjacent sections"
-        raise Exception(msg)
+        msg = "intervals must contain adjacent sections with no gaps"
+        raise ValueError(msg)
 
     if any(higher <= lower for lower, higher in zip(cuts, cuts[1:])):
-        msg = "intervals must contain increasing sections"
-        raise Exception(msg)
+        msg = "intervals must contain strictly increasing sections"
+        raise ValueError(msg)
 
     return cuts
 
@@ -355,14 +357,14 @@ def make_bag(y, n_classes, test_size, rng, is_stratified):
     # the same as before
 
     if test_size < 0:  # pragma: no cover
-        msg = "test_size must be a positive numeric value."
-        raise Exception(msg)
+        msg = "test_size must be a non-negative numeric value."
+        raise ValueError(msg)
     n_samples = len(y)
 
     if 1 <= test_size:
         if test_size % 1:
-            msg = "If test_size >= 1, test_size should be a whole number."
-            raise Exception(msg)
+            msg = f"If test_size >= 1, test_size should be a whole number, got {test_size}."
+            raise ValueError(msg)
         test_size = int(test_size)
     else:
         # prefer training samples
@@ -372,8 +374,8 @@ def make_bag(y, n_classes, test_size, rng, is_stratified):
         return None
 
     if n_samples <= test_size:
-        msg = "The entire dataset cannot exclusively be validation. There must be some training data."
-        raise Exception(msg)
+        msg = f"test_size ({test_size}) must be less than the number of samples ({n_samples}). There must be some training data."
+        raise ValueError(msg)
 
     n_train_samples = n_samples - test_size
     native = Native.get_native_singleton()
