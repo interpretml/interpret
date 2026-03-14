@@ -685,6 +685,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   testR:
+    permissions:
+      contents: read
     needs: [R]
     strategy:
       matrix:

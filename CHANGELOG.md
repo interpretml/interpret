@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.7] - 2026-03-14
+### Added
+- support for python 3.14
+### Changed
+- optimization of EBM predict speed, especially for single samples
+- replaced React with plain JavaScript in the inline visualization bundle
+- reduced the size of the javascript visualization bundle
+- changed the format of floating point and boolean categorical strings
+### Fixed
+- fixed bug in handling the newer pd.StringDtype
+- fixed issue where -0.0 creates a nondeterministic category
+### Removed
+- removed direct python dependencies: ipykernel, dill, pytest-runner, jupyter
+- removed pin on dask<3
+- removed JS dependencies: react, react-cytoscapejs, react-dom, react-hot-loader, react-plotly.js, react-select
+
 ## [v0.7.6] - 2026-02-25
 ### Changed
 - improved speed of EBMs during predict, especially for datasets with small numbers of samples

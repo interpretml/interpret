@@ -10,7 +10,7 @@ from setuptools.command.build import build
 from setuptools.command.sdist import sdist
 
 # NOTE: Version is replaced by a regex script.
-version = "0.7.6"
+version = "0.7.7"
 
 
 def _copy_native_code_to_setup():
@@ -224,7 +224,8 @@ https://github.com/interpretml/interpret
         # Explainers
         "lime": ["lime>=0.1.1.33"],
         "sensitivity": ["SALib>=1.3.3"],
-        "shap": ["shap>=0.28.5"],
+        # installing ipywidgets removes crud in SHAP notebooks during fitting
+        "shap": ["shap>=0.28.5", "ipywidgets>=7.4.2"],
         "linear": ["scikit-learn>=1.6.0"],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
@@ -246,7 +247,6 @@ https://github.com/interpretml/interpret
             "nbformat>=4.4.0",
             "selenium>=3.141.0",
             "pytest-cov>=2.6.1",
-            "ipywidgets>=7.4.2",
         ],
     },
 )
