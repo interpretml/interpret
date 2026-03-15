@@ -142,7 +142,7 @@ class APLRRegressor(APLRRegressorNative, RegressorMixin, ExplainerMixin):
         for affiliation_index, affiliation in enumerate(
             self.get_unique_term_affiliations()
         ):
-            shape = self.get_unique_term_affiliation_shape(affiliation)
+            shape = self.get_unique_term_affiliation_shape(affiliation, 100000)
             predictor_indexes_used = predictors_in_each_affiliation[affiliation_index]
             is_main_effect: bool = len(predictor_indexes_used) == 1
             is_two_way_interaction: bool = len(predictor_indexes_used) == 2
@@ -453,7 +453,7 @@ class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
             for affiliation_index, affiliation in enumerate(
                 model.get_unique_term_affiliations()
             ):
-                shape = model.get_unique_term_affiliation_shape(affiliation)
+                shape = model.get_unique_term_affiliation_shape(affiliation, 100000)
                 predictor_indexes_used = predictors_in_each_affiliation[
                     affiliation_index
                 ]
