@@ -100,9 +100,9 @@ def eval_terms(
                     cached_raw_set(feature_idx, raw)
 
                 # these are the variables in raw
-                # bad, X_col, uniques, nonmissings = raw
+                # nonmissings, uniques, X_col, bad = raw
 
-                uniques = raw[2]
+                uniques = raw[1]
                 if uniques is None:
                     # continuous feature
 
@@ -111,7 +111,7 @@ def eval_terms(
 
                     return_code = Discretize(
                         n_samples,
-                        raw[1].ctypes.data,
+                        raw[2].ctypes.data,
                         cuts.shape[0],
                         cuts.ctypes.data,
                         discretized.ctypes.data,
@@ -119,12 +119,12 @@ def eval_terms(
                     if return_code:  # pragma: no cover
                         raise Native._get_native_exception(return_code, "Discretize")
 
-                    bad = raw[0]
+                    bad = raw[3]
                     if bad is not None:
                         discretized[bad] = -1
                 else:
                     # categorical feature
-                    nonmissings = raw[3]
+                    nonmissings = raw[0]
                     categories = bin_levels[bin_level - 1]
 
                     mapping = fromiter(
@@ -143,7 +143,7 @@ def eval_terms(
                             # also need to make a copy here because we cache the raw data and
                             # re-use it for different binning levels on the same feature.
 
-                            discretized = raw[1].astype(int64)
+                            discretized = raw[2].astype(int64)
                             discretized += 1
 
                             if nonmissings is not None and nonmissings is not False:
@@ -153,15 +153,15 @@ def eval_terms(
                         else:
                             if nonmissings is None:
                                 # discretized should be all positive if nonmissings is None
-                                discretized = mapping[raw[1]]
+                                discretized = mapping[raw[2]]
                             elif nonmissings is False:
                                 # missing values are -1 in discretized, so append 0 to the map, which is index -1
                                 discretized = concatenate((mapping, _array_zero))[
-                                    raw[1]
+                                    raw[2]
                                 ]
                             else:
                                 discretized = zeros(nonmissings.shape[0], int64)
-                                discretized[nonmissings] = mapping[raw[1]]
+                                discretized[nonmissings] = mapping[raw[2]]
                     else:
                         if array_equal(
                             mapping[:n_cat], arange(1, n_cat + 1, dtype=int64)
@@ -171,7 +171,7 @@ def eval_terms(
                             # also need to make a copy here because we cache the raw data and
                             # re-use it for different binning levels on the same feature.
 
-                            discretized = raw[1].astype(int64)
+                            discretized = raw[2].astype(int64)
                             discretized += 1
                             discretized[n_cat < discretized] = -1
 
@@ -182,15 +182,15 @@ def eval_terms(
                         else:
                             if nonmissings is None:
                                 # discretized should be all positive if nonmissings is None
-                                discretized = mapping[raw[1]]
+                                discretized = mapping[raw[2]]
                             elif nonmissings is False:
                                 # missing values are -1 in discretized, so append 0 to the map, which is index -1
                                 discretized = concatenate((mapping, _array_zero))[
-                                    raw[1]
+                                    raw[2]
                                 ]
                             else:
                                 discretized = zeros(nonmissings.shape[0], int64)
-                                discretized[nonmissings] = mapping[raw[1]]
+                                discretized[nonmissings] = mapping[raw[2]]
 
                 cached_discretized_set(key, discretized)
             term_discretized.append(discretized)

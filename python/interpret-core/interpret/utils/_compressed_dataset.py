@@ -67,7 +67,7 @@ def bin_native(
                 "Ignored features are not yet supported in native dataset binning."
             )
 
-        bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
+        nonmissings, uniques, X_col, bad = get_col(feature_idx, feature_type)
 
         if isinstance(feature_bins, dict):
             # categorical feature
@@ -131,7 +131,7 @@ def bin_native(
                     "Ignored features are not yet supported in native dataset binning."
                 )
 
-            bad, X_col, uniques, nonmissings = get_col(feature_idx, feature_type)
+            nonmissings, uniques, X_col, bad = get_col(feature_idx, feature_type)
 
             if isinstance(feature_bins, dict):
                 # categorical feature
