@@ -432,7 +432,7 @@ def check_numpy_throws(dtype_src, val1, val2):
     pre = EBMPreprocessor()
     try:
         pre.fit(X)
-    except:
+    except Exception:
         return
     raise AssertionError()
 
@@ -1450,7 +1450,7 @@ def test_unify_columns_str_throw():
     X = "abc"
     try:
         unify_test(X)
-    except:  # noqa: E722
+    except Exception:
         return
     raise AssertionError()
 
@@ -1459,7 +1459,7 @@ def test_unify_columns_int_throw():
     X = 1
     try:
         unify_test(X)
-    except:  # noqa: E722
+    except Exception:
         return
     raise AssertionError()
 
@@ -1470,7 +1470,7 @@ def test_unify_columns_duplicate_colnames_throw():
     X[0] = [3, 4]
     try:
         unify_test(X)
-    except:  # noqa: E722
+    except Exception:
         return
     raise AssertionError()
 

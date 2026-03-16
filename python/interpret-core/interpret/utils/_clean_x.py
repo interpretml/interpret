@@ -396,7 +396,7 @@ def _densify_continuous(X_col):
     for i, x in enumerate(X_col):
         try:
             conv_float[i] = float(x)
-        except:
+        except Exception:
             conv_fail[i] = True
 
     X_col = X_col[conv_fail].astype(str_)
@@ -1144,7 +1144,9 @@ def _process_sparse_column_schematized_with_pandas(X_col, feature_type):
         try:
             # force C contiguous here for a later call to native.discretize
             return None, None, X_col.astype(float64, "C"), None
-        except:  # object conversion can throw any exception in their __float__ or __str__
+        except (
+            Exception
+        ):  # object conversion can throw any exception in their __float__ or __str__
             return None, None, *_process_continuous_strings(X_col, None)
 
     # feature_type == "nominal" or feature_type == "ordinal"
@@ -1178,7 +1180,9 @@ def _process_sparse_column_schematized_without_pandas(X_col, feature_type):
         try:
             # force C contiguous here for a later call to native.discretize
             return None, None, X_col.astype(float64, "C"), None
-        except:  # object conversion can throw any exception in their __float__ or __str__
+        except (
+            Exception
+        ):  # object conversion can throw any exception in their __float__ or __str__
             return None, None, *_process_continuous_strings(X_col, None)
 
     # feature_type == "nominal" or feature_type == "ordinal"
@@ -1680,7 +1684,7 @@ def unify_columns_schematized(
                                             )
                                             X_col_tmp[nonmissings] = X_col
                                             return None, None, X_col_tmp, None
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -1708,7 +1712,7 @@ def unify_columns_schematized(
                                                 None,
                                             )
 
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -1744,7 +1748,7 @@ def unify_columns_schematized(
                                             )
                                             X_col_tmp[nonmissings] = X_col
                                             return None, None, X_col_tmp, None
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -1774,7 +1778,7 @@ def unify_columns_schematized(
                                                 None,
                                             )
 
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -1974,7 +1978,7 @@ def unify_columns_schematized(
                                         )
                                         X_col_tmp[nonmissings] = X_col
                                         return None, None, X_col_tmp, None
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                    except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                         return (
                                             None,
                                             None,
@@ -2002,7 +2006,7 @@ def unify_columns_schematized(
                                             None,
                                         )
 
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                    except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                         return (
                                             None,
                                             None,
@@ -2133,7 +2137,7 @@ def unify_columns_schematized(
                             try:
                                 # force C contiguous here for a later call to native.discretize
                                 return None, None, X_col.astype(float64, "C"), None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                 return (
                                     None,
                                     None,
@@ -2152,7 +2156,7 @@ def unify_columns_schematized(
                             try:
                                 # force C contiguous here for a later call to native.discretize
                                 return None, None, X_col.astype(float64, "C"), None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                 return (
                                     None,
                                     None,
@@ -2293,7 +2297,7 @@ def unify_columns_schematized(
                         try:
                             # force C contiguous here for a later call to native.discretize
                             return None, None, X_col.astype(float64, "C"), None
-                        except:  # object conversion can throw any exception in their __float__ or __str__
+                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                             return (
                                 None,
                                 None,
@@ -2664,7 +2668,7 @@ def unify_columns_schematized(
                                             )
                                             X_col_tmp[nonmissings] = X_col
                                             return None, None, X_col_tmp, None
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -2691,7 +2695,7 @@ def unify_columns_schematized(
                                                 X_col.astype(float64, "C"),
                                                 None,
                                             )
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -2726,7 +2730,7 @@ def unify_columns_schematized(
                                             )
                                             X_col_tmp[nonmissings] = X_col
                                             return None, None, X_col_tmp, None
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -2755,7 +2759,7 @@ def unify_columns_schematized(
                                                 X_col.astype(float64, "C"),
                                                 None,
                                             )
-                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                             return (
                                                 None,
                                                 None,
@@ -2958,7 +2962,7 @@ def unify_columns_schematized(
                                         )
                                         X_col_tmp[nonmissings] = X_col
                                         return None, None, X_col_tmp, None
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                    except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                         return (
                                             None,
                                             None,
@@ -2985,7 +2989,7 @@ def unify_columns_schematized(
                                             X_col.astype(float64, "C"),
                                             None,
                                         )
-                                    except:  # object conversion can throw any exception in their __float__ or __str__
+                                    except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                         return (
                                             None,
                                             None,
@@ -3117,7 +3121,7 @@ def unify_columns_schematized(
                             try:
                                 # force C contiguous here for a later call to native.discretize
                                 return None, None, X_col.astype(float64, "C"), None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                 return (
                                     None,
                                     None,
@@ -3136,7 +3140,7 @@ def unify_columns_schematized(
                             try:
                                 # force C contiguous here for a later call to native.discretize
                                 return None, None, X_col.astype(float64, "C"), None
-                            except:  # object conversion can throw any exception in their __float__ or __str__
+                            except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                 return (
                                     None,
                                     None,
@@ -3279,7 +3283,7 @@ def unify_columns_schematized(
                         try:
                             # force C contiguous here for a later call to native.discretize
                             return None, None, X_col.astype(float64, "C"), None
-                        except:  # object conversion can throw any exception in their __float__ or __str__
+                        except Exception:  # object conversion can throw any exception in their __float__ or __str__
                             return (
                                 None,
                                 None,
@@ -3626,7 +3630,7 @@ def unify_columns_schematized(
                                     X_col_tmp = full(nonmissings.shape[0], nan, float64)
                                     X_col_tmp[nonmissings] = X_col
                                     return None, None, X_col_tmp, None
-                                except:  # object conversion can throw any exception in their __float__ or __str__
+                                except Exception:  # object conversion can throw any exception in their __float__ or __str__
                                     return (
                                         None,
                                         None,
@@ -3727,7 +3731,7 @@ def unify_columns_schematized(
                     return None, None, ascontiguousarray(X_col), None
                 try:
                     return None, None, X_col.astype(float64, "C"), None
-                except:  # object conversion can throw any exception in their __float__ or __str__
+                except Exception:  # object conversion can throw any exception in their __float__ or __str__
                     return None, None, *_process_continuous_strings(X_col, None)
 
             # feature_type == "nominal" or feature_type == "ordinal"
