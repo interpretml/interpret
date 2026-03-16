@@ -53,6 +53,8 @@ class _ImpossibleType:
 try:
     import pandas as pd
 
+    _pandas_installed = True
+
     _SeriesType = pd.Series
     _DataFrameType = pd.DataFrame
     _CategoricalDtype = pd.CategoricalDtype
@@ -66,6 +68,8 @@ try:
     from pandas import factorize as _factorize
 
 except ImportError:
+    _pandas_installed = False
+
     _SeriesType = _ImpossibleType
     _DataFrameType = _ImpossibleType
     _CategoricalDtype = _ImpossibleType
@@ -1048,10 +1052,10 @@ def _process_pandas_column_schematized(X_col, feature_type):
                     None,
                 )
             elif tt is bool_:
-                indexes, uniques = _factorize(X_col.values)
+                uniques, indexes = unique(X_col.values, return_inverse=True)
                 return None, where(uniques, "1", "0"), indexes, None
             elif issubclass(tt, integer):
-                indexes, uniques = _factorize(X_col.values)
+                uniques, indexes = unique(X_col.values, return_inverse=True)
                 return None, uniques.astype(str_), indexes, None
 
             # pandas never uses np.str_ or np.bytes_
@@ -1130,7 +1134,41 @@ def _process_pandas_column_nonschematized(
     raise TypeError(msg)
 
 
-def _process_sparse_column_schematized(X_col, feature_type):
+def _process_sparse_column_schematized_with_pandas(X_col, feature_type):
+    X_col = X_col.toarray().ravel()
+
+    if feature_type == "continuous":
+        if X_col.dtype.type is float64:
+            # force C contiguous here for a later call to native.discretize
+            return None, None, ascontiguousarray(X_col), None
+        try:
+            # force C contiguous here for a later call to native.discretize
+            return None, None, X_col.astype(float64, "C"), None
+        except:  # object conversion can throw any exception in their __float__ or __str__
+            return None, None, *_process_continuous_strings(X_col, None)
+
+    # feature_type == "nominal" or feature_type == "ordinal"
+
+    tt = X_col.dtype.type
+    if issubclass(tt, floating):
+        indexes, uniques = _factorize(X_col)
+
+        uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
+        wholes = endswith(uniques, ".0")
+        if wholes.any():
+            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+        return False, uniques, indexes, None
+
+    uniques, indexes = unique(X_col, return_inverse=True)
+
+    if tt is bool_:
+        return None, where(uniques, "1", "0"), indexes, None
+
+    return None, uniques.astype(str_, copy=False), indexes, None
+
+
+def _process_sparse_column_schematized_without_pandas(X_col, feature_type):
     X_col = X_col.toarray().ravel()
 
     if feature_type == "continuous":
@@ -1151,7 +1189,7 @@ def _process_sparse_column_schematized(X_col, feature_type):
         if m.any():
             logical_not(m, out=m)
             X_col = X_col[m]
-            indexes, uniques = _factorize(X_col)
+            uniques, indexes = unique(X_col, return_inverse=True)
 
             uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
             wholes = endswith(uniques, ".0")
@@ -1159,7 +1197,8 @@ def _process_sparse_column_schematized(X_col, feature_type):
                 uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
             return m, uniques, indexes, None
-        indexes, uniques = _factorize(X_col)
+
+        uniques, indexes = unique(X_col, return_inverse=True)
 
         uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
         wholes = endswith(uniques, ".0")
@@ -1168,7 +1207,7 @@ def _process_sparse_column_schematized(X_col, feature_type):
 
         return None, uniques, indexes, None
 
-    indexes, uniques = _factorize(X_col)
+    uniques, indexes = unique(X_col, return_inverse=True)
 
     if tt is bool_:
         return None, where(uniques, "1", "0"), indexes, None
@@ -1303,59 +1342,60 @@ def unify_columns_schematized(
             if isinstance(X, masked_array):
                 mask = X.mask
                 X = X.data
-                if mask is not nomask:
+                if mask is not nomask and mask.any():
                     if tt is float64:
+                        if _pandas_installed:
 
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask[index]
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
 
-                                if feature_type == "continuous":
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if feature_type == "continuous":
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
 
-                                indexes, uniques = _factorize(X_col)
-
-                                uniques = (uniques + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
-                                return (
-                                    nonmissings,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
-                            else:
-                                X_col = X[index]
-                                if feature_type == "continuous":
-                                    # force C contiguous here for a later call to native.discretize
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
-                                        None,
-                                        None,
-                                        ascontiguousarray(X_col),
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
                                         None,
                                     )
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
                                     indexes, uniques = _factorize(X_col)
 
                                     uniques = (uniques + 0.0).astype(str_)
@@ -1365,76 +1405,150 @@ def unify_columns_schematized(
                                             rstrip(uniques[wholes], "0"), "."
                                         )
 
-                                    return m, uniques, indexes, None
+                                    return False, uniques, indexes, None
 
-                                indexes, uniques = _factorize(X_col)
+                        else:
 
-                                uniques = (uniques + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
-                                return (
-                                    None,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
 
-                    elif issubclass(tt, floating):
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
 
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask[index]
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        uniques, indexes = unique(
+                                            X_col, return_inverse=True
+                                        )
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
+                                        uniques = (uniques + 0.0).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
 
-                                if feature_type == "continuous":
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                        return m, uniques, indexes, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                indexes, uniques = _factorize(X_col)
-
-                                uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
-                                return (
-                                    nonmissings,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
 
-                            else:
-                                X_col = X[index]
-                                if feature_type == "continuous":
                                     return (
                                         None,
-                                        None,
-                                        X_col.astype(float64, "C"),
+                                        uniques,
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
+                    elif issubclass(tt, floating):
+                        if _pandas_installed:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
                                     indexes, uniques = _factorize(X_col)
 
                                     uniques = (uniques.astype(float64) + 0.0).astype(
@@ -1446,76 +1560,353 @@ def unify_columns_schematized(
                                             rstrip(uniques[wholes], "0"), "."
                                         )
 
-                                    return m, uniques, indexes, None
+                                    return (
+                                        False,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+                        else:
 
-                                indexes, uniques = _factorize(X_col)
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
 
-                                uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        uniques, indexes = unique(
+                                            X_col, return_inverse=True
+                                        )
+
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                    elif tt is str_:
+                        # TODO: tune the samples number after benchmarking
+                        if _pandas_installed and 500 < n_samples:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
+                                    indexes, uniques = _factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    indexes, uniques = _factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                        else:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                    elif tt is object_:
+                        # TODO: tune the samples number after benchmarking
+                        if _pandas_installed and 500 < n_samples:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    nonmissings2 = _notna(X_col)
+
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        place(nonmissings, nonmissings, nonmissings2)
+                                else:
+                                    X_col = X[index]
+                                    nonmissings = _notna(X_col)
+
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
+
+                                if feature_type == "continuous":
+                                    X_col, bad = _densify_continuous(X_col)
+
+                                    if nonmissings is not None:
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        X_col = X_col_tmp
+
+                                        if bad is not None:
+                                            bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                            bad_tmp[nonmissings] = bad
+                                            bad = bad_tmp
+
+                                    return (
+                                        None,
+                                        None,
+                                        X_col,
+                                        bad,
+                                    )
+
+                                indexes, uniques = _factorize(
+                                    _densify_categorical(X_col)
+                                )
                                 return (
-                                    None,
+                                    nonmissings,
                                     uniques,
                                     indexes,
                                     None,
                                 )
+                        else:
 
-                    elif tt is object_:
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, feature_idx)
+                                nonmissings = mask[index]
 
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, feature_idx)
-                            nonmissings = mask[index]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
+                                    nonmissings2 = _notna(X_col)
 
-                                nonmissings2 = _notna(X_col)
-
-                                if not nonmissings2.all():
-                                    X_col = X_col[nonmissings2]
-                                    place(nonmissings, nonmissings, nonmissings2)
-                            else:
-                                X_col = X[index]
-                                nonmissings = _notna(X_col)
-
-                                if nonmissings.all():
-                                    nonmissings = None
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        place(nonmissings, nonmissings, nonmissings2)
                                 else:
-                                    X_col = X_col[nonmissings]
+                                    X_col = X[index]
+                                    nonmissings = _notna(X_col)
 
-                            if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
-                                if nonmissings is not None:
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    X_col = X_col_tmp
+                                if feature_type == "continuous":
+                                    X_col, bad = _densify_continuous(X_col)
 
-                                    if bad is not None:
-                                        bad_tmp = zeros(nonmissings.shape[0], bool_)
-                                        bad_tmp[nonmissings] = bad
-                                        bad = bad_tmp
+                                    if nonmissings is not None:
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        X_col = X_col_tmp
 
-                                return (
-                                    None,
-                                    None,
-                                    X_col,
-                                    bad,
+                                        if bad is not None:
+                                            bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                            bad_tmp[nonmissings] = bad
+                                            bad = bad_tmp
+
+                                    return (
+                                        None,
+                                        None,
+                                        X_col,
+                                        bad,
+                                    )
+
+                                uniques, indexes = unique(
+                                    _densify_categorical(X_col), return_inverse=True
                                 )
-
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
-                            return (
-                                nonmissings,
-                                uniques,
-                                indexes,
-                                None,
-                            )
+                                return (
+                                    nonmissings,
+                                    uniques,
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is bool_:
 
@@ -1534,7 +1925,9 @@ def unify_columns_schematized(
                                     X_col_tmp[nonmissings] = X_col
                                     return None, None, X_col_tmp, None
 
-                                indexes, uniques = _factorize(X_col)
+                                # TODO: for bools we could just convert True to 1
+                                # False to zero then check which ones are there
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     nonmissings,
                                     where(uniques, "1", "0"),
@@ -1552,7 +1945,9 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                indexes, uniques = _factorize(X_col)
+                                # TODO: for bools we could just convert True to 1
+                                # False to zero then check which ones are there
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     None,
                                     where(uniques, "1", "0"),
@@ -1588,10 +1983,10 @@ def unify_columns_schematized(
                                             ),
                                         )
 
-                                indexes, uniques = _factorize(X_col)
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques.astype(str_),
                                     indexes,
                                     None,
                                 )
@@ -1614,10 +2009,10 @@ def unify_columns_schematized(
                                             *_process_continuous_strings(X_col, None),
                                         )
 
-                                indexes, uniques = _factorize(X_col)
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     None,
-                                    uniques.astype(str_, copy=False),
+                                    uniques.astype(str_),
                                     indexes,
                                     None,
                                 )
@@ -1625,18 +2020,15 @@ def unify_columns_schematized(
                     return internal
 
             if tt is float64:
+                if _pandas_installed:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, feature_idx]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
 
-                    if feature_type == "continuous":
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, ascontiguousarray(X_col), None
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
                         indexes, uniques = _factorize(X_col)
 
                         uniques = (uniques + 0.0).astype(str_)
@@ -1644,29 +2036,51 @@ def unify_columns_schematized(
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
-                        return m, uniques, indexes, None
-                    indexes, uniques = _factorize(X_col)
+                        return False, uniques, indexes, None
 
-                    uniques = (uniques + 0.0).astype(str_)
-                    wholes = endswith(uniques, ".0")
-                    if wholes.any():
-                        uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+                else:
 
-                    return None, uniques, indexes, None
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+
+                            uniques = (uniques + 0.0).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+
+                        uniques = (uniques + 0.0).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif issubclass(tt, floating):
+                if _pandas_installed:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, feature_idx]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
 
-                    if feature_type == "continuous":
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, X_col.astype(float64, "C"), None
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
                         indexes, uniques = _factorize(X_col)
 
                         uniques = (uniques.astype(float64) + 0.0).astype(str_)
@@ -1674,67 +2088,188 @@ def unify_columns_schematized(
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
-                        return m, uniques, indexes, None
-                    indexes, uniques = _factorize(X_col)
+                        return False, uniques, indexes, None
 
-                    uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                    wholes = endswith(uniques, ".0")
-                    if wholes.any():
-                        uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+                else:
 
-                    return None, uniques, indexes, None
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
+                        uniques, indexes = unique(X_col, return_inverse=True)
+
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
+
+            elif tt is str_:
+                # TODO: tune the samples number after benchmarking
+                if _pandas_installed and 500 < n_samples:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
+                        indexes, uniques = _factorize(X_col)
+                        return None, uniques, indexes, None
+
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        if feature_type == "continuous":
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+                        return None, uniques, indexes, None
 
             elif tt is object_:
+                # TODO: tune the samples number after benchmarking
+                if _pandas_installed and 500 < n_samples:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, feature_idx]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
 
-                    nonmissings = _notna(X_col)
-                    if nonmissings.all():
-                        if feature_type == "continuous":
+                        nonmissings = _notna(X_col)
+                        if nonmissings.all():
+                            if feature_type == "continuous":
+                                return (
+                                    None,
+                                    None,
+                                    *_densify_continuous(X_col),
+                                )
+
+                            indexes, uniques = _factorize(_densify_categorical(X_col))
                             return (
                                 None,
+                                uniques,
+                                indexes,
                                 None,
-                                *_densify_continuous(X_col),
                             )
 
-                        indexes, uniques = _factorize(_densify_categorical(X_col))
-                        return (
-                            None,
-                            uniques,
-                            indexes,
-                            None,
-                        )
+                        else:
+                            if feature_type == "continuous":
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
-                    else:
-                        if feature_type == "continuous":
-                            X_col, bad = _densify_continuous(X_col[nonmissings])
+                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                X_col_tmp[nonmissings] = X_col
+                                X_col = X_col_tmp
 
-                            X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                            X_col_tmp[nonmissings] = X_col
-                            X_col = X_col_tmp
+                                if bad is not None:
+                                    bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                    bad_tmp[nonmissings] = bad
+                                    bad = bad_tmp
 
-                            if bad is not None:
-                                bad_tmp = zeros(nonmissings.shape[0], bool_)
-                                bad_tmp[nonmissings] = bad
-                                bad = bad_tmp
+                                return (
+                                    None,
+                                    None,
+                                    X_col,
+                                    bad,
+                                )
 
+                            indexes, uniques = _factorize(
+                                _densify_categorical(X_col[nonmissings])
+                            )
+                            return (
+                                nonmissings,
+                                uniques,
+                                indexes,
+                                None,
+                            )
+
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, feature_idx]
+
+                        nonmissings = _notna(X_col)
+                        if nonmissings.all():
+                            if feature_type == "continuous":
+                                return (
+                                    None,
+                                    None,
+                                    *_densify_continuous(X_col),
+                                )
+
+                            uniques, indexes = unique(
+                                _densify_categorical(X_col), return_inverse=True
+                            )
                             return (
                                 None,
+                                uniques,
+                                indexes,
                                 None,
-                                X_col,
-                                bad,
                             )
 
-                        indexes, uniques = _factorize(
-                            _densify_categorical(X_col[nonmissings])
-                        )
-                        return (
-                            nonmissings,
-                            uniques,
-                            indexes,
-                            None,
-                        )
+                        else:
+                            if feature_type == "continuous":
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
+
+                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                X_col_tmp[nonmissings] = X_col
+                                X_col = X_col_tmp
+
+                                if bad is not None:
+                                    bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                    bad_tmp[nonmissings] = bad
+                                    bad = bad_tmp
+
+                                return (
+                                    None,
+                                    None,
+                                    X_col,
+                                    bad,
+                                )
+
+                            uniques, indexes = unique(
+                                _densify_categorical(X_col[nonmissings]),
+                                return_inverse=True,
+                            )
+                            return (
+                                nonmissings,
+                                uniques,
+                                indexes,
+                                None,
+                            )
 
             elif tt is bool_:
 
@@ -1744,7 +2279,9 @@ def unify_columns_schematized(
                     if feature_type == "continuous":
                         return None, None, X_col.astype(float64, "C"), None
 
-                    indexes, uniques = _factorize(X_col)
+                    # TODO: for bools we could just convert True to 1
+                    # False to zero then check which ones are there
+                    uniques, indexes = unique(X_col, return_inverse=True)
                     return None, where(uniques, "1", "0"), indexes, None
 
             else:
@@ -1763,8 +2300,8 @@ def unify_columns_schematized(
                                 *_process_continuous_strings(X_col, None),
                             )
 
-                    indexes, uniques = _factorize(X_col)
-                    return None, uniques.astype(str_, copy=False), indexes, None
+                    uniques, indexes = unique(X_col, return_inverse=True)
+                    return None, uniques.astype(str_), indexes, None
 
             return internal
         else:
@@ -1783,59 +2320,61 @@ def unify_columns_schematized(
             if isinstance(X, masked_array):
                 mask = X.mask
                 X = X.data
-                if mask is not nomask:
+                if mask is not nomask and mask.any():
                     if tt is float64:
+                        if _pandas_installed:
 
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, col_map[feature_idx])
-                            nonmissings = mask[index]
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
 
-                                if feature_type == "continuous":
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
+                                    if feature_type == "continuous":
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                indexes, uniques = _factorize(X_col)
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
 
-                                uniques = (uniques + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
-                                return (
-                                    nonmissings,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
 
-                            else:
-                                X_col = X[index]
-                                if feature_type == "continuous":
-                                    # force C contiguous here for a later call to native.discretize
                                     return (
-                                        None,
-                                        None,
-                                        ascontiguousarray(X_col),
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
+
                                     indexes, uniques = _factorize(X_col)
 
                                     uniques = (uniques + 0.0).astype(str_)
@@ -1845,75 +2384,155 @@ def unify_columns_schematized(
                                             rstrip(uniques[wholes], "0"), "."
                                         )
 
-                                    return m, uniques, indexes, None
-                                indexes, uniques = _factorize(X_col)
+                                    return (
+                                        False,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+                        else:
 
-                                uniques = (uniques + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
-                                return (
-                                    None,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
 
-                    elif issubclass(tt, floating):
-
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, col_map[feature_idx])
-                            nonmissings = mask[index]
-
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
-
-                                if feature_type == "continuous":
-                                    X_col = X_col.astype(float64)
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    return None, None, X_col_tmp, None
-
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
-                                    place(nonmissings, nonmissings, m)
-                                indexes, uniques = _factorize(X_col)
-
-                                uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
                                     )
 
-                                return (
-                                    nonmissings,
-                                    uniques,
-                                    indexes,
-                                    None,
-                                )
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        # force C contiguous here for a later call to native.discretize
+                                        return (
+                                            None,
+                                            None,
+                                            ascontiguousarray(X_col),
+                                            None,
+                                        )
 
-                            else:
-                                X_col = X[index]
-                                if feature_type == "continuous":
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        uniques, indexes = unique(
+                                            X_col, return_inverse=True
+                                        )
+
+                                        uniques = (uniques + 0.0).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+
+                                    uniques = (uniques + 0.0).astype(str_)
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
                                     return (
                                         None,
-                                        None,
-                                        X_col.astype(float64, "C"),
+                                        uniques,
+                                        indexes,
                                         None,
                                     )
 
-                                m = isnan(X_col)
-                                if m.any():
-                                    logical_not(m, out=m)
-                                    X_col = X_col[m]
+                    elif issubclass(tt, floating):
+                        if _pandas_installed:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
                                     indexes, uniques = _factorize(X_col)
 
                                     uniques = (uniques.astype(float64) + 0.0).astype(
@@ -1925,76 +2544,353 @@ def unify_columns_schematized(
                                             rstrip(uniques[wholes], "0"), "."
                                         )
 
-                                    return m, uniques, indexes, None
-                                indexes, uniques = _factorize(X_col)
+                                    return (
+                                        False,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+                        else:
 
-                                uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                                wholes = endswith(uniques, ".0")
-                                if wholes.any():
-                                    uniques[wholes] = rstrip(
-                                        rstrip(uniques[wholes], "0"), "."
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        X_col = X_col.astype(float64)
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        return None, None, X_col_tmp, None
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        place(nonmissings, nonmissings, m)
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
                                     )
 
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        return (
+                                            None,
+                                            None,
+                                            X_col.astype(float64, "C"),
+                                            None,
+                                        )
+
+                                    m = isnan(X_col)
+                                    if m.any():
+                                        logical_not(m, out=m)
+                                        X_col = X_col[m]
+                                        uniques, indexes = unique(
+                                            X_col, return_inverse=True
+                                        )
+
+                                        uniques = (
+                                            uniques.astype(float64) + 0.0
+                                        ).astype(str_)
+                                        wholes = endswith(uniques, ".0")
+                                        if wholes.any():
+                                            uniques[wholes] = rstrip(
+                                                rstrip(uniques[wholes], "0"), "."
+                                            )
+
+                                        return m, uniques, indexes, None
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+
+                                    uniques = (uniques.astype(float64) + 0.0).astype(
+                                        str_
+                                    )
+                                    wholes = endswith(uniques, ".0")
+                                    if wholes.any():
+                                        uniques[wholes] = rstrip(
+                                            rstrip(uniques[wholes], "0"), "."
+                                        )
+
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                    elif tt is str_:
+                        # TODO: tune the samples number after benchmarking
+                        if _pandas_installed and 500 < n_samples:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
+                                    indexes, uniques = _factorize(X_col)
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    indexes, uniques = _factorize(X_col)
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+                        else:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    if feature_type == "continuous":
+                                        try:
+                                            X_col = X_col.astype(float64)
+                                            X_col_tmp = full(
+                                                nonmissings.shape[0], nan, float64
+                                            )
+                                            X_col_tmp[nonmissings] = X_col
+                                            return None, None, X_col_tmp, None
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, nonmissings
+                                                ),
+                                            )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        nonmissings,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                                else:
+                                    X_col = X[index]
+                                    if feature_type == "continuous":
+                                        try:
+                                            return (
+                                                None,
+                                                None,
+                                                X_col.astype(float64, "C"),
+                                                None,
+                                            )
+                                        except:  # object conversion can throw any exception in their __float__ or __str__
+                                            return (
+                                                None,
+                                                None,
+                                                *_process_continuous_strings(
+                                                    X_col, None
+                                                ),
+                                            )
+
+                                    uniques, indexes = unique(
+                                        X_col, return_inverse=True
+                                    )
+                                    return (
+                                        None,
+                                        uniques,
+                                        indexes,
+                                        None,
+                                    )
+
+                    elif tt is object_:
+                        # TODO: tune the samples number after benchmarking
+                        if _pandas_installed and 500 < n_samples:
+
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
+
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
+
+                                    nonmissings2 = _notna(X_col)
+
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        place(nonmissings, nonmissings, nonmissings2)
+                                else:
+                                    X_col = X[index]
+
+                                    nonmissings = _notna(X_col)
+
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
+
+                                if feature_type == "continuous":
+                                    X_col, bad = _densify_continuous(X_col)
+
+                                    if nonmissings is not None:
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        X_col = X_col_tmp
+
+                                        if bad is not None:
+                                            bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                            bad_tmp[nonmissings] = bad
+                                            bad = bad_tmp
+
+                                    return (
+                                        None,
+                                        None,
+                                        X_col,
+                                        bad,
+                                    )
+
+                                indexes, uniques = _factorize(
+                                    _densify_categorical(X_col)
+                                )
                                 return (
-                                    None,
+                                    nonmissings,
                                     uniques,
                                     indexes,
                                     None,
                                 )
 
-                    elif tt is object_:
+                        else:
 
-                        def internal(feature_idx, feature_type):
-                            index = (_slice_none, col_map[feature_idx])
-                            nonmissings = mask[index]
+                            def internal(feature_idx, feature_type):
+                                index = (_slice_none, col_map[feature_idx])
+                                nonmissings = mask[index]
 
-                            # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
-                            if nonmissings.any():
-                                nonmissings = ~nonmissings
-                                X_col = X[index][nonmissings]
+                                # it's legal for a mask to exist and yet have all valid entries in the mask, so check for this
+                                if nonmissings.any():
+                                    nonmissings = ~nonmissings
+                                    X_col = X[index][nonmissings]
 
-                                nonmissings2 = _notna(X_col)
+                                    nonmissings2 = _notna(X_col)
 
-                                if not nonmissings2.all():
-                                    X_col = X_col[nonmissings2]
-                                    place(nonmissings, nonmissings, nonmissings2)
-                            else:
-                                X_col = X[index]
-
-                                nonmissings = _notna(X_col)
-
-                                if nonmissings.all():
-                                    nonmissings = None
+                                    if not nonmissings2.all():
+                                        X_col = X_col[nonmissings2]
+                                        place(nonmissings, nonmissings, nonmissings2)
                                 else:
-                                    X_col = X_col[nonmissings]
+                                    X_col = X[index]
 
-                            if feature_type == "continuous":
-                                X_col, bad = _densify_continuous(X_col)
+                                    nonmissings = _notna(X_col)
 
-                                if nonmissings is not None:
-                                    X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                                    X_col_tmp[nonmissings] = X_col
-                                    X_col = X_col_tmp
+                                    if nonmissings.all():
+                                        nonmissings = None
+                                    else:
+                                        X_col = X_col[nonmissings]
 
-                                    if bad is not None:
-                                        bad_tmp = zeros(nonmissings.shape[0], bool_)
-                                        bad_tmp[nonmissings] = bad
-                                        bad = bad_tmp
+                                if feature_type == "continuous":
+                                    X_col, bad = _densify_continuous(X_col)
 
-                                return (
-                                    None,
-                                    None,
-                                    X_col,
-                                    bad,
+                                    if nonmissings is not None:
+                                        X_col_tmp = full(
+                                            nonmissings.shape[0], nan, float64
+                                        )
+                                        X_col_tmp[nonmissings] = X_col
+                                        X_col = X_col_tmp
+
+                                        if bad is not None:
+                                            bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                            bad_tmp[nonmissings] = bad
+                                            bad = bad_tmp
+
+                                    return (
+                                        None,
+                                        None,
+                                        X_col,
+                                        bad,
+                                    )
+
+                                uniques, indexes = unique(
+                                    _densify_categorical(X_col), return_inverse=True
                                 )
-
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
-                            return (
-                                nonmissings,
-                                uniques,
-                                indexes,
-                                None,
-                            )
+                                return (
+                                    nonmissings,
+                                    uniques,
+                                    indexes,
+                                    None,
+                                )
 
                     elif tt is bool_:
 
@@ -2013,7 +2909,9 @@ def unify_columns_schematized(
                                     X_col_tmp[nonmissings] = X_col
                                     return None, None, X_col_tmp, None
 
-                                indexes, uniques = _factorize(X_col)
+                                # TODO: for bools we could just convert True to 1
+                                # False to zero then check which ones are there
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     nonmissings,
                                     where(uniques, "1", "0"),
@@ -2031,7 +2929,9 @@ def unify_columns_schematized(
                                         None,
                                     )
 
-                                indexes, uniques = _factorize(X_col)
+                                # TODO: for bools we could just convert True to 1
+                                # False to zero then check which ones are there
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     None,
                                     where(uniques, "1", "0"),
@@ -2067,10 +2967,10 @@ def unify_columns_schematized(
                                             ),
                                         )
 
-                                indexes, uniques = _factorize(X_col)
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     nonmissings,
-                                    uniques.astype(str_, copy=False),
+                                    uniques.astype(str_),
                                     indexes,
                                     None,
                                 )
@@ -2092,10 +2992,10 @@ def unify_columns_schematized(
                                             *_process_continuous_strings(X_col, None),
                                         )
 
-                                indexes, uniques = _factorize(X_col)
+                                uniques, indexes = unique(X_col, return_inverse=True)
                                 return (
                                     None,
-                                    uniques.astype(str_, copy=False),
+                                    uniques.astype(str_),
                                     indexes,
                                     None,
                                 )
@@ -2103,18 +3003,15 @@ def unify_columns_schematized(
                     return internal
 
             if tt is float64:
+                if _pandas_installed:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, col_map[feature_idx]]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
 
-                    if feature_type == "continuous":
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, ascontiguousarray(X_col), None
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
                         indexes, uniques = _factorize(X_col)
 
                         uniques = (uniques + 0.0).astype(str_)
@@ -2122,29 +3019,51 @@ def unify_columns_schematized(
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
-                        return m, uniques, indexes, None
-                    indexes, uniques = _factorize(X_col)
+                        return False, uniques, indexes, None
 
-                    uniques = (uniques + 0.0).astype(str_)
-                    wholes = endswith(uniques, ".0")
-                    if wholes.any():
-                        uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+                else:
 
-                    return None, uniques, indexes, None
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, ascontiguousarray(X_col), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+
+                            uniques = (uniques + 0.0).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+
+                        uniques = (uniques + 0.0).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
 
             elif issubclass(tt, floating):
+                if _pandas_installed:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, col_map[feature_idx]]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
 
-                    if feature_type == "continuous":
-                        # force C contiguous here for a later call to native.discretize
-                        return None, None, X_col.astype(float64, "C"), None
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
 
-                    m = isnan(X_col)
-                    if m.any():
-                        logical_not(m, out=m)
-                        X_col = X_col[m]
                         indexes, uniques = _factorize(X_col)
 
                         uniques = (uniques.astype(float64) + 0.0).astype(str_)
@@ -2152,68 +3071,190 @@ def unify_columns_schematized(
                         if wholes.any():
                             uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
-                        return m, uniques, indexes, None
-                    indexes, uniques = _factorize(X_col)
+                        return False, uniques, indexes, None
 
-                    uniques = (uniques.astype(float64) + 0.0).astype(str_)
-                    wholes = endswith(uniques, ".0")
-                    if wholes.any():
-                        uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+                else:
 
-                    return None, uniques, indexes, None
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            # force C contiguous here for a later call to native.discretize
+                            return None, None, X_col.astype(float64, "C"), None
+
+                        m = isnan(X_col)
+                        if m.any():
+                            logical_not(m, out=m)
+                            X_col = X_col[m]
+                            uniques, indexes = unique(X_col, return_inverse=True)
+
+                            uniques = (uniques.astype(float64) + 0.0).astype(str_)
+                            wholes = endswith(uniques, ".0")
+                            if wholes.any():
+                                uniques[wholes] = rstrip(
+                                    rstrip(uniques[wholes], "0"), "."
+                                )
+
+                            return m, uniques, indexes, None
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+
+                        uniques = (uniques.astype(float64) + 0.0).astype(str_)
+                        wholes = endswith(uniques, ".0")
+                        if wholes.any():
+                            uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
+
+                        return None, uniques, indexes, None
+
+            elif tt is str_:
+                # TODO: tune the samples number after benchmarking
+                if _pandas_installed and 500 < n_samples:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
+                        indexes, uniques = _factorize(X_col)
+                        return None, uniques, indexes, None
+
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        if feature_type == "continuous":
+                            try:
+                                # force C contiguous here for a later call to native.discretize
+                                return None, None, X_col.astype(float64, "C"), None
+                            except:  # object conversion can throw any exception in their __float__ or __str__
+                                return (
+                                    None,
+                                    None,
+                                    *_process_continuous_strings(X_col, None),
+                                )
+
+                        uniques, indexes = unique(X_col, return_inverse=True)
+                        return None, uniques, indexes, None
 
             elif tt is object_:
+                # TODO: tune the samples number after benchmarking
+                if _pandas_installed and 500 < n_samples:
 
-                def internal(feature_idx, feature_type):
-                    X_col = X[:, col_map[feature_idx]]
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
 
-                    nonmissings = _notna(X_col)
+                        nonmissings = _notna(X_col)
 
-                    if nonmissings.all():
-                        if feature_type == "continuous":
+                        if nonmissings.all():
+                            if feature_type == "continuous":
+                                return (
+                                    None,
+                                    None,
+                                    *_densify_continuous(X_col),
+                                )
+
+                            indexes, uniques = _factorize(_densify_categorical(X_col))
                             return (
                                 None,
+                                uniques,
+                                indexes,
                                 None,
-                                *_densify_continuous(X_col),
                             )
 
-                        indexes, uniques = _factorize(_densify_categorical(X_col))
-                        return (
-                            None,
-                            uniques,
-                            indexes,
-                            None,
-                        )
+                        else:
+                            if feature_type == "continuous":
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
 
-                    else:
-                        if feature_type == "continuous":
-                            X_col, bad = _densify_continuous(X_col[nonmissings])
+                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                X_col_tmp[nonmissings] = X_col
+                                X_col = X_col_tmp
 
-                            X_col_tmp = full(nonmissings.shape[0], nan, float64)
-                            X_col_tmp[nonmissings] = X_col
-                            X_col = X_col_tmp
+                                if bad is not None:
+                                    bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                    bad_tmp[nonmissings] = bad
+                                    bad = bad_tmp
 
-                            if bad is not None:
-                                bad_tmp = zeros(nonmissings.shape[0], bool_)
-                                bad_tmp[nonmissings] = bad
-                                bad = bad_tmp
+                                return (
+                                    None,
+                                    None,
+                                    X_col,
+                                    bad,
+                                )
 
+                            indexes, uniques = _factorize(
+                                _densify_categorical(X_col[nonmissings])
+                            )
+                            return (
+                                nonmissings,
+                                uniques,
+                                indexes,
+                                None,
+                            )
+                else:
+
+                    def internal(feature_idx, feature_type):
+                        X_col = X[:, col_map[feature_idx]]
+
+                        nonmissings = _notna(X_col)
+
+                        if nonmissings.all():
+                            if feature_type == "continuous":
+                                return (
+                                    None,
+                                    None,
+                                    *_densify_continuous(X_col),
+                                )
+
+                            uniques, indexes = unique(
+                                _densify_categorical(X_col), return_inverse=True
+                            )
                             return (
                                 None,
+                                uniques,
+                                indexes,
                                 None,
-                                X_col,
-                                bad,
                             )
 
-                        indexes, uniques = _factorize(
-                            _densify_categorical(X_col[nonmissings])
-                        )
-                        return (
-                            nonmissings,
-                            uniques,
-                            indexes,
-                            None,
-                        )
+                        else:
+                            if feature_type == "continuous":
+                                X_col, bad = _densify_continuous(X_col[nonmissings])
+
+                                X_col_tmp = full(nonmissings.shape[0], nan, float64)
+                                X_col_tmp[nonmissings] = X_col
+                                X_col = X_col_tmp
+
+                                if bad is not None:
+                                    bad_tmp = zeros(nonmissings.shape[0], bool_)
+                                    bad_tmp[nonmissings] = bad
+                                    bad = bad_tmp
+
+                                return (
+                                    None,
+                                    None,
+                                    X_col,
+                                    bad,
+                                )
+
+                            uniques, indexes = unique(
+                                _densify_categorical(X_col[nonmissings]),
+                                return_inverse=True,
+                            )
+                            return (
+                                nonmissings,
+                                uniques,
+                                indexes,
+                                None,
+                            )
 
             elif tt is bool_:
 
@@ -2224,7 +3265,9 @@ def unify_columns_schematized(
                         # force C contiguous here for a later call to native.discretize
                         return None, None, X_col.astype(float64, "C"), None
 
-                    indexes, uniques = _factorize(X_col)
+                    # TODO: for bools we could just convert True to 1
+                    # False to zero then check which ones are there
+                    uniques, indexes = unique(X_col, return_inverse=True)
                     return None, where(uniques, "1", "0"), indexes, None
 
             else:
@@ -2243,8 +3286,8 @@ def unify_columns_schematized(
                                 *_process_continuous_strings(X_col, None),
                             )
 
-                    indexes, uniques = _factorize(X_col)
-                    return None, uniques.astype(str_, copy=False), indexes, None
+                    uniques, indexes = unique(X_col, return_inverse=True)
+                    return None, uniques.astype(str_), indexes, None
 
             return internal
     elif isinstance(X, _DataFrameType):
@@ -2327,12 +3370,20 @@ def unify_columns_schematized(
 
         n_cols = X.shape[1]
         if len(feature_names_in) == n_cols:
+            if _pandas_installed:
 
-            def internal(feature_idx, feature_type):
-                return _process_sparse_column_schematized(
-                    X[:, (feature_idx,)],
-                    feature_type,
-                )
+                def internal(feature_idx, feature_type):
+                    return _process_sparse_column_schematized_with_pandas(
+                        X[:, (feature_idx,)],
+                        feature_type,
+                    )
+            else:
+
+                def internal(feature_idx, feature_type):
+                    return _process_sparse_column_schematized_without_pandas(
+                        X[:, (feature_idx,)],
+                        feature_type,
+                    )
 
             return internal
         else:
@@ -2349,11 +3400,20 @@ def unify_columns_schematized(
             col_map = empty(len(feature_types_ignore), int64)
             col_map[keep_cols] = arange(n_keep, dtype=int64)
 
-            def internal(feature_idx, feature_type):
-                return _process_sparse_column_schematized(
-                    X[:, (col_map[feature_idx],)],
-                    feature_type,
-                )
+            if _pandas_installed:
+
+                def internal(feature_idx, feature_type):
+                    return _process_sparse_column_schematized_with_pandas(
+                        X[:, (col_map[feature_idx],)],
+                        feature_type,
+                    )
+            else:
+
+                def internal(feature_idx, feature_type):
+                    return _process_sparse_column_schematized_without_pandas(
+                        X[:, (col_map[feature_idx],)],
+                        feature_type,
+                    )
 
             return internal
     elif isinstance(X, _spmatrix):
@@ -2362,10 +3422,16 @@ def unify_columns_schematized(
             X_getcol = X.getcol
 
             def internal(feature_idx, feature_type):
-                return _process_sparse_column_schematized(
-                    X_getcol(feature_idx),
-                    feature_type,
-                )
+                if _pandas_installed:
+                    return _process_sparse_column_schematized_with_pandas(
+                        X_getcol(feature_idx),
+                        feature_type,
+                    )
+                else:
+                    return _process_sparse_column_schematized_without_pandas(
+                        X_getcol(feature_idx),
+                        feature_type,
+                    )
 
             return internal
         else:
@@ -2385,10 +3451,16 @@ def unify_columns_schematized(
             X_getcol = X.getcol
 
             def internal(feature_idx, feature_type):
-                return _process_sparse_column_schematized(
-                    X_getcol(col_map[feature_idx]),
-                    feature_type,
-                )
+                if _pandas_installed:
+                    return _process_sparse_column_schematized_with_pandas(
+                        X_getcol(col_map[feature_idx]),
+                        feature_type,
+                    )
+                else:
+                    return _process_sparse_column_schematized_without_pandas(
+                        X_getcol(col_map[feature_idx]),
+                        feature_type,
+                    )
 
             return internal
     elif isinstance(X, _SeriesType):
@@ -2438,7 +3510,14 @@ def unify_columns_schematized(
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    return _process_sparse_column_schematized(X_col, feature_type)
+                    if _pandas_installed:
+                        return _process_sparse_column_schematized_with_pandas(
+                            X_col, feature_type
+                        )
+                    else:
+                        return _process_sparse_column_schematized_without_pandas(
+                            X_col, feature_type
+                        )
                 if X_col.shape[0] == 1:
                     # unlike other datasets, dict must be checked for content length
                     if n_samples != X_col.shape[1]:
@@ -2446,7 +3525,14 @@ def unify_columns_schematized(
                         _log.error(msg)
                         raise ValueError(msg)
 
-                    return _process_sparse_column_schematized(X_col, feature_type)
+                    if _pandas_installed:
+                        return _process_sparse_column_schematized_with_pandas(
+                            X_col, feature_type
+                        )
+                    else:
+                        return _process_sparse_column_schematized_without_pandas(
+                            X_col, feature_type
+                        )
                 if X_col.shape[1] == 0 or X_col.shape[0] == 0:
                     X_col = empty(0, object_)
                 else:
@@ -2519,7 +3605,9 @@ def unify_columns_schematized(
                                 )
 
                             # feature_type == "nominal" or feature_type == "ordinal"
-                            indexes, uniques = _factorize(_densify_categorical(X_col))
+                            uniques, indexes = unique(
+                                _densify_categorical(X_col), return_inverse=True
+                            )
 
                             return (
                                 nonmissings,
@@ -2556,7 +3644,7 @@ def unify_columns_schematized(
                                     X_col = X_col[m]
                                     place(nonmissings, nonmissings, m)
 
-                                indexes, uniques = _factorize(X_col)
+                                uniques, indexes = unique(X_col, return_inverse=True)
 
                                 uniques = (
                                     uniques.astype(float64, copy=False) + 0.0
@@ -2574,7 +3662,7 @@ def unify_columns_schematized(
                                     None,
                                 )
 
-                            indexes, uniques = _factorize(X_col)
+                            uniques, indexes = unique(X_col, return_inverse=True)
 
                             if tt is bool_:
                                 return (
@@ -2622,7 +3710,9 @@ def unify_columns_schematized(
 
                 # feature_type == "nominal" or feature_type == "ordinal"
 
-                indexes, uniques = _factorize(_densify_categorical(X_col))
+                uniques, indexes = unique(
+                    _densify_categorical(X_col), return_inverse=True
+                )
 
                 return (
                     nonmissings,
@@ -2647,7 +3737,7 @@ def unify_columns_schematized(
                 if m.any():
                     logical_not(m, out=m)
                     X_col = X_col[m]
-                    indexes, uniques = _factorize(X_col)
+                    uniques, indexes = unique(X_col, return_inverse=True)
 
                     uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
                     wholes = endswith(uniques, ".0")
@@ -2655,7 +3745,7 @@ def unify_columns_schematized(
                         uniques[wholes] = rstrip(rstrip(uniques[wholes], "0"), ".")
 
                     return m, uniques, indexes, None
-                indexes, uniques = _factorize(X_col)
+                uniques, indexes = unique(X_col, return_inverse=True)
 
                 uniques = (uniques.astype(float64, copy=False) + 0.0).astype(str_)
                 wholes = endswith(uniques, ".0")
@@ -2664,7 +3754,7 @@ def unify_columns_schematized(
 
                 return None, uniques, indexes, None
 
-            indexes, uniques = _factorize(X_col)
+            uniques, indexes = unique(X_col, return_inverse=True)
 
             if tt is bool_:
                 return None, where(uniques, "1", "0"), indexes, None
