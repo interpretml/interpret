@@ -39,6 +39,9 @@ class AutoVisualizeProvider(VisualizeProvider):
         elif "docker-dev-mode" in detected_envs:
             _log.info("Operating in docker development mode.")
             self.provider = InlineProvider(detected_envs=detected_envs)
+        elif "docs-build-mode" in detected_envs:
+            _log.info("Operating in docs build mode.")
+            self.provider = InlineProvider(detected_envs=detected_envs)
         elif self.in_cloud_env == ENV_DETECTED.BOTH_CLOUD_AND_NON_CLOUD:
             _log.info("Detected both cloud and non cloud environment.")
             # val = input("Type 'C' if you want to choose Cloud environment or 'NC' for Non Cloud Environment :")

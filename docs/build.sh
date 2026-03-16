@@ -1,3 +1,5 @@
+export INTERPRET_DOCS_MODE=docs
+
 jupyter-book build --warningiserror --keep-going ./interpret/
 ret_code=$?
 

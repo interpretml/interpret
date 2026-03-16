@@ -52,12 +52,7 @@ def _detect_ipython_zmq():
 
 
 def _detect_colab():
-    try:
-        import google.colab  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    return "COLAB_RELEASE_TAG" in os.environ
 
 
 def _detect_binder():
@@ -98,6 +93,10 @@ def _detect_databricks():
 
 def _is_docker_development_mode():
     return os.environ.get("INTERPRET_DOCKER_MODE", None) == "dev"
+
+
+def _is_docs_build_mode():
+    return os.environ.get("INTERPRET_DOCS_MODE", None) == "docs"
 
 
 def _detect_azure_synapse():
@@ -148,6 +147,7 @@ class EnvironmentDetector:
     def __init__(self):
         self.checks = {
             "docker-dev-mode": _is_docker_development_mode,
+            "docs-build-mode": _is_docs_build_mode,
             "databricks": _detect_databricks,
             "vscode": _detect_vscode,
             "azure": _detect_azure_notebook,
