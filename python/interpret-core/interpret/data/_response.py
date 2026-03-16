@@ -54,7 +54,7 @@ class Marginal(ExplainerMixin):
 
         try:
             y = y.astype(np.float64, copy=False)
-        except:  # object can throw anything in their __float__ function
+        except Exception:  # object can throw anything in their __float__ function
             y = typify_classification(y)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
@@ -319,7 +319,7 @@ class ClassHistogram(ExplainerMixin):
 
         try:
             y = y.astype(np.float64, copy=False)
-        except:  # object can throw anything in their __float__ function
+        except Exception:  # object can throw anything in their __float__ function
             y = typify_classification(y)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))

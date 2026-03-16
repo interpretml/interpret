@@ -287,7 +287,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
             if feature_type == "ignore":
                 feature_type_in = "ignore"
             else:
-                feature_type_in, bad, X_col, uniques, nonmissings = get_col(feature_idx)
+                feature_type_in, nonmissings, uniques, X_col, bad = get_col(feature_idx)
 
                 # TODO: in the future allow this to be per-feature
                 max_bins = self.max_bins
@@ -538,7 +538,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     X_col = 0
                 else:
-                    bad, X_col, uniques, nonmissings = get_col(
+                    nonmissings, uniques, X_col, bad = get_col(
                         feature_idx, self.feature_types_in_[feature_idx]
                     )
                     if isinstance(bins, dict):

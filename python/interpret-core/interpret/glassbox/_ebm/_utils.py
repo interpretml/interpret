@@ -60,7 +60,7 @@ def convert_categorical_to_continuous(categories):
         try:
             # this strips leading and trailing spaces
             val = float(category)
-        except:  # object can throw anything in their __float__ function
+        except Exception:  # object can throw anything in their __float__ function
             non_float_idxs.add(idx)
             continue
 

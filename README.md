@@ -1,13 +1,13 @@
 # InterpretML
 
-<a href="https://githubtocolab.com/interpretml/interpret/blob/develop/docs/interpret/python/examples/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/develop?labpath=docs%2Finterpret%2Fpython%2Fexamples%2Finterpretable-classification.ipynb)
+<a href="https://githubtocolab.com/interpretml/interpret/blob/main/docs/interpret/python/examples/interpretable-classification.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/interpretml/interpret/main?labpath=docs%2Finterpret%2Fpython%2Fexamples%2Finterpretable-classification.ipynb)
 ![License](https://img.shields.io/github/license/interpretml/interpret.svg?style=flat-square)
 ![Python Version](https://img.shields.io/pypi/pyversions/interpret.svg?style=flat-square)
 ![Package Version](https://img.shields.io/pypi/v/interpret.svg?style=flat-square)
 ![Conda](https://img.shields.io/conda/v/conda-forge/interpret)
-![Build Status](https://github.com/interpretml/interpret/actions/workflows/ci.yml/badge.svg?branch=develop)
-[![codecov](https://codecov.io/github/interpretml/interpret/branch/develop/graph/badge.svg?token=aPlXLsPEZD)](https://codecov.io/github/interpretml/interpret)
+![Build Status](https://github.com/interpretml/interpret/actions/workflows/ci.yml/badge.svg?branch=main)
+[![codecov](https://codecov.io/github/interpretml/interpret/branch/main/graph/badge.svg?token=aPlXLsPEZD)](https://codecov.io/github/interpretml/interpret)
 ![Maintenance](https://img.shields.io/maintenance/yes/2099?style=flat-square)
 <br/>
 > ### In the beginning machines learned in darkness, and data scientists struggled in the void to explain them. 
@@ -46,7 +46,7 @@ EBM is an interpretable model developed at Microsoft Research<sup>[*](#citations
 | Telecom Churn | Business| .849±.005           | .824±.004     | .828±.010       | **_.852±.006_**              |
 | Credit Fraud  | Security| .979±.002           | .950±.007     | **_.981±.003_** | **_.981±.003_**              |
 
-[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/develop/docs/benchmarks/ebm-classification-comparison.ipynb)
+[*Notebook for reproducing table*](https://nbviewer.jupyter.org/github/interpretml/interpret/blob/main/docs/benchmarks/ebm-classification-comparison.ipynb)
 
 # Supported Techniques
 
