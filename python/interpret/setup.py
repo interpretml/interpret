@@ -34,6 +34,7 @@ setup(
     author_email="interpret@microsoft.com",
     description="Fit interpretable models. Explain blackbox machine learning.",
     long_description=long_description,
+    long_description_content_type="text/plain",
     url="https://github.com/interpretml/interpret",
     packages=find_packages(),
     classifiers=[
@@ -46,7 +47,6 @@ setup(
         "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Development Status :: 5 - Production/Stable",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     install_requires=[

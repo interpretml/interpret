@@ -1,6 +1,62 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
-]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "powerlift"
+version = "0.1.12"
+description = "Interactive Benchmarking for Machine Learning."
+readme = "README.md"
+requires-python = ">=3.7"
+authors = [
+    { name = "The InterpretML Contributors", email = "interpret@microsoft.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "SQLAlchemy>=1.4",
+    "sqlalchemy-utils>=0.38",
+    "tqdm",
+    "fastparquet",
+    "pandas",
+    "numpy",
+    "pytz",
+]
+
+[project.urls]
+Homepage = "https://github.com/interpretml/interpret"
+"Bug Tracker" = "https://github.com/interpretml/interpret/issues"
+
+[project.optional-dependencies]
+datasets = [
+    "pmlb>=1.0",
+    "openml>=0.12",
+    "catboost",
+]
+docker = ["docker"]
+postgres = ["psycopg2>=2.9"]
+mssql = ["pyodbc"]
+aci = [
+    "msrestazure",
+    "azure-common",
+    "azure-mgmt-sql",
+    "azure-mgmt-resource",
+    "azure-mgmt-containerinstance",
+    "azure-mgmt-authorization",
+    "azure-mgmt-compute",
+    "azure-mgmt-network",
+    "azure-identity",
+    "cryptography",
+]
+testing = [
+    "pytest",
+    "pytest-cov",
+    "scikit-learn",
+    "python-dotenv",
+    "pytest-xdist",
+]
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
