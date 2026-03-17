@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and the versioning is mostly derived from [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.7.8] - 2026-03-17
+### Changed
+- changed to pyproject.toml based build setup
+- optimized handling of data based on whether pandas is installed or not
+### Fixed
+- fixed notebook support in mybinder
+
 ## [v0.7.7] - 2026-03-14
 ### Added
 - support for python 3.14
