@@ -56,7 +56,7 @@ def _detect_colab():
 
 
 def _detect_binder():
-    return "BINDER_SERVICE_HOST" in os.environ
+    return "BINDER_LAUNCH_HOST" in os.environ or "BINDER_REPO_URL" in os.environ
 
 
 def _detect_sagemaker():

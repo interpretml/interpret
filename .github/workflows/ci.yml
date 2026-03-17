@@ -195,6 +195,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+          cache: 'pip'
       - name: Build sdist package
         run: |
           python -m pip install --upgrade pip build
@@ -223,6 +224,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: 'pip'
       - name: Download sdist artifact
         uses: actions/download-artifact@v7
         with:
@@ -242,6 +244,11 @@ jobs:
             echo "::warning title=docs build::Building of docs failed"
             exit 78  # no longer works in github, but would mark action step with a warning
           fi
+      - name: Add warning to summary
+        if: ${{ steps.build_docs.outcome == 'failure' }}
+        run: |
+          echo "## Failed building docs" >> $GITHUB_STEP_SUMMARY
+          echo "Building of docs failed." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.build_docs.outcome == 'failure' }}
         uses: actions/github-script@v8
@@ -280,6 +287,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+          cache: 'pip'
       - name: Download libebm artifacts
         uses: actions/download-artifact@v7
         with:
@@ -318,6 +326,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+          cache: 'pip'
       - name: Build powerlift package
         run: |
           python -m pip install --upgrade pip build
@@ -355,6 +364,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
+          cache: 'pip'
       - name: Download powerlift artifact
         uses: actions/download-artifact@v7
         with:
@@ -543,6 +553,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
+          cache: 'pip'
       - name: Download sdist artifact
         uses: actions/download-artifact@v7
         with:
@@ -646,6 +657,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python_ver }}
+          cache: 'pip'
       - name: Download bdist artifact
         uses: actions/download-artifact@v7
         with:
@@ -740,6 +752,11 @@ jobs:
             echo "::warning title=clang format::Files need re-formatting"
             exit 78  # no longer works in github, but would mark action step with a warning
           fi
+      - name: Add warning to summary
+        if: ${{ steps.check_cpp.outcome == 'failure' }}
+        run: |
+          echo "## clang-format found files that need formatting" >> $GITHUB_STEP_SUMMARY
+          echo "Run clang formatting locally and push the changes." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.check_cpp.outcome == 'failure' }}
         uses: actions/github-script@v8
@@ -779,6 +796,11 @@ jobs:
             echo "::warning title=ruff format::Files need re-formatting (run 'ruff format .' locally)"
             exit 78  # no longer works in github, but would mark action step with a warning
           fi
+      - name: Add warning to summary
+        if: ${{ steps.check_python.outcome == 'failure' }}
+        run: |
+          echo "## ruff found files that need formatting" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`ruff format .\` locally and push the changes." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.check_python.outcome == 'failure' }}
         uses: actions/github-script@v8
