@@ -623,4 +623,3 @@ def UNTESTED_from_jsonable(ebm, jsonable):
     ebm.link_param_ = link_param
     ebm.bag_weights_ = bag_weights
     ebm.best_iteration_ = best_iteration
-    ebm.has_fitted_ = True

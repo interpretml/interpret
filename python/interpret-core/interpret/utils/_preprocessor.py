@@ -13,7 +13,7 @@ from sklearn.base import (
     BaseEstimator,
     TransformerMixin,
 )
-from sklearn.utils.validation import check_is_fitted
+from ._scikit import _NotFittedError
 
 from ._clean_simple import clean_dimensions
 from ._clean_x import (
@@ -504,7 +504,6 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         self.missing_val_counts_ = missing_val_counts
         self.unique_val_counts_ = unique_val_counts
         self.noise_scale_ = noise_scale
-        self.has_fitted_ = True
         return self
 
     def transform(self, X):
@@ -516,7 +515,10 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         Returns:
             Transformed numpy array.
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
 

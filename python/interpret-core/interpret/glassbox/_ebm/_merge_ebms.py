@@ -336,12 +336,9 @@ def merge_ebms(models):
     # by name instead of using __new__ from ebm_type
     ebm = ebm_type.__new__(ebm_type)
 
-    if any(
-        not getattr(model, "has_fitted_", False) for model in models
-    ):  # pragma: no cover
+    if any(not hasattr(model, "bins_") for model in models):  # pragma: no cover
         msg = "All models must be fitted before merging."
         raise ValueError(msg)
-    ebm.has_fitted_ = True
 
     link = models[0].link_
     if any(model.link_ != link for model in models):

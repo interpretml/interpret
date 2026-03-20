@@ -12,8 +12,7 @@ from sklearn.base import ClassifierMixin, RegressorMixin
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
 from sklearn.tree import _tree
-from sklearn.utils.validation import check_is_fitted
-from ..utils._scikit import _is_classifier
+from ..utils._scikit import _is_classifier, _NotFittedError
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -361,8 +360,6 @@ class BaseShallowDecisionTree(ExplainerMixin):
         if _is_classifier(self):
             self.classes_ = model.classes_
 
-        self.has_fitted_ = True
-
         return self
 
     def predict(self, X):
@@ -375,7 +372,10 @@ class BaseShallowDecisionTree(ExplainerMixin):
             Predicted class label per instance.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
@@ -401,7 +401,10 @@ class BaseShallowDecisionTree(ExplainerMixin):
             visualizing feature-value pairs as horizontal bar chart.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if name is None:
             name = gen_name_from_class(self)
@@ -449,7 +452,10 @@ class BaseShallowDecisionTree(ExplainerMixin):
             An explanation object.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if name is None:
             name = gen_name_from_class(self)
@@ -713,7 +719,10 @@ class ClassificationTree(ClassifierMixin, BaseShallowDecisionTree):
             Probability estimate of instance for each class.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(

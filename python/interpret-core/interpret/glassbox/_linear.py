@@ -7,10 +7,9 @@ from typing import Optional
 
 import numpy as np
 from sklearn.base import ClassifierMixin, RegressorMixin
-from ..utils._scikit import _is_classifier
+from ..utils._scikit import _is_classifier, _NotFittedError
 from sklearn.linear_model import LinearRegression as SKLinear
 from sklearn.linear_model import LogisticRegression as SKLogistic
-from sklearn.utils.validation import check_is_fitted
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
@@ -168,8 +167,6 @@ class BaseLinear(ExplainerMixin):
         )
         self.bin_counts_, self.bin_edges_ = _hist_per_column(X, self.feature_types_in_)
 
-        self.has_fitted_ = True
-
         return self
 
     def predict(self, X):
@@ -182,7 +179,10 @@ class BaseLinear(ExplainerMixin):
             Predicted class label per instance.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(
@@ -210,7 +210,10 @@ class BaseLinear(ExplainerMixin):
             for each instance as horizontal bar charts.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if name is None:
             name = gen_name_from_class(self)
@@ -335,7 +338,10 @@ class BaseLinear(ExplainerMixin):
             visualizing feature-value pairs as horizontal bar chart.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if name is None:
             name = gen_name_from_class(self)
@@ -589,7 +595,10 @@ class LogisticRegression(ClassifierMixin, BaseLinear):
             Probability estimate of instance for each class.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "n_features_in_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples = preclean_X(X, self.feature_names_in_, self.feature_types_in_)
         X, _, _ = unify_data(

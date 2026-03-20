@@ -24,9 +24,8 @@ from sklearn.base import (
     ClassifierMixin,
     RegressorMixin,
 )
-from ...utils._scikit import _is_classifier, _is_regressor
+from ...utils._scikit import _is_classifier, _is_regressor, _NotFittedError
 from sklearn.isotonic import IsotonicRegression
-from sklearn.utils.validation import check_is_fitted
 
 from ... import develop
 from ...api.base import ExplainerMixin
@@ -1626,7 +1625,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         self.link_param_ = link_param
         self.bag_weights_ = bag_weights
         self.best_iteration_ = best_iteration
-        self.has_fitted_ = True
 
         return self
 
@@ -1888,7 +1886,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             JSONable object
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return to_jsonable(self, detail)
 
@@ -1907,7 +1908,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 is a string (such as "\t"), that string is used to indent each level.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if isinstance(file, (str, os.PathLike)):
             # file is a path-like object (str or os.PathLike)
@@ -1965,7 +1969,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             for advanced usages when custom export is required.
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         from ._excel import UNTESTED_to_excel_exportable
 
@@ -1983,7 +1990,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 or a file-like object implementing .write().
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         workbook = self.to_excel_exportable(file)
         workbook.close()
@@ -2000,7 +2010,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             The sum of the additive term contributions.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return ebm_predict_scores(
             *clean_X_and_init_score(
@@ -2032,7 +2045,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             local explanation scores for each term of each sample.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return ebm_eval_terms(
             *preclean_X(X, self.feature_names_in_, self.feature_types_in_),
@@ -2058,7 +2074,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         if name is None:
             name = gen_name_from_class(self)
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         # Obtain min/max for model scores
         lower_bound = np.inf
@@ -2341,7 +2360,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         # Produce feature value pairs for each sample.
         # Values are the model graph score per respective term.
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         classes = getattr(self, "classes_", None)
 
@@ -2480,7 +2502,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             An array term importances with one importance per additive term
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         n_terms = len(self.term_features_)
         if hasattr(self, "classes_") and len(self.classes_) <= 1:
@@ -2533,7 +2558,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if hasattr(self, "classes_"):
             if len(self.classes_) == 1:
@@ -2625,7 +2653,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         # If terms contains term names, convert them to indices
         terms = clean_indexes(
@@ -2676,7 +2707,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         drop_features = clean_indexes(
             features,
@@ -2730,7 +2764,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if terms is True:
             terms = [
@@ -2782,7 +2819,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         term = clean_index(
             term,
@@ -2815,7 +2855,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 Second column contains uncertainties
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         X, n_samples, init_score = clean_X_and_init_score(
             X,
@@ -2847,7 +2890,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         return np.c_[np.mean(preds_per_bag, axis=0), np.std(preds_per_bag, axis=0)]
 
     def _multinomialize(self, passthrough=0.0):
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
@@ -2897,7 +2943,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         return self
 
     def _ovrize(self, passthrough=0.0):
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
@@ -2947,7 +2996,10 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         return self
 
     def _binarize(self, passthrough=0.0):
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         if passthrough < 0.0 or passthrough > 1.0:
             msg = "passthrough must be between 0.0 and 1.0 inclusive"
@@ -3356,7 +3408,10 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return inv_link(
             ebm_predict_scores(
@@ -3391,7 +3446,10 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             The sum of the additive term contributions.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return ebm_predict_scores(
             *clean_X_and_init_score(
@@ -3422,7 +3480,10 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Predicted class label per sample.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         scores = ebm_predict_scores(
             *clean_X_and_init_score(
@@ -3458,7 +3519,10 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
             Itself.
 
         """
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         classes = np.asarray(classes, dtype=self.classes_.dtype)
 
@@ -3866,7 +3930,10 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return inv_link(
             ebm_predict_scores(
@@ -4125,7 +4192,10 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return inv_link(
             ebm_predict_scores(
@@ -4161,7 +4231,10 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return ebm_predict_scores(
             *clean_X_and_init_score(
@@ -4193,7 +4266,10 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         scores = ebm_predict_scores(
             *clean_X_and_init_score(
@@ -4466,7 +4542,10 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
 
         """
 
-        check_is_fitted(self, "has_fitted_")
+        if not hasattr(self, "bins_"):
+            raise _NotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
 
         return inv_link(
             ebm_predict_scores(
