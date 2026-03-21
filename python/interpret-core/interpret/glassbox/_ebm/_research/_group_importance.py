@@ -7,7 +7,6 @@ A term denotes both single features and interactions (pairs).
 """
 
 import numpy as np
-import pandas as pd
 import plotly.express as px
 from ....utils._scikit import _NotFittedError
 
@@ -238,7 +237,7 @@ def get_importance_per_top_groups(ebm, X):
         X (numpy array): Samples used to compute the group importance
 
     Returns:
-       a pandas Dataframe with three columns: group_names, terms_per_group and importances
+       a dict with three keys: groups, terms_per_group and importances
     """
     contributions = ebm.eval_terms(X)
     individual_importances = get_individual_importances(ebm, X, contributions)
@@ -260,13 +259,11 @@ def get_importance_per_top_groups(ebm, X):
         output_dict[group_name] = compute_group_importance(group, ebm, X, contributions)
         group_index += 1
 
-    return pd.DataFrame(
-        {
-            "groups": output_dict.keys(),
-            "terms_per_group": groups_list,
-            "importances": output_dict.values(),
-        }
-    )
+    return {
+        "groups": list(output_dict.keys()),
+        "terms_per_group": groups_list,
+        "importances": list(output_dict.values()),
+    }
 
 
 def plot_importance_per_top_groups(ebm, X):

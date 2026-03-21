@@ -7,6 +7,14 @@ from abc import ABC, abstractmethod
 from .._version import __version__
 from ._environment import ENV_DETECTED, EnvironmentDetector, is_cloud_env
 
+try:
+    from pandas.core.generic import NDFrame as _NDFrame
+except ImportError:
+
+    class _NDFrame:
+        pass
+
+
 JS_URL = f"https://unpkg.com/@interpretml/interpret-inline@{__version__}/dist/interpret-inline.js"
 
 _log = logging.getLogger(__name__)
@@ -95,7 +103,6 @@ class PreserveProvider(VisualizeProvider):
 
         import dash.development.base_component as dash_base
         from IPython.display import display, display_html
-        from pandas.core.generic import NDFrame
         from plotly import graph_objs as go
         from plotly.offline import init_notebook_mode, iplot, plot
 
@@ -120,7 +127,7 @@ class PreserveProvider(VisualizeProvider):
                 iplot(visual, **kwargs)
             else:
                 plot(visual, filename=file_name, **kwargs)
-        elif isinstance(visual, NDFrame):
+        elif isinstance(visual, _NDFrame):
             if file_name is None:
                 display(visual, **kwargs)
             else:

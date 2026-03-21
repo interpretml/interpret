@@ -173,7 +173,7 @@ def test_get_importance_per_top_groups():
     df = get_importance_per_top_groups(ebm, X)
     dict = get_individual_importances(ebm, X)
 
-    assert df.shape[0] == len(ebm.term_features_)
+    assert len(df["groups"]) == len(ebm.term_features_)
     # First group
     assert next(iter(dict.keys())) in df["terms_per_group"][0]
     # Second group

@@ -5,13 +5,20 @@ import logging
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-import dotsi
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
-from xlsxwriter.utility import xl_range_abs, xl_rowcol_to_cell
-from xlsxwriter.workbook import Workbook
+
+try:
+    import dotsi
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import seaborn as sns
+    from xlsxwriter.utility import xl_range_abs, xl_rowcol_to_cell
+    from xlsxwriter.workbook import Workbook
+except ImportError:
+    raise ImportError(
+        "EBM Excel export requires additional packages. "
+        "Install them with: pip install pandas matplotlib seaborn xlsxwriter dotsi"
+    )
 
 DEBUGFORMATTER = "%(filename)s:%(name)s:%(funcName)s:%(lineno)d: %(message)s"
 """Debug file formatter."""

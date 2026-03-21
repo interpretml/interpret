@@ -4,7 +4,19 @@ from typing import List, Optional, Tuple
 from warnings import warn
 
 import numpy as np
-import pandas as pd
+
+try:
+    from pandas import DataFrame as _DataFrameType
+    from pandas import Series as _SeriesType
+except ImportError:
+
+    class _DataFrameType:
+        pass
+
+    class _SeriesType:
+        pass
+
+
 from ..utils._scikit import _ClassifierMixin, _RegressorMixin
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
@@ -276,7 +288,7 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
             msg = f"If X is a numpy array, it must contain only numeric values, but got dtype '{X.dtype}'."
             raise TypeError(msg)
         return X.astype(np.float64, copy=False)
-    if isinstance(X, pd.DataFrame) and not X.empty:
+    if isinstance(X, _DataFrameType) and not X.empty:
         try:
             return X.to_numpy(np.float64)
         except (ValueError, TypeError) as e:
@@ -355,7 +367,7 @@ class APLRClassifier(_ClassifierMixin, ExplainerMixin, APLRClassifierNative):
 
         if not all(isinstance(val, str) for val in y):
             y = [str(val) for val in y]
-        if isinstance(y, pd.Series):
+        if isinstance(y, _SeriesType):
             y = y.to_numpy()
 
         super().fit(

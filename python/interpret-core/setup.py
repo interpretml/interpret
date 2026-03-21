@@ -205,7 +205,6 @@ https://github.com/interpretml/interpret
     },
     install_requires=[
         "numpy>=1.25",
-        "pandas>=0.24",
         "joblib>=0.11",
     ],
     extras_require={
@@ -215,6 +214,7 @@ https://github.com/interpretml/interpret
         "plotly": ["plotly>=3.8.1"],
         # Export
         "excel": [
+            "pandas>=0.24",
             "Xlsxwriter>=3.0.1",
             "dotsi>=0.0.3",
             "seaborn>=0.13.2",
@@ -227,7 +227,7 @@ https://github.com/interpretml/interpret
         "shap": ["shap>=0.28.5", "ipywidgets>=7.4.2"],
         "linear": ["scikit-learn>=1.6.0"],
         "tree": ["scikit-learn>=1.6.0"],
-        "skoperules": ["skope-rules>=1.0.1"],
+        "skoperules": ["skope-rules>=1.0.1", "pandas>=0.24"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
         "aplr": ["aplr>=10.6.1"],
         # Dash
@@ -241,6 +241,7 @@ https://github.com/interpretml/interpret
         # Testing
         "testing": [
             "scikit-learn>=1.6.0",
+            "pandas>=0.24",
             "scipy>=0.18.1",
             "pytest>=4.3.0",
             "pytest-xdist>=1.29",

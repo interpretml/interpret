@@ -11,8 +11,15 @@ import dash_cytoscape as cyto  # noqa: F401
 from dash import dash_table as dt
 from dash import dcc, html
 from dash.dependencies import Input, Output
-from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
+
+try:
+    from pandas.core.generic import NDFrame as _NDFrame
+except ImportError:
+
+    class _NDFrame:
+        pass
+
 
 _log = logging.getLogger(__name__)
 
@@ -207,7 +214,7 @@ def gen_overall_plot(exp, model_idx):
             """
 
     # NOTE: We also have support for data frames, but we don't advertise it.
-    if isinstance(figure, NDFrame):
+    if isinstance(figure, _NDFrame):
         records = figure.to_dict("records")
         columns = [
             {"name": col, "id": col}
@@ -267,7 +274,7 @@ def gen_overall_plot(exp, model_idx):
 
 def gen_plot(exp, picker, model_idx, counter):
     figure = exp.visualize(key=picker)
-    if isinstance(figure, NDFrame):
+    if isinstance(figure, _NDFrame):
         records = figure.to_dict("records")
         columns = [
             {"name": col, "id": col}

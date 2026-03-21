@@ -7,7 +7,7 @@ from copy import deepcopy
 from itertools import count
 
 import numpy as np
-import pandas as pd
+
 from ..utils._scikit import _BaseEstimator, _ClassifierMixin, _NotFittedError
 
 from ..api.base import ExplainerMixin, ExplanationMixin
@@ -143,13 +143,11 @@ class DecisionListClassifier(_ClassifierMixin, ExplainerMixin, _BaseEstimator):
         """
         try:
             from skrules import SkopeRules as SR
-        except ImportError:  # NOTE: skoperules loves six, shame it's deprecated.
-            import sys
-
-            import six
-
-            sys.modules["sklearn.externals.six"] = six
-            from skrules import SkopeRules as SR
+        except ImportError:
+            raise ImportError(
+                "skope-rules is required for DecisionListClassifier. "
+                "Install it with: pip install skope-rules"
+            )
 
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
@@ -235,7 +233,15 @@ class DecisionListClassifier(_ClassifierMixin, ExplainerMixin, _BaseEstimator):
         return self.classes_[np.argmax(scores, axis=1)]
 
     def _scores(self, X):
-        df = pd.DataFrame(X, columns=self.feature_index_)
+        try:
+            from pandas import DataFrame
+        except ImportError:
+            raise ImportError(
+                "pandas is required for DecisionListClassifier. "
+                "Install it with: pip install pandas"
+            )
+
+        df = DataFrame(X, columns=self.feature_index_)
         selected_rules = self.internal_rules_
 
         scores = np.ones(X.shape[0]) * np.inf
