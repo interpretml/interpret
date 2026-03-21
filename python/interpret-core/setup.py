@@ -206,7 +206,6 @@ https://github.com/interpretml/interpret
     install_requires=[
         "numpy>=1.25",
         "pandas>=0.24",
-        "scikit-learn>=1.6.0",
         "joblib>=0.11",
     ],
     extras_require={
@@ -227,6 +226,7 @@ https://github.com/interpretml/interpret
         # installing ipywidgets removes crud in SHAP notebooks during fitting
         "shap": ["shap>=0.28.5", "ipywidgets>=7.4.2"],
         "linear": ["scikit-learn>=1.6.0"],
+        "tree": ["scikit-learn>=1.6.0"],
         "skoperules": ["skope-rules>=1.0.1"],
         "treeinterpreter": ["treeinterpreter>=0.2.2"],
         "aplr": ["aplr>=10.6.1"],
@@ -240,6 +240,7 @@ https://github.com/interpretml/interpret
         ],
         # Testing
         "testing": [
+            "scikit-learn>=1.6.0",
             "scipy>=0.18.1",
             "pytest>=4.3.0",
             "pytest-xdist>=1.29",

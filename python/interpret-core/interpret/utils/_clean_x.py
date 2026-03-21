@@ -243,13 +243,13 @@ def _densify_categorical(X_col):
             continue
         elif issubclass(one_type, _disallowed_types):
             # list of python types primarily from: https://docs.python.org/3/library/stdtypes.html
-            msg = f"X contains the disallowed type {one_type}"
+            msg = f"argument must be a string or a number, not {one_type}"
             _log.error(msg)
             raise TypeError(msg)
         elif hasattr(one_type, "__iter__") or hasattr(one_type, "__getitem__"):
             # check for __iter__ and __getitem__ to filter out iterables
             # https://stackoverflow.com/questions/1952464/in-python-how-do-i-determine-if-an-object-is-iterable
-            msg = f"X contains the disallowed iterable type {one_type}"
+            msg = f"argument must be a string or a number, not {one_type}"
             _log.error(msg)
             raise TypeError(msg)
         elif hasattr(one_type, "__contains__"):
@@ -1315,9 +1315,18 @@ def unify_columns_schematized(
     if isinstance(X, ndarray):  # this includes ma.masked_array
         tt = X.dtype.type
         if issubclass(tt, _complex_void_types):
-            msg = f"{X.dtype.type} type not supported."
-            _log.error(msg)
-            raise ValueError(msg)
+            if issubclass(tt, np.complexfloating):
+                msg = "Complex data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif issubclass(tt, np.void):
+                msg = "Void data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            else:
+                msg = "Internal error"
+                _log.error(msg)
+                raise ValueError(msg)
 
         # TODO: in the future special case this to make single samples faster at predict time
 
@@ -2316,7 +2325,7 @@ def unify_columns_schematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != X.shape[1]:
-                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
+                msg = f"X has {X.shape[1]} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(keep_cols.shape[0], int64)
@@ -3353,7 +3362,7 @@ def unify_columns_schematized(
                 )
                 n_keep = keep_cols.sum()
                 if n_keep != n_cols:
-                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                    msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                     _log.error(msg)
                     raise ValueError(msg)
                 col_map = empty(keep_cols.shape[0], int64)
@@ -3398,7 +3407,7 @@ def unify_columns_schematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(len(feature_types_ignore), int64)
@@ -3446,7 +3455,7 @@ def unify_columns_schematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(len(feature_types_ignore), int64)
@@ -3795,9 +3804,18 @@ def unify_columns_nonschematized(
 
     if isinstance(X, ndarray):  # this includes ma.masked_array
         if issubclass(X.dtype.type, _complex_void_types):
-            msg = f"{X.dtype.type} type not supported."
-            _log.error(msg)
-            raise ValueError(msg)
+            if issubclass(X.dtype.type, np.complexfloating):
+                msg = "Complex data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            elif issubclass(X.dtype.type, np.void):
+                msg = "Void data not supported"
+                _log.error(msg)
+                raise ValueError(msg)
+            else:
+                msg = "Internal error"
+                _log.error(msg)
+                raise ValueError(msg)
 
         # TODO: I'm not sure that simply checking X.flags.c_contiguous handles all the situations that we'd want
         # to know about some data.  If we recieved a transposed array that was C ordered how would that look?
@@ -3816,7 +3834,7 @@ def unify_columns_nonschematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != X.shape[1]:
-                msg = f"The model has {len(feature_names_in)} features, but X has {X.shape[1]} columns"
+                msg = f"X has {X.shape[1]} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(keep_cols.shape[0], int64)
@@ -3877,7 +3895,7 @@ def unify_columns_nonschematized(
                 )
                 n_keep = keep_cols.sum()
                 if n_keep != n_cols:
-                    msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                    msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                     _log.error(msg)
                     raise ValueError(msg)
                 col_map = empty(keep_cols.shape[0], int64)
@@ -3913,7 +3931,7 @@ def unify_columns_nonschematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(len(feature_types), int64)
@@ -3943,7 +3961,7 @@ def unify_columns_nonschematized(
             )
             n_keep = keep_cols.sum()
             if n_keep != n_cols:
-                msg = f"The model has {len(feature_names_in)} features, but X has {n_cols} columns."
+                msg = f"X has {n_cols} features, but model is expecting {len(feature_names_in)} features as input"
                 _log.error(msg)
                 raise ValueError(msg)
             col_map = empty(len(feature_types), int64)

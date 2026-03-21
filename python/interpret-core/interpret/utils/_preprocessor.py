@@ -5,15 +5,9 @@ import logging
 import math
 from itertools import count, groupby, repeat
 from warnings import warn
-from typing import Optional
-from dataclasses import dataclass, field
 
 import numpy as np
-from sklearn.base import (
-    BaseEstimator,
-    TransformerMixin,
-)
-from ._scikit import _NotFittedError
+from ._scikit import _BaseEstimator, _TransformerMixin, _NotFittedError
 
 from ._clean_simple import clean_dimensions
 from ._clean_x import (
@@ -76,53 +70,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     return cuts
 
 
-@dataclass
-class PreprocessorInputTags:
-    one_d_array: bool = False
-    two_d_array: bool = True
-    three_d_array: bool = False
-    sparse: bool = True
-    categorical: bool = True
-    string: bool = True
-    dict: bool = True
-    positive_only: bool = False
-    allow_nan: bool = True
-    pairwise: bool = False
-
-
-@dataclass
-class PreprocessorTargetTags:
-    required: bool = False
-    one_d_labels: bool = False
-    two_d_labels: bool = False
-    positive_only: bool = False
-    multi_output: bool = False
-    single_output: bool = True
-
-
-@dataclass
-class PreprocessorTransformerTags:
-    preserves_dtype: list[str] = field(default_factory=lambda: ["float64"])
-
-
-@dataclass
-class PreprocessorTags:
-    estimator_type: Optional[str] = "transformer"
-    target_tags: PreprocessorTargetTags = field(default_factory=PreprocessorTargetTags)
-    transformer_tags: PreprocessorTransformerTags = field(
-        default_factory=PreprocessorTransformerTags
-    )
-    classifier_tags: None = None
-    regressor_tags: None = None
-    array_api_support: bool = True
-    no_validation: bool = False
-    non_deterministic: bool = False
-    requires_fit: bool = True
-    _skip_test: bool = False
-    input_tags: PreprocessorInputTags = field(default_factory=PreprocessorInputTags)
-
-
-class EBMPreprocessor(TransformerMixin, BaseEstimator):
+class EBMPreprocessor(_TransformerMixin, _BaseEstimator):
     """Transformer that preprocesses data to be ready before EBM."""
 
     def __init__(
@@ -305,9 +253,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     if self.binning == "private":
                         if np.isnan(X_col).any():
-                            msg = (
-                                "missing values in X not supported for private binning"
-                            )
+                            msg = "NaN/missing values in X not supported for private binning"
                             _log.error(msg)
                             raise ValueError(msg)
 
@@ -414,9 +360,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
 
                     if self.binning == "private":
                         if np.count_nonzero(X_col) != len(X_col):
-                            msg = (
-                                "missing values in X not supported for private binning"
-                            )
+                            msg = "NaN/missing values in X not supported for private binning"
                             _log.error(msg)
                             raise ValueError(msg)
 
@@ -495,6 +439,7 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
                 "'ordinal', or a list of strings to avoid this warning."
             )
 
+        self.n_features_in_ = n_features
         self.feature_names_in_ = feature_names_in
         self.feature_types_in_ = feature_types_in
         self.bins_ = bins
@@ -600,7 +545,13 @@ class EBMPreprocessor(TransformerMixin, BaseEstimator):
         return self.fit(X, y, sample_weight).transform(X)
 
     def __sklearn_tags__(self):
-        return PreprocessorTags()
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse = True
+        tags.input_tags.categorical = True
+        tags.input_tags.string = True
+        tags.input_tags.dict = True
+        tags.input_tags.allow_nan = True
+        return tags
 
 
 def construct_bins(

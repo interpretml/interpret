@@ -2,14 +2,15 @@
 # Distributed under the MIT software license
 
 from abc import abstractmethod
-from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
-from sklearn.base import ClassifierMixin, RegressorMixin
-from ..utils._scikit import _is_classifier, _NotFittedError
-from sklearn.linear_model import LinearRegression as SKLinear
-from sklearn.linear_model import LogisticRegression as SKLogistic
+from ..utils._scikit import (
+    _ClassifierMixin,
+    _RegressorMixin,
+    _BaseEstimator,
+    _NotFittedError,
+    _is_classifier,
+)
 
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
@@ -24,58 +25,7 @@ from ..utils._explanation import (
 from ..utils._unify_data import unify_data
 
 
-@dataclass
-class LinearInputTags:
-    one_d_array: bool = False
-    two_d_array: bool = True
-    three_d_array: bool = False
-    sparse: bool = True
-    categorical: bool = False
-    string: bool = True
-    dict: bool = True
-    positive_only: bool = False
-    allow_nan: bool = False
-    pairwise: bool = False
-
-
-@dataclass
-class LinearTargetTags:
-    required: bool = True
-    one_d_labels: bool = False
-    two_d_labels: bool = False
-    positive_only: bool = False
-    multi_output: bool = False
-    single_output: bool = True
-
-
-@dataclass
-class LinearClassifierTags:
-    poor_score: bool = False
-    multi_class: bool = True
-    multi_label: bool = False
-
-
-@dataclass
-class LinearRegressorTags:
-    poor_score: bool = False
-
-
-@dataclass
-class LinearTags:
-    estimator_type: Optional[str] = None
-    target_tags: LinearTargetTags = field(default_factory=LinearTargetTags)
-    transformer_tags: None = None
-    classifier_tags: Optional[LinearClassifierTags] = None
-    regressor_tags: Optional[LinearRegressorTags] = None
-    array_api_support: bool = True
-    no_validation: bool = False
-    non_deterministic: bool = False
-    requires_fit: bool = True
-    _skip_test: bool = False
-    input_tags: LinearInputTags = field(default_factory=LinearInputTags)
-
-
-class BaseLinear(ExplainerMixin):
+class BaseLinear(ExplainerMixin, _BaseEstimator):
     """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -88,7 +38,7 @@ class BaseLinear(ExplainerMixin):
     explainer_type = "model"
 
     def __init__(
-        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+        self, feature_names=None, feature_types=None, linear_class=None, **kwargs
     ):
         """Initializes class.
 
@@ -101,7 +51,7 @@ class BaseLinear(ExplainerMixin):
         self.feature_names = feature_names
         self.feature_types = feature_types
         self.linear_class = linear_class
-        self.kwargs = kwargs
+        self._kwargs = kwargs
 
     @abstractmethod
     def _model(self):
@@ -407,7 +357,12 @@ class BaseLinear(ExplainerMixin):
         )
 
     def __sklearn_tags__(self):
-        return LinearTags()
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse = True
+        tags.input_tags.string = True
+        tags.input_tags.dict = True
+        tags.target_tags.required = True
+        return tags
 
 
 class LinearExplanation(FeatureValueExplanation):
@@ -508,14 +463,14 @@ class LinearExplanation(FeatureValueExplanation):
         return super().visualize(key)
 
 
-class LinearRegression(RegressorMixin, BaseLinear):
+class LinearRegression(_RegressorMixin, BaseLinear):
     """Linear regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
 
     def __init__(
-        self, feature_names=None, feature_types=None, linear_class=SKLinear, **kwargs
+        self, feature_names=None, feature_types=None, linear_class=None, **kwargs
     ):
         """Initializes class.
 
@@ -540,24 +495,28 @@ class LinearRegression(RegressorMixin, BaseLinear):
         Returns:
             Itself.
         """
-        self.sk_model_ = self.linear_class(**self.kwargs)
+
+        linear_class = self.linear_class
+        if linear_class is None:
+            try:
+                from sklearn.linear_model import LinearRegression as SKLinear
+            except ImportError:
+                raise ImportError(
+                    "scikit-learn is required for LinearRegression. Install it with: pip install scikit-learn"
+                )
+            linear_class = SKLinear
+        self.sk_model_ = linear_class(**self._kwargs)
         return super().fit(X, y)
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.estimator_type = "regressor"
-        tags.regressor_tags = LinearRegressorTags()
-        return tags
 
-
-class LogisticRegression(ClassifierMixin, BaseLinear):
+class LogisticRegression(_ClassifierMixin, BaseLinear):
     """Logistic regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
     """
 
     def __init__(
-        self, feature_names=None, feature_types=None, linear_class=SKLogistic, **kwargs
+        self, feature_names=None, feature_types=None, linear_class=None, **kwargs
     ):
         """Initializes class.
 
@@ -582,7 +541,17 @@ class LogisticRegression(ClassifierMixin, BaseLinear):
         Returns:
             Itself.
         """
-        self.sk_model_ = self.linear_class(**self.kwargs)
+
+        linear_class = self.linear_class
+        if linear_class is None:
+            try:
+                from sklearn.linear_model import LogisticRegression as SKLogistic
+            except ImportError:
+                raise ImportError(
+                    "scikit-learn is required for LogisticRegression. Install it with: pip install scikit-learn"
+                )
+            linear_class = SKLogistic
+        self.sk_model_ = linear_class(**self._kwargs)
         return super().fit(X, y)
 
     def predict_proba(self, X):
@@ -612,12 +581,6 @@ class LogisticRegression(ClassifierMixin, BaseLinear):
         )
 
         return self._model().predict_proba(X)
-
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.estimator_type = "classifier"
-        tags.classifier_tags = LinearClassifierTags()
-        return tags
 
 
 def _hist_per_column(arr, feature_types=None):

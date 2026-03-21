@@ -1,12 +1,11 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
-from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 from warnings import warn
 
 import numpy as np
 import pandas as pd
-from sklearn.base import ClassifierMixin, RegressorMixin
+from ..utils._scikit import _ClassifierMixin, _RegressorMixin
 from ..api.base import ExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions
@@ -23,57 +22,6 @@ IntVector = np.ndarray
 IntMatrix = np.ndarray
 
 
-@dataclass
-class APLRInputTags:
-    one_d_array: bool = False
-    two_d_array: bool = True
-    three_d_array: bool = False
-    sparse: bool = False
-    categorical: bool = False
-    string: bool = False
-    dict: bool = False
-    positive_only: bool = False
-    allow_nan: bool = False
-    pairwise: bool = False
-
-
-@dataclass
-class APLRTargetTags:
-    required: bool = True
-    one_d_labels: bool = False
-    two_d_labels: bool = False
-    positive_only: bool = False
-    multi_output: bool = False
-    single_output: bool = True
-
-
-@dataclass
-class APLRClassifierTags:
-    poor_score: bool = False
-    multi_class: bool = True
-    multi_label: bool = False
-
-
-@dataclass
-class APLRRegressorTags:
-    poor_score: bool = False
-
-
-@dataclass
-class APLRTags:
-    estimator_type: Optional[str] = None
-    target_tags: APLRTargetTags = field(default_factory=APLRTargetTags)
-    transformer_tags: None = None
-    classifier_tags: Optional[APLRClassifierTags] = None
-    regressor_tags: Optional[APLRRegressorTags] = None
-    array_api_support: bool = False
-    no_validation: bool = False
-    non_deterministic: bool = False
-    requires_fit: bool = True
-    _skip_test: bool = False
-    input_tags: APLRInputTags = field(default_factory=APLRInputTags)
-
-
 try:
     from aplr import APLRRegressor as APLRRegressorNative
 except ImportError:
@@ -85,7 +33,7 @@ except ImportError:
             )
 
 
-class APLRRegressor(APLRRegressorNative, RegressorMixin, ExplainerMixin):
+class APLRRegressor(_RegressorMixin, ExplainerMixin, APLRRegressorNative):
     """APLR Regressor."""
 
     available_explanations = ["local", "global"]
@@ -311,12 +259,6 @@ class APLRRegressor(APLRRegressorNative, RegressorMixin, ExplainerMixin):
             selector=selector,
         )
 
-    def __sklearn_tags__(self):
-        tags = APLRTags()
-        tags.estimator_type = "regressor"
-        tags.regressor_tags = APLRRegressorTags()
-        return tags
-
 
 def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
     bin_counts: List[List[int]] = []
@@ -387,7 +329,7 @@ except ImportError:
             )
 
 
-class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
+class APLRClassifier(_ClassifierMixin, ExplainerMixin, APLRClassifierNative):
     """APLR Classifier."""
 
     available_explanations = ["local", "global"]
@@ -647,12 +589,6 @@ class APLRClassifier(APLRClassifierNative, ClassifierMixin, ExplainerMixin):
             name=gen_name_from_class(self) if name is None else name,
             selector=selector,
         )
-
-    def __sklearn_tags__(self):
-        tags = APLRTags()
-        tags.estimator_type = "classifier"
-        tags.classifier_tags = APLRClassifierTags()
-        return tags
 
 
 class APLRExplanation(FeatureValueExplanation):

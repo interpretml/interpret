@@ -1,12 +1,15 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import warnings
 from itertools import repeat, count
 
 import numpy as np
 from numpy import ma
 import pandas as pd
+import pytest
 import scipy as sp
+from sklearn.utils import estimator_checks
 
 from interpret.utils import EBMPreprocessor
 from interpret.utils._unify_data import unify_data
@@ -2485,3 +2488,34 @@ def test_schematized_nominal_float64():
     # and a np.float64 pandas column
     binned = pre.transform(X)
     assert np.array_equal(binned, np.array([[1], [2], [1], [2], [1]], np.int64))
+
+
+@pytest.fixture
+def skip_sklearn() -> set:
+    """Tests which we do not adhere to."""
+    # TODO: whittle these down to the minimum
+    return {
+        "check_sample_weight_equivalence_on_dense_data",  # EBMPreprocessor does not support sample weight=0
+        "check_sample_weight_equivalence_on_sparse_data",  # EBMPreprocessor does not support sample weight=0
+        "check_estimators_empty_data_messages",  # EBMPreprocessor allows fitting to zero features
+        "check_transformer_preserve_dtypes",  # EBMPreprocessor outputs int64 bins by design
+        "check_fit1d",  # EBMPreprocessor accepts 1D X as a single-feature input
+        "check_fit2d_predict1d",  # EBMPreprocessor accepts 1D X at transform time
+    }
+
+
+@estimator_checks.parametrize_with_checks(
+    [
+        EBMPreprocessor(),
+    ]
+)
+def test_sklearn_estimator(estimator, check, skip_sklearn):
+    if check.func.__name__ in skip_sklearn:
+        pytest.skip("Deliberate deviation from scikit-learn.")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            "Casting complex values to real discards the imaginary part",
+            category=np.exceptions.ComplexWarning,
+        )
+        check(estimator)

@@ -6,6 +6,9 @@ from interpret.glassbox import LinearRegression, LogisticRegression
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.linear_model import LinearRegression as SKLinear
 from sklearn.linear_model import LogisticRegression as SKLogistic
+from sklearn.utils import estimator_checks
+import pytest
+import warnings
 
 
 def test_linear_regression():
@@ -114,3 +117,43 @@ def test_sorting():
     sort_indexes = get_sort_indexes(scores_data, sort_fn=lambda x: -abs(x), top_n=15)
     sorted_scores = mli_sort_take(scores_data, sort_indexes, reverse_results=True)
     assert data_dict["scores"] == sorted_scores
+
+
+@pytest.fixture
+def skip_sklearn() -> set:
+    """Test which we do not adhere to."""
+    # TODO: whittle these down to the minimum
+    return {
+        "check_do_not_raise_errors_in_init_or_set_params",  # LinearRegression accepts **kwargs for the underlying sklearn model
+        "check_fit1d",  # interpret accepts 1d X for single feature
+        "check_fit2d_predict1d",  # interpret accepts 1d for predict
+        "check_supervised_y_2d",  # interpret deliberately supports y.shape = (nsamples, 1)
+        "check_classifiers_regression_target",  # interpret is more permissive with y values
+        "check_n_features_in_after_fitting",  # interpret uses a different error message format
+        "check_complex_data",  # interpret uses a different error message for complex data
+        "check_estimators_nan_inf",  # interpret treats NaN as missing data, not as NaN/inf validation error
+        "check_requires_y_none",  # interpret uses a different error message for y=None
+    }
+
+
+@estimator_checks.parametrize_with_checks(
+    [
+        LinearRegression(),
+        LogisticRegression(),
+    ]
+)
+def test_sklearn_estimator(estimator, check, skip_sklearn):
+    if check.func.__name__ in skip_sklearn:
+        pytest.skip("Deliberate deviation from scikit-learn.")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            "Detected multiclass problem. Forcing interactions to 0.",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            "Casting complex values to real discards the imaginary part",
+            category=np.exceptions.ComplexWarning,
+        )
+        check(estimator)

@@ -4,12 +4,6 @@
 from itertools import count
 
 import numpy as np
-from sklearn.metrics import (
-    auc,
-    average_precision_score,
-    precision_recall_curve,
-    roc_curve,
-)
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -82,6 +76,12 @@ class PR(ExplainerMixin):
 
         scores = predict_fn(X)
 
+        try:
+            from sklearn.metrics import precision_recall_curve, average_precision_score
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for PR curves. Install it with: pip install scikit-learn"
+            )
         precision, recall, thresh = precision_recall_curve(y, scores)
         ap = average_precision_score(y, scores)
 
@@ -170,6 +170,12 @@ class ROC(ExplainerMixin):
 
         scores = predict_fn(X)
 
+        try:
+            from sklearn.metrics import roc_curve, auc
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for ROC curves. Install it with: pip install scikit-learn"
+            )
         fpr, tpr, thresh = roc_curve(y, scores)
         roc_auc = auc(fpr, tpr)
 

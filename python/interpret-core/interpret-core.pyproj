@@ -76,7 +76,6 @@
     <Compile Include="interpret\perf\_curve.py" />
     <Compile Include="interpret\perf\_regression.py" />
     <Compile Include="interpret\perf\__init__.py" />
-    <Compile Include="interpret\provider\_compute.py" />
     <Compile Include="interpret\provider\_visualize.py" />
     <Compile Include="interpret\provider\_environment.py" />
     <Compile Include="interpret\provider\__init__.py" />

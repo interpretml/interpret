@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from ..api.base import ExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions
@@ -65,6 +64,16 @@ class RegressionPerf(ExplainerMixin):
 
         scores = predict_fn(X)
 
+        try:
+            from sklearn.metrics import (
+                mean_squared_error,
+                mean_absolute_error,
+                r2_score,
+            )
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for RegressionPerf. Install it with: pip install scikit-learn"
+            )
         mse = mean_squared_error(y, scores)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y, scores)

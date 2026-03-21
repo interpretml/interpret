@@ -917,10 +917,9 @@ def skip_sklearn() -> set:
         # EBM is more permissive and convert any y values to str
         "check_classifiers_regression_target",
         "check_supervised_y_2d",  # EBM deliberately support `y.shape = (nsamples, 1)`
-        "check_requires_y_none",  # error message differs
-        "check_valid_tag_types",  # EBM uses custom tag classes
         "check_n_features_in_after_fitting",  # EBM is more permissive and allows more features
         "check_complex_data",  # EBM does not support complex numbers
+        "check_estimators_nan_inf",  # DP-EBMs reject NaN in fit but predict uses missing bin like non-DP EBMs
     }
 
 
@@ -928,8 +927,8 @@ def skip_sklearn() -> set:
     [
         ExplainableBoostingClassifier(**_fast_kwds),
         ExplainableBoostingRegressor(**_fast_kwds),
-        # DPExplainableBoostingClassifier(**_fast_kwds),
-        # DPExplainableBoostingRegressor(**_fast_kwds),
+        DPExplainableBoostingClassifier(**_fast_kwds),
+        DPExplainableBoostingRegressor(**_fast_kwds),
     ]
 )
 def test_sklearn_estimator(estimator, check, skip_sklearn):

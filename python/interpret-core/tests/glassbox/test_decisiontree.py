@@ -6,6 +6,9 @@ from interpret.glassbox import ClassificationTree, RegressionTree
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.tree import DecisionTreeClassifier as SKDT
 from sklearn.tree import DecisionTreeRegressor as SKRT
+from sklearn.utils import estimator_checks
+import pytest
+import warnings
 
 
 def test_rt():
@@ -70,3 +73,43 @@ def test_dt():
     global_expl = our_dt.explain_global()
     global_viz = global_expl.visualize()
     assert global_viz is not None
+
+
+@pytest.fixture
+def skip_sklearn() -> set:
+    """Test which we do not adhere to."""
+    # TODO: whittle these down to the minimum
+    return {
+        "check_do_not_raise_errors_in_init_or_set_params",  # kwargs not a settable param
+        "check_fit1d",  # we accept 1D X as a single-feature input
+        "check_fit2d_predict1d",  # we accept 1D X at predict time
+        "check_supervised_y_2d",  # we don't emit DataConversionWarning for 2D y
+        "check_no_attributes_set_in_init",  # we store **kwargs for forwarding to sklearn
+        "check_sample_weight_equivalence_on_dense_data",  # algorithmic difference
+        "check_sample_weight_equivalence_on_sparse_data",  # algorithmic difference
+        "check_classifiers_one_label",  # returns string class labels
+        "check_classifiers_regression_target",  # we don't reject continuous targets
+    }
+
+
+@estimator_checks.parametrize_with_checks(
+    [
+        RegressionTree(),
+        ClassificationTree(),
+    ]
+)
+def test_sklearn_estimator(estimator, check, skip_sklearn):
+    if check.func.__name__ in skip_sklearn:
+        pytest.skip("Deliberate deviation from scikit-learn.")
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            "Detected multiclass problem. Forcing interactions to 0.",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            "Casting complex values to real discards the imaginary part",
+            category=np.exceptions.ComplexWarning,
+        )
+        check(estimator)

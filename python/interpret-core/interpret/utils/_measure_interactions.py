@@ -15,7 +15,6 @@ from itertools import combinations, count
 from .. import develop
 import numpy as np
 from ._scikit import _is_classifier, _is_regressor
-from sklearn.utils.multiclass import type_of_target
 
 from ._clean_simple import (
     clean_dimensions,
@@ -166,6 +165,12 @@ def measure_interactions(
         except Exception:  # object can throw anything in their __float__ function
             y_discard = y.astype(dtype=np.str_, copy=False)
 
+        try:
+            from sklearn.utils.multiclass import type_of_target
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for automatic target type detection. Install it with: pip install scikit-learn"
+            )
         target_type = type_of_target(y_discard)
         if target_type == "continuous":
             n_classes = Native.Task_Regression

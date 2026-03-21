@@ -52,7 +52,7 @@ def clean_dimensions(data, param_name):
     # called under: fit
 
     if data is None:
-        msg = f"{param_name} cannot be None"
+        msg = f"requires {param_name} to be passed, but the target {param_name} is None"
         _log.error(msg)
         raise ValueError(msg)
 

@@ -8,7 +8,6 @@ import os
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import nullcontext
 from copy import deepcopy
-from dataclasses import dataclass, field
 from functools import partial
 from itertools import combinations, count
 from math import ceil, isnan
@@ -19,13 +18,14 @@ from warnings import warn
 
 import numpy as np
 from joblib import Parallel, delayed
-from sklearn.base import (
-    BaseEstimator,
-    ClassifierMixin,
-    RegressorMixin,
+from ...utils._scikit import (
+    _BaseEstimator,
+    _ClassifierMixin,
+    _RegressorMixin,
+    _NotFittedError,
+    _is_classifier,
+    _is_regressor,
 )
-from ...utils._scikit import _is_classifier, _is_regressor, _NotFittedError
-from sklearn.isotonic import IsotonicRegression
 
 from ... import develop
 from ...api.base import ExplainerMixin
@@ -280,57 +280,6 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
-@dataclass
-class EbmInputTags:
-    one_d_array: bool = False
-    two_d_array: bool = True
-    three_d_array: bool = False
-    sparse: bool = True
-    categorical: bool = True
-    string: bool = True
-    dict: bool = True
-    positive_only: bool = False
-    allow_nan: bool = True
-    pairwise: bool = False
-
-
-@dataclass
-class EbmTargetTags:
-    required: bool = True
-    one_d_labels: bool = False
-    two_d_labels: bool = False
-    positive_only: bool = False
-    multi_output: bool = False
-    single_output: bool = True
-
-
-@dataclass
-class EbmClassifierTags:
-    poor_score: bool = False
-    multi_class: bool = True
-    multi_label: bool = False
-
-
-@dataclass
-class EbmRegressorTags:
-    poor_score: bool = False
-
-
-@dataclass
-class EbmTags:
-    estimator_type: Optional[str] = None
-    target_tags: EbmTargetTags = field(default_factory=EbmTargetTags)
-    transformer_tags: None = None
-    classifier_tags: Optional[EbmClassifierTags] = None
-    regressor_tags: Optional[EbmRegressorTags] = None
-    array_api_support: bool = True
-    no_validation: bool = False
-    non_deterministic: bool = False
-    requires_fit: bool = True
-    _skip_test: bool = False
-    input_tags: EbmInputTags = field(default_factory=EbmInputTags)
-
-
 def clean_interactions(interactions, n_features_in):
     if interactions is None:
         return 0
@@ -385,7 +334,7 @@ def clean_interactions(interactions, n_features_in):
         return interactions
 
 
-class EBMModel(ExplainerMixin, BaseEstimator):
+class EBMModel(ExplainerMixin, _BaseEstimator):
     """Base class for all EBMs."""
 
     def __init__(
@@ -675,6 +624,11 @@ class EBMModel(ExplainerMixin, BaseEstimator):
 
         # TODO: check the other inputs for common mistakes here
 
+        if y is None:
+            raise ValueError(
+                "This estimator requires y to be passed, but the target y is None."
+            )
+
         y = clean_dimensions(y, "y")
         if y.ndim != 1:
             msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
@@ -711,6 +665,8 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
 
+        is_differential_privacy = is_private(self)
+
         if Native.Task_GeneralClassification <= n_classes:
             y = typify_classification(y)
             # use pure alphabetical ordering for the classes.  It's tempting to sort by frequency first
@@ -718,6 +674,13 @@ class EBMModel(ExplainerMixin, BaseEstimator):
             # in two separate runs, which would flip the ordering of the classes within our score tensors.
             classes, y = np.unique(y, return_inverse=True)
             n_classes = len(classes)
+
+            if is_differential_privacy and n_classes > 2:
+                raise ValueError(
+                    "Only binary classification is supported. The type of the target "
+                    "is multiclass."
+                )
+
             if objective is None:
                 objective = "log_loss"
         elif n_classes == Native.Task_Regression:
@@ -743,8 +706,6 @@ class EBMModel(ExplainerMixin, BaseEstimator):
                 _log.error(msg)
                 raise ValueError(msg)
             sample_weight = sample_weight.astype(np.float64, copy=False)
-
-        is_differential_privacy = is_private(self)
 
         flags = (
             Native.LinkFlags_DifferentialPrivacy
@@ -2614,6 +2575,12 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         original_mean = np.average(y, weights=weights)
 
         # Fit isotonic regression weighted by training data bin counts
+        try:
+            from sklearn.isotonic import IsotonicRegression
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for monotonize. Install it with: pip install scikit-learn"
+            )
         ir = IsotonicRegression(increasing=increasing)
         y = ir.fit_transform(x, y, sample_weight=weights)
 
@@ -3035,26 +3002,18 @@ class EBMModel(ExplainerMixin, BaseEstimator):
         _log.error(msg)
         raise ValueError(msg)
 
-    def _more_tags(self):
-        return {
-            "allow_nan": True,
-            "requires_y": True,
-            "array_api_support": True,
-            "X_types": [
-                "2darray",
-                "string",
-                "sparse",
-                "categorical",
-                "dict",
-                "1dlabels",
-            ],
-        }
-
     def __sklearn_tags__(self):
-        return EbmTags()
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse = True
+        tags.input_tags.categorical = True
+        tags.input_tags.string = True
+        tags.input_tags.dict = True
+        tags.input_tags.allow_nan = True
+        tags.target_tags.required = True
+        return tags
 
 
-class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
+class ExplainableBoostingClassifier(_ClassifierMixin, EBMModel):
     r"""An Explainable Boosting Classifier.
 
     Parameters
@@ -3569,14 +3528,8 @@ class ExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
         return self
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.estimator_type = "classifier"
-        tags.classifier_tags = EbmClassifierTags()
-        return tags
 
-
-class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
+class ExplainableBoostingRegressor(_RegressorMixin, EBMModel):
     r"""An Explainable Boosting Regressor.
 
     Parameters
@@ -3956,14 +3909,8 @@ class ExplainableBoostingRegressor(RegressorMixin, EBMModel):
             self.link_param_,
         )
 
-    def __sklearn_tags__(self):
-        tags = super().__sklearn_tags__()
-        tags.estimator_type = "regressor"
-        tags.regressor_tags = EbmRegressorTags()
-        return tags
 
-
-class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
+class DPExplainableBoostingClassifier(_ClassifierMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Classifier.
 
     Note that many arguments are defaulted differently than regular EBMs.
@@ -4297,12 +4244,12 @@ class DPExplainableBoostingClassifier(ClassifierMixin, EBMModel):
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
-        tags.estimator_type = "classifier"
-        tags.classifier_tags = EbmClassifierTags()
+        tags.input_tags.allow_nan = False
+        tags.classifier_tags.multi_class = False
         return tags
 
 
-class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
+class DPExplainableBoostingRegressor(_RegressorMixin, EBMModel):
     r"""Differentially Private Explainable Boosting Regressor.
 
     Note that many arguments are defaulted differently than regular EBMs.
@@ -4570,6 +4517,6 @@ class DPExplainableBoostingRegressor(RegressorMixin, EBMModel):
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
-        tags.estimator_type = "regressor"
-        tags.regressor_tags = EbmRegressorTags()
+        tags.input_tags.allow_nan = False
+        tags.regressor_tags.poor_score = True
         return tags
