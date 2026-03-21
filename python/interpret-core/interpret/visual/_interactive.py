@@ -124,11 +124,12 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
 
 def _get_integer_key(key, explanation):
     if key is not None and not isinstance(key, int):
-        series = explanation.selector[explanation.selector.columns[0]]
-        if key not in series.values:  # pragma: no cover
-            msg = f"Key '{key}' not found in explanation's selector. Available keys: {list(series.values)}"
+        first_col = explanation.selector["columns"][0]
+        col_values = [row[first_col] for row in explanation.selector["data"]]
+        if key not in col_values:  # pragma: no cover
+            msg = f"Key '{key}' not found in explanation's selector. Available keys: {col_values}"
             raise ValueError(msg)
-        key = series[series == key].index[0]
+        key = col_values.index(key)
 
     return key
 

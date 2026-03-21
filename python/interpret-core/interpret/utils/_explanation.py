@@ -1,10 +1,23 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import math
 from itertools import count
 
 import numpy as np
-import pandas as pd
+
+
+def _clean_selector(selector, n):
+    """Convert numpy scalars to Python types and optionally round floats."""
+    for row in selector["data"]:
+        for col in selector["columns"]:
+            val = row[col]
+            if isinstance(val, np.generic):
+                val = val.item()
+                row[col] = val
+            if n is not None and isinstance(val, float) and not math.isnan(val):
+                row[col] = round(val, n)
+    return selector
 
 
 def gen_perf_dicts(scores, y, is_classification, classes=None):
@@ -86,7 +99,6 @@ def gen_global_selector(
     importance_scores,
     round=3,
 ):
-    # TODO: we should not use Pandas in a public interface like this
     records = []
     for term_idx in range(len(term_names)):
         record = {}
@@ -118,11 +130,9 @@ def gen_global_selector(
 
     # columns = ["Name", "Type", "# Unique", "% Non-zero", "Importance"]
     columns = ["Name", "Type", "# Unique", "% Non-zero"]
-    df = pd.DataFrame.from_records(records, columns=columns)
-    if round is not None:
-        return df.round(round)
-    # pragma: no cover
-    return df
+    selector = {"columns": columns, "data": records}
+    _clean_selector(selector, round)
+    return selector
 
 
 def gen_local_selector(data_dicts, round=3, is_classification=True):
@@ -131,13 +141,16 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
     for data_dict in data_dicts:
         perf_dict = data_dict["perf"]
         record = {}
-        record["PrScore"] = perf_dict["predicted_score"]
-        record["AcScore"] = perf_dict["actual_score"]
-
-        record["Predicted"] = perf_dict["predicted"]
         record["Actual"] = perf_dict["actual"]
+        record["Predicted"] = perf_dict["predicted"]
 
-        record["Resid"] = record["AcScore"] - record["PrScore"]
+        if is_classification:
+            record["PrScore"] = perf_dict["predicted_score"]
+            record["AcScore"] = perf_dict["actual_score"]
+            record["Resid"] = record["AcScore"] - record["PrScore"]
+        else:
+            record["Resid"] = record["Actual"] - record["Predicted"]
+
         record["AbsResid"] = abs(record["Resid"])
 
         records.append(record)
@@ -147,11 +160,9 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
     else:
         columns = ["Actual", "Predicted", "Resid", "AbsResid"]
 
-    df = pd.DataFrame.from_records(records, columns=columns)
-    if round is not None:
-        return df.round(round)
-    # pragma: no cover
-    return df
+    selector = {"columns": columns, "data": records}
+    _clean_selector(selector, round)
+    return selector
 
 
 def gen_name_from_class(obj):

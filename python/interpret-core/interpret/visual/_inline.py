@@ -115,12 +115,9 @@ def _build_viz_obj(explanation, detected_envs):
     else:
         specific = [
             _build_viz_figure(explanation.visualize(i), detected_envs)
-            for i in range(len(explanation.selector))
+            for i in range(len(explanation.selector["data"]))
         ]
-        selector_obj = {
-            "columns": list(explanation.selector.columns),
-            "data": explanation.selector.to_dict("records"),
-        }
+        selector_obj = explanation.selector
 
     return {
         "name": explanation.name,

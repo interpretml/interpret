@@ -48,7 +48,7 @@ class RulesExplanation(ExplanationMixin):
             feature_names: List of feature names.
             feature_types: List of feature types.
             name: User-defined name of explanation.
-            selector: A dataframe whose indices correspond to explanation entries.
+            selector: A dict with "columns" and "data" keys whose entries correspond to explanation entries.
         """
         self.explanation_type = explanation_type
         self._internal_obj = internal_obj

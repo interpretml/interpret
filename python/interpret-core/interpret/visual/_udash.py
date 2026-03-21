@@ -109,12 +109,12 @@ def generate_app_mini(
 
     select_css = ""
     if has_selector:
-        for i in range(len(selector)):
+        columns = selector["columns"]
+        data = selector["data"]
+        for i in range(len(data)):
             col_strs = []
-            for col_idx in range(min(3, len(selector.columns))):
-                col_strs.append(
-                    f"{selector.columns[col_idx]} ({selector.iloc[i, col_idx]})"
-                )
+            for col_idx in range(min(3, len(columns))):
+                col_strs.append(f"{columns[col_idx]} ({data[i][columns[col_idx]]})")
 
             label_str = " | ".join(col_strs)
             label_str = f"{i} : {label_str}"
@@ -557,13 +557,13 @@ The explanations available are split into tabs, each covering an aspect of the p
 
                 df = ctx[model_idx][1]
                 if df is not None:
-                    records = df.to_dict("records")
+                    records = df["data"]
                     if is_shared is not None:
                         component = html.Div()
                     else:
                         columns = [
                             {"name": col, "id": col}
-                            for _, col in enumerate(df.columns)
+                            for col in df["columns"]
                             if col != "id"
                         ]
                         instance_table = dt.DataTable(
@@ -745,12 +745,8 @@ The explanations available are split into tabs, each covering an aspect of the p
         ctx = app.ctx
         df = ctx[model_idx][1]
         if df is not None:
-            records = df.to_dict("records")
-            columns = [
-                {"name": col, "id": col}
-                for _, col in enumerate(df.columns)
-                if col != "id"
-            ]
+            records = df["data"]
+            columns = [{"name": col, "id": col} for col in df["columns"] if col != "id"]
             instance_table = dt.DataTable(
                 data=records,
                 columns=columns,
@@ -838,6 +834,23 @@ The explanations available are split into tabs, each covering an aspect of the p
     return app
 
 
+def _selectors_equal(a, b):
+    if a is b:
+        return True
+    if a is None or b is None:
+        return False
+    if a["columns"] != b["columns"]:
+        return False
+    if len(a["data"]) != len(b["data"]):
+        return False
+    for r1, r2 in zip(a["data"], b["data"]):
+        for col in a["columns"]:
+            v1, v2 = r1[col], r2[col]
+            if v1 != v2 and not (v1 != v1 and v2 != v2):
+                return False
+    return True
+
+
 def _expand_ctx_item(item):
     if isinstance(item, tuple):
         explanation = item[0]
@@ -847,14 +860,13 @@ def _expand_ctx_item(item):
         selector = explanation.selector
 
     if selector is not None:
-        df = selector.copy()
-        df = df.reset_index(drop=True)
-        df["id"] = df.index
-        df *= 1
-    else:
-        df = None
+        # Add "id" field used by Dash DataTable row selection callbacks.
+        selector = {
+            "columns": selector["columns"],
+            "data": [{**row, "id": i} for i, row in enumerate(selector["data"])],
+        }
 
-    return (explanation, df)
+    return (explanation, selector)
 
 
 def generate_app(
@@ -899,7 +911,7 @@ def generate_app(
             if first_dfs.get(expl_type) is None:
                 first_dfs[expl_type] = df
 
-            if df is None or not df.equals(first_dfs[expl_type]):
+            if not _selectors_equal(df, first_dfs[expl_type]):
                 shared_frames[expl_type] = False
     elif share_tables is True:
         shared_frames = {supported_type: True for supported_type in supported_types}

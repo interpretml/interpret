@@ -275,7 +275,8 @@ def smoke_test_explanations(global_exp, local_exp, port):
     show(local_exp)
 
     # Check all features for global (including interactions).
-    for selector_key in global_exp.selector[global_exp.selector.columns[0]]:
+    first_col = global_exp.selector["columns"][0]
+    for selector_key in (row[first_col] for row in global_exp.selector["data"]):
         preserve(global_exp, selector_key)
 
     shutdown_show_server()

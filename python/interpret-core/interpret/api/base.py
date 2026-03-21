@@ -41,8 +41,9 @@ class ExplanationMixin(abc.ABC):
             Should be one of "perf", "data", "local", "global".
         name: A string that denotes the name of the explanation
             for display purposes.
-        selector: An optional dataframe that describes the data.
-            Each row of the dataframe corresponds with a respective data item.
+        selector: An optional dict with "columns" (list of str) and
+            "data" (list of dicts) that describes the data.
+            Each entry in "data" corresponds with a respective data item.
     """
 
     @property
