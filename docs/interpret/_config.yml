@@ -20,9 +20,11 @@ sphinx:
     autoclass_content: 'both'
     autodoc_typehints: 'none'
     # Suppress warnings from sklearn inherited docstrings that reference
-    # labels (accuracy_score, r2_score) defined in sklearn's own docs.
+    # labels (accuracy_score, r2_score) and glossary terms (meta-estimator)
+    # defined in sklearn's own docs.
     suppress_warnings:
       - 'ref.ref'
+      - 'ref.term'
   extra_extensions:
     - 'sphinx.ext.autodoc'
     - 'sphinx.ext.napoleon'
