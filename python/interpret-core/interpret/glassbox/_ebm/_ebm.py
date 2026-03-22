@@ -28,7 +28,7 @@ from ...utils._scikit import (
 )
 
 from ... import develop
-from ...api.base import ExplainerMixin
+from ...api.base import LocalExplainerMixin, GlobalExplainerMixin
 from ...api.templates import FeatureValueExplanation
 from ...utils._clean_simple import (
     clean_dimensions,
@@ -220,9 +220,7 @@ class EBMExplanation(FeatureValueExplanation):
             )
 
             return figure
-        msg = (
-            f"`explainer_type has to be 'global' or 'local', got {self.explainer_type}."
-        )
+        msg = f"`explanation_type has to be 'global' or 'local', got {self.explanation_type}."
         raise NotImplementedError(msg)
 
 
@@ -315,11 +313,8 @@ def clean_interactions(interactions, n_features_in):
         return interactions
 
 
-class BaseEBM(ExplainerMixin, _BaseEstimator):
+class BaseEBM(LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator):
     """Base class for all EBMs.  Do not instantiate directly."""
-
-    available_explanations = ("global", "local")
-    explainer_type = "model"
 
     n_features_in_: int
     term_names_: list[str]

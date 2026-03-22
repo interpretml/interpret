@@ -18,7 +18,7 @@ except ImportError:
 
 
 from ..utils._scikit import _ClassifierMixin, _RegressorMixin
-from ..api.base import ExplainerMixin
+from ..api.base import LocalExplainerMixin, GlobalExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions
 from ..utils._explanation import (
@@ -45,11 +45,10 @@ except ImportError:
             )
 
 
-class APLRRegressor(_RegressorMixin, ExplainerMixin, APLRRegressorNative):
+class APLRRegressor(
+    _RegressorMixin, LocalExplainerMixin, GlobalExplainerMixin, APLRRegressorNative
+):
     """APLR Regressor."""
-
-    available_explanations = ["local", "global"]
-    explainer_type = "model"
 
     def __init__(self, **kwargs):
         """Initializes class.
@@ -341,11 +340,10 @@ except ImportError:
             )
 
 
-class APLRClassifier(_ClassifierMixin, ExplainerMixin, APLRClassifierNative):
+class APLRClassifier(
+    _ClassifierMixin, LocalExplainerMixin, GlobalExplainerMixin, APLRClassifierNative
+):
     """APLR Classifier."""
-
-    available_explanations = ["local", "global"]
-    explainer_type = "model"
 
     def __init__(self, **kwargs):
         """Initializes class.

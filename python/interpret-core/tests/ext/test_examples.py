@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 
-from interpret.api.base import ExplainerMixin
 from interpret.ext.extension import (
     _is_valid_blackbox_explainer,
     _is_valid_data_explainer,
@@ -29,7 +28,7 @@ def test_invalid_provider():
 
 
 def test_invalid_data_explainer():
-    class InvalidDataExplainer(ExplainerMixin):
+    class InvalidDataExplainer:
         explainer_type = "data"
         available_explanations = ["local"]
 
@@ -39,7 +38,7 @@ def test_invalid_data_explainer():
 
 
 def test_invalid_perf_explainer():
-    class InvalidPerfExplainer(ExplainerMixin):
+    class InvalidPerfExplainer:
         explainer_type = "perf"
         available_explanations = ["local"]
 
@@ -49,7 +48,7 @@ def test_invalid_perf_explainer():
 
 
 def test_invalid_greybox_explainer():
-    class InvalidGreyboxExplainer(ExplainerMixin):
+    class InvalidGreyboxExplainer:
         explainer_type = "specific"
         available_explanations = ["local"]
 
@@ -59,7 +58,7 @@ def test_invalid_greybox_explainer():
 
 
 def test_invalid_glassbox_explainer():
-    class InvalidGlassboxExplainer(ExplainerMixin):
+    class InvalidGlassboxExplainer:
         explainer_type = "model"
         available_explanations = ["local"]
 
@@ -69,7 +68,7 @@ def test_invalid_glassbox_explainer():
 
 def test_invalid_blackbox_explainer():
     # NOTE: Available method claims local exists, but there is not respective method.
-    class InvalidBlackboxExplainer(ExplainerMixin):
+    class InvalidBlackboxExplainer:
         explainer_type = "blackbox"
         available_explanations = ["local"]
 

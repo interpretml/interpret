@@ -2,20 +2,17 @@
 # Distributed under the MIT software license
 import numpy as np
 
-from ..api.base import ExplainerMixin
+from ..api.base import LocalExplainerMixin
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
-class ShapKernel(ExplainerMixin):
+class ShapKernel(LocalExplainerMixin):
     """Exposes SHAP kernel explainer from shap package, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
-
-    available_explanations = ["local"]
-    explainer_type = "blackbox"
 
     def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.

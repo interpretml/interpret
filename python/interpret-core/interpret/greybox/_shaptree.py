@@ -3,20 +3,17 @@
 
 import numpy as np
 
-from interpret.api.base import ExplainerMixin
+from interpret.api.base import LocalExplainerMixin
 
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
 
 
-class ShapTree(ExplainerMixin):
+class ShapTree(LocalExplainerMixin):
     """Exposes tree specific SHAP approximation, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """
-
-    available_explanations = ["local"]
-    explainer_type = "specific"
 
     def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.

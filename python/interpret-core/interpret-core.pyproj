@@ -138,7 +138,6 @@
     <Compile Include="tests\provider\__init__.py" />
     <Compile Include="tests\test_develop.py" />
     <Compile Include="tests\test_example_notebooks.py" />
-    <Compile Include="tests\test_explainers.py" />
     <Compile Include="tests\test_ext.py" />
     <Compile Include="tests\test_extension_utils.py" />
     <Compile Include="tests\test_mli_interop.py" />

@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import ExplainerMixin
+from ..api.base import LocalExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
@@ -13,14 +13,11 @@ from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: Make kwargs explicit.
-class LimeTabular(ExplainerMixin):
+class LimeTabular(LocalExplainerMixin):
     """Exposes LIME tabular explainer from lime package, in interpret API form.
     If using this please cite the original authors as can be found here:
     https://github.com/marcotcr/lime/blob/master/citation.bib
     """
-
-    available_explanations = ["local"]
-    explainer_type = "blackbox"
 
     def __init__(self, model, data, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.

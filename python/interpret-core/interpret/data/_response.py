@@ -3,18 +3,15 @@
 
 import numpy as np
 
-from ..api.base import ExplainerMixin, ExplanationMixin
+from ..api.base import DataExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
 
 
-class Marginal(ExplainerMixin):
+class Marginal(DataExplainerMixin):
     """Provides a marginal plot for provided data."""
-
-    available_explanations = ["data"]
-    explainer_type = "data"
 
     def __init__(
         self,
@@ -282,11 +279,8 @@ class MarginalExplanation(ExplanationMixin):
         return go.Figure(data=data, layout=layout)
 
 
-class ClassHistogram(ExplainerMixin):
+class ClassHistogram(DataExplainerMixin):
     """Provides histogram visualizations for classification problems."""
-
-    available_explanations = ["data"]
-    explainer_type = "data"
 
     def __init__(self, feature_names=None, feature_types=None):
         """Initializes class.

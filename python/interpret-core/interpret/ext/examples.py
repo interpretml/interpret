@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.api.base import ExplainerMixin, ExplanationMixin
+from interpret.api.base import ExplanationMixin
 
 
 class ExampleExplanation(ExplanationMixin):
@@ -17,7 +17,7 @@ class ExampleExplanation(ExplanationMixin):
         return None
 
 
-class ExampleDataExplainer(ExplainerMixin):
+class ExampleDataExplainer:
     available_explanations = ["data"]
     explainer_type = "data"
 
@@ -28,7 +28,7 @@ class ExampleDataExplainer(ExplainerMixin):
         return ExampleExplanation()
 
 
-class ExamplePerfExplainer(ExplainerMixin):
+class ExamplePerfExplainer:
     available_explanations = ["perf"]
     explainer_type = "perf"
 
@@ -39,7 +39,7 @@ class ExamplePerfExplainer(ExplainerMixin):
         return ExampleExplanation()
 
 
-class ExampleGlassboxExplainer(ExplainerMixin):
+class ExampleGlassboxExplainer:
     available_explanations = ["local"]
     explainer_type = "model"
 
@@ -56,7 +56,7 @@ class ExampleGlassboxExplainer(ExplainerMixin):
         return ExampleExplanation()
 
 
-class ExampleGreyboxExplainer(ExplainerMixin):
+class ExampleGreyboxExplainer:
     available_explanations = ["local"]
     explainer_type = "specific"
 
@@ -67,7 +67,7 @@ class ExampleGreyboxExplainer(ExplainerMixin):
         return ExampleExplanation()
 
 
-class ExampleBlackboxExplainer(ExplainerMixin):
+class ExampleBlackboxExplainer:
     available_explanations = ["local"]
     explainer_type = "blackbox"
 

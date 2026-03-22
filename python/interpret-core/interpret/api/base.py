@@ -8,30 +8,39 @@ import abc
 #      there
 
 
-# TODO v.3 PK Possibly rename explainer types to (blackbox, glassbox, greybox)
-class ExplainerMixin(abc.ABC):
-    """An object that computes explanations.
-        This is a contract required for InterpretML.
+class LocalExplainerMixin(metaclass=abc.ABCMeta):
+    """Mixin for explainers that provide local explanations."""
 
-    Attributes:
-        available_explanations: A list of strings subsetting the following
-            - "perf", "data", "local", "global".
-        explainer_type: A string that is one of the following
-            - "blackbox", "model", "specific", "data", "perf".
-    """
-
-    @property
     @abc.abstractmethod
-    def available_explanations(self):
-        pass  # pragma: no cover
-
-    @property
-    @abc.abstractmethod
-    def explainer_type(self):
+    def explain_local(self, X, y=None, name=None):
         pass  # pragma: no cover
 
 
-class ExplanationMixin(abc.ABC):
+class GlobalExplainerMixin(metaclass=abc.ABCMeta):
+    """Mixin for explainers that provide global explanations."""
+
+    @abc.abstractmethod
+    def explain_global(self, name=None):
+        pass  # pragma: no cover
+
+
+class DataExplainerMixin(metaclass=abc.ABCMeta):
+    """Mixin for explainers that provide data explanations."""
+
+    @abc.abstractmethod
+    def explain_data(self, X, y, name=None):
+        pass  # pragma: no cover
+
+
+class PerfExplainerMixin(metaclass=abc.ABCMeta):
+    """Mixin for explainers that provide performance explanations."""
+
+    @abc.abstractmethod
+    def explain_perf(self, X, y, name=None):
+        pass  # pragma: no cover
+
+
+class ExplanationMixin(metaclass=abc.ABCMeta):
     """The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 

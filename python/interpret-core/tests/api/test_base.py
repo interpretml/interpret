@@ -2,28 +2,7 @@
 # Distributed under the MIT software license
 
 import pytest
-from interpret.api.base import ExplainerMixin, ExplanationMixin
-
-
-def test_that_explainer_throws_exceptions_for_incomplete():
-    class IncompleteExplainer(ExplainerMixin):
-        pass
-
-    with pytest.raises(Exception):
-        _ = IncompleteExplainer()
-
-
-def test_that_explainer_works_for_complete():
-    class CompleteExplainer(ExplainerMixin):
-        available_explanations = ["performance"]
-        explainer_type = "blackbox"
-
-    try:
-        explainer = CompleteExplainer()
-        assert explainer.available_explanations == ["performance"]
-        assert explainer.explainer_type == "blackbox"
-    except Exception:
-        pytest.fail("Unexpected exception raised.")
+from interpret.api.base import ExplanationMixin
 
 
 def test_that_explanation_throws_exceptions_for_incomplete():

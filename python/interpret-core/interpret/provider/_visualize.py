@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
-from abc import ABC, abstractmethod
+import abc
 
 from .._version import __version__
 from ._environment import ENV_DETECTED, EnvironmentDetector, is_cloud_env
@@ -20,8 +20,8 @@ JS_URL = f"https://unpkg.com/@interpretml/interpret-inline@{__version__}/dist/in
 _log = logging.getLogger(__name__)
 
 
-class VisualizeProvider(ABC):
-    @abstractmethod
+class VisualizeProvider(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
     def render(self, explanation, key=-1, **kwargs):
         pass  # pragma: no cover
 

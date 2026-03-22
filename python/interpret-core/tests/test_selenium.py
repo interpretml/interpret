@@ -4,8 +4,13 @@ from copy import deepcopy
 
 import pytest
 
-# from interpret.blackbox import PermutationImportance
 from interpret import set_show_addr, show_link, shutdown_show_server
+from interpret.api.base import (
+    DataExplainerMixin,
+    GlobalExplainerMixin,
+    LocalExplainerMixin,
+    PerfExplainerMixin,
+)
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .tutils import get_all_explainers, synthetic_classification
@@ -28,51 +33,30 @@ def all_explanations():
 
     explanations = []
     for explainer_class, is_classification in all_explainers:
-        # if explainer_class == PermutationImportance:
-        #     explainer = explainer_class(binary_model, data["train"]["X"], data["train"]["y"])
-        if explainer_class.explainer_type == "blackbox":
-            if is_classification:
-                explainer = explainer_class(binary_model, data["train"]["X"])
-            else:
-                explainer = explainer_class(regression_model, data["train"]["X"])
-        elif explainer_class.explainer_type == "model":
+        model = binary_model if is_classification else regression_model
+
+        if hasattr(explainer_class, "fit"):
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
-        elif explainer_class.explainer_type == "specific":
-            if is_classification:
-                explainer = explainer_class(binary_model, data["train"]["X"])
-            else:
-                explainer = explainer_class(regression_model, data["train"]["X"])
-        elif explainer_class.explainer_type == "data":
+        elif issubclass(explainer_class, DataExplainerMixin):
             explainer = explainer_class()
-        elif explainer_class.explainer_type == "perf":
-            if is_classification:
-                explainer = explainer_class(binary_model)
-            else:
-                explainer = explainer_class(regression_model)
+        elif issubclass(explainer_class, PerfExplainerMixin):
+            explainer = explainer_class(model)
         else:
-            msg = "Not supported explainer type."
-            raise Exception(msg)
+            explainer = explainer_class(model, data["train"]["X"])
 
-        if "local" in explainer.available_explanations:
-            with warnings.catch_warnings():
-                if type(explainer).__name__ == "TreeInterpreter":
-                    warnings.filterwarnings(
-                        "ignore",
-                        "Conversion of an array with ndim > 0 to a scalar is deprecated*",
-                    )
-
-                explanation = explainer.explain_local(
-                    data["test"]["X"].head(), data["test"]["y"].head()
-                )
+        if isinstance(explainer, LocalExplainerMixin):
+            explanation = explainer.explain_local(
+                data["test"]["X"].head(), data["test"]["y"].head()
+            )
             explanations.append(explanation)
-        if "global" in explainer.available_explanations:
+        if isinstance(explainer, GlobalExplainerMixin):
             explanation = explainer.explain_global()
             explanations.append(explanation)
-        if "data" in explainer.available_explanations:
+        if isinstance(explainer, DataExplainerMixin):
             explanation = explainer.explain_data(data["train"]["X"], data["train"]["y"])
             explanations.append(explanation)
-        if "perf" in explainer.available_explanations:
+        if isinstance(explainer, PerfExplainerMixin):
             explanation = explainer.explain_perf(data["test"]["X"], data["test"]["y"])
             explanations.append(explanation)
 

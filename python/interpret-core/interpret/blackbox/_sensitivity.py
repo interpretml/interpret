@@ -1,11 +1,12 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from abc import ABC, abstractmethod
+import abc
+
 
 import numpy as np
 
-from ..api.base import ExplainerMixin
+from ..api.base import GlobalExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
@@ -14,8 +15,8 @@ from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: move this to a more general location where other blackbox methods can access it
-class SamplerMixin(ABC):
-    @abstractmethod
+class SamplerMixin(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
     def sample(self, data, feature_names, feature_types):
         # if the blackbox or greybox underlying method accepts a sampling
         # function or abstract class they may want to pass us additional
@@ -41,16 +42,13 @@ class MorrisSampler(SamplerMixin):
         )
 
 
-class MorrisSensitivity(ExplainerMixin):
+class MorrisSensitivity(GlobalExplainerMixin):
     """Method of Morris for analyzing blackbox systems.
     If using this please cite the package owners as can be found here: https://github.com/SALib/SALib
 
     Morris, Max D. "Factorial sampling plans for preliminary computational experiments."
     Technometrics 33.2 (1991): 161-174.
     """
-
-    available_explanations = ["global"]
-    explainer_type = "blackbox"
 
     def __init__(
         self,

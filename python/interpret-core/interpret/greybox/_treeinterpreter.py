@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import ExplainerMixin
+from ..api.base import LocalExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
@@ -12,7 +12,7 @@ from ..utils._unify_data import unify_data
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
-class TreeInterpreter(ExplainerMixin):
+class TreeInterpreter(LocalExplainerMixin):
     """Provides 'Tree Explainer' algorithm for specific sklearn trees.
 
     Wrapper around andosa/treeinterpreter github package.
@@ -31,9 +31,6 @@ class TreeInterpreter(ExplainerMixin):
     - ExtraTreesClassifier
 
     """
-
-    available_explanations = ["local"]
-    explainer_type = "specific"
 
     def __init__(
         self,

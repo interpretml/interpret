@@ -9,7 +9,7 @@
 #
 # from ..utils import gen_name_from_class, gen_local_selector
 #
-# from interpret.api.base import ExplainerMixin
+# from interpret.api.base import GlobalExplainerMixin
 # from interpret.api.templates import FeatureValueExplanation
 # from interpret.utils import unify_predict_fn, unify_data
 # from interpret.utils import gen_name_from_class, gen_global_selector
@@ -46,7 +46,7 @@
 #                          'recall_score'}
 #
 #
-# class PermutationImportance(ExplainerMixin):
+# class PermutationImportance(GlobalExplainerMixin):
 #     available_explanations = ["global"]
 #     explainer_type = "blackbox"
 #

@@ -12,7 +12,7 @@ from ..utils._scikit import (
     _is_classifier,
 )
 
-from ..api.base import ExplainerMixin
+from ..api.base import LocalExplainerMixin, GlobalExplainerMixin
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
@@ -25,7 +25,7 @@ from ..utils._explanation import (
 from ..utils._unify_data import unify_data
 
 
-class BaseLinear(ExplainerMixin, _BaseEstimator):
+class BaseLinear(LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator):
     """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -33,9 +33,6 @@ class BaseLinear(ExplainerMixin, _BaseEstimator):
     https://github.com/scikit-learn/scikit-learn
 
     """
-
-    available_explanations = ["local", "global"]
-    explainer_type = "model"
 
     def __init__(
         self, feature_names=None, feature_types=None, linear_class=None, **kwargs

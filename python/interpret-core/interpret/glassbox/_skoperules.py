@@ -10,7 +10,7 @@ import numpy as np
 
 from ..utils._scikit import _BaseEstimator, _ClassifierMixin, _NotFittedError
 
-from ..api.base import ExplainerMixin, ExplanationMixin
+from ..api.base import LocalExplainerMixin, GlobalExplainerMixin, ExplanationMixin
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
@@ -108,16 +108,15 @@ class RulesExplanation(ExplanationMixin):
         raise ValueError(msg)
 
 
-class DecisionListClassifier(_ClassifierMixin, ExplainerMixin, _BaseEstimator):
+class DecisionListClassifier(
+    _ClassifierMixin, LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator
+):
     """Decision List Classifier
 
     Currently a slight variant of SkopeRules from skope-rules.
     https://github.com/scikit-learn-contrib/skope-rules
 
     """
-
-    available_explanations = ["global", "local"]
-    explainer_type = "model"
 
     def __init__(self, feature_names=None, feature_types=None, **kwargs):
         """Initializes class.
