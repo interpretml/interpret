@@ -346,7 +346,7 @@ def to_jsonable(ebm, detail="all"):
     #           unmodified section at the bottom, which the diffing tool should easily identify and keep
     #           together as one block since diffing tools look for longest unmodified sections of text
     #        3) The edits in the MIDDLE, starting from the LAST edit to the FIRST edit chronologically.
-    #           If two models are derrived from the same initial model, then they will share a common initial
+    #           If two models are derived from the same initial model, then they will share a common initial
     #           block of text at the bottom of the file. If the two models share a few edits, then the shared edits
     #           will be at the bottom and will therefore form a larger block of unmodified text along with the
     #           initial model.  Since diff tools look for longest unmodified blocks, this will gobble up the initial

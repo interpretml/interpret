@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import LocalExplainerMixin
+from ..api.base import LocalExplainer
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
@@ -13,7 +13,7 @@ from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: Make kwargs explicit.
-class LimeTabular(LocalExplainerMixin):
+class LimeTabular(LocalExplainer):
     """Exposes LIME tabular explainer from lime package, in interpret API form.
     If using this please cite the original authors as can be found here:
     https://github.com/marcotcr/lime/blob/master/citation.bib

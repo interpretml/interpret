@@ -1,46 +1,46 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import abc
+from abc import abstractmethod, ABCMeta
 
 # TODO: instead of having interpret.api.base, it would probably be easier to just have a single base.py file
 #      in the root directory parallel to develop.py called base.py and also put the templates.py file contents in
 #      there
 
 
-class LocalExplainerMixin(metaclass=abc.ABCMeta):
-    """Mixin for explainers that provide local explanations."""
+class LocalExplainer(metaclass=ABCMeta):
+    """Abstract base for explainers that provide local explanations."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def explain_local(self, X, y=None, name=None):
         pass  # pragma: no cover
 
 
-class GlobalExplainerMixin(metaclass=abc.ABCMeta):
-    """Mixin for explainers that provide global explanations."""
+class GlobalExplainer(metaclass=ABCMeta):
+    """Abstract base for explainers that provide global explanations."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def explain_global(self, name=None):
         pass  # pragma: no cover
 
 
-class DataExplainerMixin(metaclass=abc.ABCMeta):
-    """Mixin for explainers that provide data explanations."""
+class DataExplainer(metaclass=ABCMeta):
+    """Abstract base for explainers that provide data explanations."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def explain_data(self, X, y, name=None):
         pass  # pragma: no cover
 
 
-class PerfExplainerMixin(metaclass=abc.ABCMeta):
-    """Mixin for explainers that provide performance explanations."""
+class PerfExplainer(metaclass=ABCMeta):
+    """Abstract base for explainers that provide performance explanations."""
 
-    @abc.abstractmethod
+    @abstractmethod
     def explain_perf(self, X, y, name=None):
         pass  # pragma: no cover
 
 
-class BaseExplanation(metaclass=abc.ABCMeta):
+class BaseExplanation(metaclass=ABCMeta):
     """The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 
@@ -55,11 +55,11 @@ class BaseExplanation(metaclass=abc.ABCMeta):
     """
 
     @property
-    @abc.abstractmethod
+    @abstractmethod
     def explanation_type(self):
         pass  # pragma: no cover
 
-    @abc.abstractmethod
+    @abstractmethod
     def data(self, key=None):
         """Provides specific explanation data.
 
@@ -70,7 +70,7 @@ class BaseExplanation(metaclass=abc.ABCMeta):
         """
         # pragma: no cover
 
-    @abc.abstractmethod
+    @abstractmethod
     def visualize(self, key=None):
         """Provides interactive visualizations.
 

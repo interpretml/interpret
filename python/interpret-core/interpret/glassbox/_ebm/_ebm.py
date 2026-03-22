@@ -15,7 +15,6 @@ from multiprocessing.managers import SharedMemoryManager
 from operator import itemgetter
 from typing import Optional, Union
 from warnings import warn
-
 import numpy as np
 from joblib import Parallel, delayed
 from ...utils._scikit import (
@@ -28,7 +27,7 @@ from ...utils._scikit import (
 )
 
 from ... import develop
-from ...api.base import LocalExplainerMixin, GlobalExplainerMixin
+from ...api.base import LocalExplainer, GlobalExplainer
 from ...api.templates import FeatureValueExplanation
 from ...utils._clean_simple import (
     clean_dimensions,
@@ -313,7 +312,7 @@ def clean_interactions(interactions, n_features_in):
         return interactions
 
 
-class BaseEBM(LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator):
+class BaseEBM(LocalExplainer, GlobalExplainer, _BaseEstimator):
     """Base class for all EBMs.  Do not instantiate directly."""
 
     n_features_in_: int
@@ -1429,7 +1428,7 @@ class BaseEBM(LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator):
 
         term_names = generate_term_names(feature_names_in, term_features)
 
-        # dependent attributes (can be re-derrived after serialization)
+        # dependent attributes (can be re-derived after serialization)
         self.n_features_in_ = n_features_in  # scikit-learn specified name
         self.term_names_ = term_names
 
@@ -1440,7 +1439,7 @@ class BaseEBM(LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator):
             # differentially private models would need to pay additional privacy budget to make
             # these public, but they are non-essential so we don't disclose them in the DP setting
 
-            # dependent attribute (can be re-derrived after serialization from feature_bounds_)
+            # dependent attribute (can be re-derived after serialization from feature_bounds_)
             self.histogram_edges_ = histogram_edges
 
             # per-feature
@@ -4477,7 +4476,13 @@ class DPEBMRegressor(EBMRegressorMixin, DPEBMModel):
         return tags
 
 
-# Backwards-compatible aliases
+# TODO: Slowly phase in the introduction of these new names:
+#   1) Wait to put out the major release to see if there are other breaking changes
+#   2) Wait over 2-3 releases to allow feedback/use of the renamed classes.
+#   3) Update the docs.  Update autogluon.
+#   4) Wait a long time for the autogluon release, and others to update.
+#   5) Deprecate the old names with a warning (that does not change the inheritance)
+#   6) Remove these much much later (after google, GPTs have all transitioned)
 ExplainableBoostingClassifier = EBMClassifier
 ExplainableBoostingRegressor = EBMRegressor
 DPExplainableBoostingClassifier = DPEBMClassifier

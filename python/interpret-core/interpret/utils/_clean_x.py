@@ -171,7 +171,7 @@ _none_ndarray = np.array(None)
 _float_types = (float, np.floating)
 _bool_types = (bool, np.bool_)
 _all_int_types = (int, np.integer)
-# np.str_ derrives from str and np.bytes_ derrives from bytes so no need to include
+# np.str_ derives from str and np.bytes_ derives from bytes so no need to include
 _strconv_types = (str, bytes, int, np.integer, np.datetime64, np.timedelta64)
 _intboolpython_types = (int, bool, np.integer, np.bool_)
 _float_int_bool_types = (np.floating, np.integer, np.bool_)

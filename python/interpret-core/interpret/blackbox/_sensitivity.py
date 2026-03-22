@@ -1,12 +1,11 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import abc
-
+from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
-from ..api.base import GlobalExplainerMixin
+from ..api.base import GlobalExplainer
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
@@ -15,17 +14,17 @@ from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
 # TODO: move this to a more general location where other blackbox methods can access it
-class SamplerMixin(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
+class BaseSampler(metaclass=ABCMeta):
+    @abstractmethod
     def sample(self, data, feature_names, feature_types):
         # if the blackbox or greybox underlying method accepts a sampling
         # function or abstract class they may want to pass us additional
-        # options, which the class that derrives from SamplerMixin may
+        # options, which the class that derives from BaseSampler may
         # want to add as either explicit arguments or kwargs
         pass  # pragma: no cover
 
 
-class MorrisSampler(SamplerMixin):
+class MorrisSampler(BaseSampler):
     def __init__(self, N=1000, num_levels=4, **kwargs):
         self.N = N
         self.num_levels = num_levels
@@ -42,7 +41,7 @@ class MorrisSampler(SamplerMixin):
         )
 
 
-class MorrisSensitivity(GlobalExplainerMixin):
+class MorrisSensitivity(GlobalExplainer):
     """Method of Morris for analyzing blackbox systems.
     If using this please cite the package owners as can be found here: https://github.com/SALib/SALib
 
@@ -66,7 +65,7 @@ class MorrisSensitivity(GlobalExplainerMixin):
             data: Data used to initialize LIME with.
             feature_names: List of feature names.
             feature_types: List of feature types.
-            sampler: A SamplerMixin derrived class that can generate samples from data
+            sampler: A BaseSampler derived class that can generate samples from data
             **kwargs: Kwargs that will be sent to SALib.analyze.morris.analyze
         """
 

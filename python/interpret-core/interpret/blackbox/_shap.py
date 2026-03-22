@@ -2,14 +2,14 @@
 # Distributed under the MIT software license
 import numpy as np
 
-from ..api.base import LocalExplainerMixin
+from ..api.base import LocalExplainer
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
-class ShapKernel(LocalExplainerMixin):
+class ShapKernel(LocalExplainer):
     """Exposes SHAP kernel explainer from shap package, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """

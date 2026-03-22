@@ -10,7 +10,7 @@ import numpy as np
 
 from ..utils._scikit import _BaseEstimator, _ClassifierMixin, _NotFittedError
 
-from ..api.base import LocalExplainerMixin, GlobalExplainerMixin, BaseExplanation
+from ..api.base import LocalExplainer, GlobalExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
@@ -109,7 +109,7 @@ class RulesExplanation(BaseExplanation):
 
 
 class DecisionListClassifier(
-    _ClassifierMixin, LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator
+    _ClassifierMixin, LocalExplainer, GlobalExplainer, _BaseEstimator
 ):
     """Decision List Classifier
 

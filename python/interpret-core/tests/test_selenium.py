@@ -6,10 +6,10 @@ import pytest
 
 from interpret import set_show_addr, show_link, shutdown_show_server
 from interpret.api.base import (
-    DataExplainerMixin,
-    GlobalExplainerMixin,
-    LocalExplainerMixin,
-    PerfExplainerMixin,
+    DataExplainer,
+    GlobalExplainer,
+    LocalExplainer,
+    PerfExplainer,
 )
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
@@ -38,25 +38,25 @@ def all_explanations():
         if hasattr(explainer_class, "fit"):
             explainer = explainer_class()
             explainer.fit(data["train"]["X"], data["train"]["y"])
-        elif issubclass(explainer_class, DataExplainerMixin):
+        elif issubclass(explainer_class, DataExplainer):
             explainer = explainer_class()
-        elif issubclass(explainer_class, PerfExplainerMixin):
+        elif issubclass(explainer_class, PerfExplainer):
             explainer = explainer_class(model)
         else:
             explainer = explainer_class(model, data["train"]["X"])
 
-        if isinstance(explainer, LocalExplainerMixin):
+        if isinstance(explainer, LocalExplainer):
             explanation = explainer.explain_local(
                 data["test"]["X"].head(), data["test"]["y"].head()
             )
             explanations.append(explanation)
-        if isinstance(explainer, GlobalExplainerMixin):
+        if isinstance(explainer, GlobalExplainer):
             explanation = explainer.explain_global()
             explanations.append(explanation)
-        if isinstance(explainer, DataExplainerMixin):
+        if isinstance(explainer, DataExplainer):
             explanation = explainer.explain_data(data["train"]["X"], data["train"]["y"])
             explanations.append(explanation)
-        if isinstance(explainer, PerfExplainerMixin):
+        if isinstance(explainer, PerfExplainer):
             explanation = explainer.explain_perf(data["test"]["X"], data["test"]["y"])
             explanations.append(explanation)
 

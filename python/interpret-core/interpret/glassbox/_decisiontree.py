@@ -13,8 +13,7 @@ from ..utils._scikit import (
     _NotFittedError,
     _is_classifier,
 )
-
-from ..api.base import LocalExplainerMixin, GlobalExplainerMixin, BaseExplanation
+from ..api.base import LocalExplainer, GlobalExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
@@ -223,9 +222,7 @@ class TreeExplanation(BaseExplanation):
         return new_nodes
 
 
-class BaseShallowDecisionTree(
-    LocalExplainerMixin, GlobalExplainerMixin, _BaseEstimator
-):
+class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
     """Shallow Decision Tree (low depth).
 
     Currently wrapper around DecisionTreeClassifier or DecisionTreeRegressor in scikit-learn.

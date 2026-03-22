@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import GlobalExplainerMixin, BaseExplanation
+from ..api.base import GlobalExplainer, BaseExplanation
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
@@ -69,7 +69,7 @@ def _gen_pdp(
     }
 
 
-class PartialDependence(GlobalExplainerMixin):
+class PartialDependence(GlobalExplainer):
     """Partial dependence plots as defined in Friedman's paper on
     "Greedy function approximation: a gradient boosting machine".
 

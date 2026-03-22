@@ -3,14 +3,14 @@
 
 import numpy as np
 
-from interpret.api.base import LocalExplainerMixin
+from interpret.api.base import LocalExplainer
 
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data
 
 
-class ShapTree(LocalExplainerMixin):
+class ShapTree(LocalExplainer):
     """Exposes tree specific SHAP approximation, in interpret API form.
     If using this please cite the original authors as can be found here: https://github.com/slundberg/shap
     """

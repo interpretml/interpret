@@ -5,7 +5,7 @@ from itertools import count
 
 import numpy as np
 
-from ..api.base import PerfExplainerMixin, BaseExplanation
+from ..api.base import PerfExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_name_from_class
@@ -13,7 +13,7 @@ from ..utils._unify_data import unify_data
 from ..utils._unify_predict import determine_classes, unify_predict_fn
 
 
-class PR(PerfExplainerMixin):
+class PR(PerfExplainer):
     """Produces precision-recall curves."""
 
     def __init__(self, model, feature_names=None, feature_types=None):
@@ -105,7 +105,7 @@ class PR(PerfExplainerMixin):
         )
 
 
-class ROC(PerfExplainerMixin):
+class ROC(PerfExplainer):
     """Produces ROC curves."""
 
     def __init__(self, model, feature_names=None, feature_types=None):
