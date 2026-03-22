@@ -40,13 +40,12 @@ class PerfExplainerMixin(metaclass=abc.ABCMeta):
         pass  # pragma: no cover
 
 
-class ExplanationMixin(metaclass=abc.ABCMeta):
+class BaseExplanation(metaclass=abc.ABCMeta):
     """The result of calling explain_* from an Explainer. Responsible for providing data and/or visualization.
         This is a contract required for InterpretML.
 
     Attributes:
-        explanation_type: A string that is one of the
-            explainer's available explanations.
+        explanation_type: A string indicating the kind of explanation.
             Should be one of "perf", "data", "local", "global".
         name: A string that denotes the name of the explanation
             for display purposes.

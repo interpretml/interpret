@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import PerfExplainerMixin, ExplanationMixin
+from ..api.base import PerfExplainerMixin, BaseExplanation
 from ..utils._clean_simple import clean_dimensions
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_name_from_class
@@ -101,7 +101,7 @@ class RegressionPerf(PerfExplainerMixin):
         )
 
 
-class RegressionExplanation(ExplanationMixin):
+class RegressionExplanation(BaseExplanation):
     """Produces explanation specific to regression metrics."""
 
     explanation_type = None

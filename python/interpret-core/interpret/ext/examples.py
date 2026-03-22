@@ -1,10 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from interpret.api.base import ExplanationMixin
+from interpret.api.base import BaseExplanation
 
 
-class ExampleExplanation(ExplanationMixin):
+class ExampleExplanation(BaseExplanation):
     explanation_type = "local"
 
     def __init__(self):

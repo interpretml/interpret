@@ -14,7 +14,7 @@ from ..utils._scikit import (
     _is_classifier,
 )
 
-from ..api.base import LocalExplainerMixin, GlobalExplainerMixin, ExplanationMixin
+from ..api.base import LocalExplainerMixin, GlobalExplainerMixin, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import (
@@ -30,7 +30,7 @@ _log = logging.getLogger(__name__)
 COLORS = ["#1f77b4", "#ff7f0e", "#808080", "#3a729b", "#ff420e"]
 
 
-class TreeExplanation(ExplanationMixin):
+class TreeExplanation(BaseExplanation):
     """Explanation object specific to trees."""
 
     explanation_type = None

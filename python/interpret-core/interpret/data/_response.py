@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import DataExplainerMixin, ExplanationMixin
+from ..api.base import DataExplainerMixin, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
@@ -127,7 +127,7 @@ class Marginal(DataExplainerMixin):
         )
 
 
-class MarginalExplanation(ExplanationMixin):
+class MarginalExplanation(BaseExplanation):
     """Explanation object specific to marginal explainer."""
 
     explanation_type = None
@@ -351,7 +351,7 @@ class ClassHistogram(DataExplainerMixin):
         )
 
 
-class ClassHistogramExplanation(ExplanationMixin):
+class ClassHistogramExplanation(BaseExplanation):
     """Explanation object specific to class histogram explainer."""
 
     explanation_type = None

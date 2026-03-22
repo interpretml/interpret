@@ -2,11 +2,11 @@
 # Distributed under the MIT software license
 
 import pytest
-from interpret.api.base import ExplanationMixin
+from interpret.api.base import BaseExplanation
 
 
 def test_that_explanation_throws_exceptions_for_incomplete():
-    class IncompleteExplanation(ExplanationMixin):
+    class IncompleteExplanation(BaseExplanation):
         pass
 
     with pytest.raises(Exception):
@@ -14,7 +14,7 @@ def test_that_explanation_throws_exceptions_for_incomplete():
 
 
 def test_that_explanation_works_for_complete():
-    class CompleteExplanation(ExplanationMixin):
+    class CompleteExplanation(BaseExplanation):
         _internal_object = {"overall": None, "specific": [None]}
         explanation_type = "performance"
         selector = None

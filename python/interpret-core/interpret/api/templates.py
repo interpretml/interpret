@@ -4,7 +4,7 @@
 import interpret.api.base
 
 
-class FeatureValueExplanation(interpret.api.base.ExplanationMixin):
+class FeatureValueExplanation(interpret.api.base.BaseExplanation):
     """Handles explanations that can be visualized as horizontal bar graphs.
     Usually these are feature-value pairs being represented.
     """

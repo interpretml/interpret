@@ -5,7 +5,7 @@ from itertools import count
 
 import numpy as np
 
-from ..api.base import PerfExplainerMixin, ExplanationMixin
+from ..api.base import PerfExplainerMixin, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_name_from_class
@@ -196,7 +196,7 @@ class ROC(PerfExplainerMixin):
         )
 
 
-class ROCExplanation(ExplanationMixin):
+class ROCExplanation(BaseExplanation):
     """Explanation object specific to ROC explainer."""
 
     explanation_type = None
@@ -269,7 +269,7 @@ class ROCExplanation(ExplanationMixin):
         )
 
 
-class PRExplanation(ExplanationMixin):
+class PRExplanation(BaseExplanation):
     """Explanation object specific to PR explainer."""
 
     explanation_type = None
