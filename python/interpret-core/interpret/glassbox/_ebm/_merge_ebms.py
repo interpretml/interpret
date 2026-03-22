@@ -291,50 +291,39 @@ def merge_ebms(models):
         msg = "At least one model is required for merging."
         raise ValueError(msg)
 
-    model_types = list(set(map(type, models)))
-    if len(model_types) == 2:
-        type_names = [model_type.__name__ for model_type in model_types]
-        if (
-            "ExplainableBoostingClassifier" in type_names
-            and "DPExplainableBoostingClassifier" in type_names
-        ):
-            ebm_type = model_types[type_names.index("ExplainableBoostingClassifier")]
-            is_classification = True
-            is_dp = False
-        elif (
-            "ExplainableBoostingRegressor" in type_names
-            and "DPExplainableBoostingRegressor" in type_names
-        ):
-            ebm_type = model_types[type_names.index("ExplainableBoostingRegressor")]
-            is_classification = False
-            is_dp = False
-        else:
-            msg = f"Inconsistent model types cannot be merged: {[t.__name__ for t in model_types]}"
-            raise TypeError(msg)
-    elif len(model_types) == 1:
-        ebm_type = model_types[0]
-        if ebm_type.__name__ == "ExplainableBoostingClassifier":
-            is_classification = True
-            is_dp = False
-        elif ebm_type.__name__ == "DPExplainableBoostingClassifier":
-            is_classification = True
-            is_dp = True
-        elif ebm_type.__name__ == "ExplainableBoostingRegressor":
-            is_classification = False
-            is_dp = False
-        elif ebm_type.__name__ == "DPExplainableBoostingRegressor":
-            is_classification = False
-            is_dp = True
-        else:
-            msg = f"Invalid EBM model type '{ebm_type.__name__}'. Expected ExplainableBoostingClassifier, ExplainableBoostingRegressor, DPExplainableBoostingClassifier, or DPExplainableBoostingRegressor."
-            raise TypeError(msg)
-    else:
-        msg = f"Cannot merge more than 2 distinct model types, got: {[t.__name__ for t in model_types]}"
+    from ._ebm import (
+        BaseEBM,
+        DPEBMModel,
+        EBMClassifierMixin,
+        EBMRegressorMixin,
+        EBMClassifier,
+        EBMRegressor,
+        DPEBMClassifier,
+        DPEBMRegressor,
+    )
+
+    if not all(isinstance(m, BaseEBM) for m in models):
+        msg = "models must contain EBM models that derive from BaseEBM."
         raise TypeError(msg)
 
-    # TODO: create the ExplainableBoostingClassifier etc, type directly
-    # by name instead of using __new__ from ebm_type
-    ebm = ebm_type.__new__(ebm_type)
+    is_classification = all(isinstance(m, EBMClassifierMixin) for m in models)
+    is_regression = all(isinstance(m, EBMRegressorMixin) for m in models)
+    if not is_classification and not is_regression:
+        msg = "Models must be all EBM classifiers or all EBM regressors."
+        raise TypeError(msg)
+
+    is_dp = all(isinstance(m, DPEBMModel) for m in models)
+
+    if is_dp:
+        if is_regression:
+            ebm = DPEBMRegressor.__new__(DPEBMRegressor)
+        else:
+            ebm = DPEBMClassifier.__new__(DPEBMClassifier)
+    else:
+        if is_regression:
+            ebm = EBMRegressor.__new__(EBMRegressor)
+        else:
+            ebm = EBMClassifier.__new__(EBMClassifier)
 
     if any(not hasattr(model, "bins_") for model in models):  # pragma: no cover
         msg = "All models must be fitted before merging."

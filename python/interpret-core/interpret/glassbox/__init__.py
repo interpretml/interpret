@@ -4,6 +4,10 @@
 from ._aplr import APLRClassifier, APLRRegressor  # noqa: F401
 from ._decisiontree import ClassificationTree, RegressionTree  # noqa: F401
 from ._ebm._ebm import (
+    BaseEBM,  # noqa: F401
+    EBMClassifier,  # noqa: F401
+    EBMModel,  # noqa: F401
+    EBMRegressor,  # noqa: F401
     ExplainableBoostingClassifier,  # noqa: F401
     ExplainableBoostingRegressor,  # noqa: F401
 )

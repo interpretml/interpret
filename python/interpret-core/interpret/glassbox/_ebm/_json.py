@@ -426,32 +426,16 @@ def UNTESTED_from_jsonable(ebm, jsonable):
         "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
     )
 
-    obj_type = f"{ebm.__class__.__module__}.{ebm.__class__.__name__}"
+    from ._ebm import DPEBMModel, EBMClassifierMixin, EBMRegressorMixin
 
-    if obj_type == "interpret.glassbox._ebm._ebm.EBMModel":
+    is_classification = isinstance(ebm, EBMClassifierMixin)
+    is_regression = isinstance(ebm, EBMRegressorMixin)
+    is_private = isinstance(ebm, DPEBMModel)
+
+    if not is_classification and not is_regression:
         is_classification = None
         is_regression = None
         is_private = None
-    elif obj_type == "interpret.glassbox._ebm._ebm.ExplainableBoostingClassifier":
-        is_classification = True
-        is_regression = False
-        is_private = False
-    elif obj_type == "interpret.glassbox._ebm._ebm.ExplainableBoostingRegressor":
-        is_classification = False
-        is_regression = True
-        is_private = False
-    elif obj_type == "interpret.glassbox._ebm._ebm.DPExplainableBoostingClassifier":
-        is_classification = True
-        is_regression = False
-        is_private = True
-    elif obj_type == "interpret.glassbox._ebm._ebm.DPExplainableBoostingRegressor":
-        is_classification = False
-        is_regression = True
-        is_private = True
-    else:
-        msg = f"Unrecognized object type {obj_type}"
-        _log.error(msg)
-        raise ValueError(msg)
 
     jsonable = jsonable["ebm"]
 
@@ -468,7 +452,7 @@ def UNTESTED_from_jsonable(ebm, jsonable):
         task = identify_task(link)
         if task == "classification":
             if is_classification is False:
-                msg = f"{obj_type} cannot have link function {link}."
+                msg = f"{type(ebm).__name__} cannot have link function {link}."
                 _log.error(msg)
                 raise ValueError(msg)
             classes = output_json["classes"]
@@ -476,7 +460,7 @@ def UNTESTED_from_jsonable(ebm, jsonable):
             classes = typify_classification(classes)
         elif task == "regression":
             if is_regression is False:
-                msg = f"{obj_type} cannot have link function {link}."
+                msg = f"{type(ebm).__name__} cannot have link function {link}."
                 _log.error(msg)
                 raise ValueError(msg)
             min_target = output_json["min_target"]
