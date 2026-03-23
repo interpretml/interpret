@@ -5,23 +5,12 @@ from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
-from ..core.base import GlobalExplainer
+from ..core.base import GlobalExplainer, BaseSampler
 from ..core.templates import FeatureValueExplanation
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
 from ..utils._unify_predict import determine_classes, unify_predict_fn
-
-
-# TODO: move this to a more general location where other blackbox methods can access it
-class BaseSampler(metaclass=ABCMeta):
-    @abstractmethod
-    def sample(self, data, feature_names, feature_types):
-        # if the blackbox or greybox underlying method accepts a sampling
-        # function or abstract class they may want to pass us additional
-        # options, which the class that derives from BaseSampler may
-        # want to add as either explicit arguments or kwargs
-        pass  # pragma: no cover
 
 
 class MorrisSampler(BaseSampler):

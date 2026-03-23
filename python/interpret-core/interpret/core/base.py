@@ -82,3 +82,9 @@ class BaseExplanation(metaclass=ABCMeta):
 
     name = "An Explanation"
     selector = None
+
+
+class BaseSampler(metaclass=ABCMeta):
+    @abstractmethod
+    def sample(self, data, feature_names, feature_types):
+        pass  # pragma: no cover
