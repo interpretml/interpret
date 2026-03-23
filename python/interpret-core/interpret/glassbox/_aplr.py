@@ -606,34 +606,6 @@ class APLRExplanation(FeatureValueExplanation):
 
     explanation_type = None
 
-    def __init__(
-        self,
-        explanation_type,
-        internal_obj,
-        feature_names=None,
-        feature_types=None,
-        name=None,
-        selector=None,
-    ):
-        """Initializes class.
-
-        Args:
-            explanation_type:  Type of explanation.
-            internal_obj: A jsonable object that backs the explanation.
-            feature_names: List of feature names.
-            feature_types: List of feature types.
-            name: User-defined name of explanation.
-            selector: A dict with "columns" and "data" keys whose entries correspond to explanation entries.
-        """
-        super().__init__(
-            explanation_type,
-            internal_obj,
-            feature_names=feature_names,
-            feature_types=feature_types,
-            name=name,
-            selector=selector,
-        )
-
     def visualize(self, key=None):
         """Provides interactive visualizations.
 
