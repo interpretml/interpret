@@ -4,7 +4,7 @@
 from abc import abstractmethod
 
 import numpy as np
-from ..utils._scikit import (
+from ..core.sklearn import (
     SKClassifierMixin,
     SKRegressorMixin,
     SKBaseEstimator,

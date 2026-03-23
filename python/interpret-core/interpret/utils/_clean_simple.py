@@ -5,7 +5,7 @@ import logging
 
 import numpy as np
 from numpy import ma
-from ._scikit import _is_classifier, _is_regressor
+from ..core.sklearn import _is_classifier, _is_regressor
 
 from ._clean_x import preclean_X
 from ._link import link_func

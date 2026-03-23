@@ -17,7 +17,7 @@ from typing import Optional, Union
 from warnings import warn
 import numpy as np
 from joblib import Parallel, delayed
-from ...utils._scikit import (
+from ...core.sklearn import (
     SKBaseEstimator,
     SKClassifierMixin,
     SKRegressorMixin,

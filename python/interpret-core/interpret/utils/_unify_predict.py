@@ -4,7 +4,7 @@
 import logging
 
 import numpy as np
-from ._scikit import _is_classifier, _is_regressor
+from ..core.sklearn import _is_classifier, _is_regressor
 
 from ._clean_simple import clean_dimensions
 from ._native import Native

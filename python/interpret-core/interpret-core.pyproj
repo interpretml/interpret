@@ -33,6 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="interpret\core\base.py" />
+    <Compile Include="interpret\core\sklearn.py" />
     <Compile Include="interpret\core\templates.py" />
     <Compile Include="interpret\core\__init__.py" />
     <Compile Include="interpret\blackbox\_lime.py" />
@@ -88,7 +89,6 @@
     <Compile Include="interpret\utils\_misc.py" />
     <Compile Include="interpret\utils\_purify.py" />
     <Compile Include="interpret\utils\_rank_interactions.py" />
-    <Compile Include="interpret\utils\_scikit.py" />
     <Compile Include="interpret\utils\_shap_common.py" />
     <Compile Include="interpret\utils\_clean_x.py" />
     <Compile Include="interpret\utils\_measure_interactions.py" />

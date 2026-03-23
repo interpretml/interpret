@@ -17,7 +17,7 @@ except ImportError:
         pass
 
 
-from ..utils._scikit import (
+from ..core.sklearn import (
     SKBaseEstimator,
     SKClassifierMixin,
     SKNotFittedError,

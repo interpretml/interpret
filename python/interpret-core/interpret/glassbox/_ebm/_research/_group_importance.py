@@ -8,7 +8,7 @@ A term denotes both single features and interactions (pairs).
 
 import numpy as np
 import plotly.express as px
-from ....utils._scikit import SKNotFittedError
+from ....core.sklearn import SKNotFittedError
 
 
 def compute_group_importance(term_list, ebm, X, contributions=None):
