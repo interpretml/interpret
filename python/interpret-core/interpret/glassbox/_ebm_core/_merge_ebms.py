@@ -291,7 +291,7 @@ def merge_ebms(models):
         msg = "At least one model is required for merging."
         raise ValueError(msg)
 
-    from ._ebm import (
+    from .._ebm import (
         BaseEBM,
         DPEBMModel,
         EBMClassifierMixin,

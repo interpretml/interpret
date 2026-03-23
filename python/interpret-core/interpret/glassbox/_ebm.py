@@ -17,7 +17,7 @@ from typing import Optional, Union
 from warnings import warn
 import numpy as np
 from joblib import Parallel, delayed
-from ...core.sklearn import (
+from ..core.sklearn import (
     SKBaseEstimator,
     SKClassifierMixin,
     SKRegressorMixin,
@@ -26,46 +26,46 @@ from ...core.sklearn import (
     _is_regressor,
 )
 
-from ... import develop
-from ...core.base import LocalExplainer, GlobalExplainer
-from ...core.templates import FeatureValueExplanation
-from ...utils._clean_simple import (
+from .. import develop
+from ..core.base import LocalExplainer, GlobalExplainer
+from ..core.templates import FeatureValueExplanation
+from ..utils._clean_simple import (
     clean_dimensions,
     clean_X_and_init_score,
     typify_classification,
 )
-from ...utils._clean_x import preclean_X
-from ...utils._compressed_dataset import bin_native_by_dimension
-from ...utils._explanation import (
+from ..utils._clean_x import preclean_X
+from ..utils._compressed_dataset import bin_native_by_dimension
+from ..utils._explanation import (
     gen_global_selector,
     gen_local_selector,
     gen_name_from_class,
     gen_perf_dicts,
 )
-from ...utils._histogram import make_all_histogram_edges
-from ...utils._link import inv_link, link_func
-from ...utils._measure_mem import total_bytes
-from ...utils._misc import clean_index, clean_indexes
-from ...utils._native import Native
-from ...utils._preprocessor import construct_bins
-from ...utils._privacy import (
+from ..utils._histogram import make_all_histogram_edges
+from ..utils._link import inv_link, link_func
+from ..utils._measure_mem import total_bytes
+from ..utils._misc import clean_index, clean_indexes
+from ..utils._native import Native
+from ..utils._preprocessor import construct_bins
+from ..utils._privacy import (
     calc_classic_noise_multi,
     calc_gdp_noise_multi,
     validate_eps_delta,
 )
-from ...utils._rank_interactions import rank_interactions
-from ...utils._seed import normalize_seed
-from ...utils._shared_dataset import SharedDataset
-from ...utils._unify_data import unify_data
-from ._bin import (
+from ..utils._rank_interactions import rank_interactions
+from ..utils._seed import normalize_seed
+from ..utils._shared_dataset import SharedDataset
+from ..utils._unify_data import unify_data
+from ._ebm_core._bin import (
     ebm_eval_terms,
     ebm_predict_scores,
     make_bin_weights,
 )
-from ._boost import boost
-from ._json import UNTESTED_from_jsonable, to_jsonable
-from ._tensor import remove_last, trim_tensor
-from ._utils import (
+from ._ebm_core._boost import boost
+from ._ebm_core._json import UNTESTED_from_jsonable, to_jsonable
+from ._ebm_core._tensor import remove_last, trim_tensor
+from ._ebm_core._utils import (
     generate_term_names,
     generate_term_types,
     make_bag,
@@ -94,7 +94,7 @@ class EBMExplanation(FeatureValueExplanation):
             A Plotly figure.
 
         """
-        from ...visual.plot import (
+        from ..visual.plot import (
             is_multiclass_global_data_dict,
             plot_continuous_bar,
             plot_horizontal_bar,

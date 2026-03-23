@@ -426,7 +426,7 @@ def UNTESTED_from_jsonable(ebm, jsonable):
         "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
     )
 
-    from ._ebm import DPEBMModel, EBMClassifierMixin, EBMRegressorMixin
+    from .._ebm import DPEBMModel, EBMClassifierMixin, EBMRegressorMixin
 
     is_classification = isinstance(ebm, EBMClassifierMixin)
     is_regression = isinstance(ebm, EBMRegressorMixin)

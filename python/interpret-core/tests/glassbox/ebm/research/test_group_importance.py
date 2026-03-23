@@ -3,14 +3,14 @@ from interpret.glassbox import (
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
 )
-from interpret.glassbox._ebm._research import (
+from interpret.glassbox._ebm_core._research import (
     append_group_importance,
     compute_group_importance,
     get_group_and_individual_importances,
     get_importance_per_top_groups,
     get_individual_importances,
 )
-from interpret.glassbox._ebm._research._group_importance import (
+from interpret.glassbox._ebm_core._research._group_importance import (
     _get_group_name,
 )
 from sklearn.exceptions import NotFittedError

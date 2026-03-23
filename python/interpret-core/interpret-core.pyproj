@@ -77,6 +77,7 @@
     <Compile Include="interpret\perf\_curve.py" />
     <Compile Include="interpret\perf\_regression.py" />
     <Compile Include="interpret\perf\__init__.py" />
+    <Compile Include="interpret\privacy\__init__.py" />
     <Compile Include="interpret\provider\_visualize.py" />
     <Compile Include="interpret\provider\_environment.py" />
     <Compile Include="interpret\provider\__init__.py" />
@@ -177,6 +178,7 @@
     <Folder Include="interpret\glassbox\_ebm_core\_research\" />
     <Folder Include="interpret\greybox" />
     <Folder Include="interpret\perf" />
+    <Folder Include="interpret\privacy\" />
     <Folder Include="interpret\provider" />
     <Folder Include="interpret\utils" />
     <Folder Include="interpret\visual" />

@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from interpret.glassbox._ebm._utils import (
+from interpret.glassbox._ebm_core._utils import (
     _create_proportional_tensor,
     convert_categorical_to_continuous,
     convert_to_cuts,

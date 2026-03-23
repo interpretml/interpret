@@ -4,7 +4,7 @@
 import math
 
 import numpy as np
-from interpret.glassbox._ebm._bin import (
+from interpret.glassbox._ebm_core._bin import (
     ebm_predict_scores,
     eval_terms,
     make_bin_weights,

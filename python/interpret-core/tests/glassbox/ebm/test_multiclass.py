@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import numpy as np
-from interpret.glassbox._ebm._multiclass import multiclass_postprocess_RESTORE_THIS
+from interpret.glassbox._ebm_core._multiclass import multiclass_postprocess_RESTORE_THIS
 
 
 def test_multiclass_postprocess_smoke():
