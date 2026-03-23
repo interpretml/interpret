@@ -17,7 +17,12 @@ except ImportError:
         pass
 
 
-from ..utils._scikit import SKClassifierMixin, SKRegressorMixin
+from ..utils._scikit import (
+    SKBaseEstimator,
+    SKClassifierMixin,
+    SKNotFittedError,
+    SKRegressorMixin,
+)
 from ..api.base import LocalExplainer, GlobalExplainer
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions
@@ -46,7 +51,11 @@ except ImportError:
 
 
 class APLRRegressor(
-    SKRegressorMixin, LocalExplainer, GlobalExplainer, APLRRegressorNative
+    SKRegressorMixin,
+    LocalExplainer,
+    GlobalExplainer,
+    SKBaseEstimator,
+    APLRRegressorNative,
 ):
     """APLR Regressor."""
 
@@ -60,13 +69,35 @@ class APLRRegressor(
         # TODO: add feature_names and feature_types to conform to glassbox API
         super().__init__(**kwargs)
 
+    def get_params(self, deep=True):
+        return APLRRegressorNative.get_params(self)
+
+    def set_params(self, **params):
+        APLRRegressorNative.set_params(self, **params)
+        return self
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.non_deterministic = True
+        tags.target_tags.required = True
+        return tags
+
+    def predict(self, X):
+        """Predicts target values."""
+        if not hasattr(self, "n_features_in_"):
+            raise SKNotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
+        return super().predict(X)
+
     def fit(self, X, y, **kwargs):
         """Fits model."""
         X_names = kwargs.get("X_names")
 
-        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.bin_counts_, self.bin_edges_ = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X, X_names=X_names)
+        self.n_features_in_ = len(self.feature_names_in_)
 
         super().fit(
             X,
@@ -107,8 +138,8 @@ class APLRRegressor(
             is_two_way_interaction: bool = len(predictor_indexes_used) == 2
             if is_main_effect:
                 density_dict = {
-                    "names": self.bin_edges[predictor_indexes_used[0]],
-                    "scores": self.bin_counts[predictor_indexes_used[0]],
+                    "names": self.bin_edges_[predictor_indexes_used[0]],
+                    "scores": self.bin_counts_[predictor_indexes_used[0]],
                 }
                 feature_dict = {
                     "type": "univariate",
@@ -282,7 +313,23 @@ def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[floa
 
 
 def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
+    try:
+        from scipy import sparse as _sparse
+
+        if _sparse.issparse(X):
+            raise TypeError(
+                "Sparse input is not supported. Please convert X to a dense array."
+            )
+    except ImportError:
+        pass
+
     if isinstance(X, np.ndarray):
+        if X.dtype == object:
+            try:
+                return X.astype(np.float64)
+            except (ValueError, TypeError):
+                msg = "argument must be a string or a real number"
+                raise TypeError(msg)
         if not np.issubdtype(X.dtype, np.number):
             msg = f"If X is a numpy array, it must contain only numeric values, but got dtype '{X.dtype}'."
             raise TypeError(msg)
@@ -341,7 +388,11 @@ except ImportError:
 
 
 class APLRClassifier(
-    SKClassifierMixin, LocalExplainer, GlobalExplainer, APLRClassifierNative
+    SKClassifierMixin,
+    LocalExplainer,
+    GlobalExplainer,
+    SKBaseEstimator,
+    APLRClassifierNative,
 ):
     """APLR Classifier."""
 
@@ -355,25 +406,63 @@ class APLRClassifier(
         # TODO: add feature_names and feature_types to conform to glassbox API
         super().__init__(**kwargs)
 
+    def get_params(self, deep=True):
+        return APLRClassifierNative.get_params(self)
+
+    def set_params(self, **params):
+        APLRClassifierNative.set_params(self, **params)
+        return self
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.non_deterministic = True
+        tags.target_tags.required = True
+        return tags
+
+    def predict(self, X):
+        """Predicts class labels."""
+        if not hasattr(self, "n_features_in_"):
+            raise SKNotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
+        str_preds = super().predict(X)
+        return np.array(
+            [self._str_to_label_[s] for s in str_preds], dtype=self.classes_.dtype
+        )
+
+    def predict_proba(self, X):
+        """Predicts class probabilities."""
+        if not hasattr(self, "n_features_in_"):
+            raise SKNotFittedError(
+                "This model has not been fitted yet. Call 'fit' first."
+            )
+        return self.predict_class_probabilities(X)
+
     def fit(self, X, y, **kwargs):
         """Fits model."""
         X_names = kwargs.get("X_names")
 
-        self.bin_counts, self.bin_edges = calculate_densities(X)
+        self.bin_counts_, self.bin_edges_ = calculate_densities(X)
         self.unique_values_in_ = calculate_unique_values(X)
         self.feature_names_in_ = define_feature_names(X, X_names=X_names)
+        self.n_features_in_ = len(self.feature_names_in_)
 
-        if not all(isinstance(val, str) for val in y):
-            y = [str(val) for val in y]
-        if isinstance(y, _SeriesType):
-            y = y.to_numpy()
+        y_arr = np.asarray(y)
+        y_str = [str(val) for val in y_arr]
 
         super().fit(
             X,
-            y,
+            y_str,
             **kwargs,
         )
-        self.classes_ = self.classes_
+
+        categories = self.get_categories()
+        unique_orig = {}
+        for val, s in zip(y_arr, y_str):
+            if s not in unique_orig:
+                unique_orig[s] = val
+        self.classes_ = np.array([unique_orig[c] for c in categories])
+        self._str_to_label_ = {c: unique_orig[c] for c in categories}
         return self
 
     def explain_global(self, name: Optional[str] = None):
@@ -413,8 +502,8 @@ class APLRClassifier(
                 is_two_way_interaction: bool = len(predictor_indexes_used) == 2
                 if is_main_effect:
                     density_dict = {
-                        "names": self.bin_edges[predictor_indexes_used[0]],
-                        "scores": self.bin_counts[predictor_indexes_used[0]],
+                        "names": self.bin_edges_[predictor_indexes_used[0]],
+                        "scores": self.bin_counts_[predictor_indexes_used[0]],
                     }
                     feature_dict = {
                         "type": "univariate",
@@ -518,7 +607,7 @@ class APLRClassifier(
             for each instance as horizontal bar charts.
         """
 
-        pred = self.predict(X)
+        pred = APLRClassifierNative.predict(self, X)
         pred_proba = self.predict_class_probabilities(X)
         pred_max_prob = np.max(pred_proba, axis=1)
         term_names = self.get_unique_term_affiliations()
