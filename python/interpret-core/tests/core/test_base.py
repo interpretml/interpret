@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 import pytest
-from interpret.api.base import BaseExplanation
+from interpret.core.base import BaseExplanation
 
 
 def test_that_explanation_throws_exceptions_for_incomplete():

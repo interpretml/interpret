@@ -13,7 +13,7 @@ from ..utils._scikit import (
     SKNotFittedError,
     _is_classifier,
 )
-from ..api.base import LocalExplainer, GlobalExplainer, BaseExplanation
+from ..core.base import LocalExplainer, GlobalExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import (

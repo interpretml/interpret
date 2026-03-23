@@ -5,8 +5,8 @@ from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
-from ..api.base import GlobalExplainer
-from ..api.templates import FeatureValueExplanation
+from ..core.base import GlobalExplainer
+from ..core.templates import FeatureValueExplanation
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data

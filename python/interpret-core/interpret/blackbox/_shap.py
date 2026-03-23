@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 import numpy as np
 
-from ..api.base import LocalExplainer
+from ..core.base import LocalExplainer
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local
 from ..utils._unify_data import unify_data

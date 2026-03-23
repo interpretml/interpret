@@ -23,8 +23,8 @@ from ..utils._scikit import (
     SKNotFittedError,
     SKRegressorMixin,
 )
-from ..api.base import LocalExplainer, GlobalExplainer
-from ..api.templates import FeatureValueExplanation
+from ..core.base import LocalExplainer, GlobalExplainer
+from ..core.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions
 from ..utils._explanation import (
     gen_global_selector,

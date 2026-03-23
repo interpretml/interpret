@@ -9,8 +9,8 @@
 #
 # from ..utils import gen_name_from_class, gen_local_selector
 #
-# from interpret.api.base import GlobalExplainerMixin
-# from interpret.api.templates import FeatureValueExplanation
+# from interpret.core.base import GlobalExplainerMixin
+# from interpret.core.templates import FeatureValueExplanation
 # from interpret.utils import unify_predict_fn, unify_data
 # from interpret.utils import gen_name_from_class, gen_global_selector
 #

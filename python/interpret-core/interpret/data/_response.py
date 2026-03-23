@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import DataExplainer, BaseExplanation
+from ..core.base import DataExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_global_selector, gen_name_from_class

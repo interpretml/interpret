@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from ..api.base import PerfExplainer, BaseExplanation
+from ..core.base import PerfExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_name_from_class

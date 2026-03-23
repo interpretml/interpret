@@ -32,9 +32,9 @@
     <Content Include="pyproject.toml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="interpret\api\base.py" />
-    <Compile Include="interpret\api\templates.py" />
-    <Compile Include="interpret\api\__init__.py" />
+    <Compile Include="interpret\core\base.py" />
+    <Compile Include="interpret\core\templates.py" />
+    <Compile Include="interpret\core\__init__.py" />
     <Compile Include="interpret\blackbox\_lime.py" />
     <Compile Include="interpret\blackbox\_partialdependence.py" />
     <Compile Include="interpret\blackbox\_sensitivity.py" />
@@ -110,8 +110,8 @@
     <Compile Include="interpret\_version.py" />
     <Compile Include="interpret\__init__.py" />
     <Compile Include="setup.py" />
-    <Compile Include="tests\api\test_base.py" />
-    <Compile Include="tests\api\__init__.py" />
+    <Compile Include="tests\core\test_base.py" />
+    <Compile Include="tests\core\__init__.py" />
     <Compile Include="tests\blackbox\test_permutationimportance.py" />
     <Compile Include="tests\blackbox\test_sensitivity.py" />
     <Compile Include="tests\blackbox\__init__.py" />
@@ -162,7 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="interpret" />
-    <Folder Include="interpret\api" />
+    <Folder Include="interpret\core" />
     <Folder Include="interpret\blackbox" />
     <Folder Include="interpret\data" />
     <Folder Include="interpret\ext" />
@@ -182,7 +182,7 @@
     <Folder Include="interpret\visual" />
     <Folder Include="interpret\visual\assets" />
     <Folder Include="tests\" />
-    <Folder Include="tests\api\" />
+    <Folder Include="tests\core\" />
     <Folder Include="tests\blackbox\" />
     <Folder Include="tests\ext\" />
     <Folder Include="tests\glassbox\" />

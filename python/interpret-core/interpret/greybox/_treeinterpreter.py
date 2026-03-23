@@ -3,8 +3,8 @@
 
 import numpy as np
 
-from ..api.base import LocalExplainer
-from ..api.templates import FeatureValueExplanation
+from ..core.base import LocalExplainer
+from ..core.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_local_selector, gen_name_from_class, gen_perf_dicts

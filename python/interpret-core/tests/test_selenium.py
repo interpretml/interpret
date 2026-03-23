@@ -5,7 +5,7 @@ from copy import deepcopy
 import pytest
 
 from interpret import set_show_addr, show_link, shutdown_show_server
-from interpret.api.base import (
+from interpret.core.base import (
     DataExplainer,
     GlobalExplainer,
     LocalExplainer,

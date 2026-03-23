@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..api.base import BaseExplanation
+from ..core.base import BaseExplanation
 
 
 class ExampleExplanation(BaseExplanation):

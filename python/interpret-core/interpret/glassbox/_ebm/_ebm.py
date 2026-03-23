@@ -27,8 +27,8 @@ from ...utils._scikit import (
 )
 
 from ... import develop
-from ...api.base import LocalExplainer, GlobalExplainer
-from ...api.templates import FeatureValueExplanation
+from ...core.base import LocalExplainer, GlobalExplainer
+from ...core.templates import FeatureValueExplanation
 from ...utils._clean_simple import (
     clean_dimensions,
     clean_X_and_init_score,
