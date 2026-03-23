@@ -7,10 +7,10 @@ from copy import deepcopy
 
 import numpy as np
 from ..utils._scikit import (
-    _ClassifierMixin,
-    _RegressorMixin,
-    _BaseEstimator,
-    _NotFittedError,
+    SKClassifierMixin,
+    SKRegressorMixin,
+    SKBaseEstimator,
+    SKNotFittedError,
     _is_classifier,
 )
 from ..api.base import LocalExplainer, GlobalExplainer, BaseExplanation
@@ -222,7 +222,7 @@ class TreeExplanation(BaseExplanation):
         return new_nodes
 
 
-class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
+class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     """Shallow Decision Tree (low depth).
 
     Currently wrapper around DecisionTreeClassifier or DecisionTreeRegressor in scikit-learn.
@@ -318,7 +318,7 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -347,7 +347,7 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -398,7 +398,7 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -570,7 +570,7 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, _BaseEstimator):
         return tags
 
 
-class RegressionTree(_RegressorMixin, BaseShallowDecisionTree):
+class RegressionTree(SKRegressorMixin, BaseShallowDecisionTree):
     """Regression tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
@@ -619,7 +619,7 @@ class RegressionTree(_RegressorMixin, BaseShallowDecisionTree):
         )
 
 
-class ClassificationTree(_ClassifierMixin, BaseShallowDecisionTree):
+class ClassificationTree(SKClassifierMixin, BaseShallowDecisionTree):
     """Classification tree with shallow depth."""
 
     def __init__(self, feature_names=None, feature_types=None, max_depth=3, **kwargs):
@@ -678,7 +678,7 @@ class ClassificationTree(_ClassifierMixin, BaseShallowDecisionTree):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 

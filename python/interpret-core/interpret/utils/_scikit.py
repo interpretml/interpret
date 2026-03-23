@@ -4,16 +4,16 @@
 
 try:
     from sklearn.base import (
-        BaseEstimator as _BaseEstimator,
-        ClassifierMixin as _ClassifierMixin,
-        RegressorMixin as _RegressorMixin,
-        TransformerMixin as _TransformerMixin,
+        BaseEstimator as SKBaseEstimator,
+        ClassifierMixin as SKClassifierMixin,
+        RegressorMixin as SKRegressorMixin,
+        TransformerMixin as SKTransformerMixin,
     )
-    from sklearn.exceptions import NotFittedError as _NotFittedError
+    from sklearn.exceptions import NotFittedError as SKNotFittedError
 
 except ImportError:
 
-    class _NotFittedError(ValueError, AttributeError):
+    class SKNotFittedError(ValueError, AttributeError):
         """Stub for sklearn.exceptions.NotFittedError when sklearn is not installed."""
 
         pass
@@ -33,13 +33,13 @@ except ImportError:
             self.regressor_tags = None
             self.input_tags = _Obj()
 
-    class _BaseEstimator:
+    class SKBaseEstimator:
         """Stub for sklearn.base.BaseEstimator when sklearn is not installed."""
 
         def __sklearn_tags__(self):
             return _Tags()
 
-    class _ClassifierMixin:
+    class SKClassifierMixin:
         """Stub for sklearn.base.ClassifierMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
@@ -48,7 +48,7 @@ except ImportError:
             tags.classifier_tags = _Obj()
             return tags
 
-    class _RegressorMixin:
+    class SKRegressorMixin:
         """Stub for sklearn.base.RegressorMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
@@ -57,7 +57,7 @@ except ImportError:
             tags.regressor_tags = _Obj()
             return tags
 
-    class _TransformerMixin:
+    class SKTransformerMixin:
         """Stub for sklearn.base.TransformerMixin when sklearn is not installed."""
 
         def fit_transform(self, X, y=None, **fit_params):

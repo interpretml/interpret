@@ -7,7 +7,7 @@ from itertools import count, groupby, repeat
 from warnings import warn
 
 import numpy as np
-from ._scikit import _BaseEstimator, _TransformerMixin, _NotFittedError
+from ._scikit import SKBaseEstimator, SKTransformerMixin, SKNotFittedError
 
 from ._clean_simple import clean_dimensions
 from ._clean_x import (
@@ -70,7 +70,7 @@ def _cut_continuous(native, X_col, processing, binning, max_bins, min_samples_bi
     return cuts
 
 
-class EBMPreprocessor(_TransformerMixin, _BaseEstimator):
+class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
     """Transformer that preprocesses data to be ready before EBM."""
 
     def __init__(
@@ -461,7 +461,7 @@ class EBMPreprocessor(_TransformerMixin, _BaseEstimator):
             Transformed numpy array.
         """
         if not hasattr(self, "bins_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 

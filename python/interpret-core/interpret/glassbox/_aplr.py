@@ -17,7 +17,7 @@ except ImportError:
         pass
 
 
-from ..utils._scikit import _ClassifierMixin, _RegressorMixin
+from ..utils._scikit import SKClassifierMixin, SKRegressorMixin
 from ..api.base import LocalExplainer, GlobalExplainer
 from ..api.templates import FeatureValueExplanation
 from ..utils._clean_simple import clean_dimensions
@@ -46,7 +46,7 @@ except ImportError:
 
 
 class APLRRegressor(
-    _RegressorMixin, LocalExplainer, GlobalExplainer, APLRRegressorNative
+    SKRegressorMixin, LocalExplainer, GlobalExplainer, APLRRegressorNative
 ):
     """APLR Regressor."""
 
@@ -341,7 +341,7 @@ except ImportError:
 
 
 class APLRClassifier(
-    _ClassifierMixin, LocalExplainer, GlobalExplainer, APLRClassifierNative
+    SKClassifierMixin, LocalExplainer, GlobalExplainer, APLRClassifierNative
 ):
     """APLR Classifier."""
 

@@ -5,10 +5,10 @@ from abc import abstractmethod
 
 import numpy as np
 from ..utils._scikit import (
-    _ClassifierMixin,
-    _RegressorMixin,
-    _BaseEstimator,
-    _NotFittedError,
+    SKClassifierMixin,
+    SKRegressorMixin,
+    SKBaseEstimator,
+    SKNotFittedError,
     _is_classifier,
 )
 
@@ -25,7 +25,7 @@ from ..utils._explanation import (
 from ..utils._unify_data import unify_data
 
 
-class BaseLinear(LocalExplainer, GlobalExplainer, _BaseEstimator):
+class BaseLinear(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     """Base linear model.
 
     Currently wrapper around linear models in scikit-learn.
@@ -127,7 +127,7 @@ class BaseLinear(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -158,7 +158,7 @@ class BaseLinear(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -286,7 +286,7 @@ class BaseLinear(LocalExplainer, GlobalExplainer, _BaseEstimator):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -431,7 +431,7 @@ class LinearExplanation(FeatureValueExplanation):
         return super().visualize(key)
 
 
-class LinearRegression(_RegressorMixin, BaseLinear):
+class LinearRegression(SKRegressorMixin, BaseLinear):
     """Linear regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
@@ -477,7 +477,7 @@ class LinearRegression(_RegressorMixin, BaseLinear):
         return super().fit(X, y)
 
 
-class LogisticRegression(_ClassifierMixin, BaseLinear):
+class LogisticRegression(SKClassifierMixin, BaseLinear):
     """Logistic regression.
 
     Currently wrapper around linear models in scikit-learn: https://github.com/scikit-learn/scikit-learn
@@ -533,7 +533,7 @@ class LogisticRegression(_ClassifierMixin, BaseLinear):
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise _NotFittedError(
+            raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
