@@ -18,26 +18,41 @@ except ImportError:
 
         pass
 
-    class _Obj:
-        """Bare object that accepts any attribute assignment."""
+    class SKTargetTags:
+        """Stub for sklearn TargetTags when sklearn is not installed."""
 
         pass
 
-    class _Tags:
+    class SKClassifierTags:
+        """Stub for sklearn ClassifierTags when sklearn is not installed."""
+
+        pass
+
+    class SKRegressorTags:
+        """Stub for sklearn RegressorTags when sklearn is not installed."""
+
+        pass
+
+    class SKInputTags:
+        """Stub for sklearn InputTags when sklearn is not installed."""
+
+        pass
+
+    class SKTags:
         """Stub for sklearn Tags when sklearn is not installed."""
 
         def __init__(self):
             self.estimator_type = None
-            self.target_tags = _Obj()
+            self.target_tags = SKTargetTags()
             self.classifier_tags = None
             self.regressor_tags = None
-            self.input_tags = _Obj()
+            self.input_tags = SKInputTags()
 
     class SKBaseEstimator:
         """Stub for sklearn.base.BaseEstimator when sklearn is not installed."""
 
         def __sklearn_tags__(self):
-            return _Tags()
+            return SKTags()
 
     class SKClassifierMixin:
         """Stub for sklearn.base.ClassifierMixin when sklearn is not installed."""
@@ -45,7 +60,7 @@ except ImportError:
         def __sklearn_tags__(self):
             tags = super().__sklearn_tags__()
             tags.estimator_type = "classifier"
-            tags.classifier_tags = _Obj()
+            tags.classifier_tags = SKClassifierTags()
             return tags
 
     class SKRegressorMixin:
@@ -54,7 +69,7 @@ except ImportError:
         def __sklearn_tags__(self):
             tags = super().__sklearn_tags__()
             tags.estimator_type = "regressor"
-            tags.regressor_tags = _Obj()
+            tags.regressor_tags = SKRegressorTags()
             return tags
 
     class SKTransformerMixin:
