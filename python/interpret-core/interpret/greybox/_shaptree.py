@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from interpret.api.base import LocalExplainer
+from ..api.base import LocalExplainer
 
 from ..utils._clean_x import preclean_X
 from ..utils._shap_common import shap_explain_local

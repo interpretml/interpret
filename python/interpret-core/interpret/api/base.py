@@ -3,10 +3,6 @@
 
 from abc import abstractmethod, ABCMeta
 
-# TODO: instead of having interpret.api.base, it would probably be easier to just have a single base.py file
-#      in the root directory parallel to develop.py called base.py and also put the templates.py file contents in
-#      there
-
 
 class LocalExplainer(metaclass=ABCMeta):
     """Abstract base for explainers that provide local explanations."""

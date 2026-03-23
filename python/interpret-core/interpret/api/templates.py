@@ -1,10 +1,10 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-import interpret.api.base
+from .base import BaseExplanation
 
 
-class FeatureValueExplanation(interpret.api.base.BaseExplanation):
+class FeatureValueExplanation(BaseExplanation):
     """Handles explanations that can be visualized as horizontal bar graphs.
     Usually these are feature-value pairs being represented.
     """
