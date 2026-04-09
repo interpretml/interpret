@@ -277,8 +277,47 @@ def _harmonize_tensor(
     return new_tensor.reshape(new_shape)
 
 
+def _initialize_merged_model_params(merged_model, source_models):
+    """Copy hyperparameters from the first source model to the merged EBM.
+
+    When a merged EBM is created via ``__new__()``, the ``__init__()`` method
+    is bypassed, which means no hyperparameters (such as ``learning_rate``,
+    ``max_bins``, ``outer_bags``, etc.) are set on the new object. This
+    violates the scikit-learn estimator contract, causing ``repr()``,
+    ``get_params()``, and ``sklearn.base.clone()`` to fail.
+
+    This function resolves the issue by copying all hyperparameters from the
+    first source model. These parameters are training-time configurations
+    and do not affect the predictions of the already-trained merged model.
+
+    Args:
+        merged_model: The newly created (via ``__new__()``) EBM instance
+            that is missing its hyperparameters.
+        source_models: The list of fitted EBM models being merged. The
+            first model's hyperparameters are used as the source.
+    """
+    first_source_model = source_models[0]
+    hyperparameters = first_source_model.get_params(deep=False)
+
+    # The callback parameter is a per-training-session callable that is
+    # not meaningful for a merged model. Explicitly set it to None to
+    # avoid retaining a stale reference to the original training callback.
+    if "callback" in hyperparameters:
+        hyperparameters["callback"] = None
+
+    for parameter_name, parameter_value in hyperparameters.items():
+        setattr(merged_model, parameter_name, parameter_value)
+
+
 def merge_ebms(models):
     """Merges EBM models trained on similar datasets that have the same set of features.
+
+    The merged model's hyperparameters (such as ``learning_rate``, ``max_bins``,
+    ``outer_bags``, etc.) are copied from the first model in the list. These are
+    training-time configurations and do not affect the predictions of the merged
+    model. The ``callback`` parameter is always set to ``None`` on the merged
+    model since callbacks are per-training-session and not meaningful after
+    merging.
 
     Args:
         models: List of EBM models to be merged.
@@ -324,6 +363,8 @@ def merge_ebms(models):
             ebm = EBMRegressor.__new__(EBMRegressor)
         else:
             ebm = EBMClassifier.__new__(EBMClassifier)
+
+    _initialize_merged_model_params(ebm, models)
 
     if any(not hasattr(model, "bins_") for model in models):  # pragma: no cover
         msg = "All models must be fitted before merging."
