@@ -1,6 +1,6 @@
 ## Version Control
 
-This project follows git-flow. As such most of the recent changes will be in the `develop` branch.
+Most of the recent changes will be in the `main` branch.
 
 ## Development Installation
 

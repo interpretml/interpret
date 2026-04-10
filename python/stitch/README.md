@@ -1,8 +1,8 @@
 
 # stitch
 
-[![Build Status](https://travis-ci.org/interpretml/stitch.svg?branch=master)](https://travis-ci.org/interpretml/stitch)
-[![codecov](https://codecov.io/gh/interpretml/stitch/branch/master/graph/badge.svg)](https://codecov.io/gh/interpretml/stitch)
+[![Build Status](https://travis-ci.org/interpretml/stitch.svg?branch=main)](https://travis-ci.org/interpretml/stitch)
+[![codecov](https://codecov.io/gh/interpretml/stitch/branch/main/graph/badge.svg)](https://codecov.io/gh/interpretml/stitch)
 
 Widget that handles bi-directional communication between user-defined JavaScript and the Jupyter kernel via a sandboxed iframe and postMessage.
 
