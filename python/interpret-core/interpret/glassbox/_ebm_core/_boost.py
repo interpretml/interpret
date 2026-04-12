@@ -364,17 +364,17 @@ def boost(
                                 ):
                                     break
 
+                            if callback is not None:
+                                is_done = callback(
+                                    bag_idx, step_idx, make_progress, cur_metric
+                                )
+                                if is_done:
+                                    if stop_flag is not None:
+                                        stop_flag[0] = True
+                                    break
+
                         if stop_flag is not None and stop_flag[0]:
                             break
-
-                        if callback is not None:
-                            is_done = callback(
-                                bag_idx, step_idx, make_progress, cur_metric
-                            )
-                            if is_done:
-                                if stop_flag is not None:
-                                    stop_flag[0] = True
-                                break
 
                         state_idx = state_idx + 1
                         if len(term_features) <= state_idx:
