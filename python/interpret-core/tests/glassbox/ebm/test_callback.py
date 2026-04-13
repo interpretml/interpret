@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-"""Regression tests for issue #635: callback fires repeatedly with same n_steps."""
+"""Regression tests for issue #635: callback API uses keyword-only args."""
 
 import numpy as np
 
@@ -21,8 +21,8 @@ class RecordingCallback:
     def __init__(self):
         self.records = []
 
-    def __call__(self, bag_idx, n_steps, has_progressed, best_score):
-        self.records.append((bag_idx, n_steps, has_progressed, best_score))
+    def __call__(self, *, bag, step, term, metric):
+        self.records.append((bag, step, term, metric))
         return False
 
 
@@ -33,24 +33,24 @@ class StopAfterCallback:
         self.stop_after = stop_after
         self.call_count = 0
 
-    def __call__(self, bag_idx, n_steps, has_progressed, best_score):
+    def __call__(self, *, bag, step, term, metric):
         self.call_count += 1
         return self.call_count >= self.stop_after
 
 
 def _split_into_phases(steps):
-    """Split a list of n_steps values into phases.
+    """Split a list of step values into phases.
 
     EBM training has multiple boosting phases (main terms, then
-    interactions) where step_idx resets to 1. This splits the
-    sequence at phase boundaries (where n_steps drops).
+    interactions) where step resets to 1. This splits the
+    sequence at phase boundaries (where step drops).
     """
     if not steps:
         return []
     phases = [[steps[0]]]
     for i in range(1, len(steps)):
         if steps[i] < steps[i - 1]:
-            # n_steps dropped — new phase started
+            # step dropped — new phase started
             phases.append([steps[i]])
         else:
             phases[-1].append(steps[i])
@@ -58,11 +58,11 @@ def _split_into_phases(steps):
 
 
 def test_callback_no_repeated_steps_classifier():
-    """Verify the callback receives strictly increasing n_steps values.
+    """Verify the callback receives strictly increasing step values.
 
     Before the fix, the callback was invoked on every internal loop
     iteration — including non-progressing cycles — which caused
-    the same n_steps value to be reported multiple times.
+    the same step value to be reported multiple times.
     """
     cb = RecordingCallback()
 
@@ -83,14 +83,14 @@ def test_callback_no_repeated_steps_classifier():
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
     steps_by_bag = {}
-    for bag_idx, n_steps, _, _ in cb.records:
-        steps_by_bag.setdefault(bag_idx, []).append(n_steps)
+    for bag, step, _, _ in cb.records:
+        steps_by_bag.setdefault(bag, []).append(step)
 
-    for bag_idx, steps in steps_by_bag.items():
+    for bag, steps in steps_by_bag.items():
         for phase in _split_into_phases(steps):
             for i in range(1, len(phase)):
                 assert phase[i] > phase[i - 1], (
-                    f"Bag {bag_idx}: n_steps went from {phase[i - 1]} to "
+                    f"Bag {bag}: step went from {phase[i - 1]} to "
                     f"{phase[i]} (expected strictly increasing within phase)"
                 )
 
@@ -116,24 +116,20 @@ def test_callback_no_repeated_steps_regressor():
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
     steps_by_bag = {}
-    for bag_idx, n_steps, _, _ in cb.records:
-        steps_by_bag.setdefault(bag_idx, []).append(n_steps)
+    for bag, step, _, _ in cb.records:
+        steps_by_bag.setdefault(bag, []).append(step)
 
-    for bag_idx, steps in steps_by_bag.items():
+    for bag, steps in steps_by_bag.items():
         for phase in _split_into_phases(steps):
             for i in range(1, len(phase)):
                 assert phase[i] > phase[i - 1], (
-                    f"Bag {bag_idx}: n_steps went from {phase[i - 1]} to "
+                    f"Bag {bag}: step went from {phase[i - 1]} to "
                     f"{phase[i]} (expected strictly increasing within phase)"
                 )
 
 
-def test_callback_has_progressed_always_true():
-    """Verify has_progressed is always True when the callback fires.
-
-    Since the callback now only fires inside the `if make_progress`
-    block, has_progressed should never be False.
-    """
+def test_callback_receives_term_index():
+    """Verify the callback receives a valid term index."""
     cb = RecordingCallback()
 
     X, y, names, types = make_synthetic(
@@ -151,9 +147,12 @@ def test_callback_has_progressed_always_true():
     ebm.fit(X, y)
 
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
-    assert all(rec[2] for rec in cb.records), (
-        "has_progressed should always be True when callback fires"
-    )
+
+    for i, (_, _, term, _) in enumerate(cb.records):
+        assert isinstance(term, (int, np.integer)), (
+            f"term at call {i} should be an int, got {type(term)}"
+        )
+        assert term >= 0, f"term at call {i} should be non-negative, got {term}"
 
 
 def test_callback_early_termination():
@@ -206,3 +205,42 @@ def test_callback_receives_valid_metrics():
 
     for i, (_, _, _, metric) in enumerate(cb.records):
         assert np.isfinite(metric), f"Metric at step {i} is not finite: {metric}"
+
+
+def test_callback_keyword_only_signature():
+    """Verify the callback is invoked with keyword-only arguments.
+
+    This test ensures that the callback cannot be invoked with positional
+    arguments, which is the core API change in this PR.
+    """
+
+    class KeywordOnlyCallback:
+        def __init__(self):
+            self.called = False
+
+        def __call__(self, *, bag, step, term, metric):
+            self.called = True
+            # Verify all args were passed as keywords by checking they exist
+            assert isinstance(bag, int)
+            assert isinstance(step, int)
+            assert isinstance(term, (int, np.integer))
+            assert isinstance(metric, float)
+            return True  # stop immediately
+
+    cb = KeywordOnlyCallback()
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=500
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=50,
+        n_jobs=1,
+        callback=cb,
+    )
+    ebm.fit(X, y)
+
+    assert cb.called, "Keyword-only callback should have been invoked"

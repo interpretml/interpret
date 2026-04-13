@@ -393,7 +393,7 @@ def test_merge_ebms_callback_is_none():
     (e.g., the callback might hold references to training state).
     """
 
-    def training_callback(_step_count, _term_count, _is_interaction, _metric_value):
+    def training_callback(*, bag, step, term, metric):
         return False  # continue training
 
     classifier_one = ExplainableBoostingClassifier(

@@ -3206,13 +3206,14 @@ class EBMModel(BaseEBM):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Callable[[int, int, bool, float], bool]], default=None
-        A user-defined function that is invoked at the end of each boosting step to determine
-        whether to terminate boosting or continue. If it returns True, the boosting loop is
-        stopped immediately. By default, no callback is used and training proceeds according
-        to the early stopping settings.  The callback function receives:
-        (1) the bag index, (2) the number of boosting steps completed,
-        (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
+    callback : Optional[Callable[..., bool]], default=None
+        A user-defined function invoked after each progressing boosting step. Must use
+        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        If it returns True, boosting is stopped immediately.
+        The callback receives: ``bag`` (int) the outer bag index,
+        ``step`` (int) the number of boosting steps completed,
+        ``term`` (int) the index of the term that was just boosted,
+        and ``metric`` (float) the current validation metric.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -3309,7 +3310,7 @@ class EBMModel(BaseEBM):
         max_rounds: Optional[int] = 50000,
         early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[[int, int, bool, float], bool]] = None,
+        callback: Optional[Callable[..., bool]] = None,
         # Trees
         min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 0.0,
@@ -3572,13 +3573,14 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Callable[[int, int, bool, float], bool]], default=None
-        A user-defined function that is invoked at the end of each boosting step to determine
-        whether to terminate boosting or continue. If it returns True, the boosting loop is
-        stopped immediately. By default, no callback is used and training proceeds according
-        to the early stopping settings.  The callback function receives:
-        (1) the bag index, (2) the number of boosting steps completed,
-        (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
+    callback : Optional[Callable[..., bool]], default=None
+        A user-defined function invoked after each progressing boosting step. Must use
+        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        If it returns True, boosting is stopped immediately.
+        The callback receives: ``bag`` (int) the outer bag index,
+        ``step`` (int) the number of boosting steps completed,
+        ``term`` (int) the index of the term that was just boosted,
+        and ``metric`` (float) the current validation metric.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -3734,7 +3736,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         max_rounds: Optional[int] = 50000,
         early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[[int, int, bool, float], bool]] = None,
+        callback: Optional[Callable[..., bool]] = None,
         # Trees
         min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 1e-4,
@@ -3876,13 +3878,14 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Callable[[int, int, bool, float], bool]], default=None
-        A user-defined function that is invoked at the end of each boosting step to determine
-        whether to terminate boosting or continue. If it returns True, the boosting loop is
-        stopped immediately. By default, no callback is used and training proceeds according
-        to the early stopping settings.  The callback function receives:
-        (1) the bag index, (2) the number of boosting steps completed,
-        (3) a boolean indicating whether progress was made in the current step, and (4) the current best score.
+    callback : Optional[Callable[..., bool]], default=None
+        A user-defined function invoked after each progressing boosting step. Must use
+        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        If it returns True, boosting is stopped immediately.
+        The callback receives: ``bag`` (int) the outer bag index,
+        ``step`` (int) the number of boosting steps completed,
+        ``term`` (int) the index of the term that was just boosted,
+        and ``metric`` (float) the current validation metric.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -4038,7 +4041,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         max_rounds: Optional[int] = 50000,
         early_stopping_rounds: Optional[int] = 100,
         early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[[int, int, bool, float], bool]] = None,
+        callback: Optional[Callable[..., bool]] = None,
         # Trees
         min_samples_leaf: Optional[int] = 4,
         min_hessian: Optional[float] = 0.0,

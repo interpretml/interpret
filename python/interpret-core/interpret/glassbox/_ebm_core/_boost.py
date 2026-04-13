@@ -366,7 +366,10 @@ def boost(
 
                             if callback is not None:
                                 is_done = callback(
-                                    bag_idx, step_idx, make_progress, cur_metric
+                                    bag=bag_idx,
+                                    step=step_idx,
+                                    term=term_idx,
+                                    metric=cur_metric,
                                 )
                                 if is_done:
                                     if stop_flag is not None:
