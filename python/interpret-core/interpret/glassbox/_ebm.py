@@ -3940,7 +3940,8 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
     objective : str, default="rmse"
         The objective to optimize. Options include: "rmse",
         "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
-        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
+        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function),
+        "quantile:alpha=0.5" (quantile regression with pinball loss)
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.

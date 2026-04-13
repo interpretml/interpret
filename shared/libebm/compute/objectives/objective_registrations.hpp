@@ -31,6 +31,7 @@
 #include "TweedieDevianceRegressionObjective.hpp"
 #include "GammaDevianceRegressionObjective.hpp"
 #include "PseudoHuberRegressionObjective.hpp"
+#include "PinballRegressionObjective.hpp"
 #include "LogLossBinaryObjective.hpp"
 #include "LogLossMulticlassObjective.hpp"
 
@@ -48,6 +49,7 @@ template<typename TFloat> static const std::vector<std::shared_ptr<const Registr
          Register<TFloat, GammaDevianceRegressionObjective, AccelerationFlags_ALL>("gamma_deviance"),
          Register<TFloat, PseudoHuberRegressionObjective, AccelerationFlags_ALL>(
                "pseudo_huber", FloatParam("delta", 1.0)),
+         Register<TFloat, PinballRegressionObjective, AccelerationFlags_ALL>("quantile", FloatParam("alpha", 0.5)),
          Register<TFloat, LogLossBinaryObjective, AccelerationFlags_ALL>("log_loss"),
          Register<TFloat, LogLossMulticlassObjective, AccelerationFlags_ALL>("log_loss"),
    };
