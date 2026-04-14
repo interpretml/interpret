@@ -7,7 +7,7 @@
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
 template<typename TFloat> struct PinballRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(PinballRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_identity, true)
+   OBJECTIVE_BOILERPLATE(PinballRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_identity, false)
 
    TFloat m_alpha;
    TFloat m_oneMinusAlpha;
@@ -73,14 +73,5 @@ template<typename TFloat> struct PinballRegressionObjective : RegressionObjectiv
       const TFloat prediction = score; // identity link function
       const TFloat error = prediction - target;
       return IfThenElse(error < 0.0, -m_alpha, m_oneMinusAlpha);
-   }
-
-   GPU_DEVICE inline GradientHessian<TFloat> CalcGradientHessian(
-         const TFloat& score, const TFloat& target) const noexcept {
-      const TFloat prediction = score; // identity link function
-      const TFloat error = prediction - target;
-      const TFloat gradient = IfThenElse(error < 0.0, -m_alpha, m_oneMinusAlpha);
-      const TFloat hessian = 1.0;
-      return MakeGradientHessian(gradient, hessian);
    }
 };
