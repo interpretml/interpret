@@ -1397,3 +1397,72 @@ def test_estimate_mem():
         n_bytes_regressor = ebm.estimate_mem(X, y, 1.0)
 
         # print(f"datatype={t}, bytes_classifier[mains]={n_bytes_classifier}, bytes_regressor[+interactions]={n_bytes_regressor}")
+
+
+def test_quantile_regression():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    # Test median regression (alpha=0.5)
+    ebm_median = ExplainableBoostingRegressor(
+        objective="quantile:alpha=0.5", n_jobs=-2, interactions=0
+    )
+    ebm_median.fit(X, y)
+    pred_median = ebm_median.predict(X)
+    valid_ebm(ebm_median)
+
+    # Test lower quantile (alpha=0.1)
+    ebm_low = ExplainableBoostingRegressor(
+        objective="quantile:alpha=0.1", n_jobs=-2, interactions=0
+    )
+    ebm_low.fit(X, y)
+    pred_low = ebm_low.predict(X)
+    valid_ebm(ebm_low)
+
+    # Test upper quantile (alpha=0.9)
+    ebm_high = ExplainableBoostingRegressor(
+        objective="quantile:alpha=0.9", n_jobs=-2, interactions=0
+    )
+    ebm_high.fit(X, y)
+    pred_high = ebm_high.predict(X)
+    valid_ebm(ebm_high)
+
+    # Quantile ordering: q10 < q50 < q90 for most predictions
+    assert np.mean(pred_low < pred_median) > 0.5
+    assert np.mean(pred_median < pred_high) > 0.5
+
+    # Default alpha (0.5) should work without specifying the parameter
+    ebm_default = ExplainableBoostingRegressor(
+        objective="quantile", n_jobs=-2, interactions=0
+    )
+    ebm_default.fit(X, y)
+    ebm_default.predict(X)
+    valid_ebm(ebm_default)
+
+
+def test_quantile_regression_param_validation():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    # alpha=0 should fail
+    with pytest.raises(Exception):
+        ebm = ExplainableBoostingRegressor(
+            objective="quantile:alpha=0.0", n_jobs=1, interactions=0
+        )
+        ebm.fit(X, y)
+
+    # alpha=1 should fail
+    with pytest.raises(Exception):
+        ebm = ExplainableBoostingRegressor(
+            objective="quantile:alpha=1.0", n_jobs=1, interactions=0
+        )
+        ebm.fit(X, y)
+
+    # alpha negative should fail
+    with pytest.raises(Exception):
+        ebm = ExplainableBoostingRegressor(
+            objective="quantile:alpha=-0.5", n_jobs=1, interactions=0
+        )
+        ebm.fit(X, y)
