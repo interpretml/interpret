@@ -27,9 +27,9 @@
 #include "ExampleRegressionObjective.hpp"
 #include "RmseRegressionObjective.hpp"
 #include "RmseLogLinkRegressionObjective.hpp"
-#include "PoissonDevianceRegressionObjective.hpp"
-#include "TweedieDevianceRegressionObjective.hpp"
-#include "GammaDevianceRegressionObjective.hpp"
+#include "PoissonRegressionObjective.hpp"
+#include "TweedieRegressionObjective.hpp"
+#include "GammaRegressionObjective.hpp"
 #include "PseudoHuberRegressionObjective.hpp"
 #include "PinballRegressionObjective.hpp"
 #include "LogLossBinaryObjective.hpp"
@@ -43,10 +43,10 @@ template<typename TFloat> static const std::vector<std::shared_ptr<const Registr
                "example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
          Register<TFloat, RmseRegressionObjective, AccelerationFlags_ALL>("rmse"),
          Register<TFloat, RmseLogLinkRegressionObjective, AccelerationFlags_ALL>("rmse_log"),
-         Register<TFloat, PoissonDevianceRegressionObjective, AccelerationFlags_ALL>("poisson_deviance"),
-         Register<TFloat, TweedieDevianceRegressionObjective, AccelerationFlags_ALL>(
-               "tweedie_deviance", FloatParam("variance_power", 1.5)),
-         Register<TFloat, GammaDevianceRegressionObjective, AccelerationFlags_ALL>("gamma_deviance"),
+         Register<TFloat, PoissonRegressionObjective, AccelerationFlags_ALL>("poisson"),
+         Register<TFloat, TweedieRegressionObjective, AccelerationFlags_ALL>(
+               "tweedie", FloatParam("variance_power", 1.5)),
+         Register<TFloat, GammaRegressionObjective, AccelerationFlags_ALL>("gamma"),
          Register<TFloat, PseudoHuberRegressionObjective, AccelerationFlags_ALL>(
                "pseudo_huber", FloatParam("delta", 1.0)),
          Register<TFloat, PinballRegressionObjective, AccelerationFlags_ALL>("quantile", FloatParam("alpha", 0.5)),

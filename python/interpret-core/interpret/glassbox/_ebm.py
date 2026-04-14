@@ -45,7 +45,7 @@ from ..utils._explanation import (
 from ..utils._histogram import make_all_histogram_edges
 from ..utils._link import inv_link, link_func
 from ..utils._measure_mem import total_bytes
-from ..utils._misc import clean_index, clean_indexes
+from ..utils._misc import clean_index, clean_indexes, normalize_objective
 from ..utils._native import Native
 from ..utils._preprocessor import construct_bins
 from ..utils._privacy import (
@@ -500,7 +500,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         native = Native.get_native_singleton()
 
-        objective = self.objective
+        objective = normalize_objective(self.objective)
         n_classes = Native.Task_Unknown
         if objective is not None:
             if len(objective.strip()) == 0:
@@ -1498,7 +1498,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
             native = Native.get_native_singleton()
 
-            objective = self.objective
+            objective = normalize_objective(self.objective)
             if objective is not None:
                 if len(objective.strip()) == 0:
                     objective = None
@@ -3939,7 +3939,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
     objective : str, default="rmse"
         The objective to optimize. Options include: "rmse",
-        "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
+        "poisson", "tweedie:variance_power=1.5", "gamma",
         "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function),
         "quantile:alpha=0.5" (quantile regression with pinball loss)
     n_jobs : int, default=-2

@@ -1695,7 +1695,7 @@ TEST_CASE("tweedie, boosting") {
          k_countInnerBagsDefault,
          k_testCreateBoosterFlags_Default,
          k_testAccelerationFlags_Default,
-         "tweedie_deviance:variance_power=1.3");
+         "tweedie:variance_power=1.3");
 
    double validationMetric = double{std::numeric_limits<double>::quiet_NaN()};
    double termScore = double{std::numeric_limits<double>::quiet_NaN()};

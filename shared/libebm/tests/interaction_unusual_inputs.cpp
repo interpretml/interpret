@@ -538,7 +538,7 @@ TEST_CASE("tweedie, interaction") {
          {TestSample({0, 0}, 10), TestSample({0, 1}, 11), TestSample({1, 0}, 13), TestSample({1, 1}, 12)},
          k_testCreateInteractionFlags_Default,
          k_testAccelerationFlags_Default,
-         "tweedie_deviance:variance_power=1.3");
+         "tweedie:variance_power=1.3");
 
    double metricReturn = test.TestCalcInteractionStrength({0, 1}, CalcInteractionFlags_DisableNewton);
    CHECK_APPROX(metricReturn, 1.25);

@@ -6,12 +6,12 @@
 
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
-template<typename TFloat> struct PoissonDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(PoissonDevianceRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
+template<typename TFloat> struct PoissonRegressionObjective : RegressionObjective {
+   OBJECTIVE_BOILERPLATE(PoissonRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
 
    // The constructor parameters following config must match the RegisterObjective parameters in
    // objective_registrations.hpp
-   inline PoissonDevianceRegressionObjective(const Config& config) {
+   inline PoissonRegressionObjective(const Config& config) {
       // XGBoost and LightGBM have a max_delta_step parameter which is set to 0.7 by default. This parameter's only
       // actual effect is that it changes the effective learning rate by a multiple of 1/e^max_delta_step, which
       // is a parameter that you can set already from the public interface.
