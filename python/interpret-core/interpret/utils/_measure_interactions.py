@@ -26,6 +26,7 @@ from ._native import Native
 from ._preprocessor import construct_bins
 from ._rank_interactions import rank_interactions
 from ._shared_dataset import SharedDataset
+from ._misc import normalize_objective
 
 _log = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def measure_interactions(
         reg_lambda: L2 regularization.
         max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
-            "poisson_deviance", "tweedie_deviance:variance_power=1.5", "gamma_deviance",
+            "poisson", "tweedie:variance_power=1.5", "gamma",
             "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
     Returns:
         List containing a tuple of feature indices for the terms and interaction strengths,
@@ -89,6 +90,8 @@ def measure_interactions(
         raise ValueError(msg)
 
     is_differential_privacy = False
+
+    objective = normalize_objective(objective)
 
     flags = (
         Native.LinkFlags_DifferentialPrivacy

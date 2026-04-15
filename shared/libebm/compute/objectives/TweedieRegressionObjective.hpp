@@ -6,8 +6,8 @@
 
 // TFloat is a datatype that could hold inside a double, float, or some SIMD intrinsic type.
 // See cpu_64.cpp, avx2_32.cpp, and cuda_32.cu as examples where TFloat operators are defined.
-template<typename TFloat> struct TweedieDevianceRegressionObjective : RegressionObjective {
-   OBJECTIVE_BOILERPLATE(TweedieDevianceRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
+template<typename TFloat> struct TweedieRegressionObjective : RegressionObjective {
+   OBJECTIVE_BOILERPLATE(TweedieRegressionObjective, MINIMIZE_METRIC, Objective_Other, Link_log, true)
 
    TFloat m_variancePowerParamSub1;
    TFloat m_variancePowerParamSub2;
@@ -16,7 +16,7 @@ template<typename TFloat> struct TweedieDevianceRegressionObjective : Regression
 
    // The constructor parameters following config must match the RegisterObjective parameters in
    // objective_registrations.hpp
-   inline TweedieDevianceRegressionObjective(const Config& config, double variancePower) {
+   inline TweedieRegressionObjective(const Config& config, double variancePower) {
       if(config.cOutputs != 1) {
          throw ParamMismatchWithConfigException();
       }

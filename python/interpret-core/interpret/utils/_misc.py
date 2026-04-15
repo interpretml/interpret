@@ -2,12 +2,35 @@
 # Distributed under the MIT software license
 import logging
 from itertools import count
+from warnings import warn
 
 import numpy as np
 from typing import Any
 import sys
 
 _log = logging.getLogger(__name__)
+
+_deprecated_objectives = {
+    "poisson_deviance": "poisson",
+    "gamma_deviance": "gamma",
+    "tweedie_deviance": "tweedie",
+}
+
+
+def normalize_objective(objective):
+    if objective is not None:
+        for old_name, new_name in _deprecated_objectives.items():
+            if objective == old_name or objective.startswith(old_name + ":"):
+                warn(
+                    f"Objective '{old_name}' has been renamed to '{new_name}'. "
+                    f"Please use '{new_name}' instead. "
+                    f"The old name will be removed in a future version.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                objective = new_name + objective[len(old_name) :]
+                break
+    return objective
 
 
 def safe_isinstance(obj: Any, name: str) -> bool:

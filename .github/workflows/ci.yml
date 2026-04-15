@@ -226,7 +226,7 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
       - name: Download sdist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: bld/sdist
@@ -251,7 +251,7 @@ jobs:
           echo "Building of docs failed." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.build_docs.outcome == 'failure' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.checks.create({
@@ -289,13 +289,13 @@ jobs:
           python-version: "3.10"
           cache: 'pip'
       - name: Download libebm artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: libebm_*
           merge-multiple: true
           path: python/interpret-core/interpret/root/bld/lib/
       - name: Download vis artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: vis
           path: python/interpret-core/interpret/root/bld/lib/
@@ -366,7 +366,7 @@ jobs:
           python-version: ${{ matrix.python_ver }}
           cache: 'pip'
       - name: Download powerlift artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: powerlift
           path: bld/powerlift
@@ -461,7 +461,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
       - name: Download libebm artifact
         if: ${{ matrix.existing != '' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: libebm_${{ matrix.name }}
           path: bld/lib
@@ -555,7 +555,7 @@ jobs:
           python-version: ${{ matrix.python_ver }}
           cache: 'pip'
       - name: Download sdist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: sdist
           path: bld/sdist
@@ -585,7 +585,7 @@ jobs:
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: tmp/zqmr/t/coverage.xml
           flags: sdist_${{ matrix.name }}
@@ -659,7 +659,7 @@ jobs:
           python-version: ${{ matrix.python_ver }}
           cache: 'pip'
       - name: Download bdist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: bdist
           path: bld/bdist
@@ -689,7 +689,7 @@ jobs:
           python -m pytest -vv -n auto --cov=interpret --cov-report=xml
       - name: Code coverage report
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: tmp/zqmr/t/coverage.xml
           flags: bdist_${{ matrix.name }}
@@ -712,7 +712,7 @@ jobs:
         with:
           r-version: 'latest'
       - name: Download R artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: R
           path: bld/R
@@ -759,7 +759,7 @@ jobs:
           echo "Run clang formatting locally and push the changes." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.check_cpp.outcome == 'failure' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.checks.create({
@@ -803,7 +803,7 @@ jobs:
           echo "Run \`ruff format .\` locally and push the changes." >> $GITHUB_STEP_SUMMARY
       - name: Mark step with a warning
         if: ${{ steps.check_python.outcome == 'failure' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.checks.create({
