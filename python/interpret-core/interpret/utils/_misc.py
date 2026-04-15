@@ -28,7 +28,7 @@ def normalize_objective(objective):
                     FutureWarning,
                     stacklevel=2,
                 )
-                objective = new_name + objective[len(old_name):]
+                objective = new_name + objective[len(old_name) :]
                 break
     return objective
 
