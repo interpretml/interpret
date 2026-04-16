@@ -999,6 +999,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                     delayed(booster)(
                         shm_name=shm_name,
                         bag_idx=idx,
+                        stage=0,
                         callback=callback,
                         dataset=(
                             shared.name if shared.name is not None else shared.dataset
@@ -1238,6 +1239,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         delayed(booster)(
                             shm_name=shm_name,
                             bag_idx=idx,
+                            stage=1,
                             callback=callback,
                             dataset=(
                                 shared.name
@@ -1349,6 +1351,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                     exception, intercept_change, _, _, rng = booster(
                         shm_name=None,
                         bag_idx=0,
+                        stage=-1,
                         callback=None,
                         dataset=shared.dataset,
                         intercept_rounds=develop.get_option("n_intercept_rounds_final"),
@@ -3208,9 +3211,10 @@ class EBMModel(BaseEBM):
         the ensemble as a whole.
     callback : Optional[Callable[..., bool]], default=None
         A user-defined function invoked after each progressing boosting step. Must use
-        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        keyword-only arguments: ``def my_callback(*, bag, stage, step, term, metric)``.
         If it returns True, boosting is stopped immediately.
         The callback receives: ``bag`` (int) the outer bag index,
+        ``stage`` (int) the boosting stage (0=mains, 1=pairs),
         ``step`` (int) the number of boosting steps completed,
         ``term`` (int) the index of the term that was just boosted,
         and ``metric`` (float) the current validation metric.
@@ -3575,9 +3579,10 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         the ensemble as a whole.
     callback : Optional[Callable[..., bool]], default=None
         A user-defined function invoked after each progressing boosting step. Must use
-        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        keyword-only arguments: ``def my_callback(*, bag, stage, step, term, metric)``.
         If it returns True, boosting is stopped immediately.
         The callback receives: ``bag`` (int) the outer bag index,
+        ``stage`` (int) the boosting stage (0=mains, 1=pairs),
         ``step`` (int) the number of boosting steps completed,
         ``term`` (int) the index of the term that was just boosted,
         and ``metric`` (float) the current validation metric.
@@ -3880,9 +3885,10 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         the ensemble as a whole.
     callback : Optional[Callable[..., bool]], default=None
         A user-defined function invoked after each progressing boosting step. Must use
-        keyword-only arguments: ``def my_callback(*, bag, step, term, metric)``.
+        keyword-only arguments: ``def my_callback(*, bag, stage, step, term, metric)``.
         If it returns True, boosting is stopped immediately.
         The callback receives: ``bag`` (int) the outer bag index,
+        ``stage`` (int) the boosting stage (0=mains, 1=pairs),
         ``step`` (int) the number of boosting steps completed,
         ``term`` (int) the index of the term that was just boosted,
         and ``metric`` (float) the current validation metric.

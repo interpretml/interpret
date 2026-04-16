@@ -21,8 +21,8 @@ class RecordingCallback:
     def __init__(self):
         self.records = []
 
-    def __call__(self, *, bag, step, term, metric):
-        self.records.append((bag, step, term, metric))
+    def __call__(self, *, bag, stage, step, term, metric):
+        self.records.append((bag, stage, step, term, metric))
         return False
 
 
@@ -33,7 +33,7 @@ class StopAfterCallback:
         self.stop_after = stop_after
         self.call_count = 0
 
-    def __call__(self, *, bag, step, term, metric):
+    def __call__(self, *, bag, stage, step, term, metric):
         self.call_count += 1
         return self.call_count >= self.stop_after
 
@@ -83,8 +83,8 @@ def test_callback_no_repeated_steps_classifier():
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
     steps_by_bag = {}
-    for bag, step, _, _ in cb.records:
-        steps_by_bag.setdefault(bag, []).append(step)
+    for bag, stage, step, _, _ in cb.records:
+        steps_by_bag.setdefault(bag, []).append((stage, step))
 
     for bag, steps in steps_by_bag.items():
         for phase in _split_into_phases(steps):
@@ -116,8 +116,8 @@ def test_callback_no_repeated_steps_regressor():
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
     steps_by_bag = {}
-    for bag, step, _, _ in cb.records:
-        steps_by_bag.setdefault(bag, []).append(step)
+    for bag, stage, step, _, _ in cb.records:
+        steps_by_bag.setdefault(bag, []).append((stage, step))
 
     for bag, steps in steps_by_bag.items():
         for phase in _split_into_phases(steps):
@@ -148,7 +148,7 @@ def test_callback_receives_term_index():
 
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
-    for i, (_, _, term, _) in enumerate(cb.records):
+    for i, (_, _, _, term, _) in enumerate(cb.records):
         assert isinstance(term, (int, np.integer)), (
             f"term at call {i} should be an int, got {type(term)}"
         )
@@ -203,7 +203,7 @@ def test_callback_receives_valid_metrics():
 
     assert len(cb.records) > 0, "Callback should have been invoked at least once"
 
-    for i, (_, _, _, metric) in enumerate(cb.records):
+    for i, (_, _, _, _, metric) in enumerate(cb.records):
         assert np.isfinite(metric), f"Metric at step {i} is not finite: {metric}"
 
 
@@ -218,7 +218,7 @@ def test_callback_keyword_only_signature():
         def __init__(self):
             self.called = False
 
-        def __call__(self, *, bag, step, term, metric):
+        def __call__(self, *, bag, stage, step, term, metric):
             self.called = True
             # Verify all args were passed as keywords by checking they exist
             assert isinstance(bag, int)

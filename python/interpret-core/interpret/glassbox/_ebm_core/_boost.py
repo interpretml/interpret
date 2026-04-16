@@ -28,6 +28,7 @@ def load_shared_memory(name: str) -> Iterator[shared_memory.SharedMemory]:
 def boost(
     shm_name,
     bag_idx,
+    stage,
     callback,
     dataset,
     intercept_rounds,
@@ -364,9 +365,13 @@ def boost(
                                 ):
                                     break
 
+                            if stop_flag is not None and stop_flag[0]:
+                                break
+
                             if callback is not None:
                                 is_done = callback(
                                     bag=bag_idx,
+                                    stage=stage,
                                     step=step_idx,
                                     term=term_idx,
                                     metric=cur_metric,
