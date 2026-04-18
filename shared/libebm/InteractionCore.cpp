@@ -322,11 +322,13 @@ ErrorEbm InteractionCore::Create(const unsigned char* const pDataSetShared,
                sizeof(UIntSmall) == pInteractionCore->m_objectiveSIMD.m_cUIntBytes ||
                sizeof(FloatSmall) == pInteractionCore->m_objectiveSIMD.m_cFloatBytes;
 
+         const size_t cSubsetItemsMax = bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX;
+
          const bool bHessian = pInteractionCore->IsHessian();
 
          error = pInteractionCore->m_dataFrame.InitDataSetInteraction(bHessian,
                cScores,
-               bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
+               cSubsetItemsMax,
                &pInteractionCore->m_objectiveCpu,
                &pInteractionCore->m_objectiveSIMD,
                pDataSetShared,

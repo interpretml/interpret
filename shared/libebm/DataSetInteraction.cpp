@@ -412,22 +412,29 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(const bool bAllocateHessians
             nullptr != pObjectiveSIMD->m_pObjective && 2 <= pObjectiveSIMD->m_cSIMDPack);
       const size_t cSIMDPack = pObjectiveSIMD->m_cSIMDPack;
 
-      size_t cSubsets = 0;
-      size_t cIncludedSamplesRemainingInit = cIncludedSamples;
-      do {
-         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemainingInit, cSubsetItemsMax);
+      const bool bSingleSubsetRequired = EBM_FALSE != pObjectiveCpu->m_bSingleSubsetRequired;
 
-         if(size_t{0} == cSIMDPack || cSubsetSamples < cSIMDPack) {
-            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
-         } else {
-            // drop any items which cannot fit into the SIMD pack
-            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
-         }
-         ++cSubsets;
-         EBM_ASSERT(1 <= cSubsetSamples);
-         EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemainingInit);
-         cIncludedSamplesRemainingInit -= cSubsetSamples;
-      } while(size_t{0} != cIncludedSamplesRemainingInit);
+      size_t cSubsets;
+      if(bSingleSubsetRequired) {
+         cSubsets = 1;
+      } else {
+         cSubsets = 0;
+         size_t cIncludedSamplesRemainingInit = cIncludedSamples;
+         do {
+            size_t cSubsetSamples = EbmMin(cIncludedSamplesRemainingInit, cSubsetItemsMax);
+
+            if(size_t{0} == cSIMDPack || cSubsetSamples < cSIMDPack) {
+               // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+            } else {
+               // drop any items which cannot fit into the SIMD pack
+               cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+            }
+            ++cSubsets;
+            EBM_ASSERT(1 <= cSubsetSamples);
+            EBM_ASSERT(cSubsetSamples <= cIncludedSamplesRemainingInit);
+            cIncludedSamplesRemainingInit -= cSubsetSamples;
+         } while(size_t{0} != cIncludedSamplesRemainingInit);
+      }
       EBM_ASSERT(1 <= cSubsets);
 
       if(IsMultiplyError(sizeof(DataSubsetInteraction), cSubsets)) {
@@ -457,15 +464,21 @@ ErrorEbm DataSetInteraction::InitDataSetInteraction(const bool bAllocateHessians
       do {
          EBM_ASSERT(1 <= cIncludedSamplesRemaining);
 
-         size_t cSubsetSamples = EbmMin(cIncludedSamplesRemaining, cSubsetItemsMax);
-
-         if(size_t{0} == cSIMDPack || cSubsetSamples < cSIMDPack) {
-            // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+         size_t cSubsetSamples;
+         if(bSingleSubsetRequired) {
+            cSubsetSamples = cIncludedSamplesRemaining;
             pSubset->m_pObjective = pObjectiveCpu;
          } else {
-            // drop any items which cannot fit into the SIMD pack
-            cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
-            pSubset->m_pObjective = pObjectiveSIMD;
+            cSubsetSamples = EbmMin(cIncludedSamplesRemaining, cSubsetItemsMax);
+
+            if(size_t{0} == cSIMDPack || cSubsetSamples < cSIMDPack) {
+               // these remaing items cannot be processed with the SIMD compute, so they go into the CPU compute
+               pSubset->m_pObjective = pObjectiveCpu;
+            } else {
+               // drop any items which cannot fit into the SIMD pack
+               cSubsetSamples = cSubsetSamples - cSubsetSamples % cSIMDPack;
+               pSubset->m_pObjective = pObjectiveSIMD;
+            }
          }
          EBM_ASSERT(nullptr != pSubset->m_pObjective->m_pObjective);
          EBM_ASSERT(1 <= cSubsetSamples);

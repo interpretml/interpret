@@ -13,6 +13,7 @@ template<typename TFloat> struct LogLossMulticlassObjective : MulticlassObjectiv
          Link_mlogit,
          true,
          true,
+         false,
          k_cItemsPerBitPackUndefined,
          k_cItemsPerBitPackUndefined)
 

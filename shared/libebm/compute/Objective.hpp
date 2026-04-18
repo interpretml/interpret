@@ -893,6 +893,26 @@ struct Objective : public Registrable {
 
       pObjectiveWrapperOut->m_bObjectiveHasHessian = TObjective::k_bHessian ? EBM_TRUE : EBM_FALSE;
 
+      // k_bSingleSubsetRequired == true only makes sense for CPU (scalar) zones. SIMD zones would
+      // split samples across lanes and the per-objective global state (e.g. Cox risk sets) cannot
+      // be computed across lanes without extra gather/scatter plumbing that is not implemented.
+      // Additionally, a single-subset objective accumulates sums across ALL training samples in one
+      // pass without the per-subset re-bucketing that normally caps growth (k_cSubsetSamplesMax).
+      // float32 saturates at ~2^24 where adding 1.0 becomes a no-op, and uint32 would overflow on
+      // large datasets, so the 64-bit types (double / uint64_t) are required.
+      using TFloat = typename TObjective::TFloatInternal;
+      static_assert(!TObjective::k_bSingleSubsetRequired || AccelerationFlags_NONE == TFloat::k_zone,
+            "k_bSingleSubsetRequired = true requires the objective to be registered with "
+            "AccelerationFlags_NONE (CPU-only); SIMD/GPU zones are incompatible with global-state "
+            "objectives like Cox");
+      static_assert(!TObjective::k_bSingleSubsetRequired || std::is_same<typename TFloat::T, FloatBig>::value,
+            "k_bSingleSubsetRequired = true requires FloatBig (double); float32 saturates at ~2^24 "
+            "and would silently stop accumulating on large datasets");
+      static_assert(!TObjective::k_bSingleSubsetRequired || std::is_same<typename TFloat::TInt::T, UIntBig>::value,
+            "k_bSingleSubsetRequired = true requires UIntBig (uint64_t); 32-bit ints would overflow "
+            "on large datasets");
+      pObjectiveWrapperOut->m_bSingleSubsetRequired = TObjective::k_bSingleSubsetRequired ? EBM_TRUE : EBM_FALSE;
+
       pObjectiveWrapperOut->m_pObjective = this;
 
       pObjectiveWrapperOut->m_zones = zones;
@@ -1089,12 +1109,14 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
       __LINK_FUNCTION,                                                                                                 \
       bHessian,                                                                                                        \
       bHasApprox,                                                                                                      \
+      bSingleSubsetRequired,                                                                                           \
       cItemsPerBitPackMax,                                                                                             \
       cItemsPerBitPackMin)                                                                                             \
  public:                                                                                                               \
    using TFloatInternal = TFloat;                                                                                      \
    static constexpr bool k_bHessian = (bHessian);                                                                      \
    static constexpr bool k_bHasApprox = (bHasApprox);                                                                  \
+   static constexpr bool k_bSingleSubsetRequired = (bSingleSubsetRequired);                                            \
    static constexpr BoolEbm k_bMaximizeMetric = (__MAXIMIZE_METRIC);                                                   \
    static constexpr ObjectiveEbm k_objective = (__OBJECTIVE);                                                          \
    static constexpr LinkEbm k_linkFunction = (__LINK_FUNCTION);                                                        \
@@ -1144,6 +1166,7 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
          __OBJECTIVE,                                                                                                  \
          __LINK_FUNCTION,                                                                                              \
          bHessian,                                                                                                     \
+         false,                                                                                                        \
          false,                                                                                                        \
          k_cItemsPerBitPackUndefined,                                                                                  \
          k_cItemsPerBitPackUndefined)                                                                                  \

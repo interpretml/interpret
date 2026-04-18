@@ -145,6 +145,7 @@ struct ObjectiveWrapper {
    double m_gradientConstant;
    double m_hessianConstant;
    BoolEbm m_bObjectiveHasHessian;
+   BoolEbm m_bSingleSubsetRequired;
 
    size_t m_cSIMDPack;
 
@@ -171,6 +172,7 @@ inline static void InitializeObjectiveWrapperUnfailing(ObjectiveWrapper* const p
    pObjectiveWrapper->m_gradientConstant = 0.0;
    pObjectiveWrapper->m_hessianConstant = 0.0;
    pObjectiveWrapper->m_bObjectiveHasHessian = EBM_FALSE;
+   pObjectiveWrapper->m_bSingleSubsetRequired = EBM_FALSE;
    pObjectiveWrapper->m_cSIMDPack = 0;
    pObjectiveWrapper->m_cFloatBytes = 0;
    pObjectiveWrapper->m_cUIntBytes = 0;

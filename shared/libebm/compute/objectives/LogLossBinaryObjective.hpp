@@ -8,7 +8,7 @@
 
 template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
    OBJECTIVE_CONSTANTS_BOILERPLATE(
-         LogLossBinaryObjective, MINIMIZE_METRIC, Objective_LogLossBinary, Link_logit, true, true, 64, 1)
+         LogLossBinaryObjective, MINIMIZE_METRIC, Objective_LogLossBinary, Link_logit, true, true, false, 64, 1)
 
    inline LogLossBinaryObjective(const Config& config) {
       if(1 != config.cOutputs) {

@@ -662,6 +662,8 @@ ErrorEbm BoosterCore::Create(void* const rng,
                sizeof(UIntSmall) == pBoosterCore->m_objectiveSIMD.m_cUIntBytes ||
                sizeof(FloatSmall) == pBoosterCore->m_objectiveSIMD.m_cFloatBytes;
 
+         const size_t cSubsetItemsMax = bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX;
+
          const bool bHessian = pBoosterCore->IsHessian();
 
          pBoosterCore->m_cInnerBags = cInnerBags; // this is used to destruct m_trainingSet, so store it first
@@ -672,7 +674,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
                true,
                rng,
                cScores,
-               bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
+               cSubsetItemsMax,
                &pBoosterCore->m_objectiveCpu,
                &pBoosterCore->m_objectiveSIMD,
                pDataSetShared,
@@ -698,7 +700,7 @@ ErrorEbm BoosterCore::Create(void* const rng,
                false,
                rng,
                cScores,
-               bForceMultipleSubsets ? k_cSubsetSamplesMax : SIZE_MAX,
+               cSubsetItemsMax,
                &pBoosterCore->m_objectiveCpu,
                &pBoosterCore->m_objectiveSIMD,
                pDataSetShared,
