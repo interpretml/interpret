@@ -71,7 +71,7 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
          bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
-   GPU_DEVICE NEVER_INLINE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
+   GPU_DEVICE NEVER_INLINE ErrorEbm InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {
       static_assert(k_oneScore == cCompilerScores, "We special case the classifiers so do not need to handle them");
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
@@ -372,5 +372,6 @@ template<typename TFloat> struct LogLossBinaryObjective : BinaryObjective {
       if(bValidation) {
          pData->m_metricOut += static_cast<double>(Sum(metricSum));
       }
+      return Error_None;
    }
 };
