@@ -385,9 +385,10 @@ struct Cpu_64_Float final {
          size_t cCompilerScores>
    INLINE_RELEASE_TEMPLATED static ErrorEbm OperatorApplyUpdate(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) noexcept {
+      ErrorEbm error = Error_None;
       RemoteApplyUpdate<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
-            pObjective, pData);
-      return Error_None;
+            pObjective, pData, &error);
+      return error;
    }
 
    template<bool bHessian, bool bWeight, bool bCollapsed, size_t cCompilerScores, bool bParallel>

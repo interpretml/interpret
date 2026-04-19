@@ -363,6 +363,8 @@ struct Cuda_32_Float final {
       int * aDeviceVal2 = nullptr;
       int * aDeviceResult = nullptr;
       void * pDeviceObjective = nullptr;
+      ErrorEbm * pDeviceError = nullptr;
+      ErrorEbm kernelError = Error_None;
       cudaError_t error;
 
       error = cudaSetDevice(0);
@@ -381,6 +383,16 @@ struct Cuda_32_Float final {
       }
 
       error = cudaMalloc((void **)&aDeviceResult, k_cItems * sizeof(int));
+      if(cudaSuccess != error) {
+         goto exit_error;
+      }
+
+      error = cudaMalloc((void **)&pDeviceError, sizeof(ErrorEbm));
+      if(cudaSuccess != error) {
+         goto exit_error;
+      }
+
+      error = cudaMemcpy(pDeviceError, &kernelError, sizeof(ErrorEbm), cudaMemcpyHostToDevice);
       if(cudaSuccess != error) {
          goto exit_error;
       }
@@ -407,7 +419,7 @@ struct Cuda_32_Float final {
       }
 
       TestGpuAdd<TObjective><<<1, k_cItems>>>(static_cast<Objective *>(pDeviceObjective), aDeviceVal1, aDeviceVal2, aDeviceResult);
-      RemoteApplyUpdate<TObjective, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack><<<1, k_cItems>>>(pObjective, pData);
+      RemoteApplyUpdate<TObjective, cCompilerScores, bValidation, bWeight, bHessian, cCompilerPack><<<1, k_cItems>>>(pObjective, pData, pDeviceError);
 
       error = cudaGetLastError();
       if(cudaSuccess != error) {
@@ -420,6 +432,11 @@ struct Cuda_32_Float final {
       }
 
       error = cudaMemcpy(aResult, aDeviceResult, k_cItems * sizeof(int), cudaMemcpyDeviceToHost);
+      if(cudaSuccess != error) {
+         goto exit_error;
+      }
+
+      error = cudaMemcpy(&kernelError, pDeviceError, sizeof(ErrorEbm), cudaMemcpyDeviceToHost);
       if(cudaSuccess != error) {
          goto exit_error;
       }
@@ -458,6 +475,13 @@ struct Cuda_32_Float final {
          }
       }
 
+      if(nullptr != pDeviceError) {
+         error = cudaFree(pDeviceError);
+         if(cudaSuccess != error) {
+            bExitHard = true;
+         }
+      }
+
       if(bExitHard) {
          bExitError = true;
 
@@ -465,7 +489,7 @@ struct Cuda_32_Float final {
          error = cudaDeviceReset();
       }
 
-      return bExitError ? Error_UnexpectedInternal : Error_None;
+      return bExitError ? Error_UnexpectedInternal : kernelError;
    }
 
 

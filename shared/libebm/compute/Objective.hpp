@@ -80,10 +80,10 @@ template<typename TObjective,
       bool bUseApprox,
       size_t cCompilerScores,
       int cCompilerPack>
-GPU_DEVICE INLINE_RELEASE_TEMPLATED static void DoneBitpacking(
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static ErrorEbm DoneBitpacking(
       const Objective* const pObjective, ApplyUpdateBridge* const pData) {
    const TObjective* const pObjectiveSpecific = static_cast<const TObjective*>(pObjective);
-   pObjectiveSpecific->template InjectedApplyUpdate<bCollapsed,
+   return pObjectiveSpecific->template InjectedApplyUpdate<bCollapsed,
          bValidation,
          bWeight,
          bHessian,
@@ -103,7 +103,7 @@ template<typename TObjective,
       size_t cCompilerScores,
       int cCompilerPack>
 struct BitPackObjective final {
-   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static ErrorEbm Func(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
@@ -117,7 +117,7 @@ struct BitPackObjective final {
          if(0 != cRemnants) {
             pData->m_cSamples = cRemnants;
 
-            DoneBitpacking<TObjective,
+            const ErrorEbm error = DoneBitpacking<TObjective,
                   bCollapsed,
                   bValidation,
                   bWeight,
@@ -125,10 +125,13 @@ struct BitPackObjective final {
                   bUseApprox,
                   cCompilerScores,
                   k_cItemsPerBitPackUndefined>(pObjective, pData);
+            if(Error_None != error) {
+               return error;
+            }
 
             cSamples -= cRemnants;
             if(0 == cSamples) {
-               return;
+               return Error_None;
             }
             pData->m_cSamples = cSamples;
 
@@ -174,7 +177,7 @@ struct BitPackObjective final {
                EBM_ASSERT(nullptr == pData->m_aSampleScores);
             }
          }
-         DoneBitpacking<TObjective,
+         return DoneBitpacking<TObjective,
                bCollapsed,
                bValidation,
                bWeight,
@@ -183,7 +186,7 @@ struct BitPackObjective final {
                cCompilerScores,
                cCompilerPack>(pObjective, pData);
       } else {
-         BitPackObjective<TObjective,
+         return BitPackObjective<TObjective,
                bCollapsed,
                bValidation,
                bWeight,
@@ -211,12 +214,12 @@ struct BitPackObjective<TObjective,
       cCompilerScores,
       k_cItemsPerBitPackUndefined>
       final {
-   GPU_DEVICE INLINE_RELEASE_TEMPLATED static void Func(
+   GPU_DEVICE INLINE_RELEASE_TEMPLATED static ErrorEbm Func(
          const Objective* const pObjective, ApplyUpdateBridge* const pData) {
 
       static_assert(!bCollapsed, "Cannot be bCollapsed since there would be no bitpacking");
 
-      DoneBitpacking<TObjective,
+      return DoneBitpacking<TObjective,
             bCollapsed,
             bValidation,
             bWeight,
@@ -237,9 +240,9 @@ template<typename TObjective,
       typename std::enable_if<!(bCollapsed || 1 != cCompilerScores || bUseApprox ||
                                     AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone),
             int>::type = 0>
-GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyBitpacking(
       const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-   BitPackObjective<TObjective,
+   return BitPackObjective<TObjective,
          bCollapsed,
          bValidation,
          bWeight,
@@ -259,9 +262,9 @@ template<typename TObjective,
       typename std::enable_if<bCollapsed || 1 != cCompilerScores || bUseApprox ||
                   AccelerationFlags_NONE == TObjective::TFloatInternal::k_zone,
             int>::type = 0>
-GPU_DEVICE INLINE_RELEASE_TEMPLATED static void ApplyBitpacking(
+GPU_DEVICE INLINE_RELEASE_TEMPLATED static ErrorEbm ApplyBitpacking(
       const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-   DoneBitpacking<TObjective,
+   return DoneBitpacking<TObjective,
          bCollapsed,
          bValidation,
          bWeight,
@@ -278,9 +281,21 @@ template<typename TObjective,
       bool bHessian,
       bool bUseApprox,
       size_t cCompilerScores>
-GPU_GLOBAL static void RemoteApplyUpdate(const Objective* const pObjective, ApplyUpdateBridge* const pData) {
-   ApplyBitpacking<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
-         pObjective, pData);
+GPU_GLOBAL static void RemoteApplyUpdate(
+      const Objective* const pObjective, ApplyUpdateBridge* const pData, ErrorEbm* const pError) {
+   const ErrorEbm error =
+         ApplyBitpacking<TObjective, bCollapsed, bValidation, bWeight, bHessian, bUseApprox, cCompilerScores>(
+               pObjective, pData);
+   if(Error_None != error) {
+#ifdef GPU_COMPILE
+      // ErrorEbm is int32_t; CUDA's atomicCAS takes int*. Cast is safe on all supported platforms
+      // where sizeof(int) == 4. First-error-wins: if the slot is still Error_None (0), swap in our
+      // error; otherwise leave the earlier winner in place.
+      atomicCAS(reinterpret_cast<int*>(pError), static_cast<int>(Error_None), static_cast<int>(error));
+#else
+      *pError = error;
+#endif
+   }
 }
 
 struct Registrable {
@@ -554,7 +569,7 @@ struct Objective : public Registrable {
          bool bUseApprox,
          size_t cCompilerScores,
          int cCompilerPack>
-   GPU_DEVICE NEVER_INLINE void ChildApplyUpdate(ApplyUpdateBridge* const pData) const {
+   GPU_DEVICE NEVER_INLINE ErrorEbm ChildApplyUpdate(ApplyUpdateBridge* const pData) const {
       using TFloat = typename TObjective::TFloatInternal;
       const TObjective* const pObjective = static_cast<const TObjective*>(this);
 
@@ -729,6 +744,7 @@ struct Objective : public Registrable {
       if(bValidation) {
          pData->m_metricOut += static_cast<double>(Sum(metricSum));
       }
+      return Error_None;
    }
 
    template<typename TObjective>
@@ -1111,8 +1127,8 @@ struct RegressionMultitaskObjective : public MultitaskObjective {
          bool bUseApprox,                                                                                              \
          size_t cCompilerScores,                                                                                       \
          int cCompilerPack>                                                                                            \
-   GPU_DEVICE void InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {                                         \
-      Objective::ChildApplyUpdate<typename std::remove_pointer<decltype(this)>::type,                                  \
+   GPU_DEVICE ErrorEbm InjectedApplyUpdate(ApplyUpdateBridge* const pData) const {                                     \
+      return Objective::ChildApplyUpdate<typename std::remove_pointer<decltype(this)>::type,                           \
             bCollapsed,                                                                                                \
             bValidation,                                                                                               \
             bWeight,                                                                                                   \
