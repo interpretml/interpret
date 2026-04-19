@@ -38,24 +38,6 @@ class StopAfterCallback:
         return self.call_count >= self.stop_after
 
 
-def _split_into_phases(steps):
-    """Split a list of step values into phases.
-
-    EBM training has multiple boosting phases (main terms, then
-    interactions) where step resets to 1. This splits the
-    sequence at phase boundaries (where step drops).
-    """
-    if not steps:
-        return []
-    phases = [[steps[0]]]
-    for i in range(1, len(steps)):
-        if steps[i] < steps[i - 1]:
-            # step dropped — new phase started
-            phases.append([steps[i]])
-        else:
-            phases[-1].append(steps[i])
-    return phases
-
 
 def test_callback_no_repeated_steps_classifier():
     """Verify the callback receives strictly increasing step values.
@@ -87,12 +69,11 @@ def test_callback_no_repeated_steps_classifier():
         steps_by_bag.setdefault(bag, []).append((stage, step))
 
     for bag, steps in steps_by_bag.items():
-        for phase in _split_into_phases(steps):
-            for i in range(1, len(phase)):
-                assert phase[i] > phase[i - 1], (
-                    f"Bag {bag}: step went from {phase[i - 1]} to "
-                    f"{phase[i]} (expected strictly increasing within phase)"
-                )
+        for i in range(1, len(steps)):
+            assert steps[i] > steps[i - 1], (
+                f"Bag {bag}: (stage, step) went from {steps[i - 1]} to "
+                f"{steps[i]} (expected strictly increasing)"
+            )
 
 
 def test_callback_no_repeated_steps_regressor():
@@ -120,12 +101,11 @@ def test_callback_no_repeated_steps_regressor():
         steps_by_bag.setdefault(bag, []).append((stage, step))
 
     for bag, steps in steps_by_bag.items():
-        for phase in _split_into_phases(steps):
-            for i in range(1, len(phase)):
-                assert phase[i] > phase[i - 1], (
-                    f"Bag {bag}: step went from {phase[i - 1]} to "
-                    f"{phase[i]} (expected strictly increasing within phase)"
-                )
+        for i in range(1, len(steps)):
+            assert steps[i] > steps[i - 1], (
+                f"Bag {bag}: (stage, step) went from {steps[i - 1]} to "
+                f"{steps[i]} (expected strictly increasing)"
+            )
 
 
 def test_callback_receives_term_index():
