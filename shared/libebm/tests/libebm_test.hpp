@@ -21,6 +21,7 @@ enum class TestPriority {
    Purify,
    DataSetShared,
    BoostingUnusualInputs,
+   CoxBoosting,
    InteractionUnusualInputs,
    Rehydration,
    BitPackingExtremes,

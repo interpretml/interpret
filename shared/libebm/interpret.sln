@@ -95,6 +95,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "objectives", "objectives", 
 		compute\objectives\RmseLogLinkRegressionObjective.hpp = compute\objectives\RmseLogLinkRegressionObjective.hpp
 		compute\objectives\RmseRegressionMultitaskObjective.hpp = compute\objectives\RmseRegressionMultitaskObjective.hpp
 		compute\objectives\RmseRegressionObjective.hpp = compute\objectives\RmseRegressionObjective.hpp
+		compute\objectives\SurvivalCoxObjective.hpp = compute\objectives\SurvivalCoxObjective.hpp
 		compute\objectives\TweedieRegressionObjective.hpp = compute\objectives\TweedieRegressionObjective.hpp
 	EndProjectSection
 EndProject

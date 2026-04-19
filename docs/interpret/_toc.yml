@@ -98,3 +98,4 @@ chapters:
   - file: python/examples/group-importances
   - file: python/examples/prototype-selection
   - file: python/examples/quantile-regression
+  - file: python/examples/cox-survival-analysis

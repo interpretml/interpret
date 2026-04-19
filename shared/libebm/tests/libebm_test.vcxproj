@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="bit_packing_extremes.cpp" />
     <ClCompile Include="boosting_unusual_inputs.cpp" />
+    <ClCompile Include="cox_boosting_test.cpp" />
     <ClCompile Include="CutQuantileTest.cpp" />
     <ClCompile Include="CutUniformTest.cpp" />
     <ClCompile Include="CutWinsorizedTest.cpp" />

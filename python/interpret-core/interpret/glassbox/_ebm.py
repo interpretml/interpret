@@ -3950,7 +3950,10 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         The objective to optimize. Options include: "rmse",
         "poisson", "tweedie:variance_power=1.5", "gamma",
         "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function),
-        "quantile:alpha=0.5" (quantile regression with pinball loss)
+        "quantile:alpha=0.5" (quantile regression with pinball loss),
+        "survival_cox" (Cox proportional hazards survival analysis;
+        encode y as ``time * (2*event - 1)`` so positive values are event times
+        and negative values are censored times).
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
         (n_cpus + 1 + n_jobs), just like scikit-learn. Eg: -2 means using all threads except 1.

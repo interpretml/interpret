@@ -32,6 +32,7 @@
 #include "GammaRegressionObjective.hpp"
 #include "PseudoHuberRegressionObjective.hpp"
 #include "PinballRegressionObjective.hpp"
+#include "SurvivalCoxObjective.hpp"
 #include "LogLossBinaryObjective.hpp"
 #include "LogLossMulticlassObjective.hpp"
 
@@ -50,6 +51,7 @@ template<typename TFloat> static const std::vector<std::shared_ptr<const Registr
          Register<TFloat, PseudoHuberRegressionObjective, AccelerationFlags_ALL>(
                "pseudo_huber", FloatParam("delta", 1.0)),
          Register<TFloat, PinballRegressionObjective, AccelerationFlags_ALL>("quantile", FloatParam("alpha", 0.5)),
+         Register<TFloat, SurvivalCoxObjective, AccelerationFlags_NONE>("survival_cox"),
          Register<TFloat, LogLossBinaryObjective, AccelerationFlags_ALL>("log_loss"),
          Register<TFloat, LogLossMulticlassObjective, AccelerationFlags_ALL>("log_loss"),
    };

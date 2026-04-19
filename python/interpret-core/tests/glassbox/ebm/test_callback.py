@@ -38,7 +38,6 @@ class StopAfterCallback:
         return self.call_count >= self.stop_after
 
 
-
 def test_callback_no_repeated_steps_classifier():
     """Verify the callback receives strictly increasing step values.
 
