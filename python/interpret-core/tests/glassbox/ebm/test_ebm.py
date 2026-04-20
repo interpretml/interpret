@@ -1334,7 +1334,7 @@ def test_callbacks_short():
             def __init__(self, seconds):
                 self._seconds = seconds
 
-            def __call__(self, bag_index, step_index, progress, metric):
+            def __call__(self, *, bag, stage, step, term, metric):
                 import time
 
                 if not hasattr(self, "_end_time"):
@@ -1362,7 +1362,7 @@ def test_callbacks_long():
             def __init__(self, seconds):
                 self._seconds = seconds
 
-            def __call__(self, bag_index, step_index, progress, metric):
+            def __call__(self, *, bag, stage, step, term, metric):
                 import time
 
                 if not hasattr(self, "_end_time"):
