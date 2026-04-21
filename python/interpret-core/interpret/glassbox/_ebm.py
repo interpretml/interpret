@@ -3949,7 +3949,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
     objective : str, default="rmse"
         The objective to optimize. Options include: "rmse",
         "poisson", "tweedie:variance_power=1.5", "gamma",
-        "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function),
+        "pseudo_huber:delta=1.0",
         "quantile:alpha=0.5" (quantile regression with pinball loss),
         "survival_cox" (Cox proportional hazards survival analysis;
         encode y as ``time * (2*event - 1)`` so positive values are event times

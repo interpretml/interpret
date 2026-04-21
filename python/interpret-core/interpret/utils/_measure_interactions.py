@@ -68,7 +68,10 @@ def measure_interactions(
         max_delta_step: Used to limit the max output of tree leaves. <=0.0 means no constraint.
         objective: None (rmse or log_loss), "rmse" (regression default), "log_loss" (classification default),
             "poisson", "tweedie:variance_power=1.5", "gamma",
-            "pseudo_huber:delta=1.0", "rmse_log" (rmse with a log link function)
+            "pseudo_huber:delta=1.0",
+            "survival_cox" (Cox proportional hazards survival analysis;
+            encode y as ``time * (2*event - 1)`` so positive values are event times
+            and negative values are censored times).
     Returns:
         List containing a tuple of feature indices for the terms and interaction strengths,
             e.g. [((1, 2), 0.134), ((3, 7), 0.0842)].  Ordered by decreasing interaction strengths.

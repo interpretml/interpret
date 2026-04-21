@@ -43,7 +43,7 @@ template<typename TFloat> static const std::vector<std::shared_ptr<const Registr
          Register<TFloat, ExampleRegressionObjective, AccelerationFlags_NONE>(
                "example", FloatParam("param0", 0.0), FloatParam("param1", 1.0)),
          Register<TFloat, RmseRegressionObjective, AccelerationFlags_ALL>("rmse"),
-         Register<TFloat, RmseLogLinkRegressionObjective, AccelerationFlags_ALL>("rmse_log"),
+         Register<TFloat, RmseLogLinkRegressionObjective, AccelerationFlags_ALL>("rmse_log"), // TODO: future removal
          Register<TFloat, PoissonRegressionObjective, AccelerationFlags_ALL>("poisson"),
          Register<TFloat, TweedieRegressionObjective, AccelerationFlags_ALL>(
                "tweedie", FloatParam("variance_power", 1.5)),

@@ -14,6 +14,7 @@ _deprecated_objectives = {
     "poisson_deviance": "poisson",
     "gamma_deviance": "gamma",
     "tweedie_deviance": "tweedie",
+    "rmse_log": "rmse_log",  # signal deprication but don't rename
 }
 
 
