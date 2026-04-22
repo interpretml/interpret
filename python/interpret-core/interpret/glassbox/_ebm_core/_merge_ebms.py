@@ -332,14 +332,12 @@ def merge_ebms(models):
 
     from .._ebm import (
         BaseEBM,
-        DPEBMModel,
         EBMClassifierMixin,
         EBMRegressorMixin,
         EBMClassifier,
         EBMRegressor,
-        DPEBMClassifier,
-        DPEBMRegressor,
     )
+    from ...privacy._dpebm import DPEBMClassifier, DPEBMRegressor
 
     if not all(isinstance(m, BaseEBM) for m in models):
         msg = "models must contain EBM models that derive from BaseEBM."
@@ -351,7 +349,7 @@ def merge_ebms(models):
         msg = "Models must be all EBM classifiers or all EBM regressors."
         raise TypeError(msg)
 
-    is_dp = all(isinstance(m, DPEBMModel) for m in models)
+    is_dp = all(getattr(m, "_is_differentially_private", False) for m in models)
 
     if is_dp:
         if is_regression:

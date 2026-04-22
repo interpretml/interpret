@@ -426,11 +426,11 @@ def UNTESTED_from_jsonable(ebm, jsonable):
         "JSON formats are in beta. The JSON format may change in a future version without compatibility between releases."
     )
 
-    from .._ebm import DPEBMModel, EBMClassifierMixin, EBMRegressorMixin
+    from .._ebm import EBMClassifierMixin, EBMRegressorMixin
 
     is_classification = isinstance(ebm, EBMClassifierMixin)
     is_regression = isinstance(ebm, EBMRegressorMixin)
-    is_private = isinstance(ebm, DPEBMModel)
+    is_private = getattr(ebm, "_is_differentially_private", False)
 
     if not is_classification and not is_regression:
         is_classification = None

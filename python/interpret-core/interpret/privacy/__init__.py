@@ -1,7 +1,7 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-from ..glassbox._ebm import (
+from ._dpebm import (
     DPEBMClassifier,  # noqa: F401
     DPEBMModel,  # noqa: F401
     DPEBMRegressor,  # noqa: F401
