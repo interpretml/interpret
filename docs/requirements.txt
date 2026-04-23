@@ -30,11 +30,6 @@ click==8.3.1
     #   jupyter-book
     #   jupyter-cache
     #   sphinx-external-toc
-colorama==0.4.6
-    # via
-    #   click
-    #   ipython
-    #   sphinx
 comm==0.2.3
     # via ipykernel
 debugpy==1.8.20
@@ -140,12 +135,16 @@ packaging==26.0
     #   wheel
 parso==0.8.6
     # via jedi
+pexpect==4.9.0
+    # via ipython
 platformdirs==4.9.4
     # via jupyter-core
 prompt-toolkit==3.0.52
     # via ipython
 psutil==7.2.2
     # via ipykernel
+ptyprocess==0.7.0
+    # via pexpect
 pure-eval==0.2.3
     # via stack-data
 pybtex==0.25.1
@@ -180,7 +179,7 @@ referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.5
+requests==2.33.0
     # via sphinx
 rpds-py==0.30.0
     # via
