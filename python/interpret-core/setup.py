@@ -136,6 +136,7 @@ Minimal dependency core system for the interpret package.
 https://github.com/interpretml/interpret
 """,
     long_description_content_type="text/plain",
+    license="MIT",
     url="https://github.com/interpretml/interpret",
     cmdclass={
         "sdist": SDistCommand,
