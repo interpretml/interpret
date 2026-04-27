@@ -35,6 +35,7 @@ setup(
     description="Fit interpretable models. Explain blackbox machine learning.",
     long_description=long_description,
     long_description_content_type="text/plain",
+    license='MIT',
     url="https://github.com/interpretml/interpret",
     packages=find_packages(),
     classifiers=[
