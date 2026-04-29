@@ -635,6 +635,7 @@ We also build on top of many great packages. Please check them out!
 - [The Most Important Features in Generalized Additive Models Might Be Groups of Features](https://arxiv.org/pdf/2506.19937)
 - [Explainable AI with EDA for V2I path loss prediction](https://www.nature.com/articles/s41598-026-34987-8)
 - [A Comparative Analysis of Interpretable Machine Learning Methods](https://arxiv.org/pdf/2601.00428)
+- [ParamBoost: Gradient Boosted Piecewise Cubic Polynomials](https://arxiv.org/pdf/2604.18864)
 - [GAMFORMER: In-context Learning for Generalized Additive Models](https://arxiv.org/pdf/2410.04560v1)
 - [Automatic Piecewise Linear Regression](https://link.springer.com/article/10.1007/s00180-024-01475-4)
 - [Accuracy is not enough: explainable boosting machine model and identification of candidate biomarkers for real-time sepsis risk assessment in the emergency department](https://link.springer.com/article/10.1186/s12873-025-01402-w)
