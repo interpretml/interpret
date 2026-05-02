@@ -6,7 +6,6 @@ https://docs.microsoft.com/en-us/python/api/overview/azure/container-instance?vi
 
 import random
 from multiprocessing import Pool
-from typing import List, Optional
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor
@@ -23,11 +22,11 @@ class BicepAzureContainerInstance(Executor):
         subscription_id: str,
         azure_client_id: str,
         credential=None,
-        azure_client_secret: Optional[str] = None,
+        azure_client_secret: str | None = None,
         resource_group: str = "powerlift_rg",
-        shell_install: Optional[str] = None,
-        pip_install: Optional[str] = None,
-        wheel_filepaths: Optional[List[str]] = None,
+        shell_install: str | None = None,
+        pip_install: str | None = None,
+        wheel_filepaths: list[str] | None = None,
         n_instances: int = 1,
         num_cores: int = 4,
         mem_size_gb: int = 16,
@@ -35,8 +34,8 @@ class BicepAzureContainerInstance(Executor):
         # https://mcr.microsoft.com/en-us/product/devcontainers/python/tags
         # alternative: "mcr.microsoft.com/devcontainers/python:latest"
         image: str = "mcr.microsoft.com/devcontainers/python:3.12",
-        docker_db_uri: Optional[str] = None,
-        resource_uris: Optional[List[str]] = None,
+        docker_db_uri: str | None = None,
+        resource_uris: list[str] | None = None,
         delete_on_complete: bool = True,
     ):
         """Runs remote execution of trials via Azure Container Instances.

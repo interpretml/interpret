@@ -5,7 +5,7 @@ import heapq
 import json
 import logging
 import os
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from contextlib import nullcontext
 from copy import deepcopy
 from functools import partial
@@ -13,9 +13,10 @@ from itertools import combinations, count
 from math import ceil, isnan
 from multiprocessing.managers import SharedMemoryManager
 from operator import itemgetter
-from typing import Optional, Union
+from typing import Literal
 from warnings import warn
 import numpy as np
+import numpy.typing as npt
 from joblib import Parallel, delayed
 from ..core.sklearn import (
     SKBaseEstimator,
@@ -288,19 +289,19 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
     n_features_in_: int
     term_names_: list[str]
-    bins_: list[Union[list[dict[str, int]], list[np.ndarray]]]  # np.float64, 1D[cut]
+    bins_: list[list[dict[str, int]] | list[npt.NDArray[np.float64]]]  # 1D[cut]
     feature_names_in_: list[str]
     feature_types_in_: list[str]
-    feature_bounds_: np.ndarray  # np.float64, 2D[feature, min_max]
+    feature_bounds_: npt.NDArray[np.float64]  # 2D[feature, min_max]
     term_features_: list[tuple[int, ...]]
-    bin_weights_: list[np.ndarray]  # np.float64, [bin0...]
-    bagged_scores_: list[np.ndarray]  # np.float64, [bag, bin0..., ?class]
-    term_scores_: list[np.ndarray]  # np.float64, [bin0..., ?class]
-    standard_deviations_: list[np.ndarray]  # np.float64, [bin0..., ?class]
+    bin_weights_: list[npt.NDArray[np.float64]]  # [bin0...]
+    bagged_scores_: list[npt.NDArray[np.float64]]  # [bag, bin0..., ?class]
+    term_scores_: list[npt.NDArray[np.float64]]  # [bin0..., ?class]
+    standard_deviations_: list[npt.NDArray[np.float64]]  # [bin0..., ?class]
     link_: str
     link_param_: float
-    bag_weights_: np.ndarray  # np.float64, 1D[bag]
-    best_iteration_: np.ndarray  # np.int64, 2D[stage, bag]
+    bag_weights_: npt.NDArray[np.float64]  # 1D[bag]
+    best_iteration_: npt.NDArray[np.int64]  # 2D[stage, bag]
 
     def fit(self, X, y, sample_weight=None, bags=None, init_score=None):
         """Fit model to provided samples.
@@ -2367,7 +2368,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """
         return deepcopy(self)
 
-    def monotonize(self, term, increasing="auto", passthrough=0.0):
+    def monotonize(
+        self, term, increasing: bool | Literal["auto"] = "auto", passthrough=0.0
+    ):
         r"""Adjust a term to be monotone using isotonic regression.
 
         An important consideration is that this function only adjusts a single term and will not modify pairwise terms.
@@ -2887,9 +2890,11 @@ class EBMClassifierMixin(SKClassifierMixin):
     Provides predict, predict_proba, decision_function, and reorder_classes methods.
     """
 
-    classes_: np.ndarray  # np.int64, np.bool_, or np.unicode_, 1D[class]
-    intercept_: np.ndarray  # np.float64, 1D[class]
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag], or 2D[bag, class]
+    classes_: (
+        npt.NDArray[np.int64] | npt.NDArray[np.bool_] | npt.NDArray[np.str_]
+    )  # 1D[class]
+    intercept_: npt.NDArray[np.float64]  # 1D[class]
+    bagged_intercept_: npt.NDArray[np.float64]  # 1D[bag], or 2D[bag, class]
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -3073,7 +3078,7 @@ class EBMRegressorMixin(SKRegressorMixin):
     """
 
     intercept_: float
-    bagged_intercept_: np.ndarray  # np.float64, 1D[bag]
+    bagged_intercept_: npt.NDArray[np.float64]  # 1D[bag]
     min_target_: float
     max_target_: float
 
@@ -3282,55 +3287,74 @@ class EBMModel(BaseEBM):
 
     """
 
-    histogram_edges_: list[Union[None, np.ndarray]]  # np.float64, 1D[hist_edge]
-    histogram_weights_: list[np.ndarray]  # np.float64, 1D[hist_bin]
-    unique_val_counts_: np.ndarray  # np.int64, 1D[feature]
+    histogram_edges_: list[npt.NDArray[np.float64] | None]  # 1D[hist_edge]
+    histogram_weights_: list[npt.NDArray[np.float64]]  # 1D[hist_bin]
+    unique_val_counts_: npt.NDArray[np.int64]  # 1D[feature]
 
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | Sequence[str]
+            | Sequence[float]
+        ]
+        | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
         # Stages
-        interactions: Optional[
-            Union[int, float, str, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = "4x",
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        interactions: float
+        | str
+        | Sequence[int | str | Sequence[int | str]]
+        | None = "4x",
+        exclude: Literal["mains"]
+        | Sequence[int | str | Sequence[int | str]]
+        | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
+        validation_size: float | None = 0.15,
         outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
+        inner_bags: int | None = 0,
         # Boosting
         learning_rate: float = 0.02,
-        greedy_ratio: Optional[float] = 10.0,
-        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 100,
-        interaction_smoothing_rounds: Optional[int] = 50,
-        max_rounds: Optional[int] = 50000,
-        early_stopping_rounds: Optional[int] = 100,
-        early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[..., bool]] = None,
+        greedy_ratio: float | None = 10.0,
+        cyclic_progress: bool | float = False,
+        smoothing_rounds: int | None = 100,
+        interaction_smoothing_rounds: int | None = 50,
+        max_rounds: int | None = 50000,
+        early_stopping_rounds: int | None = 100,
+        early_stopping_tolerance: float | None = 1e-5,
+        callback: Callable[..., bool] | None = None,
         # Trees
-        min_samples_leaf: Optional[int] = 4,
-        min_hessian: Optional[float] = 0.0,
-        reg_alpha: Optional[float] = 0.0,
-        reg_lambda: Optional[float] = 0.0,
-        max_delta_step: Optional[float] = 0.0,
-        gain_scale: Optional[float] = 5.0,
-        min_cat_samples: Optional[int] = 10,
-        cat_smooth: Optional[float] = 10.0,
-        missing: str = "separate",
+        min_samples_leaf: int | None = 4,
+        min_hessian: float | None = 0.0,
+        reg_alpha: float | None = 0.0,
+        reg_lambda: float | None = 0.0,
+        max_delta_step: float | None = 0.0,
+        gain_scale: float | None = 5.0,
+        min_cat_samples: int | None = 10,
+        cat_smooth: float | None = 10.0,
+        missing: Literal["low", "high", "separate", "gain"] = "separate",
         max_leaves: int = 2,
-        monotone_constraints: Optional[Sequence[int]] = None,
-        objective: Optional[str] = None,
+        monotone_constraints: Sequence[int] | None = None,
+        objective: str | None = None,
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
+        n_jobs: int | None = -2,
+        random_state: int | None = 42,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -3593,48 +3617,67 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | Sequence[str]
+            | Sequence[float]
+        ]
+        | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
         # Stages
-        interactions: Optional[
-            Union[int, float, str, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = "3x",
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        interactions: float
+        | str
+        | Sequence[int | str | Sequence[int | str]]
+        | None = "3x",
+        exclude: Literal["mains"]
+        | Sequence[int | str | Sequence[int | str]]
+        | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
+        validation_size: float | None = 0.15,
         outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
+        inner_bags: int | None = 0,
         # Boosting
         learning_rate: float = 0.015,
-        greedy_ratio: Optional[float] = 10.0,
-        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 75,
-        interaction_smoothing_rounds: Optional[int] = 75,
-        max_rounds: Optional[int] = 50000,
-        early_stopping_rounds: Optional[int] = 100,
-        early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[..., bool]] = None,
+        greedy_ratio: float | None = 10.0,
+        cyclic_progress: bool | float = False,
+        smoothing_rounds: int | None = 75,
+        interaction_smoothing_rounds: int | None = 75,
+        max_rounds: int | None = 50000,
+        early_stopping_rounds: int | None = 100,
+        early_stopping_tolerance: float | None = 1e-5,
+        callback: Callable[..., bool] | None = None,
         # Trees
-        min_samples_leaf: Optional[int] = 4,
-        min_hessian: Optional[float] = 1e-4,
-        reg_alpha: Optional[float] = 0.0,
-        reg_lambda: Optional[float] = 0.0,
-        max_delta_step: Optional[float] = 0.0,
-        gain_scale: Optional[float] = 5.0,
-        min_cat_samples: Optional[int] = 10,
-        cat_smooth: Optional[float] = 10.0,
-        missing: str = "separate",
+        min_samples_leaf: int | None = 4,
+        min_hessian: float | None = 1e-4,
+        reg_alpha: float | None = 0.0,
+        reg_lambda: float | None = 0.0,
+        max_delta_step: float | None = 0.0,
+        gain_scale: float | None = 5.0,
+        min_cat_samples: int | None = 10,
+        cat_smooth: float | None = 10.0,
+        missing: Literal["low", "high", "separate", "gain"] = "separate",
         max_leaves: int = 2,
-        monotone_constraints: Optional[Sequence[int]] = None,
-        objective: Optional[str] = "log_loss",
+        monotone_constraints: Sequence[int] | None = None,
+        objective: str | None = "log_loss",
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
+        n_jobs: int | None = -2,
+        random_state: int | None = 42,
     ):
         super().__init__(
             feature_names=feature_names,
@@ -3903,48 +3946,67 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | Sequence[str]
+            | Sequence[float]
+        ]
+        | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
         # Stages
-        interactions: Optional[
-            Union[int, float, str, Sequence[Union[int, str, Sequence[Union[int, str]]]]]
-        ] = "5x",
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        interactions: float
+        | str
+        | Sequence[int | str | Sequence[int | str]]
+        | None = "5x",
+        exclude: Literal["mains"]
+        | Sequence[int | str | Sequence[int | str]]
+        | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0.15,
+        validation_size: float | None = 0.15,
         outer_bags: int = 14,
-        inner_bags: Optional[int] = 0,
+        inner_bags: int | None = 0,
         # Boosting
         learning_rate: float = 0.04,
-        greedy_ratio: Optional[float] = 10.0,
-        cyclic_progress: Union[bool, float, int] = False,  # noqa: PYI041
-        smoothing_rounds: Optional[int] = 500,
-        interaction_smoothing_rounds: Optional[int] = 100,
-        max_rounds: Optional[int] = 50000,
-        early_stopping_rounds: Optional[int] = 100,
-        early_stopping_tolerance: Optional[float] = 1e-5,
-        callback: Optional[Callable[..., bool]] = None,
+        greedy_ratio: float | None = 10.0,
+        cyclic_progress: bool | float = False,
+        smoothing_rounds: int | None = 500,
+        interaction_smoothing_rounds: int | None = 100,
+        max_rounds: int | None = 50000,
+        early_stopping_rounds: int | None = 100,
+        early_stopping_tolerance: float | None = 1e-5,
+        callback: Callable[..., bool] | None = None,
         # Trees
-        min_samples_leaf: Optional[int] = 4,
-        min_hessian: Optional[float] = 0.0,
-        reg_alpha: Optional[float] = 0.0,
-        reg_lambda: Optional[float] = 0.0,
-        max_delta_step: Optional[float] = 0.0,
-        gain_scale: Optional[float] = 5.0,
-        min_cat_samples: Optional[int] = 10,
-        cat_smooth: Optional[float] = 10.0,
-        missing: str = "separate",
+        min_samples_leaf: int | None = 4,
+        min_hessian: float | None = 0.0,
+        reg_alpha: float | None = 0.0,
+        reg_lambda: float | None = 0.0,
+        max_delta_step: float | None = 0.0,
+        gain_scale: float | None = 5.0,
+        min_cat_samples: int | None = 10,
+        cat_smooth: float | None = 10.0,
+        missing: Literal["low", "high", "separate", "gain"] = "separate",
         max_leaves: int = 2,
-        monotone_constraints: Optional[Sequence[int]] = None,
-        objective: Optional[str] = "rmse",
+        monotone_constraints: Sequence[int] | None = None,
+        objective: str | None = "rmse",
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = 42,
+        n_jobs: int | None = -2,
+        random_state: int | None = 42,
     ):
         super().__init__(
             feature_names=feature_names,

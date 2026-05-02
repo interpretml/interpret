@@ -4,7 +4,7 @@ import threading
 import time
 from numbers import Number
 from types import FunctionType
-from typing import Any, Optional, Tuple
+from typing import Any
 
 
 class Executor:
@@ -20,7 +20,7 @@ class Executor:
     def submit(
         self,
         experiment_id,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
     ):
         """Submits and executes trials by trial run function asynchronously.
 
@@ -49,7 +49,7 @@ class Executor:
         raise NotImplementedError()
 
 
-def timed_run(f: FunctionType, timeout_seconds: int = 3600) -> Tuple[Any, Number, bool]:
+def timed_run(f: FunctionType, timeout_seconds: int = 3600) -> tuple[Any, Number, bool]:
     """Runs the function with time limit.
 
     Args:

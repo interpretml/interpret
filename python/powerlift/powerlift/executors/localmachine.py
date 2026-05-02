@@ -5,7 +5,6 @@ This currently uses multiprocessing pools to handle parallelism.
 
 import multiprocessing
 from multiprocessing import Pool
-from typing import List, Optional
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor, handle_err
@@ -15,9 +14,9 @@ class LocalMachine(Executor):
     def __init__(
         self,
         store: Store,
-        n_cpus: Optional[int] = None,
+        n_cpus: int | None = None,
         debug_mode: bool = False,
-        wheel_filepaths: Optional[List[str]] = None,
+        wheel_filepaths: list[str] | None = None,
         raise_exception: bool = False,
     ):
         """Runs trial runs on the local machine.

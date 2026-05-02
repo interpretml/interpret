@@ -29,7 +29,8 @@ import time
 import traceback as tb
 from dataclasses import dataclass
 from itertools import chain
-from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Tuple
+from typing import Any
+from collections.abc import Generator, Iterable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -573,7 +574,7 @@ LIMIT 1
             json.loads(result[16]),
         )
 
-    def get_experiment(self, name: str) -> Optional[int]:
+    def get_experiment(self, name: str) -> int | None:
         exp_orm = self.session.query(db.Experiment).filter_by(name=name).one_or_none()
         if exp_orm is None:
             return None
@@ -583,12 +584,12 @@ LIMIT 1
         self,
         name: str,
         description: str,
-        shell_install: Optional[str] = None,
-        pip_install: Optional[str] = None,
-        script: Optional[str] = None,
-        trial_fn: Optional[str] = None,
+        shell_install: str | None = None,
+        pip_install: str | None = None,
+        script: str | None = None,
+        trial_fn: str | None = None,
         wheels=None,
-    ) -> Tuple[int, bool]:
+    ) -> tuple[int, bool]:
         """Create experiment keyed by name."""
 
         exp_orm = db.Experiment(
@@ -612,7 +613,7 @@ LIMIT 1
                 experiment_id = exp_orm.id
         return experiment_id
 
-    def create_trials(self, trial_params: List[Dict[str, Any]]):
+    def create_trials(self, trial_params: list[dict[str, Any]]):
         trial_orms = []
         for trial_param in trial_params:
             trial_orm = db.Trial(
@@ -1001,9 +1002,7 @@ FROM
         return task_orm.id
 
 
-def retrieve_cache(
-    cache_dir: Optional[str], names: List[str]
-) -> Optional[List[io.BytesIO]]:
+def retrieve_cache(cache_dir: str | None, names: list[str]) -> list[io.BytesIO] | None:
     if cache_dir is None:
         return None
 
@@ -1020,7 +1019,7 @@ def retrieve_cache(
     return outputs
 
 
-def update_cache(cache_dir, names: List[str], bytes_io: List[io.BytesIO]):
+def update_cache(cache_dir, names: list[str], bytes_io: list[io.BytesIO]):
     cache_dir = pathlib.Path(os.path.expanduser(cache_dir))
     for name, a_bytes_io in zip(names, bytes_io):
         filepath = pathlib.Path(cache_dir, name)
@@ -1118,8 +1117,8 @@ class DatasetAlreadyExistsError(Exception):
 
 def populate_with_datasets(
     store: Store,
-    dataset_iter: Optional[Iterable[Dataset]] = None,
-    cache_dir: Optional[str] = None,
+    dataset_iter: Iterable[Dataset] | None = None,
+    cache_dir: str | None = None,
     exist_ok: bool = False,
 ) -> bool:
     """Populates store with datasets.
@@ -1149,7 +1148,7 @@ def populate_with_datasets(
 
 
 def retrieve_openml(
-    cache_dir: Optional[str] = None, suite_id: int | str = 99, origin: str = "openml"
+    cache_dir: str | None = None, suite_id: int | str = 99, origin: str = "openml"
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML datasets.
 
@@ -1259,7 +1258,7 @@ def retrieve_openml(
 
 
 def retrieve_openml_automl_regression(
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML regression datasets.
 
@@ -1274,7 +1273,7 @@ def retrieve_openml_automl_regression(
 
 
 def retrieve_openml_automl_classification(
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML AutoML classification datasets.
 
@@ -1289,7 +1288,7 @@ def retrieve_openml_automl_classification(
 
 
 def retrieve_openml_cc18(
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrives OpenML CC18 datasets.
 
@@ -1304,7 +1303,7 @@ def retrieve_openml_cc18(
 
 
 def retrieve_catboost_50k(
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrieves catboost regression and classification datasets that have less than 50k training instances.
 
@@ -1409,7 +1408,7 @@ def retrieve_catboost_50k(
 
 
 def retrieve_pmlb(
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
 ) -> Generator[SupervisedDataset, None, None]:
     """Retrieves PMLB regression and classification datasets.
 

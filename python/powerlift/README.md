@@ -27,7 +27,7 @@ def trial_runner(trial):
     from sklearn.impute import SimpleImputer
 
     if trial.task.problem == "binary":
-        X, y = trial.task.data()
+        X, y, meta = trial.task.data(["X", "y", "meta"])
 
         # Holdout split
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.3)

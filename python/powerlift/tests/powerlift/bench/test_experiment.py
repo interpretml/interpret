@@ -37,7 +37,7 @@ def _benchmark(trial):
         "pmlb",
         "catboost_50k",
     ]:
-        X, y = trial.task.data(["X", "y"])
+        X, y, meta = trial.task.data(["X", "y", "meta"])
 
         # Holdout split
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.3)

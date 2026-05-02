@@ -5,9 +5,7 @@ The experiment and its associate classes.
 
 from dataclasses import dataclass
 from numbers import Number
-from typing import Dict, List, Optional, Union
 
-import numpy as np
 import pandas as pd
 
 from powerlift.bench.store import MIMETYPE_DF, MIMETYPE_SERIES, Store
@@ -42,7 +40,7 @@ class Task:
 
     store: Store
 
-    id: Optional[int]
+    id: int | None
     name: str
     problem: str
     origin: str
@@ -54,9 +52,9 @@ class Task:
     total_categories: int
     percent_categorical: float
     percent_special_values: float
-    meta: Dict[str, object]
+    meta: dict[str, object]
 
-    def data(self) -> List[object]:
+    def data(self) -> list[object]:
         """Returns assets.
 
         Returns:
@@ -75,26 +73,26 @@ class Task:
 class Experiment:
     """Represents an experiment with its trials."""
 
-    id: Optional[int]
+    id: int | None
     name: str
     description: str
     shell_install: str
     pip_install: str
     script: str
     trial_fn: str
-    wheels: List[Wheel]
-    trials: List
+    wheels: list[Wheel]
+    trials: list
 
 
 class Trial:
     def __init__(
         self,
-        _id: Optional[int],
+        _id: int | None,
         store: Store,
         task: Task,
         method: str,
         replicate_num: int,
-        meta: Dict[str, object],
+        meta: dict[str, object],
     ):
         """Represents a single trial within an experiment.
 
@@ -117,7 +115,7 @@ class Trial:
     def log(
         self,
         name: str,
-        value: Union[Number, str, dict],
+        value: Number | str | dict,
     ):
         """Records a measure for the trial. This should be called in the trial run function.
 

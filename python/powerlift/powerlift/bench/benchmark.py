@@ -5,7 +5,6 @@ import os
 import pathlib
 import random
 from types import FunctionType
-from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -19,9 +18,9 @@ from powerlift.executors.base import Executor
 class Benchmark:
     def __init__(
         self,
-        store_or_uri: Optional[Union[str, Store]] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        store_or_uri: str | Store | None = None,
+        name: str | None = None,
+        description: str | None = None,
     ):
         if store_or_uri is None:
             self._store = Store(
@@ -49,9 +48,9 @@ class Benchmark:
         self,
         trial_run_fn: FunctionType,
         trial_gen_fn: FunctionType,
-        timeout: Optional[int] = None,
+        timeout: int | None = None,
         n_replicates: int = 1,
-        executor: Optional[Executor] = None,
+        executor: Executor | None = None,
     ) -> Executor:
         script_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "..", "run", "__main__.py"
@@ -163,7 +162,7 @@ class Benchmark:
         for executor in self._executors:
             executor.join()
 
-    def _experiment(self) -> Optional[Experiment]:
+    def _experiment(self) -> Experiment | None:
         """Retrieves experiment snapshot that contains trial and assets.
 
         This method is kept private due to an unstable API.
@@ -189,7 +188,7 @@ class Benchmark:
             trials,
         )
 
-    def status(self) -> Optional[pd.DataFrame]:
+    def status(self) -> pd.DataFrame | None:
         """Retrieves all trial's status and associated information.
 
         Returns:
@@ -198,7 +197,7 @@ class Benchmark:
         df = self._store.get_status(self._name)
         return df.sort_values(by=["task", "method", "meta", "replicate_num"])
 
-    def results(self) -> Optional[pd.DataFrame]:
+    def results(self) -> pd.DataFrame | None:
         """Retrieves trial measures of an experiment in long form.
 
         Returns:
@@ -219,7 +218,7 @@ class Benchmark:
             by=["task", "method", "meta", "replicate_num", "name", "seq_num"]
         )
 
-    def available_tasks(self, include_measures=False) -> Optional[pd.DataFrame]:
+    def available_tasks(self, include_measures=False) -> pd.DataFrame | None:
         """Retrieves available tasks to run a benchmark against.
 
         Args:

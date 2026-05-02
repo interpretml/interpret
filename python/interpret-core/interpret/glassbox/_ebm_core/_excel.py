@@ -3,7 +3,7 @@
 
 import logging
 from io import BytesIO
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -162,7 +162,7 @@ class Format:
         Format as a dict, in the Xlsxwriter format.
     """
 
-    def __init__(self, desc: dict):
+    def __init__(self, desc: dict[str, Any]):
         """Construct the Format class."""
         self.desc = desc
 
@@ -1919,10 +1919,10 @@ class ExportableEBMModel:
 
         # Excel related variables
         self.excel_writer = None
-        self.workbook: Optional[Workbook] = None
-        self.variables: Optional[pd.DataFrame] = None
+        self.workbook: Workbook | None = None
+        self.variables: pd.DataFrame | None = None
         self.model_description: str = ""
-        self.default_evaluation: Optional[Dict[str, Any]] = None
+        self.default_evaluation: dict[str, Any] | None = None
 
         # Other initializations
         self.__extract_variables()

@@ -1129,7 +1129,7 @@ def _process_pandas_column_nonschematized(
         )
 
     # TODO: implement pd.SparseDtype
-    msg = f"Unsupported pandas dtype: {dt}"
+    msg = f"Unsupported pandas dtype: {X_col.dtype}"
     _log.error(msg)
     raise TypeError(msg)
 

@@ -1,6 +1,5 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
-from typing import List, Optional, Tuple
 from warnings import warn
 
 import numpy as np
@@ -106,7 +105,7 @@ class APLRRegressor(
         )
         return self
 
-    def explain_global(self, name: Optional[str] = None):
+    def explain_global(self, name: str | None = None):
         """Provides global explanation for model.
 
         Args:
@@ -221,7 +220,7 @@ class APLRRegressor(
         )
 
     def explain_local(
-        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+        self, X: FloatMatrix, y: FloatVector | None = None, name: str | None = None
     ):
         """Provides local explanations for provided instances.
 
@@ -302,9 +301,9 @@ class APLRRegressor(
         )
 
 
-def calculate_densities(X: FloatMatrix) -> Tuple[List[List[int]], List[List[float]]]:
-    bin_counts: List[List[int]] = []
-    bin_edges: List[List[float]] = []
+def calculate_densities(X: FloatMatrix) -> tuple[list[list[int]], list[list[float]]]:
+    bin_counts: list[list[int]] = []
+    bin_edges: list[list[float]] = []
     for col in convert_to_numpy_matrix(X).T:
         counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
         bin_counts.append(counts_this_col)
@@ -350,13 +349,11 @@ def convert_to_numpy_matrix(X: FloatMatrix) -> np.ndarray:
     raise TypeError(msg)
 
 
-def calculate_unique_values(X: FloatMatrix) -> List[int]:
+def calculate_unique_values(X: FloatMatrix) -> list[int]:
     return [len(np.unique(col)) for col in convert_to_numpy_matrix(X).T]
 
 
-def define_feature_names(
-    X: FloatMatrix, X_names: Optional[List[str]] = None
-) -> List[str]:
+def define_feature_names(X: FloatMatrix, X_names: list[str] | None = None) -> list[str]:
     if X_names is None or len(X_names) == 0:
         return [f"X{i + 1}" for i in range(convert_to_numpy_matrix(X).shape[1])]
     return list(X_names)
@@ -365,8 +362,8 @@ def define_feature_names(
 def create_values(
     X: np.ndarray,
     explanations: np.ndarray,
-    term_names: List[str],
-    feature_names: List[str],
+    term_names: list[str],
+    feature_names: list[str],
 ) -> np.ndarray:
     X_values = np.full(shape=explanations.shape, fill_value=np.nan)
     for term_index, term_name in enumerate(term_names):
@@ -465,7 +462,7 @@ class APLRClassifier(
         self._str_to_label_ = {c: unique_orig[c] for c in categories}
         return self
 
-    def explain_global(self, name: Optional[str] = None):
+    def explain_global(self, name: str | None = None):
         """Provides global explanation for model.
 
         Args:
@@ -593,7 +590,7 @@ class APLRClassifier(
         )
 
     def explain_local(
-        self, X: FloatMatrix, y: FloatVector = None, name: Optional[str] = None
+        self, X: FloatMatrix, y: FloatVector | None = None, name: str | None = None
     ):
         """Provides local explanations for provided instances.
 

@@ -2,8 +2,9 @@
 # Distributed under the MIT software license
 
 from collections.abc import Mapping, Sequence
-from typing import Optional, Union
-import numpy as np
+from typing import Literal
+
+import numpy.typing as npt
 
 from ..glassbox._ebm import BaseEBM, EBMClassifierMixin, EBMRegressorMixin
 
@@ -79,35 +80,34 @@ class DPEBMModel(BaseEBM):
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
+        validation_size: float | None = 0,
         outer_bags: int = 1,
         # Boosting
         learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
+        max_rounds: int | None = 300,
         # Trees
         max_leaves: int = 3,
         # Objective
-        objective: Optional[str] = None,
+        objective: str | None = None,
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
+        n_jobs: int | None = -2,
+        random_state: int | None = None,
         # Differential Privacy
         epsilon: float = 1.0,
         delta: float = 1e-5,
-        composition: str = "gdp",
+        composition: Literal["gdp", "classic"] = "gdp",
         bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], tuple[float, float]]]
-        ] = None,
+        privacy_bounds: npt.ArrayLike
+        | Mapping[int | str, tuple[float, float]]
+        | None = None,
     ):
         self.feature_names = feature_names
         self.feature_types = feature_types
@@ -251,33 +251,32 @@ class DPEBMClassifier(EBMClassifierMixin, DPEBMModel):
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
+        validation_size: float | None = 0,
         outer_bags: int = 1,
         # Boosting
         learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
+        max_rounds: int | None = 300,
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
+        n_jobs: int | None = -2,
+        random_state: int | None = None,
         # Differential Privacy
         epsilon: float = 1.0,
         delta: float = 1e-5,
-        composition: str = "gdp",
+        composition: Literal["gdp", "classic"] = "gdp",
         bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], tuple[float, float]]]
-        ] = None,
+        privacy_bounds: npt.ArrayLike
+        | Mapping[int | str, tuple[float, float]]
+        | None = None,
     ):
         super().__init__(
             feature_names=feature_names,
@@ -430,35 +429,34 @@ class DPEBMRegressor(EBMRegressorMixin, DPEBMModel):
     def __init__(
         self,
         # Explainer
-        feature_names: Optional[Sequence[Union[None, str]]] = None,
-        feature_types: Optional[
-            Sequence[Union[None, str, Sequence[str], Sequence[float]]]
-        ] = None,
+        feature_names: Sequence[None | str] | None = None,
+        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Optional[Sequence[Union[int, str, Sequence[Union[int, str]]]]] = None,
+        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
         # Ensemble
-        validation_size: Optional[Union[int, float]] = 0,
+        validation_size: float | None = 0,
         outer_bags: int = 1,
         # Boosting
         learning_rate: float = 0.01,
-        max_rounds: Optional[int] = 300,
+        max_rounds: int | None = 300,
         # Trees
         max_leaves: int = 3,
         # Overall
-        n_jobs: Optional[int] = -2,
-        random_state: Optional[int] = None,
+        n_jobs: int | None = -2,
+        random_state: int | None = None,
         # Differential Privacy
         epsilon: float = 1.0,
         delta: float = 1e-5,
-        composition: str = "gdp",
+        composition: Literal["gdp", "classic"] = "gdp",
         bin_budget_frac: float = 0.1,
-        privacy_bounds: Optional[
-            Union[np.ndarray, Mapping[Union[int, str], tuple[float, float]]]
-        ] = None,
-        privacy_target_min: Optional[float] = None,
-        privacy_target_max: Optional[float] = None,
+        privacy_bounds: npt.ArrayLike
+        | Mapping[int | str, tuple[float, float]]
+        | None = None,
+        privacy_target_min: float | None = None,
+        privacy_target_max: float | None = None,
     ):
         super().__init__(
             feature_names=feature_names,

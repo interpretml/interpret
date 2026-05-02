@@ -2,7 +2,6 @@
 
 import random
 from multiprocessing import Pool
-from typing import List, Optional
 
 from powerlift.bench.store import Store
 from powerlift.executors.base import Executor, handle_err
@@ -18,21 +17,21 @@ class AzureVMInstance(Executor):
         subscription_id: str,
         azure_client_id: str,
         credential=None,
-        azure_client_secret: Optional[str] = None,
+        azure_client_secret: str | None = None,
         resource_group: str = "powerlift_rg",
-        shell_install: Optional[str] = None,
-        pip_install: Optional[str] = None,
-        wheel_filepaths: Optional[List[str]] = None,
+        shell_install: str | None = None,
+        pip_install: str | None = None,
+        wheel_filepaths: list[str] | None = None,
         n_instances: int = 1,
-        location: Optional[str] = None,  # we use "canadacentral" or "southcentralus"
+        location: str | None = None,  # we use "canadacentral" or "southcentralus"
         vm_size: str = "Standard_B16s_v2",  # can use "Standard_NC24ads_A100_v4" for GPUs
         image_publisher: str = "canonical",
         image_offer: str = "ubuntu-24_04-lts",
         image_sku: str = "server",
         image_version: str = "latest",
         disk_type: str = "Standard_LRS",  # use "Premium_LRS" for SSDs
-        docker_db_uri: Optional[str] = None,
-        resource_uris: Optional[List[str]] = None,
+        docker_db_uri: str | None = None,
+        resource_uris: list[str] | None = None,
         max_undead: int = 1,
         delete_on_complete: bool = True,
     ):
