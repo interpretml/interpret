@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9-slim-buster
+FROM python:3.10-slim-bookworm
 
 COPY powerlift-0.1.12-py3-none-any.whl .
 

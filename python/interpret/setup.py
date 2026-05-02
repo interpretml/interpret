@@ -37,6 +37,7 @@ setup(
     long_description_content_type="text/plain",
     license="MIT",
     url="https://github.com/interpretml/interpret",
+    python_requires=">=3.10",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python",

@@ -3,7 +3,6 @@
 
 import logging
 import re
-import sys
 import traceback
 from importlib.metadata import entry_points
 from warnings import warn
@@ -41,11 +40,7 @@ def load_class_extensions(current_module, extension_key, extension_class_validat
           before it is registered.
     """
 
-    entry_points_result = entry_points()
-    if sys.version_info < (3, 10):
-        entry_points_group = entry_points_result.get(extension_key, [])
-    else:
-        entry_points_group = entry_points_result.select(group=extension_key)
+    entry_points_group = entry_points().select(group=extension_key)
 
     for entrypoint in entry_points_group:
         _log.debug(f"processing entrypoint {extension_key}")

@@ -7,7 +7,7 @@ name = "powerlift"
 version = "0.1.12"
 description = "Interactive Benchmarking for Machine Learning."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 authors = [
     { name = "The InterpretML Contributors", email = "interpret@microsoft.com" },
 ]

@@ -27,7 +27,7 @@ Interpretability is essential for:
 
 # Installation
 
-Python 3.7+ | Linux, Mac, Windows
+Python 3.10+ | Linux, Mac, Windows
 ```sh
 pip install interpret
 # OR
