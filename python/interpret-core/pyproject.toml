@@ -1,3 +1,19 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.mypy]
+python_version = "3.10"
+files = ["interpret"]
+# Permissive baseline: do not fail on missing annotations. Strictness is opted
+# in per-module via [[tool.mypy.overrides]] entries below.
+ignore_missing_imports = true
+follow_imports = "silent"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+# Quality checks that apply to whatever is annotated.
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_ignores = true

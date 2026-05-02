@@ -295,9 +295,13 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     feature_bounds_: npt.NDArray[np.float64]  # 2D[feature, min_max]
     term_features_: list[tuple[int, ...]]
     bin_weights_: list[npt.NDArray[np.float64]]  # [bin0...]
-    bagged_scores_: list[npt.NDArray[np.float64]]  # [bag, bin0..., ?class]
+    bagged_scores_: (
+        list[npt.NDArray[np.float64] | None] | None
+    )  # [bag, bin0..., ?class]
     term_scores_: list[npt.NDArray[np.float64]]  # [bin0..., ?class]
-    standard_deviations_: list[npt.NDArray[np.float64]]  # [bin0..., ?class]
+    standard_deviations_: (
+        list[npt.NDArray[np.float64] | None] | None
+    )  # [bin0..., ?class]
     link_: str
     link_param_: float
     bag_weights_: npt.NDArray[np.float64]  # 1D[bag]
@@ -2471,8 +2475,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         #       but first we need to do some testing to figure out if this gives a worse result than applying
         #       IsotonicRegression to the final model which should be more regularized
         self.bagged_intercept_ = None
-        self.bagged_scores_[term] = None
-        self.standard_deviations_[term] = None
+        # monotonize is only valid on a fitted model where these are non-None lists.
+        self.bagged_scores_[term] = None  # type: ignore[index]
+        self.standard_deviations_[term] = None  # type: ignore[index]
 
         return self
 
@@ -2894,7 +2899,7 @@ class EBMClassifierMixin(SKClassifierMixin):
         npt.NDArray[np.int64] | npt.NDArray[np.bool_] | npt.NDArray[np.str_]
     )  # 1D[class]
     intercept_: npt.NDArray[np.float64]  # 1D[class]
-    bagged_intercept_: npt.NDArray[np.float64]  # 1D[bag], or 2D[bag, class]
+    bagged_intercept_: npt.NDArray[np.float64] | None  # 1D[bag], or 2D[bag, class]
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -3078,7 +3083,7 @@ class EBMRegressorMixin(SKRegressorMixin):
     """
 
     intercept_: float
-    bagged_intercept_: npt.NDArray[np.float64]  # 1D[bag]
+    bagged_intercept_: npt.NDArray[np.float64] | None  # 1D[bag]
     min_target_: float
     max_target_: float
 

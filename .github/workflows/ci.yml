@@ -819,3 +819,17 @@ jobs:
                 summary: 'Run `ruff format .` locally and push the changes.'
               }
             })
+
+  type_mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_id || github.sha }}
+      - name: Run mypy on interpret-core
+        continue-on-error: true
+        run: |
+          cd python/interpret-core
+          python -m pip install --upgrade mypy numpy
+          python -m mypy

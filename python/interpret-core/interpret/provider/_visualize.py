@@ -11,7 +11,7 @@ try:
     from pandas.core.generic import NDFrame as _NDFrame
 except ImportError:
 
-    class _NDFrame:
+    class _NDFrame:  # type: ignore[no-redef]
         pass
 
 

@@ -13,7 +13,7 @@ try:
 
 except ImportError:
 
-    class SKNotFittedError(ValueError, AttributeError):
+    class SKNotFittedError(ValueError, AttributeError):  # type: ignore[no-redef]
         """Stub for sklearn.exceptions.NotFittedError when sklearn is not installed."""
 
         pass
@@ -48,13 +48,13 @@ except ImportError:
             self.regressor_tags = None
             self.input_tags = SKInputTags()
 
-    class SKBaseEstimator:
+    class SKBaseEstimator:  # type: ignore[no-redef]
         """Stub for sklearn.base.BaseEstimator when sklearn is not installed."""
 
         def __sklearn_tags__(self):
             return SKTags()
 
-    class SKClassifierMixin:
+    class SKClassifierMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.ClassifierMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
@@ -63,7 +63,7 @@ except ImportError:
             tags.classifier_tags = SKClassifierTags()
             return tags
 
-    class SKRegressorMixin:
+    class SKRegressorMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.RegressorMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
@@ -72,7 +72,7 @@ except ImportError:
             tags.regressor_tags = SKRegressorTags()
             return tags
 
-    class SKTransformerMixin:
+    class SKTransformerMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.TransformerMixin when sklearn is not installed."""
 
         def fit_transform(self, X, y=None, **fit_params):

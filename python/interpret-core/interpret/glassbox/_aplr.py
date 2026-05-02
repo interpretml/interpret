@@ -1,18 +1,20 @@
 # Copyright (c) 2024 The InterpretML Contributors
 # Distributed under the MIT software license
+from typing import Any
 from warnings import warn
 
 import numpy as np
+import numpy.typing as npt
 
 try:
     from pandas import DataFrame as _DataFrameType
     from pandas import Series as _SeriesType
 except ImportError:
 
-    class _DataFrameType:
+    class _DataFrameType:  # type: ignore[no-redef]
         pass
 
-    class _SeriesType:
+    class _SeriesType:  # type: ignore[no-redef]
         pass
 
 
@@ -268,7 +270,7 @@ class APLRRegressor(
 
         selector = gen_local_selector(data_dicts, is_classification=False)
 
-        internal_obj = {
+        internal_obj: dict[str, Any] = {
             "overall": None,
             "specific": data_dicts,
             "mli": [
@@ -301,9 +303,11 @@ class APLRRegressor(
         )
 
 
-def calculate_densities(X: FloatMatrix) -> tuple[list[list[int]], list[list[float]]]:
-    bin_counts: list[list[int]] = []
-    bin_edges: list[list[float]] = []
+def calculate_densities(
+    X: FloatMatrix,
+) -> tuple[list[npt.NDArray[np.int64]], list[npt.NDArray[np.float64]]]:
+    bin_counts: list[npt.NDArray[np.int64]] = []
+    bin_edges: list[npt.NDArray[np.float64]] = []
     for col in convert_to_numpy_matrix(X).T:
         counts_this_col, bin_edges_this_col = np.histogram(col, bins="doane")
         bin_counts.append(counts_this_col)
@@ -612,7 +616,7 @@ class APLRClassifier(
         classes = self.get_categories()
 
         data_dicts = []
-        perf_list = []
+        perf_list: list[dict[str, Any]] = []
 
         if y is not None:
             y = clean_dimensions(y, "y")
@@ -620,11 +624,11 @@ class APLRClassifier(
                 msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
                 raise ValueError(msg)
             if not all(isinstance(val, str) for val in y):
-                y = [str(val) for val in y]
+                # Reassigning ndarray -> list[str] for downstream classes.index() calls.
+                y = [str(val) for val in y]  # type: ignore[assignment]
         X_values = create_values(X, explanations, term_names, self.feature_names_in_)
-        perf_list = []
         for i in range(len(pred)):
-            di = {}
+            di: dict[str, Any] = {}
             di["is_classification"] = True
             di["actual"] = np.nan if y is None else classes.index(y[i])
             di["predicted"] = classes.index(pred[i])
@@ -654,7 +658,7 @@ class APLRClassifier(
 
         selector = gen_local_selector(data_dicts, is_classification=True)
 
-        internal_obj = {
+        internal_obj: dict[str, Any] = {
             "overall": None,
             "specific": data_dicts,
             "mli": [
