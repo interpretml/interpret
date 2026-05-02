@@ -29,7 +29,8 @@ def boost(
     shm_name,
     bag_idx,
     stage,
-    callback,
+    progress_callback,
+    exam_callback,
     dataset,
     intercept_rounds,
     intercept_learning_rate,
@@ -264,6 +265,19 @@ def boost(
                                 # penalize nominals a bit because they benefit from sorting categories
                                 avg_gain *= gain_scale
 
+                            if exam_callback is not None:
+                                is_done = exam_callback(
+                                    bag=bag_idx,
+                                    stage=stage,
+                                    step=step_idx,
+                                    term=term_idx,
+                                    gain=avg_gain,
+                                )
+                                if is_done:
+                                    if stop_flag is not None:
+                                        stop_flag[0] = True
+                                    break
+
                             gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
                             if not make_progress and (
                                 bestkey is None or gainkey < bestkey
@@ -368,8 +382,8 @@ def boost(
                             if stop_flag is not None and stop_flag[0]:
                                 break
 
-                            if callback is not None:
-                                is_done = callback(
+                            if progress_callback is not None:
+                                is_done = progress_callback(
                                     bag=bag_idx,
                                     stage=stage,
                                     step=step_idx,
