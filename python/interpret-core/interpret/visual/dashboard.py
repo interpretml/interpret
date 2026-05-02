@@ -10,7 +10,7 @@ import socket
 import threading
 from string import Template
 
-import requests
+import requests  # type: ignore[import-untyped]
 from flask import Flask
 from gevent.pywsgi import WSGIServer
 from IPython import display

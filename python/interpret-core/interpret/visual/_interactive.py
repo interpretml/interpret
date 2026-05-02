@@ -2,16 +2,15 @@
 # Distributed under the MIT software license
 
 import logging
-import sys
+from typing import Any
 
 from ..provider import AutoVisualizeProvider, DashProvider, PreserveProvider
 
 _log = logging.getLogger(__name__)
 
-_current_module = sys.modules[__name__]
-
-_current_module._preserve_provider = None
-_current_module.visualize_provider = None
+_preserve_provider: PreserveProvider | None = None
+# Duck-typed: any object with a `render` method (validated in set_visualize_provider).
+_visualize_provider: Any = None
 
 
 def get_visualize_provider():
@@ -20,7 +19,7 @@ def get_visualize_provider():
     Returns:
         Visualization provider.
     """
-    return _current_module.visualize_provider
+    return _visualize_provider
 
 
 def set_visualize_provider(provider):
@@ -29,9 +28,10 @@ def set_visualize_provider(provider):
     Args:
         provider: Visualization provider found in "interpret.provider.visualize".
     """
+    global _visualize_provider
     has_render_method = hasattr(provider, "render")
     if provider is None or has_render_method:
-        _current_module.visualize_provider = provider
+        _visualize_provider = provider
     else:  # pragma: no cover
         msg = f"Object of type {type(provider).__name__} is not a valid visualize provider. Expected an object with a 'render' method."
         raise ValueError(msg)
@@ -54,10 +54,10 @@ def get_show_addr():
     Returns:
         Address tuple (ip, port).
     """
-    if isinstance(_current_module.visualize_provider, DashProvider):
+    if isinstance(_visualize_provider, DashProvider):
         return (
-            _current_module.visualize_provider.app_runner.ip,
-            _current_module.visualize_provider.app_runner.port,
+            _visualize_provider.app_runner.ip,
+            _visualize_provider.app_runner.port,
         )
     return None
 
@@ -68,8 +68,8 @@ def shutdown_show_server():
     Returns:
         True if show server has stopped.
     """
-    if isinstance(_current_module.visualize_provider, DashProvider):
-        return _current_module.visualize_provider.app_runner.stop()
+    if isinstance(_visualize_provider, DashProvider):
+        return _visualize_provider.app_runner.stop()
 
     return True  # pragma: no cover
 
@@ -82,9 +82,9 @@ def status_show_server():
     """
     status_dict = {}
 
-    if isinstance(_current_module.visualize_provider, DashProvider):
+    if isinstance(_visualize_provider, DashProvider):
         status_dict["app_runner_exists"] = True
-        status_dict.update(_current_module.visualize_provider.app_runner.status())
+        status_dict.update(_visualize_provider.app_runner.status())
     else:
         status_dict["app_runner_exists"] = False
 
@@ -101,23 +101,23 @@ def init_show_server(addr=None, base_url=None, use_relative_links=False):
     """
 
     # If the user uses old methods such as init_show_server, we do an immediate override to the visualization provider.
-    if isinstance(_current_module.visualize_provider, DashProvider):
+    if isinstance(_visualize_provider, DashProvider):
         _log.info("Stopping previous dash provider")
         shutdown_show_server()
 
     _log.info(
-        f"Replacing visualize provider: {type(_current_module.visualize_provider)} with {type(DashProvider)}"
+        f"Replacing visualize provider: {type(_visualize_provider)} with {type(DashProvider)}"
     )
     set_visualize_provider(
         DashProvider.from_address(
             addr=addr, base_url=base_url, use_relative_links=use_relative_links
         )
     )
-    _current_module.visualize_provider.idempotent_start()
+    _visualize_provider.idempotent_start()
 
     addr = (
-        _current_module.visualize_provider.app_runner.ip,
-        _current_module.visualize_provider.app_runner.port,
+        _visualize_provider.app_runner.ip,
+        _visualize_provider.app_runner.port,
     )
     _log.info(f"Running dash provider at {addr}")
 
@@ -145,16 +145,17 @@ def show(explanation, key=-1, **kwargs):
         **kwargs: Kwargs passed down to provider's render() call.
     """
 
+    global _visualize_provider
     try:
         # Get explanation key
         key = _get_integer_key(key, explanation)
 
         # Set default render if needed
-        if _current_module.visualize_provider is None:
-            _current_module.visualize_provider = AutoVisualizeProvider()
+        if _visualize_provider is None:
+            _visualize_provider = AutoVisualizeProvider()
 
         # Render
-        _current_module.visualize_provider.render(explanation, key=key, **kwargs)
+        _visualize_provider.render(explanation, key=key, **kwargs)
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e
@@ -175,18 +176,14 @@ def show_link(explanation, share_tables=None):
     """
 
     # Initialize server if needed
-    if not isinstance(
-        _current_module.visualize_provider, DashProvider
-    ):  # pragma: no cover
+    if not isinstance(_visualize_provider, DashProvider):  # pragma: no cover
         init_show_server()
 
     # Register
-    _current_module.visualize_provider.app_runner.register(
-        explanation, share_tables=share_tables
-    )
+    _visualize_provider.app_runner.register(explanation, share_tables=share_tables)
 
     try:
-        return _current_module.visualize_provider.app_runner.display_link(explanation)
+        return _visualize_provider.app_runner.display_link(explanation)
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
         raise e
@@ -207,16 +204,15 @@ def preserve(explanation, selector_key=None, file_name=None, **kwargs):
         file_name: If assigned, will save the visualization to this filename.
         **kwargs: Kwargs which are passed to the underlying render/export call.
     """
-    if _current_module._preserve_provider is None:
-        _current_module._preserve_provider = PreserveProvider()
+    global _preserve_provider
+    if _preserve_provider is None:
+        _preserve_provider = PreserveProvider()
 
     try:
         # Get explanation key
         key = _get_integer_key(selector_key, explanation)
 
-        _current_module._preserve_provider.render(
-            explanation, key=key, file_name=file_name, **kwargs
-        )
+        _preserve_provider.render(explanation, key=key, file_name=file_name, **kwargs)
         return
     except Exception as e:  # pragma: no cover
         _log.error(e, exc_info=True)
