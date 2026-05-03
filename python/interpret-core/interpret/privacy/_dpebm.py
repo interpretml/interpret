@@ -2,7 +2,7 @@
 # Distributed under the MIT software license
 
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Any, Literal
 
 import numpy.typing as npt
 
@@ -81,12 +81,30 @@ class DPEBMModel(BaseEBM):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | int
+            | Sequence[str]
+            | Sequence[float]
+        ]
         | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
+        exclude: Sequence[str | int | Sequence[str | int]] | None = None,
         # Ensemble
         validation_size: float | None = 0,
         outer_bags: int = 1,
@@ -127,7 +145,7 @@ class DPEBMModel(BaseEBM):
         self.bin_budget_frac = bin_budget_frac
         self.privacy_bounds = privacy_bounds
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Any:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = False
         return tags
@@ -252,12 +270,30 @@ class DPEBMClassifier(EBMClassifierMixin, DPEBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | int
+            | Sequence[str]
+            | Sequence[float]
+        ]
         | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
+        exclude: Sequence[str | int | Sequence[str | int]] | None = None,
         # Ensemble
         validation_size: float | None = 0,
         outer_bags: int = 1,
@@ -298,7 +334,7 @@ class DPEBMClassifier(EBMClassifierMixin, DPEBMModel):
             privacy_bounds=privacy_bounds,
         )
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Any:
         tags = super().__sklearn_tags__()
         tags.classifier_tags.multi_class = False
         return tags
@@ -430,12 +466,30 @@ class DPEBMRegressor(EBMRegressorMixin, DPEBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[None | str | Sequence[str] | Sequence[float]]
+        feature_types: Sequence[
+            None
+            | Literal[
+                "auto",
+                "continuous",
+                "quantile",
+                "rounded_quantile",
+                "uniform",
+                "winsorized",
+                "nominal",
+                "ordinal",
+                "ignore",
+                "nominal_prevalence",
+                "nominal_alphabetical",
+            ]
+            | int
+            | Sequence[str]
+            | Sequence[float]
+        ]
         | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
-        exclude: Sequence[int | str | Sequence[int | str]] | None = None,
+        exclude: Sequence[str | int | Sequence[str | int]] | None = None,
         # Ensemble
         validation_size: float | None = 0,
         outer_bags: int = 1,
@@ -480,7 +534,7 @@ class DPEBMRegressor(EBMRegressorMixin, DPEBMModel):
         self.privacy_target_min = privacy_target_min
         self.privacy_target_max = privacy_target_max
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Any:
         tags = super().__sklearn_tags__()
         tags.regressor_tags.poor_score = True
         return tags

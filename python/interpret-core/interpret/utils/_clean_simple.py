@@ -2,8 +2,10 @@
 # Distributed under the MIT software license
 
 import logging
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 from numpy import ma
 from ..core.sklearn import _is_classifier, _is_regressor
 
@@ -279,7 +281,7 @@ def clean_X_and_init_score(
     link_param,
     n_samples=None,
     sample_source="y",
-):
+) -> tuple[Any, int, npt.NDArray[np.float64] | None]:
     if init_score is None:
         X, n_samples = preclean_X(
             X, feature_names, feature_types, n_samples, sample_source

@@ -364,8 +364,7 @@ class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
                             _log.error(msg)
                             raise ValueError(msg)
 
-                        if feature_type is None:
-                            # if auto-detected then we need to show a privacy warning
+                        if feature_type != "nominal":
                             is_privacy_types_warning = True
 
                         # TODO: clean up this hack that uses strings of the indexes
@@ -435,8 +434,8 @@ class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
             warn(
                 "Possible privacy violation: Automatic determination of the feature"
                 "types examines the data and is unaccounted for in the privacy budget. "
-                "Pass in fully specified feature_types of 'continuous', 'nominal', "
-                "'ordinal', or a list of strings to avoid this warning."
+                "Pass in fully specified feature_types of 'continuous', or 'nominal' "
+                "to avoid this warning."
             )
 
         self.n_features_in_ = n_features

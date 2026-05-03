@@ -5,7 +5,7 @@ import heapq
 import json
 import logging
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import nullcontext
 from copy import deepcopy
 from functools import partial
@@ -13,7 +13,7 @@ from itertools import combinations, count
 from math import ceil, isnan
 from multiprocessing.managers import SharedMemoryManager
 from operator import itemgetter
-from typing import Literal
+from typing import Any, Literal
 from warnings import warn
 import numpy as np
 import numpy.typing as npt
@@ -83,13 +83,14 @@ class EBMExplanation(FeatureValueExplanation):
 
     explanation_type = None
 
-    def visualize(self, key=None):
+    def visualize(self, key: int | None = None, title: str | None = None) -> Any:
         """Provide interactive visualizations.
 
         Args:
             key: Either a scalar or list
                 that indexes the internal object for sub-plotting.
                 If an overall visualization is requested, pass None.
+            title: Unused; present for compatibility with the parent class.
 
         Returns:
             A Plotly figure.
@@ -195,26 +196,30 @@ class EBMExplanation(FeatureValueExplanation):
         raise NotImplementedError(msg)
 
 
-def _clean_exclude(exclude, feature_map):
-    ret = set()
+def _clean_exclude(
+    exclude: Iterable[str | int | Iterable[str | int]],
+    feature_map: dict[str, int],
+) -> set[tuple[int, ...]]:
+    ret: set[tuple[int, ...]] = set()
     for term in exclude:
         if isinstance(term, (float, int, str)):
             term = (term,)  # noqa: PLW2901
 
         cleaned = []
         for feature in term:
-            if isinstance(feature, float):
-                if not feature.is_integer():
-                    msg = "exclude must contain integers or feature names"
-                    _log.error(msg)
-                    raise ValueError(msg)
-                feature = int(feature)  # noqa: PLW2901
-            elif isinstance(feature, str):
+            if isinstance(feature, str):
                 if feature not in feature_map:
                     msg = f"exclude item {feature} not in feature names"
                     _log.error(msg)
                     raise ValueError(msg)
                 feature = feature_map[feature]  # noqa: PLW2901
+            elif isinstance(feature, float):
+                # handle integerized floats even though we don't advertize it
+                if not feature.is_integer():  # type: ignore[attr-defined]
+                    msg = "exclude must contain integers or feature names"
+                    _log.error(msg)
+                    raise ValueError(msg)
+                feature = int(feature)  # noqa: PLW2901
             elif not isinstance(feature, int):
                 msg = f"unrecognized item type {type(feature)} in exclude"
                 _log.error(msg)
@@ -230,7 +235,10 @@ def _clean_exclude(exclude, feature_map):
     return ret
 
 
-def clean_interactions(interactions, n_features_in):
+def clean_interactions(
+    interactions: float | str | Iterable[str | int | Iterable[str | int]] | None,
+    n_features_in: int,
+) -> int | list[str | int | Iterable[str | int]]:
     if interactions is None:
         return 0
 
@@ -277,10 +285,11 @@ def clean_interactions(interactions, n_features_in):
 
         # at this point interactions will be a positive, nonzero integer
         return interactions
-    elif len(interactions) == 0:
-        return 0
     else:
-        # if it's a list then just return it
+        # convert to a list and return it (or 0 if there are no items)
+        interactions = list(interactions)
+        if len(interactions) == 0:
+            return 0
         return interactions
 
 
@@ -316,7 +325,14 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     bag_weights_: npt.NDArray[np.float64]  # 1D[bag]
     best_iteration_: npt.NDArray[np.int64]  # 2D[stage, bag]
 
-    def fit(self, X, y, sample_weight=None, bags=None, init_score=None):
+    def fit(
+        self,
+        X: Any,
+        y: Any,
+        sample_weight: Any = None,
+        bags: Any = None,
+        init_score: Any = None,
+    ) -> "BaseEBM":
         """Fit model to provided samples.
 
         Args:
@@ -711,9 +727,10 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         n_features_in = len(bins)
 
-        feature_map = dict(zip(feature_names_in, count()))
+        feature_map: dict[str, int] = dict(zip(feature_names_in, count()))
 
         exclude = self.exclude
+        term_features: list[tuple[int, ...]]
         if exclude is None:
             exclude = set()
             term_features = [(x,) for x in range(n_features_in)]
@@ -770,7 +787,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             rngs.append(bagged_rng)
             internal_bags.append(bag)
 
-        bag_weights = []
+        bag_weights: list[float] = []
         for bag in internal_bags:
             if bag is None:
                 if sample_weight is None:
@@ -977,12 +994,14 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                     probs = np.bincount(y_local, weights=sample_weight_local)
                     if sample_weight_local is None:
                         total = probs.sum()
-                        probs = probs.astype(np.float64, copy=False)
                     else:
                         total = np.array(1, np.float64)
                         native.safe_sum(probs, total, 0)
                         total = total.item()
 
+                    probs: npt.NDArray[np.float64] = probs.astype(
+                        np.float64, copy=False
+                    )
                     probs /= total
                     bagged_intercept[idx, :] = link_func(probs, link, link_param)
 
@@ -1000,6 +1019,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             )
 
             with nullcontext() if callback is None else SharedMemoryManager() as smm:
+                stop_flag: npt.NDArray[np.bool_] | None
                 if smm is not None:
                     shm = smm.SharedMemory(size=1)
                     shm_name = shm.name
@@ -1053,7 +1073,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                     for idx in range(self.outer_bags)
                 )
 
-                best_iteration = [[]]
+                best_iteration: list[list[int]] = [[]]
                 models = []
                 rngs = []
                 for idx in range(self.outer_bags):
@@ -1075,7 +1095,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                     if stop_flag is not None and stop_flag[0]:
                         break
 
-                    interactions = clean_interactions(interactions, n_features_in)
+                    interactions = clean_interactions(interactions, n_features_in)  # type: ignore[assignment]
                     if interactions == 0:  # works if interactions is a list
                         break
 
@@ -1163,7 +1183,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         )
 
                         # Select merged pairs
-                        pair_ranks = {}
+                        pair_ranks: dict[tuple[int, ...], float] = {}
                         for n, interaction_strengths_and_indices in enumerate(
                             bagged_ranked_interaction
                         ):
@@ -1305,7 +1325,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
                     break  # do not loop!
 
-            best_iteration = np.array(best_iteration, np.int64)
+            best_iteration = np.array(best_iteration, np.int64)  # type: ignore[assignment]
 
             remove_extra_bins(term_features, bins)
 
@@ -1461,11 +1481,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         self.link_ = link
         self.link_param_ = link_param
         self.bag_weights_ = bag_weights
-        self.best_iteration_ = best_iteration
+        self.best_iteration_ = best_iteration  # type: ignore[assignment]
 
         return self
 
-    def estimate_mem(self, X, y=None, data_multiplier=0.0):
+    def estimate_mem(self, X: Any, y: Any = None, data_multiplier: float = 0.0) -> int:
         """Estimate the amount of memory required during the call to the fit
             function. This estimate does not include the code or data memory used
             by the calling process, or the amount of code or non-EBM data memory
@@ -1719,7 +1739,10 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return int(n_bytes + max_bytes)
 
-    def to_jsonable(self, detail="all"):
+    def to_jsonable(
+        self,
+        detail: Literal["minimal", "interpretable", "mergeable", "all"] = "all",
+    ) -> dict[str, Any]:
         """Convert the model to a JSONable representation.
 
         Args:
@@ -1736,7 +1759,12 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return to_jsonable(self, detail)
 
-    def to_json(self, file, detail="all", indent=2):
+    def to_json(
+        self,
+        file: Any,
+        detail: Literal["minimal", "interpretable", "mergeable", "all"] = "all",
+        indent: int = 2,
+    ) -> None:
         r"""Export the model to a JSON text file.
 
         Args:
@@ -1766,7 +1794,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             outer = to_jsonable(self, detail)
             json.dump(outer, file, allow_nan=False, indent=indent)
 
-    def _from_jsonable(self, jsonable):
+    def _from_jsonable(self, jsonable: dict[str, Any]) -> "BaseEBM":
         """Convert a JSONable EBM representation into an EBM.
 
         Args:
@@ -1779,7 +1807,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         UNTESTED_from_jsonable(self, jsonable)
         return self
 
-    def _from_json(self, file):
+    def _from_json(self, file: Any) -> "BaseEBM":
         """Load from a JSON EBM file.
 
         Args:
@@ -1801,7 +1829,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             UNTESTED_from_jsonable(self, jsonable)
         return self
 
-    def to_excel_exportable(self, file):
+    def to_excel_exportable(self, file: Any) -> Any:
         """Converts the model to an Excel exportable representation.
 
         Args:
@@ -1825,7 +1853,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return workbook
 
-    def to_excel(self, file):
+    def to_excel(self, file: Any) -> None:
         """Exports the model to an Excel workbook.
 
         Args:
@@ -1841,7 +1869,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         workbook = self.to_excel_exportable(file)
         workbook.close()
 
-    def _predict_score(self, X, init_score=None):
+    def _predict_score(self, X: Any, init_score: Any = None) -> npt.NDArray[np.float64]:
         """Predict scores on provided samples.
 
         Args:
@@ -1875,7 +1903,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             self.term_features_,
         )
 
-    def eval_terms(self, X):
+    def eval_terms(self, X: Any) -> npt.NDArray[np.float64]:
         r"""Term scores identical to the local explanation values obtained by calling ebm.explain_local(x).
 
         Calling interpret.utils.inv_link(ebm.eval_terms(X).sum(axis=1) + ebm.intercept\_, ebm.link\_)
@@ -1903,7 +1931,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             self.term_features_,
         )
 
-    def explain_global(self, name=None):
+    def explain_global(self, name: str | None = None) -> EBMExplanation:
         """Provide global explanation for model.
 
         Args:
@@ -1925,13 +1953,18 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
-        for scores, errors in zip(self.term_scores_, self.standard_deviations_):
+        std_devs = (
+            self.standard_deviations_
+            if self.standard_deviations_ is not None
+            else [None] * len(self.term_scores_)
+        )
+        for scores, errors in zip(self.term_scores_, std_devs):
             if errors is None:
-                lower_bound = min(lower_bound, np.min(scores))
-                upper_bound = max(upper_bound, np.max(scores))
+                lower_bound = min(lower_bound, float(np.min(scores)))
+                upper_bound = max(upper_bound, float(np.max(scores)))
             else:
-                lower_bound = min(lower_bound, np.min(scores - errors))
-                upper_bound = max(upper_bound, np.max(scores + errors))
+                lower_bound = min(lower_bound, float(np.min(scores - errors)))
+                upper_bound = max(upper_bound, float(np.max(scores + errors)))
 
         bounds = (lower_bound, upper_bound)
 
@@ -2024,7 +2057,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         names = bin_labels
                         densities = list(mod_weights[term_idx])
 
-                scores = list(model_graph)
+                scores: list[npt.NDArray[np.float64]] = list(model_graph)  # type: ignore[no-redef]
                 upper_bounds = None if errors is None else list(model_graph + errors)
                 lower_bounds = None if errors is None else list(model_graph - errors)
                 density_dict = {
@@ -2185,7 +2218,13 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             ),
         )
 
-    def explain_local(self, X, y=None, name=None, init_score=None):
+    def explain_local(
+        self,
+        X: Any,
+        y: Any = None,
+        name: str | None = None,
+        init_score: Any = None,
+    ) -> Any:
         """Provide local explanations for provided samples.
 
         Args:
@@ -2304,7 +2343,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                 term_scores[term_idx], trim_low=[True] * len(feature_idxs)
             )
 
-        internal_obj = {
+        internal_obj: dict[str, Any] = {
             "overall": None,
             "specific": data_dicts,
             "mli": [
@@ -2335,7 +2374,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             selector=selector,
         )
 
-    def term_importances(self, importance_type="avg_weight"):
+    def term_importances(
+        self, importance_type: Literal["avg_weight", "min_max"] = "avg_weight"
+    ) -> npt.NDArray[np.float64]:
         """Provide the term importances.
 
         Args:
@@ -2372,7 +2413,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         msg = f"Unrecognized importance_type: {importance_type}"
         raise ValueError(msg)
 
-    def copy(self):
+    def copy(self) -> "BaseEBM":
         """Make a deepcopy of the EBM.
 
         Returns:
@@ -2382,8 +2423,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         return deepcopy(self)
 
     def monotonize(
-        self, term, increasing: bool | Literal["auto"] = "auto", passthrough=0.0
-    ):
+        self,
+        term: str | int,
+        increasing: bool | Literal["auto"] = "auto",
+        passthrough: float = 0.0,
+    ) -> "BaseEBM":
         r"""Adjust a term to be monotone using isotonic regression.
 
         An important consideration is that this function only adjusts a single term and will not modify pairwise terms.
@@ -2411,7 +2455,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         if hasattr(self, "classes_"):
             if len(self.classes_) == 1:
                 # monoclassification is always monotonized
-                return None
+                return self
             if len(self.classes_) > 2:
                 msg = "monotonize not supported for multiclass"
                 _log.error(msg)
@@ -2492,7 +2536,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def remove_terms(self, terms):
+    def remove_terms(self, terms: Iterable[str | int | bool]) -> "BaseEBM":
         """Remove terms (and their associated components) from a fitted EBM.
 
         Note that this will change the structure (i.e., by removing the specified
@@ -2521,18 +2565,19 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             "self.term_names_",
         )
 
-        def _remove_indices(x, idx):
-            # Remove elements of a list based on provided index
-            return [i for j, i in enumerate(x) if j not in idx]
+        term_features = [v for j, v in enumerate(self.term_features_) if j not in terms]
+        term_names = [v for j, v in enumerate(self.term_names_) if j not in terms]
+        term_scores = [v for j, v in enumerate(self.term_scores_) if j not in terms]
+        bagged_scores = self.bagged_scores_
+        if bagged_scores is not None:
+            bagged_scores = [v for j, v in enumerate(bagged_scores) if j not in terms]
+        standard_deviations = self.standard_deviations_
+        if standard_deviations is not None:
+            standard_deviations = [
+                v for j, v in enumerate(standard_deviations) if j not in terms
+            ]
+        bin_weights = [v for j, v in enumerate(self.bin_weights_) if j not in terms]
 
-        term_features = _remove_indices(self.term_features_, idx=terms)
-        term_names = _remove_indices(self.term_names_, idx=terms)
-        term_scores = _remove_indices(self.term_scores_, idx=terms)
-        bagged_scores = _remove_indices(self.bagged_scores_, idx=terms)
-        standard_deviations = _remove_indices(self.standard_deviations_, idx=terms)
-        bin_weights = _remove_indices(self.bin_weights_, idx=terms)
-
-        # Update components of self
         self.term_features_ = term_features
         self.term_names_ = term_names
         self.term_scores_ = term_scores
@@ -2542,7 +2587,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def remove_features(self, features):
+    def remove_features(self, features: Sequence[str | int | bool]) -> "BaseEBM":
         r"""Remove features (and their associated components) from a fitted EBM.
 
         Note that this will change the structure (i.e., by removing the specified
@@ -2603,7 +2648,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def sweep(self, terms=True, bins=True, features=False):
+    def sweep(
+        self, terms: bool = True, bins: bool = True, features: bool = False
+    ) -> "BaseEBM":
         """Purge unused elements from a fitted EBM.
 
         Args:
@@ -2626,8 +2673,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         if terms is True:
             terms = [
                 i for i, v in enumerate(self.term_scores_) if np.count_nonzero(v) == 0
-            ]
-            self.remove_terms(terms)
+            ]  # type: ignore[assignment]
+            self.remove_terms(terms)  # type: ignore[arg-type]
         elif terms is not False:
             msg = "terms must be True or False"
             _log.error(msg)
@@ -2641,11 +2688,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             raise ValueError(msg)
 
         if features is True:
-            features = np.ones(len(self.bins_), np.bool_)
+            features = np.ones(len(self.bins_), np.bool_)  # type: ignore[assignment]
             for term in self.term_features_:
                 for feature_idx in term:
-                    features[feature_idx] = False
-            self.remove_features(features)
+                    features[feature_idx] = False  # type: ignore[index]
+            self.remove_features(features)  # type: ignore[arg-type]
         elif features is not False:
             msg = "features must be True or False"
             _log.error(msg)
@@ -2653,7 +2700,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def scale(self, term, factor):
+    def scale(self, term: str | int, factor: float) -> "BaseEBM":
         """Scale the individual term contribution by a constant factor.
 
         For example, you can nullify the contribution of specific terms by setting
@@ -2687,12 +2734,20 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         )
 
         self.term_scores_[term] *= factor
-        self.bagged_scores_[term] *= factor
-        self.standard_deviations_[term] *= factor
+        if self.bagged_scores_ is not None:
+            bagged_term = self.bagged_scores_[term]
+            if bagged_term is not None:
+                bagged_term *= factor
+        if self.standard_deviations_ is not None:
+            std_term = self.standard_deviations_[term]
+            if std_term is not None:
+                std_term *= factor
 
         return self
 
-    def predict_with_uncertainty(self, X, init_score=None):
+    def predict_with_uncertainty(
+        self, X: Any, init_score: Any = None
+    ) -> npt.NDArray[np.float64]:
         """Gets raw scores and uncertainties from the bagged base models.
         Generates predictions by averaging outputs across all bagged models, and estimates
         uncertainty using the standard deviation of predictions across bags.
@@ -2723,6 +2778,10 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             self.link_param_,
         )
 
+        if self.bagged_intercept_ is None or self.bagged_scores_ is None:
+            msg = "predict_with_uncertainty requires bagged_intercept_ and bagged_scores_ to be set; was monotonize() called?"
+            _log.error(msg)
+            raise ValueError(msg)
         preds_per_bag = np.empty((len(self.bagged_intercept_), n_samples), np.float64)
 
         for bag_index in range(len(self.bagged_intercept_)):
@@ -2734,7 +2793,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                 self.feature_types_in_,
                 self.bins_,
                 self.bagged_intercept_[bag_index],
-                list(map(itemgetter(bag_index), self.bagged_scores_)),
+                [None if s is None else s[bag_index] for s in self.bagged_scores_],
                 self.term_features_,
             )
 
@@ -2743,7 +2802,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         # Calculate mean predictions and uncertainties
         return np.c_[np.mean(preds_per_bag, axis=0), np.std(preds_per_bag, axis=0)]
 
-    def _multinomialize(self, passthrough=0.0):
+    def _multinomialize(self, passthrough: float = 0.0) -> "BaseEBM":
         if not hasattr(self, "bins_"):
             raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
@@ -2762,7 +2821,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        intercept_binary = self.intercept_.copy()
+        intercept_binary = self.intercept_.copy()  # type: ignore[union-attr]
 
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
@@ -2796,7 +2855,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def _ovrize(self, passthrough=0.0):
+    def _ovrize(self, passthrough: float = 0.0) -> "BaseEBM":
         if not hasattr(self, "bins_"):
             raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
@@ -2815,7 +2874,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             _log.error(msg)
             raise ValueError(msg)
 
-        intercept_multi = self.intercept_.copy()
+        intercept_multi = self.intercept_.copy()  # type: ignore[union-attr]
 
         # redo zero centering in-case the EBM has been unbalanced by editing
         terms = []
@@ -2849,7 +2908,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         return self
 
-    def _binarize(self, passthrough=0.0):
+    def _binarize(self, passthrough: float = 0.0) -> "list[BaseEBM]":
         if not hasattr(self, "bins_"):
             raise SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
@@ -2869,12 +2928,12 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             binary_param = np.nan
 
             ebms = []
-            for i in range(len(original.intercept_)):
+            for i in range(len(original.intercept_)):  # type: ignore[arg-type]
                 ebm = original.copy()
                 ebm.classes_ = np.array([0, 1], np.int64)
                 ebm.link_ = binary_link
                 ebm.link_param_ = binary_param
-                ebm.intercept_ = np.array([original.intercept_[i]], np.float64)
+                ebm.intercept_ = np.array([original.intercept_[i]], np.float64)  # type: ignore[index]
 
                 # TODO: do this per-bag in addition to the final scores:
                 ebm.bagged_intercept_ = None
@@ -2889,7 +2948,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         _log.error(msg)
         raise ValueError(msg)
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> Any:
         tags = super().__sklearn_tags__()
         tags.input_tags.sparse = True
         tags.input_tags.categorical = True
@@ -2920,7 +2979,7 @@ class EBMClassifierMixin(SKClassifierMixin):
     term_scores_: list[npt.NDArray[np.float64]]
     standard_deviations_: list[npt.NDArray[np.float64] | None] | None
 
-    def predict_proba(self, X, init_score=None):
+    def predict_proba(self, X: Any, init_score: Any = None) -> npt.NDArray[np.float64]:
         """Probability estimates on provided samples.
 
         Args:
@@ -2959,7 +3018,9 @@ class EBMClassifierMixin(SKClassifierMixin):
             self.link_param_,
         )
 
-    def decision_function(self, X, init_score=None):
+    def decision_function(
+        self, X: Any, init_score: Any = None
+    ) -> npt.NDArray[np.float64]:
         """Predict scores from model before calling the link function.
 
         Args:
@@ -2993,7 +3054,9 @@ class EBMClassifierMixin(SKClassifierMixin):
             self.term_features_,
         )
 
-    def predict(self, X, init_score=None):
+    def predict(
+        self, X: Any, init_score: Any = None
+    ) -> npt.NDArray[np.int64] | npt.NDArray[np.bool_] | npt.NDArray[np.str_]:
         """Predict on provided samples.
 
         Args:
@@ -3034,7 +3097,9 @@ class EBMClassifierMixin(SKClassifierMixin):
         # multiclass
         return self.classes_[np.argmax(scores, axis=1)]
 
-    def reorder_classes(self, classes):
+    def reorder_classes(
+        self, classes: Iterable[str | int | bool | np.str_ | np.int64 | np.bool_]
+    ) -> "BaseEBM":
         """Re-order the class positions in a classification EBM.
 
         Args:
@@ -3053,10 +3118,10 @@ class EBMClassifierMixin(SKClassifierMixin):
 
         if len(classes) != len(self.classes_):
             raise ValueError(
-                "The EBM contains {len(self.classes_)} classes, but the 'classes' parameter contains {len(classes)} items."
+                f"The EBM contains {len(self.classes_)} classes, but the 'classes' parameter contains {len(classes)} items."
             )
 
-        mapping = dict(zip(self.classes_, count()))
+        mapping: Any = dict(zip(self.classes_, count()))
         try:
             mapping = np.fromiter(
                 map(mapping.__getitem__, classes),
@@ -3075,22 +3140,30 @@ class EBMClassifierMixin(SKClassifierMixin):
 
         if len(mapping) == 2:
             if mapping[0] == 1:
-                np.negative(self.intercept_, out=self.intercept_)
-                np.negative(self.bagged_intercept_, out=self.bagged_intercept_)
-                for scores in self.bagged_scores_:
-                    np.negative(scores, out=scores)
+                np.negative(self.intercept_, out=self.intercept_)  # type: ignore[arg-type]
+                if self.bagged_intercept_ is not None:
+                    np.negative(self.bagged_intercept_, out=self.bagged_intercept_)
+                if self.bagged_scores_ is not None:
+                    for scores in self.bagged_scores_:
+                        if scores is not None:
+                            np.negative(scores, out=scores)
                 for scores in self.term_scores_:
                     np.negative(scores, out=scores)
         elif 3 <= len(mapping):
-            self.intercept_ = self.intercept_[mapping]
-            self.bagged_intercept_ = self.bagged_intercept_[:, mapping]
-            self.bagged_scores_ = [
-                scores[..., mapping] for scores in self.bagged_scores_
-            ]
+            self.intercept_ = self.intercept_[mapping]  # type: ignore[index]
+            if self.bagged_intercept_ is not None:
+                self.bagged_intercept_ = self.bagged_intercept_[:, mapping]
+            if self.bagged_scores_ is not None:
+                self.bagged_scores_ = [
+                    None if scores is None else scores[..., mapping]
+                    for scores in self.bagged_scores_
+                ]
             self.term_scores_ = [scores[..., mapping] for scores in self.term_scores_]
-            self.standard_deviations_ = [
-                scores[..., mapping] for scores in self.standard_deviations_
-            ]
+            if self.standard_deviations_ is not None:
+                self.standard_deviations_ = [
+                    None if scores is None else scores[..., mapping]
+                    for scores in self.standard_deviations_
+                ]
 
         return self
 
@@ -3107,7 +3180,7 @@ class EBMRegressorMixin(SKRegressorMixin):
     intercept_: float | npt.NDArray[np.float64]
     term_scores_: list[npt.NDArray[np.float64]]
 
-    def predict(self, X, init_score=None):
+    def predict(self, X: Any, init_score: Any = None) -> npt.NDArray[np.float64]:
         """Predicts on provided samples.
 
         Args:
@@ -3335,6 +3408,7 @@ class EBMModel(BaseEBM):
                 "nominal_prevalence",
                 "nominal_alphabetical",
             ]
+            | int
             | Sequence[str]
             | Sequence[float]
         ]
@@ -3345,10 +3419,10 @@ class EBMModel(BaseEBM):
         # Stages
         interactions: float
         | str
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = "4x",
         exclude: Literal["mains"]
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = None,
         # Ensemble
         validation_size: float | None = 0.15,
@@ -3658,6 +3732,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
                 "nominal_prevalence",
                 "nominal_alphabetical",
             ]
+            | int
             | Sequence[str]
             | Sequence[float]
         ]
@@ -3668,10 +3743,10 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         # Stages
         interactions: float
         | str
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = "3x",
         exclude: Literal["mains"]
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = None,
         # Ensemble
         validation_size: float | None = 0.15,
@@ -3987,6 +4062,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
                 "nominal_prevalence",
                 "nominal_alphabetical",
             ]
+            | int
             | Sequence[str]
             | Sequence[float]
         ]
@@ -3997,10 +4073,10 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         # Stages
         interactions: float
         | str
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = "5x",
         exclude: Literal["mains"]
-        | Sequence[int | str | Sequence[int | str]]
+        | Sequence[str | int | Sequence[str | int]]
         | None = None,
         # Ensemble
         validation_size: float | None = 0.15,

@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import logging
+from typing import Any
 from warnings import warn
 from collections import Counter
 from itertools import count, repeat, compress
@@ -4233,7 +4234,9 @@ def _reshape_X(X, min_cols, n_samples, sample_source):
     raise ValueError(msg)
 
 
-def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y"):
+def preclean_X(
+    X, feature_names, feature_types, n_samples=None, sample_source="y"
+) -> tuple[Any, int]:
     # called under: fit or predict
     min_cols = _determine_min_cols(feature_names, feature_types)
 
@@ -4330,7 +4333,7 @@ def preclean_X(X, feature_names, feature_types, n_samples=None, sample_source="y
                 is_copied = True
                 X = list(X)
             X[idx] = _reshape_1D_if_possible(
-                sample.astype(object_, copy=False).filled(nan)
+                sample.astype(object_, copy=False).filled(nan)  # type: ignore[attr-defined]
             )
         elif isinstance(sample, ndarray):
             if sample.ndim == 1:
