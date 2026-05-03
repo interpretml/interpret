@@ -249,6 +249,32 @@ def test_ebm_sweep():
     assert len(clf.bin_weights_) == 4
 
 
+@pytest.mark.parametrize(
+    "interactions, message",
+    [
+        ([(-999,)], "out of range of the features"),
+        ([("missing_feature",)], "not in the list of feature names"),
+        ([(None,)], "has unsupported type"),
+    ],
+)
+def test_invalid_explicit_interaction_items_raise(interactions, message):
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=200
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        interactions=interactions,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+    )
+
+    with pytest.raises(ValueError, match=message):
+        ebm.fit(X, y)
+
+
 def test_copy():
     data = synthetic_classification()
     X = data["full"]["X"]

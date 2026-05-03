@@ -250,6 +250,26 @@ def test_callback_keyword_only_signature():
     assert cb.called, "Keyword-only callback should have been invoked"
 
 
+def test_fit_without_callback_still_trains():
+    """Verify the no-callback training path still works."""
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=200
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callback=None,
+    )
+    ebm.fit(X, y)
+
+    predictions = ebm.predict(X)
+    assert len(predictions) == len(y)
+
+
 def test_exam_callback_receives_valid_gains():
     """Verify the examination callback receives finite gain values."""
     cb = ExamRecordingCallback()
