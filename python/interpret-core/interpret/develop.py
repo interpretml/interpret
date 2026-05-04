@@ -6,8 +6,7 @@ import math
 
 from .utils._native import Native
 
-_current_module = sys.modules[__name__]
-_current_module.is_debug_mode = False
+_is_debug_mode: bool = False
 
 # Global options
 _develop_options = {
@@ -176,11 +175,13 @@ def debug_mode(log_filename="log.txt", log_level="INFO", native_debug=True):
 
     from .utils._native import Native
 
+    global _is_debug_mode
+
     # Exit fast on second call.
-    if _current_module.is_debug_mode:
+    if _is_debug_mode:
         msg = "Cannot call debug_mode more than once in the same session."
         raise RuntimeError(msg)
-    _current_module.is_debug_mode = True
+    _is_debug_mode = True
 
     # Register log
     handler = register_log(log_filename, log_level)

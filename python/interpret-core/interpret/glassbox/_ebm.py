@@ -374,7 +374,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     term_names_: list[str]
     bins_: list[list[dict[str, int]] | list[npt.NDArray[np.float64]]]  # 1D[cut]
     feature_names_in_: list[str]
-    feature_types_in_: list[str]
+    feature_types_in_: list[Literal["continuous", "nominal", "ordinal", "ignore"]]
     feature_bounds_: npt.NDArray[np.float64]  # 2D[feature, min_max]
     term_features_: list[tuple[int, ...]]
     bin_weights_: list[npt.NDArray[np.float64]]  # [bin0...]
@@ -385,6 +385,15 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
     standard_deviations_: (
         list[npt.NDArray[np.float64] | None] | None
     )  # [bin0..., ?class]
+    intercept_: (
+        float | npt.NDArray[np.float64]
+    )  # regressor: float; classifier: 1D[class]
+    bagged_intercept_: npt.NDArray[np.float64] | None  # 1D[bag], or 2D[bag, class]
+    classes_: (
+        npt.NDArray[np.int64] | npt.NDArray[np.bool_] | npt.NDArray[np.str_]
+    )  # 1D[class] (only set on classifiers; regressors leave this attribute unset)
+    min_target_: float  # only set on regressors
+    max_target_: float  # only set on regressors
     link_: str
     link_param_: float
     bag_weights_: npt.NDArray[np.float64]  # 1D[bag]
@@ -2563,9 +2572,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         #       but first we need to do some testing to figure out if this gives a worse result than applying
         #       IsotonicRegression to the final model which should be more regularized
         self.bagged_intercept_ = None
-        # monotonize is only valid on a fitted model where these are non-None lists.
-        self.bagged_scores_[term] = None  # type: ignore[index]
-        self.standard_deviations_[term] = None  # type: ignore[index]
+
+        if self.bagged_scores_ is not None:
+            self.bagged_scores_[term] = None
+        if self.standard_deviations_ is not None:
+            self.standard_deviations_[term] = None
 
         return self
 
@@ -2983,11 +2994,19 @@ class EBMClassifierMixin(SKClassifierMixin):
     Provides predict, predict_proba, decision_function, and reorder_classes methods.
     """
 
+    # Attributes declared here mirror `BaseEBM` so that mypy sees a consistent
+    # type through the `Concrete(Mixin, Model)` diamond. Without these, the
+    # reassignments in `reorder_classes` would cause mypy to implicitly infer
+    # narrower types on the mixin, conflicting with `BaseEBM`. Keep these in
+    # sync with `BaseEBM`.
     classes_: (
         npt.NDArray[np.int64] | npt.NDArray[np.bool_] | npt.NDArray[np.str_]
     )  # 1D[class]
-    intercept_: npt.NDArray[np.float64]  # 1D[class]
-    bagged_intercept_: npt.NDArray[np.float64] | None  # 1D[bag], or 2D[bag, class]
+    intercept_: float | npt.NDArray[np.float64]
+    bagged_intercept_: npt.NDArray[np.float64] | None
+    bagged_scores_: list[npt.NDArray[np.float64] | None] | None
+    term_scores_: list[npt.NDArray[np.float64]]
+    standard_deviations_: list[npt.NDArray[np.float64] | None] | None
 
     def predict_proba(self, X, init_score=None):
         """Probability estimates on provided samples.
@@ -3170,10 +3189,11 @@ class EBMRegressorMixin(SKRegressorMixin):
     Provides the regression predict method.
     """
 
-    intercept_: float
-    bagged_intercept_: npt.NDArray[np.float64] | None  # 1D[bag]
-    min_target_: float
-    max_target_: float
+    # Attributes declared here mirror `BaseEBM` so that mypy sees a consistent
+    # type through the `Concrete(Mixin, Model)` diamond. Keep these in sync
+    # with `BaseEBM`.
+    intercept_: float | npt.NDArray[np.float64]
+    term_scores_: list[npt.NDArray[np.float64]]
 
     def predict(self, X, init_score=None):
         """Predicts on provided samples.
