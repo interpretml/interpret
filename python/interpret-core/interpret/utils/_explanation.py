@@ -165,6 +165,9 @@ def gen_local_selector(data_dicts, round=3, is_classification=True):
     return selector
 
 
+_class_name_counters: dict[str, "count[int]"] = {}
+
+
 def gen_name_from_class(obj):
     """Generates a name for a given class.
 
@@ -176,11 +179,8 @@ def gen_name_from_class(obj):
         class name and a static counter.
     """
     class_name = obj.__class__.__name__
-    if class_name not in gen_name_from_class.cache:
-        gen_name_from_class.cache[class_name] = count()
-    identifier = next(gen_name_from_class.cache[class_name])
+    if class_name not in _class_name_counters:
+        _class_name_counters[class_name] = count()
+    identifier = next(_class_name_counters[class_name])
 
     return str(obj.__class__.__name__) + "_" + str(identifier)
-
-
-gen_name_from_class.cache = {}

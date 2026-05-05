@@ -7,9 +7,9 @@ import base64
 import json
 import logging
 import os
-import sys
 import time
 import uuid
+from collections.abc import Callable
 
 from plotly import graph_objs as go
 from plotly.io import to_json
@@ -18,8 +18,8 @@ _log = logging.getLogger(__name__)
 interpret_help_link = "https://interpret.ml/docs/ebm.html"
 synapse_help_link = "https://aka.ms/synapse-ebm"
 
-_current_module = sys.modules[__name__]
-_current_module.jupyter_initialized = False
+_jupyter_initialized: bool = False
+_databricks_displayHTML: Callable[[str], None] | None = None
 
 
 def _build_error_frame(msg):
@@ -198,13 +198,15 @@ def _build_javascript(viz_obj, id_str=None, default_key=-1, js_url=None):
 def _render_databricks(js):  # pragma: no cover
     import inspect
 
-    if _render_databricks.displayHTML is None:
+    global _databricks_displayHTML
+
+    if _databricks_displayHTML is None:
         found = False
         for frame in inspect.getouterframes(inspect.currentframe()):
             global_names = set(frame.frame.f_globals)
             target_names = {"displayHTML", "display", "spark"}
             if target_names.issubset(global_names):
-                _render_databricks.displayHTML = frame.frame.f_globals["displayHTML"]
+                _databricks_displayHTML = frame.frame.f_globals["displayHTML"]
                 found = True
                 break
 
@@ -213,14 +215,13 @@ def _render_databricks(js):  # pragma: no cover
             _log.error(msg)
             raise RuntimeError(msg)
 
-    _render_databricks.displayHTML(js)
-
-
-_render_databricks.displayHTML = None
+    _databricks_displayHTML(js)
 
 
 def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=None):
     from IPython.display import HTML, display
+
+    global _jupyter_initialized
 
     if isinstance(explanation, list):
         msg = "Dashboard not yet supported in cloud environments."
@@ -246,8 +247,8 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
         components.html(
             HTML(init_js + body_js).data, height=1000, width=1000, scrolling=True
         )
-    elif not _current_module.jupyter_initialized:
-        _current_module.jupyter_initialized = True
+    elif not _jupyter_initialized:
+        _jupyter_initialized = True
         display(HTML(init_js + body_js))
     else:
         display(HTML(body_js))

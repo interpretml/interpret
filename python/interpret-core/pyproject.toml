@@ -17,3 +17,18 @@ no_implicit_optional = true
 strict_equality = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+allow_redefinition = true
+
+# Strictly-typed modules. Adding annotations here is validated by mypy;
+# expand this list one module at a time as coverage grows.
+[[tool.mypy.overrides]]
+module = ["interpret.glassbox._ebm"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["interpret.privacy._dpebm"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
