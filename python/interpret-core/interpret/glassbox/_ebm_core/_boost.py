@@ -265,6 +265,9 @@ def boost(
                                 # penalize nominals a bit because they benefit from sorting categories
                                 avg_gain *= gain_scale
 
+                            if stop_flag is not None and stop_flag[0]:
+                                break
+
                             if exam_callback is not None:
                                 is_done = exam_callback(
                                     bag=bag_idx,
@@ -378,9 +381,6 @@ def boost(
                                     <= circular.min()
                                 ):
                                     break
-
-                            if stop_flag is not None and stop_flag[0]:
-                                break
 
                             if progress_callback is not None:
                                 is_done = progress_callback(

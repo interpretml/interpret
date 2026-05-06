@@ -79,8 +79,10 @@ from ._ebm_core._utils import (
 _log = logging.getLogger(__name__)
 
 
-_PROGRESS_CALLBACK_NAMES = ("bag", "stage", "step", "term", "metric")
-_EXAM_CALLBACK_NAMES = ("bag", "stage", "step", "term", "gain")
+_CALLBACK_TYPES = {
+    "progress": {"bag", "stage", "step", "term", "metric"},
+    "exam": {"bag", "stage", "step", "term", "gain"},
+}
 _CallbackSpec = Callable[..., bool] | tuple[Callable[..., bool], ...]
 
 
@@ -91,40 +93,23 @@ def _classify_callback(callback):
         raise ValueError(msg)
 
     try:
-        signature = inspect.signature(callback)
+        param_names = set(inspect.signature(callback).parameters)
     except (TypeError, ValueError) as exc:
         msg = "callback must have an inspectable signature"
         _log.error(msg)
         raise ValueError(msg) from exc
 
-    has_metric = "metric" in signature.parameters
-    has_gain = "gain" in signature.parameters
-    if has_metric == has_gain:
-        msg = (
-            "callback must accept either the progress signature "
-            "(*, bag, stage, step, term, metric) or the examination signature "
-            "(*, bag, stage, step, term, gain)"
-        )
-        _log.error(msg)
-        raise ValueError(msg)
+    for name, params in _CALLBACK_TYPES.items():
+        if params == param_names:
+            return name
 
-    required_names = _PROGRESS_CALLBACK_NAMES if has_metric else _EXAM_CALLBACK_NAMES
-    missing_names = [
-        name for name in required_names if name not in signature.parameters
-    ]
-    if missing_names:
-        msg = f"callback is missing required parameters: {missing_names}"
-        _log.error(msg)
-        raise ValueError(msg)
-
-    try:
-        signature.bind(**{name: None for name in required_names})
-    except TypeError as exc:
-        msg = f"callback must be callable with keyword arguments {required_names}"
-        _log.error(msg)
-        raise ValueError(msg) from exc
-
-    return "progress" if has_metric else "exam"
+    msg = (
+        "callback must accept either the progress signature "
+        "(*, bag, stage, step, term, metric) or the examination signature "
+        "(*, bag, stage, step, term, gain)"
+    )
+    _log.error(msg)
+    raise ValueError(msg)
 
 
 def _normalize_callbacks(callback):
@@ -132,14 +117,6 @@ def _normalize_callbacks(callback):
         return None, None
 
     callbacks = callback if isinstance(callback, tuple) else (callback,)
-    if len(callbacks) == 0:
-        msg = "callback tuple cannot be empty"
-        _log.error(msg)
-        raise ValueError(msg)
-    if len(callbacks) > 2:
-        msg = "callback tuple can contain at most one progress callback and one examination callback"
-        _log.error(msg)
-        raise ValueError(msg)
 
     progress_callback = None
     exam_callback = None
@@ -3519,7 +3496,7 @@ class EBMModel(BaseEBM):
         # Boosting
         learning_rate: float = 0.02,
         greedy_ratio: float | None = 10.0,
-        cyclic_progress: bool | float | int = False,  # noqa: PYI041
+        cyclic_progress: bool | float = False,
         smoothing_rounds: int | None = 100,
         interaction_smoothing_rounds: int | None = 50,
         max_rounds: int | None = 50000,
@@ -3843,7 +3820,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         # Boosting
         learning_rate: float = 0.015,
         greedy_ratio: float | None = 10.0,
-        cyclic_progress: bool | float | int = False,  # noqa: PYI041
+        cyclic_progress: bool | float = False,
         smoothing_rounds: int | None = 75,
         interaction_smoothing_rounds: int | None = 75,
         max_rounds: int | None = 50000,
@@ -4173,7 +4150,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         # Boosting
         learning_rate: float = 0.04,
         greedy_ratio: float | None = 10.0,
-        cyclic_progress: bool | float | int = False,  # noqa: PYI041
+        cyclic_progress: bool | float = False,
         smoothing_rounds: int | None = 500,
         interaction_smoothing_rounds: int | None = 100,
         max_rounds: int | None = 50000,

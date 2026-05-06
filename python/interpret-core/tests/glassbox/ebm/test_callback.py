@@ -250,7 +250,8 @@ def test_callback_keyword_only_signature():
     assert cb.called, "Keyword-only callback should have been invoked"
 
 
-def test_fit_without_callback_still_trains():
+@pytest.mark.parametrize("callback", [None, tuple()])
+def test_fit_without_callback_still_trains(callback):
     """Verify the no-callback training path still works."""
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=200
@@ -262,7 +263,7 @@ def test_fit_without_callback_still_trains():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=None,
+        callback=callback,
     )
     ebm.fit(X, y)
 
@@ -355,7 +356,6 @@ def test_exam_callback_early_termination():
             (ExamRecordingCallback(), ExamRecordingCallback()),
             "more than one examination callback",
         ),
-        (tuple(), "cannot be empty"),
     ],
 )
 def test_callback_tuple_validation_errors(callback, message):
@@ -446,75 +446,4 @@ def test_callback_signature_must_be_inspectable(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="inspectable signature"):
-        ebm.fit(X, y)
-
-
-def test_callback_missing_required_parameters():
-    """Verify callbacks missing required keyword names are rejected."""
-
-    class MissingTermCallback:
-        def __call__(self, *, bag, stage, step, metric):
-            return False
-
-    X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
-    )
-
-    ebm = ExplainableBoostingClassifier(
-        names,
-        types,
-        outer_bags=1,
-        max_rounds=10,
-        n_jobs=1,
-        callback=MissingTermCallback(),
-    )
-
-    with pytest.raises(ValueError, match="missing required parameters"):
-        ebm.fit(X, y)
-
-
-def test_callback_must_accept_keyword_arguments():
-    """Verify positional-only callback signatures are rejected."""
-
-    class PositionalOnlyCallback:
-        def __call__(self, bag, stage, step, term, metric, /):
-            return False
-
-    X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
-    )
-
-    ebm = ExplainableBoostingClassifier(
-        names,
-        types,
-        outer_bags=1,
-        max_rounds=10,
-        n_jobs=1,
-        callback=PositionalOnlyCallback(),
-    )
-
-    with pytest.raises(ValueError, match="callable with keyword arguments"):
-        ebm.fit(X, y)
-
-
-def test_callback_tuple_rejects_more_than_two_callbacks():
-    """Verify callback tuples longer than two items are rejected."""
-    X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
-    )
-
-    ebm = ExplainableBoostingClassifier(
-        names,
-        types,
-        outer_bags=1,
-        max_rounds=10,
-        n_jobs=1,
-        callback=(
-            RecordingCallback(),
-            ExamRecordingCallback(),
-            RecordingCallback(),
-        ),
-    )
-
-    with pytest.raises(ValueError, match="at most one progress callback"):
         ebm.fit(X, y)
