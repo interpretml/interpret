@@ -29,8 +29,8 @@ def boost(
     shm_name,
     bag_idx,
     stage,
-    progress_callback,
-    exam_callback,
+    examine_callback,
+    boost_callback,
     dataset,
     intercept_rounds,
     intercept_learning_rate,
@@ -265,11 +265,8 @@ def boost(
                                 # penalize nominals a bit because they benefit from sorting categories
                                 avg_gain *= gain_scale
 
-                            if stop_flag is not None and stop_flag[0]:
-                                break
-
-                            if exam_callback is not None:
-                                is_done = exam_callback(
+                            if examine_callback is not None:
+                                is_done = examine_callback(
                                     bag=bag_idx,
                                     stage=stage,
                                     step=step_idx,
@@ -366,7 +363,21 @@ def boost(
                                 # change our reporting to be the best instead of the number of
                                 # steps we took before stopping.
                                 pass
+
                             min_metric = min(cur_metric, min_metric)
+
+                            if boost_callback is not None:
+                                is_done = boost_callback(
+                                    bag=bag_idx,
+                                    stage=stage,
+                                    step=step_idx,
+                                    term=term_idx,
+                                    metric=cur_metric,
+                                )
+                                if is_done:
+                                    if stop_flag is not None:
+                                        stop_flag[0] = True
+                                    break
 
                             if len(circular) > 0 and smoothing_rounds <= 0:
                                 # during smoothing, do not use early stopping because smoothing
@@ -380,19 +391,6 @@ def boost(
                                     min_prev_metric - modified_tolerance
                                     <= circular.min()
                                 ):
-                                    break
-
-                            if progress_callback is not None:
-                                is_done = progress_callback(
-                                    bag=bag_idx,
-                                    stage=stage,
-                                    step=step_idx,
-                                    term=term_idx,
-                                    metric=cur_metric,
-                                )
-                                if is_done:
-                                    if stop_flag is not None:
-                                        stop_flag[0] = True
                                     break
 
                         if stop_flag is not None and stop_flag[0]:

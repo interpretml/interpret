@@ -320,8 +320,8 @@ def test_merge_ebms_get_params():
     # Verify that the parameters match those from the first source model
     source_parameters = classifier_one.get_params(deep=False)
     for parameter_name, source_value in source_parameters.items():
-        if parameter_name == "callback":
-            # callback should be explicitly set to None on merged models
+        if parameter_name == "callbacks":
+            # callbacks should be explicitly set to None on merged models
             assert merged_parameters[parameter_name] is None
         else:
             assert parameter_name in merged_parameters, (
@@ -354,7 +354,7 @@ def test_merge_ebms_sklearn_clone():
     merged_parameters = merged_classifier.get_params(deep=False)
     cloned_parameters = cloned_classifier.get_params(deep=False)
     for parameter_name in merged_parameters:
-        if parameter_name == "callback":
+        if parameter_name == "callbacks":
             continue
         assert parameter_name in cloned_parameters
 
@@ -385,7 +385,7 @@ def test_merge_ebms_has_all_hyperparameters():
 
 
 def test_merge_ebms_callback_is_none():
-    """Test that the callback parameter is explicitly set to None.
+    """Test that the callbacks parameter is explicitly set to None.
 
     Callbacks are per-training-session callables. A merged model is not
     being trained, so retaining a stale callback reference from one of
@@ -401,7 +401,7 @@ def test_merge_ebms_callback_is_none():
         outer_bags=2,
         max_rounds=50,
         random_state=42,
-        callback=training_callback,
+        callbacks=training_callback,
     )
     iris_data = load_iris()
     classifier_one.fit(iris_data.data, iris_data.target)
@@ -414,8 +414,8 @@ def test_merge_ebms_callback_is_none():
     merged_classifier = merge_ebms([classifier_one, classifier_two])
 
     # Even though classifier_one had a callback, the merged model should not
-    assert merged_classifier.callback is None
-    assert merged_classifier.get_params()["callback"] is None
+    assert merged_classifier.callbacks is None
+    assert merged_classifier.get_params()["callbacks"] is None
 
 
 def test_merge_ebms_regressor_repr():

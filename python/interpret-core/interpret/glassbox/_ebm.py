@@ -80,62 +80,126 @@ _log = logging.getLogger(__name__)
 
 
 _CALLBACK_TYPES = {
-    "progress": {"bag", "stage", "step", "term", "metric"},
-    "exam": {"bag", "stage", "step", "term", "gain"},
+    "examine": {"bag", "stage", "step", "term", "gain"},
+    "boost": {"bag", "stage", "step", "term", "metric"},
 }
-_CallbackSpec = Callable[..., bool] | tuple[Callable[..., bool], ...]
+_CallbackSpec = Callable[..., bool] | Iterable[Callable[..., bool]]
 
 
 def _classify_callback(callback):
     if not callable(callback):
-        msg = "callback must be a callable or a tuple of callables"
+        msg = (
+            "callback must be a callable or an iterable of callables; "
+            f"got object of type {type(callback).__name__!r}."
+        )
         _log.error(msg)
         raise ValueError(msg)
 
     try:
-        param_names = set(inspect.signature(callback).parameters)
+        parameters = inspect.signature(callback).parameters
     except (TypeError, ValueError) as exc:
-        msg = "callback must have an inspectable signature"
+        msg = (
+            f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
+            "has no inspectable signature; wrap it in a plain Python function "
+            "that declares the canonical callback parameters explicitly."
+        )
         _log.error(msg)
         raise ValueError(msg) from exc
 
-    for name, params in _CALLBACK_TYPES.items():
-        if params == param_names:
-            return name
+    param_names = set(parameters)
+    matched = [
+        name for name, required in _CALLBACK_TYPES.items() if required <= param_names
+    ]
+
+    if len(matched) == 1:
+        name = matched[0]
+        required = _CALLBACK_TYPES[name]
+        for p in parameters.values():
+            if p.name in required:
+                if p.kind not in (
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    inspect.Parameter.KEYWORD_ONLY,
+                ):
+                    msg = (
+                        f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
+                        f"matches the {name!r} callback type but canonical parameter "
+                        f"{p.name!r} is not keyword-callable (e.g. positional-only). All "
+                        "canonical parameters must be declared as POSITIONAL_OR_KEYWORD "
+                        "or KEYWORD_ONLY."
+                    )
+                    _log.error(msg)
+                    raise ValueError(msg)
+            elif (
+                p.kind
+                not in (
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD,
+                )
+                and p.default is inspect.Parameter.empty
+            ):
+                msg = (
+                    f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
+                    f"has additional parameter {p.name!r} without a default value; "
+                    "extra callback parameters must have defaults so the training "
+                    f"engine can invoke the callback with only the canonical {name!r} "
+                    f"kwargs ({sorted(required)})."
+                )
+                _log.error(msg)
+                raise ValueError(msg)
+        return name
+
+    if len(matched) == 0:
+        msg = (
+            f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
+            f"with parameters {sorted(param_names)} does not match any known "
+            "callback type. The examine callback requires "
+            "(*, bag, stage, step, term, gain); the boost callback "
+            "requires (*, bag, stage, step, term, metric). All canonical "
+            "parameters must be declared by name - capturing them with a bare "
+            "'**kwargs' is not allowed. Additional parameters with default "
+            "values, or a trailing '**kwargs' after the canonical parameters, "
+            "are permitted."
+        )
+        _log.error(msg)
+        raise ValueError(msg)
 
     msg = (
-        "callback must accept either the progress signature "
-        "(*, bag, stage, step, term, metric) or the examination signature "
-        "(*, bag, stage, step, term, gain)"
+        f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
+        f"with parameters {sorted(param_names)} matches multiple callback "
+        f"types {matched}; a callback must include the parameters of "
+        "exactly one type. The examine callback requires 'gain'; the "
+        "boost callback requires 'metric'. Remove the parameter(s) that "
+        "do not belong to the intended callback type."
     )
     _log.error(msg)
     raise ValueError(msg)
 
 
-def _normalize_callbacks(callback):
-    if callback is None:
+def _normalize_callbacks(callbacks):
+    if callbacks is None:
         return None, None
 
-    callbacks = callback if isinstance(callback, tuple) else (callback,)
+    if callable(callbacks):
+        callbacks = (callbacks,)
 
-    progress_callback = None
-    exam_callback = None
-    for callback_item in callbacks:
-        callback_type = _classify_callback(callback_item)
-        if callback_type == "progress":
-            if progress_callback is not None:
-                msg = "callback tuple cannot contain more than one progress callback"
+    examine_callback = None
+    boost_callback = None
+    for callback in callbacks:
+        callback_type = _classify_callback(callback)
+        if callback_type == "examine":
+            if examine_callback is not None:
+                msg = "callbacks cannot contain more than one examine callback"
                 _log.error(msg)
                 raise ValueError(msg)
-            progress_callback = callback_item
+            examine_callback = callback
         else:
-            if exam_callback is not None:
-                msg = "callback tuple cannot contain more than one examination callback"
+            if boost_callback is not None:
+                msg = "callbacks cannot contain more than one boost callback"
                 _log.error(msg)
                 raise ValueError(msg)
-            exam_callback = callback_item
+            boost_callback = callback
 
-    return progress_callback, exam_callback
+    return examine_callback, boost_callback
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -911,8 +975,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             interaction_smoothing_rounds = 0
             early_stopping_rounds = 0
             early_stopping_tolerance = 0.0
-            progress_callback = None
-            exam_callback = None
+            examine_callback = None
+            boost_callback = None
             min_samples_leaf = 0
             min_hessian = 0.0
             reg_alpha = 0.0
@@ -940,7 +1004,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
-            progress_callback, exam_callback = _normalize_callbacks(self.callback)
+            examine_callback, boost_callback = _normalize_callbacks(self.callbacks)
             min_samples_leaf = self.min_samples_leaf
             min_hessian = self.min_hessian
             reg_alpha = self.reg_alpha
@@ -1079,7 +1143,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                 shared,
             )
 
-            has_callback = progress_callback is not None or exam_callback is not None
+            has_callback = examine_callback is not None or boost_callback is not None
             with nullcontext() if not has_callback else SharedMemoryManager() as smm:
                 stop_flag: npt.NDArray[np.bool_] | None
                 if smm is not None:
@@ -1096,8 +1160,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         shm_name=shm_name,
                         bag_idx=idx,
                         stage=0,
-                        progress_callback=progress_callback,
-                        exam_callback=exam_callback,
+                        examine_callback=examine_callback,
+                        boost_callback=boost_callback,
                         dataset=(
                             shared.name if shared.name is not None else shared.dataset
                         ),
@@ -1337,8 +1401,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                             shm_name=shm_name,
                             bag_idx=idx,
                             stage=1,
-                            progress_callback=progress_callback,
-                            exam_callback=exam_callback,
+                            examine_callback=examine_callback,
+                            boost_callback=boost_callback,
                             dataset=(
                                 shared.name
                                 if shared.name is not None
@@ -1450,8 +1514,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         shm_name=None,
                         bag_idx=0,
                         stage=-1,
-                        progress_callback=None,
-                        exam_callback=None,
+                        examine_callback=None,
+                        boost_callback=None,
                         dataset=shared.dataset,
                         intercept_rounds=develop.get_option("n_intercept_rounds_final"),
                         intercept_learning_rate=develop.get_option(
@@ -3377,15 +3441,18 @@ class EBMModel(BaseEBM):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Union[Callable[..., bool], tuple[Callable[..., bool], ...]]], default=None
-        A user-defined callback or tuple of callbacks invoked during boosting.
-        A progress callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def progress_cb(*, bag, stage, step, term, metric)``.
-        An examination callback is invoked whenever a term is examined and its gain is
+    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+        A user-defined callback or iterable of callbacks invoked during boosting.
+        An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``. If any callback returns True,
-        boosting is stopped immediately. A tuple can contain at most one progress callback
-        and one examination callback.
+        ``def exam_cb(*, bag, stage, step, term, gain)``.
+        A boost callback is invoked after each progressing boosting step and must use
+        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        If any callback returns True,
+        boosting is stopped immediately. The iterable can contain at most one examine callback
+        and one boost callback. Callbacks may declare additional keyword-only
+        parameters beyond the canonical set, provided they have default values (e.g.,
+        for closing over user state via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -3502,7 +3569,7 @@ class EBMModel(BaseEBM):
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
-        callback: _CallbackSpec | None = None,
+        callbacks: _CallbackSpec | None = None,
         # Trees
         min_samples_leaf: int | None = 4,
         min_hessian: float | None = 0.0,
@@ -3537,7 +3604,7 @@ class EBMModel(BaseEBM):
         self.max_rounds = max_rounds
         self.early_stopping_rounds = early_stopping_rounds
         self.early_stopping_tolerance = early_stopping_tolerance
-        self.callback = callback
+        self.callbacks = callbacks
         self.min_samples_leaf = min_samples_leaf
         self.min_hessian = min_hessian
         self.reg_alpha = reg_alpha
@@ -3642,15 +3709,18 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Union[Callable[..., bool], tuple[Callable[..., bool], ...]]], default=None
-        A user-defined callback or tuple of callbacks invoked during boosting.
-        A progress callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def progress_cb(*, bag, stage, step, term, metric)``.
-        An examination callback is invoked whenever a term is examined and its gain is
+    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+        A user-defined callback or iterable of callbacks invoked during boosting.
+        An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``. If any callback returns True,
-        boosting is stopped immediately. A tuple can contain at most one progress callback
-        and one examination callback.
+        ``def exam_cb(*, bag, stage, step, term, gain)``.
+        A boost callback is invoked after each progressing boosting step and must use
+        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        If any callback returns True,
+        boosting is stopped immediately. The iterable can contain at most one examine callback
+        and one boost callback. Callbacks may declare additional keyword-only
+        parameters beyond the canonical set, provided they have default values (e.g.,
+        for closing over user state via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -3826,7 +3896,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
-        callback: _CallbackSpec | None = None,
+        callbacks: _CallbackSpec | None = None,
         # Trees
         min_samples_leaf: int | None = 4,
         min_hessian: float | None = 1e-4,
@@ -3862,7 +3932,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            callback=callback,
+            callbacks=callbacks,
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
             reg_alpha=reg_alpha,
@@ -3968,15 +4038,18 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callback : Optional[Union[Callable[..., bool], tuple[Callable[..., bool], ...]]], default=None
-        A user-defined callback or tuple of callbacks invoked during boosting.
-        A progress callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def progress_cb(*, bag, stage, step, term, metric)``.
-        An examination callback is invoked whenever a term is examined and its gain is
+    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+        A user-defined callback or iterable of callbacks invoked during boosting.
+        An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``. If any callback returns True,
-        boosting is stopped immediately. A tuple can contain at most one progress callback
-        and one examination callback.
+        ``def exam_cb(*, bag, stage, step, term, gain)``.
+        A boost callback is invoked after each progressing boosting step and must use
+        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        If any callback returns True,
+        boosting is stopped immediately. The iterable can contain at most one examine callback
+        and one boost callback. Callbacks may declare additional keyword-only
+        parameters beyond the canonical set, provided they have default values (e.g.,
+        for closing over user state via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -4156,7 +4229,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
-        callback: _CallbackSpec | None = None,
+        callbacks: _CallbackSpec | None = None,
         # Trees
         min_samples_leaf: int | None = 4,
         min_hessian: float | None = 0.0,
@@ -4192,7 +4265,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
             max_rounds=max_rounds,
             early_stopping_rounds=early_stopping_rounds,
             early_stopping_tolerance=early_stopping_tolerance,
-            callback=callback,
+            callbacks=callbacks,
             min_samples_leaf=min_samples_leaf,
             min_hessian=min_hessian,
             reg_alpha=reg_alpha,

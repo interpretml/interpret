@@ -6,7 +6,6 @@
 import numpy as np
 import pytest
 
-from interpret.glassbox import _ebm
 from interpret.glassbox import (
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
@@ -82,7 +81,7 @@ def test_callback_no_repeated_steps_classifier():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -114,7 +113,7 @@ def test_callback_no_repeated_steps_regressor():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -146,7 +145,7 @@ def test_callback_receives_term_index():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -173,7 +172,7 @@ def test_callback_early_termination():
         outer_bags=1,
         max_rounds=5000,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -201,7 +200,7 @@ def test_callback_receives_valid_metrics():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -243,7 +242,7 @@ def test_callback_keyword_only_signature():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -263,7 +262,7 @@ def test_fit_without_callback_still_trains(callback):
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=callback,
+        callbacks=callback,
     )
     ebm.fit(X, y)
 
@@ -285,7 +284,7 @@ def test_exam_callback_receives_valid_gains():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -313,7 +312,7 @@ def test_callback_tuple_support_calls_both_callbacks():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callback=(exam_cb, progress_cb),
+        callbacks=(exam_cb, progress_cb),
     )
     ebm.fit(X, y)
 
@@ -335,7 +334,7 @@ def test_exam_callback_early_termination():
         outer_bags=1,
         max_rounds=5000,
         n_jobs=1,
-        callback=cb,
+        callbacks=cb,
     )
     ebm.fit(X, y)
 
@@ -349,16 +348,16 @@ def test_exam_callback_early_termination():
 
 
 @pytest.mark.parametrize(
-    "callback, message",
+    "callbacks, message",
     [
-        ((RecordingCallback(), RecordingCallback()), "more than one progress callback"),
+        ((RecordingCallback(), RecordingCallback()), "more than one boost callback"),
         (
             (ExamRecordingCallback(), ExamRecordingCallback()),
-            "more than one examination callback",
+            "more than one examine callback",
         ),
     ],
 )
-def test_callback_tuple_validation_errors(callback, message):
+def test_callback_tuple_validation_errors(callbacks, message):
     """Verify tuple callback validation errors are raised clearly."""
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -370,7 +369,7 @@ def test_callback_tuple_validation_errors(callback, message):
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=callback,
+        callbacks=callbacks,
     )
 
     with pytest.raises(ValueError, match=message):
@@ -394,10 +393,10 @@ def test_callback_signature_requires_metric_or_gain():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=InvalidCallback(),
+        callbacks=InvalidCallback(),
     )
 
-    with pytest.raises(ValueError, match="either the progress signature"):
+    with pytest.raises(ValueError, match="does not match any known"):
         ebm.fit(X, y)
 
 
@@ -413,24 +412,25 @@ def test_callback_must_be_callable():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=1,
+        callbacks=1,
     )
 
-    with pytest.raises(ValueError, match="callable or a tuple of callables"):
+    with pytest.raises((TypeError, ValueError)):
         ebm.fit(X, y)
 
 
-def test_callback_signature_must_be_inspectable(monkeypatch):
-    """Verify callbacks with uninspectable signatures are rejected."""
+def test_callback_allows_trailing_kwargs_progress():
+    """A progress callback with trailing ``**kwargs`` is accepted.
 
-    class ValidProgressCallback:
-        def __call__(self, *, bag, stage, step, term, metric):
-            return False
+    This lets users opt in to forward-compatible signatures: the library
+    can add new canonical kwargs in the future without breaking callbacks
+    that capture them via ``**kwargs``.
+    """
+    invocations = []
 
-    def raise_type_error(_):
-        raise TypeError("boom")
-
-    monkeypatch.setattr(_ebm.inspect, "signature", raise_type_error)
+    def cb(*, bag, stage, step, term, metric, **kwargs):
+        invocations.append(metric)
+        return False
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -442,7 +442,160 @@ def test_callback_signature_must_be_inspectable(monkeypatch):
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callback=ValidProgressCallback(),
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert len(invocations) > 0
+
+
+def test_callback_allows_trailing_kwargs_exam():
+    """An exam callback with trailing ``**kwargs`` is accepted."""
+    invocations = []
+
+    def cb(*, bag, stage, step, term, gain, **kwargs):
+        invocations.append(gain)
+        return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert len(invocations) > 0
+
+
+def test_callback_allows_defaulted_extra_parameters():
+    """Extra parameters are accepted as long as they have default values."""
+    invocations = []
+
+    def cb(*, bag, stage, step, term, metric, foo=None, bar=42):
+        invocations.append(metric)
+        return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert len(invocations) > 0
+
+
+def test_callback_allows_defaulted_extras_and_trailing_kwargs():
+    """Defaulted extras and trailing ``**kwargs`` may be combined."""
+    invocations = []
+
+    def cb(*, bag, stage, step, term, gain, foo=None, **kwargs):
+        invocations.append(gain)
+        return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert len(invocations) > 0
+
+
+def test_callback_bare_kwargs_shortcut_rejected():
+    """A bare ``**kwargs`` callback (no canonical params) is rejected.
+
+    The canonical parameters must be declared by name so the user has an
+    explicit, stable contract for what the callback receives.
+    """
+
+    def cb(**kwargs):
+        return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+
+    with pytest.raises(ValueError, match="does not match any known"):
+        ebm.fit(X, y)
+
+
+def test_callback_extra_param_without_default_rejected():
+    """Extra parameters without defaults remain rejected."""
+
+    def cb(*, bag, stage, step, term, metric, extra):
+        return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+
+    with pytest.raises(ValueError, match="without a default value"):
+        ebm.fit(X, y)
+
+
+def test_callback_signature_must_be_inspectable():
+    """Verify callbacks with uninspectable signatures are rejected."""
+
+    class UninspectableCallback:
+        @property
+        def __signature__(self):
+            raise TypeError("uninspectable")
+
+        def __call__(self, *, bag, stage, step, term, metric):
+            return False
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=UninspectableCallback(),
     )
 
     with pytest.raises(ValueError, match="inspectable signature"):

@@ -299,11 +299,11 @@ def _initialize_merged_model_params(merged_model, source_models):
     first_source_model = source_models[0]
     hyperparameters = first_source_model.get_params(deep=False)
 
-    # The callback parameter is a per-training-session callable that is
+    # The callbacks parameter is a per-training-session callable that is
     # not meaningful for a merged model. Explicitly set it to None to
     # avoid retaining a stale reference to the original training callback.
-    if "callback" in hyperparameters:
-        hyperparameters["callback"] = None
+    if "callbacks" in hyperparameters:
+        hyperparameters["callbacks"] = None
 
     for parameter_name, parameter_value in hyperparameters.items():
         setattr(merged_model, parameter_name, parameter_value)
@@ -315,7 +315,7 @@ def merge_ebms(models):
     The merged model's hyperparameters (such as ``learning_rate``, ``max_bins``,
     ``outer_bags``, etc.) are copied from the first model in the list. These are
     training-time configurations and do not affect the predictions of the merged
-    model. The ``callback`` parameter is always set to ``None`` on the merged
+    model. The ``callbacks`` parameter is always set to ``None`` on the merged
     model since callbacks are per-training-session and not meaningful after
     merging.
 
