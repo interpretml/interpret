@@ -11,6 +11,7 @@ import numpy as np
 
 from ... import develop
 from ...utils._native import Booster, Native
+from ._callbacks import CallbackAction, _coerce_callback_action
 
 _log = logging.getLogger(__name__)
 
@@ -266,16 +267,20 @@ def boost(
                                 avg_gain *= gain_scale
 
                             if examine_callback is not None:
-                                is_done = examine_callback(
-                                    bag=bag_idx,
-                                    stage=stage,
-                                    step=step_idx,
-                                    term=term_idx,
-                                    gain=avg_gain,
+                                action = _coerce_callback_action(
+                                    examine_callback(
+                                        bag=bag_idx,
+                                        stage=stage,
+                                        step=step_idx,
+                                        term=term_idx,
+                                        gain=avg_gain,
+                                    )
                                 )
-                                if is_done:
+                                if action is CallbackAction.STOP_ALL:
                                     if stop_flag is not None:
                                         stop_flag[0] = True
+                                    break
+                                if action is CallbackAction.STOP_CURRENT:
                                     break
 
                             gainkey = (-avg_gain, native.generate_seed(rng), term_idx)
@@ -367,16 +372,20 @@ def boost(
                             min_metric = min(cur_metric, min_metric)
 
                             if boost_callback is not None:
-                                is_done = boost_callback(
-                                    bag=bag_idx,
-                                    stage=stage,
-                                    step=step_idx,
-                                    term=term_idx,
-                                    metric=cur_metric,
+                                action = _coerce_callback_action(
+                                    boost_callback(
+                                        bag=bag_idx,
+                                        stage=stage,
+                                        step=step_idx,
+                                        term=term_idx,
+                                        metric=cur_metric,
+                                    )
                                 )
-                                if is_done:
+                                if action is CallbackAction.STOP_ALL:
                                     if stop_flag is not None:
                                         stop_flag[0] = True
+                                    break
+                                if action is CallbackAction.STOP_CURRENT:
                                     break
 
                             if len(circular) > 0 and smoothing_rounds <= 0:

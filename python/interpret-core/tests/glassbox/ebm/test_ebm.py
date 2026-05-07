@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd  # type: ignore
 import pytest
 from interpret.glassbox import (
+    CallbackAction,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
 )
@@ -1339,9 +1340,10 @@ def test_callbacks_short():
 
                 if not hasattr(self, "_end_time"):
                     self._end_time = time.monotonic() + self._seconds
-                    return False
-                else:
-                    return time.monotonic() > self._end_time
+                    return CallbackAction.CONTINUE
+                if time.monotonic() > self._end_time:
+                    return CallbackAction.STOP_ALL
+                return CallbackAction.CONTINUE
 
         return Callback(seconds)
 
@@ -1367,9 +1369,10 @@ def test_callbacks_long():
 
                 if not hasattr(self, "_end_time"):
                     self._end_time = time.monotonic() + self._seconds
-                    return False
-                else:
-                    return time.monotonic() > self._end_time
+                    return CallbackAction.CONTINUE
+                if time.monotonic() > self._end_time:
+                    return CallbackAction.STOP_ALL
+                return CallbackAction.CONTINUE
 
         return Callback(seconds)
 

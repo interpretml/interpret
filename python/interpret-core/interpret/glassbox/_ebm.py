@@ -3448,11 +3448,19 @@ class EBMModel(BaseEBM):
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        If any callback returns True,
-        boosting is stopped immediately. The iterable can contain at most one examine callback
-        and one boost callback. Callbacks may declare additional keyword-only
-        parameters beyond the canonical set, provided they have default values (e.g.,
-        for closing over user state via ``functools.partial`` or default arguments).
+        Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
+        to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
+        current boosting step for this outer bag (training proceeds to the
+        next big step, e.g. interactions, normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        and end training. The corresponding string values (``"continue"``,
+        ``"stop_current"``, ``"stop_all"``) are
+        also accepted, so callbacks do not need to import
+        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        at most one examine callback and one boost callback. Callbacks may
+        declare additional keyword-only parameters beyond the canonical set,
+        provided they have default values (e.g., for closing over user state
+        via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -3716,11 +3724,19 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        If any callback returns True,
-        boosting is stopped immediately. The iterable can contain at most one examine callback
-        and one boost callback. Callbacks may declare additional keyword-only
-        parameters beyond the canonical set, provided they have default values (e.g.,
-        for closing over user state via ``functools.partial`` or default arguments).
+        Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
+        to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
+        current boosting step for this outer bag (training proceeds to the
+        next big step, e.g. interactions, normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        and end training. The corresponding string values (``"continue"``,
+        ``"stop_current"``, ``"stop_all"``) are
+        also accepted, so callbacks do not need to import
+        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        at most one examine callback and one boost callback. Callbacks may
+        declare additional keyword-only parameters beyond the canonical set,
+        provided they have default values (e.g., for closing over user state
+        via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -4045,11 +4061,19 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        If any callback returns True,
-        boosting is stopped immediately. The iterable can contain at most one examine callback
-        and one boost callback. Callbacks may declare additional keyword-only
-        parameters beyond the canonical set, provided they have default values (e.g.,
-        for closing over user state via ``functools.partial`` or default arguments).
+        Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
+        to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
+        current boosting step for this outer bag (training proceeds to the
+        next big step, e.g. interactions, normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        and end training. The corresponding string values (``"continue"``,
+        ``"stop_current"``, ``"stop_all"``) are
+        also accepted, so callbacks do not need to import
+        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        at most one examine callback and one boost callback. Callbacks may
+        declare additional keyword-only parameters beyond the canonical set,
+        provided they have default values (e.g., for closing over user state
+        via ``functools.partial`` or default arguments).
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0

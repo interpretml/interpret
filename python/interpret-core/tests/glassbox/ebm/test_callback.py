@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from interpret.glassbox import (
+    CallbackAction,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
 )
@@ -24,11 +25,11 @@ class RecordingCallback:
 
     def __call__(self, *, bag, stage, step, term, metric):
         self.records.append((bag, stage, step, term, metric))
-        return False
+        # falling off the end == None == CallbackAction.CONTINUE
 
 
 class StopAfterCallback:
-    """Picklable callback that stops training after N calls."""
+    """Picklable callback that stops all training after N calls."""
 
     def __init__(self, stop_after):
         self.stop_after = stop_after
@@ -36,7 +37,9 @@ class StopAfterCallback:
 
     def __call__(self, *, bag, stage, step, term, metric):
         self.call_count += 1
-        return self.call_count >= self.stop_after
+        if self.call_count >= self.stop_after:
+            return CallbackAction.STOP_ALL
+        return CallbackAction.CONTINUE
 
 
 class ExamRecordingCallback:
@@ -47,11 +50,11 @@ class ExamRecordingCallback:
 
     def __call__(self, *, bag, stage, step, term, gain):
         self.records.append((bag, stage, step, term, gain))
-        return False
+        # falling off the end == None == CallbackAction.CONTINUE
 
 
 class StopAfterExamCallback:
-    """Picklable callback that stops training after N examination calls."""
+    """Picklable callback that stops all training after N exam calls."""
 
     def __init__(self, stop_after):
         self.stop_after = stop_after
@@ -59,7 +62,9 @@ class StopAfterExamCallback:
 
     def __call__(self, *, bag, stage, step, term, gain):
         self.call_count += 1
-        return self.call_count >= self.stop_after
+        if self.call_count >= self.stop_after:
+            return CallbackAction.STOP_ALL
+        return None
 
 
 def test_callback_no_repeated_steps_classifier():
@@ -159,7 +164,7 @@ def test_callback_receives_term_index():
 
 
 def test_callback_early_termination():
-    """Verify the callback can still terminate training early."""
+    """Verify ``CallbackAction.STOP_ALL`` terminates training immediately."""
     cb = StopAfterCallback(stop_after=5)
 
     X, y, names, types = make_synthetic(
@@ -228,7 +233,7 @@ def test_callback_keyword_only_signature():
             assert isinstance(step, int)
             assert isinstance(term, (int, np.integer))
             assert isinstance(metric, float)
-            return True  # stop immediately
+            return CallbackAction.STOP_ALL  # stop immediately
 
     cb = KeywordOnlyCallback()
 
@@ -381,7 +386,7 @@ def test_callback_signature_requires_metric_or_gain():
 
     class InvalidCallback:
         def __call__(self, *, bag, stage, step, term):
-            return False
+            return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -430,7 +435,7 @@ def test_callback_allows_trailing_kwargs_progress():
 
     def cb(*, bag, stage, step, term, metric, **kwargs):
         invocations.append(metric)
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -455,7 +460,7 @@ def test_callback_allows_trailing_kwargs_exam():
 
     def cb(*, bag, stage, step, term, gain, **kwargs):
         invocations.append(gain)
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -480,7 +485,7 @@ def test_callback_allows_defaulted_extra_parameters():
 
     def cb(*, bag, stage, step, term, metric, foo=None, bar=42):
         invocations.append(metric)
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -505,7 +510,7 @@ def test_callback_allows_defaulted_extras_and_trailing_kwargs():
 
     def cb(*, bag, stage, step, term, gain, foo=None, **kwargs):
         invocations.append(gain)
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -532,7 +537,7 @@ def test_callback_bare_kwargs_shortcut_rejected():
     """
 
     def cb(**kwargs):
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -555,7 +560,7 @@ def test_callback_extra_param_without_default_rejected():
     """Extra parameters without defaults remain rejected."""
 
     def cb(*, bag, stage, step, term, metric, extra):
-        return False
+        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -583,7 +588,7 @@ def test_callback_signature_must_be_inspectable():
             raise TypeError("uninspectable")
 
         def __call__(self, *, bag, stage, step, term, metric):
-            return False
+            return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -599,4 +604,137 @@ def test_callback_signature_must_be_inspectable():
     )
 
     with pytest.raises(ValueError, match="inspectable signature"):
+        ebm.fit(X, y)
+
+
+# ---------------------------------------------------------------------------
+# CallbackAction (3-state return contract)
+# ---------------------------------------------------------------------------
+
+
+class StopCurrentOnFirstCallback:
+    """Picklable callback that stops the targeted bag's current step on each call."""
+
+    def __init__(self, bag_to_stop):
+        self.bag_to_stop = bag_to_stop
+        self.records = []
+
+    def __call__(self, *, bag, stage, step, term, metric):
+        self.records.append((bag, stage, step))
+        if bag == self.bag_to_stop:
+            return CallbackAction.STOP_CURRENT
+        return None
+
+
+def test_callback_stop_current_only_ends_current_step():
+    """``STOP_CURRENT`` ends the current boosting step but allows later steps.
+
+    EBM training proceeds in big steps (mains, then interactions). When a
+    callback returns ``STOP_CURRENT`` during the mains step for a bag, that
+    bag advances directly to the interactions step rather than continuing
+    to boost mains. Other bags are unaffected.
+    """
+    cb = StopCurrentOnFirstCallback(bag_to_stop=0)
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=2,
+        max_rounds=50,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    bag0_calls = [(stage, step) for bag, stage, step in cb.records if bag == 0]
+    bag1_calls = [(stage, step) for bag, stage, step in cb.records if bag == 1]
+
+    # Bag 0 stops on the first callback of every stage it enters; the number
+    # of calls equals the number of stages. Bag 1 trains every stage fully,
+    # so it receives many more calls.
+    assert 1 <= len(bag0_calls) <= 4, (
+        f"bag 0 should stop on the first call of each stage, got {bag0_calls}"
+    )
+    assert len(bag1_calls) > len(bag0_calls), (
+        f"bag 1 should have continued training, got {len(bag1_calls)} calls"
+    )
+
+    predictions = ebm.predict(X)
+    assert len(predictions) == len(y)
+
+
+def test_callback_string_return_values_accepted():
+    """Returning the string equivalents of CallbackAction members works."""
+    call_count = {"n": 0}
+
+    def cb(*, bag, stage, step, term, metric):
+        call_count["n"] += 1
+        if call_count["n"] >= 3:
+            return "stop_all"
+        return "continue"
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=5000,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert call_count["n"] == 3
+
+
+def test_callback_invalid_return_value_raises_typeerror():
+    """Returning a value that is neither None nor a CallbackAction is rejected."""
+
+    def cb(*, bag, stage, step, term, metric):
+        return True  # booleans are no longer valid return values
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+
+    with pytest.raises(TypeError, match="callback returned"):
+        ebm.fit(X, y)
+
+
+def test_callback_invalid_string_return_value_raises_typeerror():
+    """Returning an unrecognized string is rejected with a clear error."""
+
+    def cb(*, bag, stage, step, term, metric):
+        return "halt"
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+
+    with pytest.raises(TypeError, match="'halt'"):
         ebm.fit(X, y)

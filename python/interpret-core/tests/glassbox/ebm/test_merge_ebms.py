@@ -394,7 +394,7 @@ def test_merge_ebms_callback_is_none():
     """
 
     def training_callback(*, bag, stage, step, term, metric):
-        return False  # continue training
+        return None  # continue training
 
     classifier_one = ExplainableBoostingClassifier(
         interactions=0,

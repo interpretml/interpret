@@ -10,6 +10,7 @@ from ._ebm import (
     ExplainableBoostingClassifier,  # noqa: F401
     ExplainableBoostingRegressor,  # noqa: F401
 )
+from ._ebm_core._callbacks import CallbackAction  # noqa: F401
 from ._ebm_core._merge_ebms import merge_ebms  # noqa: F401
 from ._linear import LinearRegression, LogisticRegression  # noqa: F401
 from ._skoperules import DecisionListClassifier  # noqa: F401
