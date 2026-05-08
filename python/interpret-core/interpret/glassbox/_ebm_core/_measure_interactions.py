@@ -12,21 +12,21 @@ of the interaction of all pairs of features in a dataset.
 import logging
 from itertools import combinations, count
 
-from .. import develop
+from ... import develop
 import numpy as np
-from ..core.sklearn import _is_classifier, _is_regressor
+from ...core.sklearn import _is_classifier, _is_regressor
 
-from ._clean_simple import (
+from ...utils._clean_simple import (
     clean_dimensions,
     clean_X_and_init_score,
     typify_classification,
 )
 from ._compressed_dataset import bin_native_by_dimension
-from ._native import Native
+from ...utils._native import Native
 from ._preprocessor import construct_bins
 from ._rank_interactions import rank_interactions
 from ._shared_dataset import SharedDataset
-from ._misc import normalize_objective
+from ...utils._misc import normalize_objective
 
 _log = logging.getLogger(__name__)
 

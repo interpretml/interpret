@@ -5,8 +5,8 @@ import logging
 
 import numpy as np
 
-from ._clean_x import categorical_encode, unify_columns_schematized
-from ._native import Native
+from ...utils._clean_x import categorical_encode, unify_columns_schematized
+from ...utils._native import Native
 from multiprocessing import shared_memory
 
 _log = logging.getLogger(__name__)

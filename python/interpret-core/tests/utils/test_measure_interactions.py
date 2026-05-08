@@ -2,7 +2,7 @@ from math import isclose
 
 import numpy as np
 import pytest
-from interpret.utils import measure_interactions
+from interpret.glassbox import measure_interactions
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression
 

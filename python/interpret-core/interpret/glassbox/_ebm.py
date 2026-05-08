@@ -37,7 +37,7 @@ from ..utils._clean_simple import (
     typify_classification,
 )
 from ..utils._clean_x import preclean_X
-from ..utils._compressed_dataset import bin_native_by_dimension
+from ._ebm_core._compressed_dataset import bin_native_by_dimension
 from ..utils._explanation import (
     gen_global_selector,
     gen_local_selector,
@@ -49,15 +49,15 @@ from ..utils._link import inv_link, link_func
 from ..utils._measure_mem import total_bytes
 from ..utils._misc import clean_index, clean_indexes, normalize_objective
 from ..utils._native import Native
-from ..utils._preprocessor import construct_bins
+from ._ebm_core._preprocessor import construct_bins
 from ..utils._privacy import (
     calc_classic_noise_multi,
     calc_gdp_noise_multi,
     validate_eps_delta,
 )
-from ..utils._rank_interactions import rank_interactions
+from ._ebm_core._rank_interactions import rank_interactions
 from ..utils._seed import normalize_seed
-from ..utils._shared_dataset import SharedDataset
+from ._ebm_core._shared_dataset import SharedDataset
 from ..utils._unify_data import unify_data
 from ._ebm_core._bin import (
     ebm_eval_terms,

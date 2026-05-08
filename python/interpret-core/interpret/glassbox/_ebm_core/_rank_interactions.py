@@ -11,8 +11,8 @@ of the interaction of all pairs of features in a dataset.
 
 import heapq
 
-from ._native import InteractionDetector
-from .. import develop
+from ...utils._native import InteractionDetector
+from ... import develop
 import numpy as np
 from multiprocessing import shared_memory
 

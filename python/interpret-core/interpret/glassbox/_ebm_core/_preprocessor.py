@@ -7,25 +7,25 @@ from itertools import count, groupby, repeat
 from warnings import warn
 
 import numpy as np
-from ..core.sklearn import SKBaseEstimator, SKTransformerMixin, SKNotFittedError
+from ...core.sklearn import SKBaseEstimator, SKTransformerMixin, SKNotFittedError
 
-from ._clean_simple import clean_dimensions
-from ._clean_x import (
+from ...utils._clean_simple import clean_dimensions
+from ...utils._clean_x import (
     preclean_X,
     unify_columns_nonschematized,
     unify_columns_schematized,
     unify_feature_names,
     categorical_encode,
 )
-from ._native import Native
-from ._privacy import (
+from ...utils._native import Native
+from ...utils._privacy import (
     calc_classic_noise_multi,
     calc_gdp_noise_multi,
     private_categorical_binning,
     private_numeric_binning,
     validate_eps_delta,
 )
-from ._seed import increment_seed, normalize_seed
+from ...utils._seed import increment_seed, normalize_seed
 
 _log = logging.getLogger(__name__)
 _none_list = [None]

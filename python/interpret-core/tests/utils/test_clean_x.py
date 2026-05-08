@@ -11,7 +11,7 @@ import pytest
 import scipy as sp
 from sklearn.utils import estimator_checks
 
-from interpret.utils import EBMPreprocessor
+from interpret.glassbox import EBMPreprocessor
 from interpret.utils._unify_data import unify_data
 from interpret.utils._clean_x import preclean_X
 

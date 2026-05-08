@@ -7,9 +7,12 @@ import numpy as np
 import pytest
 from interpret.utils._clean_simple import clean_dimensions, typify_classification
 from interpret.utils._clean_x import preclean_X
-from interpret.utils._compressed_dataset import bin_native, bin_native_by_dimension
-from interpret.utils._preprocessor import construct_bins
-from interpret.utils._shared_dataset import SharedDataset
+from interpret.glassbox._ebm_core._compressed_dataset import (
+    bin_native,
+    bin_native_by_dimension,
+)
+from interpret.glassbox._ebm_core._preprocessor import construct_bins
+from interpret.glassbox._ebm_core._shared_dataset import SharedDataset
 
 
 @pytest.mark.skip(reason="skip this until we have support for missing values")
