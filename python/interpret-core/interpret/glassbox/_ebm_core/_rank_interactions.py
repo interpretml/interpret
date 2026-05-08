@@ -13,6 +13,7 @@ import heapq
 
 from ...utils._native import InteractionDetector
 from ... import develop
+from ._callbacks import CallbackAction, _coerce_callback_action
 import numpy as np
 from multiprocessing import shared_memory
 
@@ -20,6 +21,7 @@ from multiprocessing import shared_memory
 def rank_interactions(
     shm_name,
     bag_idx,
+    interaction_callback,
     dataset,
     intercept,
     bag,
@@ -92,6 +94,21 @@ def rank_interactions(
                             heapq.heappushpop(interaction_strengths, item)
                         else:
                             heapq.heappush(interaction_strengths, item)
+
+                        if interaction_callback is not None:
+                            action = _coerce_callback_action(
+                                interaction_callback(
+                                    bag=bag_idx,
+                                    term=feature_idxs,
+                                    strength=strength,
+                                )
+                            )
+                            if action is CallbackAction.STOP_ALL:
+                                if stop_flag is not None:
+                                    stop_flag[0] = True
+                                break
+                            if action is CallbackAction.STOP_CURRENT:
+                                break
 
                         if stop_flag is not None and stop_flag[0]:
                             break

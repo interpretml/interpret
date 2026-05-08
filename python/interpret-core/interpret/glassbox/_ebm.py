@@ -82,6 +82,7 @@ _log = logging.getLogger(__name__)
 _CALLBACK_TYPES = {
     "examine": {"bag", "stage", "step", "term", "gain"},
     "boost": {"bag", "stage", "step", "term", "metric"},
+    "interaction": {"bag", "term", "strength"},
 }
 _CallbackSpec = Callable[..., bool] | Iterable[Callable[..., bool]]
 
@@ -154,7 +155,8 @@ def _classify_callback(callback):
             f"with parameters {sorted(param_names)} does not match any known "
             "callback type. The examine callback requires "
             "(*, bag, stage, step, term, gain); the boost callback "
-            "requires (*, bag, stage, step, term, metric). All canonical "
+            "requires (*, bag, stage, step, term, metric); the interaction "
+            "callback requires (*, bag, term, strength). All canonical "
             "parameters must be declared by name - capturing them with a bare "
             "'**kwargs' is not allowed. Additional parameters with default "
             "values, or a trailing '**kwargs' after the canonical parameters, "
@@ -168,8 +170,9 @@ def _classify_callback(callback):
         f"with parameters {sorted(param_names)} matches multiple callback "
         f"types {matched}; a callback must include the parameters of "
         "exactly one type. The examine callback requires 'gain'; the "
-        "boost callback requires 'metric'. Remove the parameter(s) that "
-        "do not belong to the intended callback type."
+        "boost callback requires 'metric'; the interaction callback "
+        "requires 'strength'. Remove the parameter(s) that do not belong "
+        "to the intended callback type."
     )
     _log.error(msg)
     raise ValueError(msg)
@@ -177,29 +180,21 @@ def _classify_callback(callback):
 
 def _normalize_callbacks(callbacks):
     if callbacks is None:
-        return None, None
+        return None, None, None
 
     if callable(callbacks):
         callbacks = (callbacks,)
 
-    examine_callback = None
-    boost_callback = None
+    found: dict[str, Any] = {}
     for callback in callbacks:
         callback_type = _classify_callback(callback)
-        if callback_type == "examine":
-            if examine_callback is not None:
-                msg = "callbacks cannot contain more than one examine callback"
-                _log.error(msg)
-                raise ValueError(msg)
-            examine_callback = callback
-        else:
-            if boost_callback is not None:
-                msg = "callbacks cannot contain more than one boost callback"
-                _log.error(msg)
-                raise ValueError(msg)
-            boost_callback = callback
+        if callback_type in found:
+            msg = f"callbacks cannot contain more than one {callback_type} callback"
+            _log.error(msg)
+            raise ValueError(msg)
+        found[callback_type] = callback
 
-    return examine_callback, boost_callback
+    return found.get("examine"), found.get("boost"), found.get("interaction")
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -977,6 +972,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             early_stopping_tolerance = 0.0
             examine_callback = None
             boost_callback = None
+            interaction_callback = None
             min_samples_leaf = 0
             min_hessian = 0.0
             reg_alpha = 0.0
@@ -1004,7 +1000,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             interaction_smoothing_rounds = self.interaction_smoothing_rounds
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
-            examine_callback, boost_callback = _normalize_callbacks(self.callbacks)
+            examine_callback, boost_callback, interaction_callback = (
+                _normalize_callbacks(self.callbacks)
+            )
             min_samples_leaf = self.min_samples_leaf
             min_hessian = self.min_hessian
             reg_alpha = self.reg_alpha
@@ -1143,7 +1141,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                 shared,
             )
 
-            has_callback = examine_callback is not None or boost_callback is not None
+            has_callback = (
+                examine_callback is not None
+                or boost_callback is not None
+                or interaction_callback is not None
+            )
             with nullcontext() if not has_callback else SharedMemoryManager() as smm:
                 stop_flag: npt.NDArray[np.bool_] | None
                 if smm is not None:
@@ -1157,7 +1159,9 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
                 results = parallel(
                     delayed(booster)(
-                        shm_name=shm_name,
+                        shm_name=shm_name
+                        if examine_callback is not None or boost_callback is not None
+                        else None,
                         bag_idx=idx,
                         stage=0,
                         examine_callback=examine_callback,
@@ -1273,8 +1277,11 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
                         bagged_ranked_interaction = parallel(
                             # TODO: the combinations below should be selected from the non-excluded features
                             delayed(rank_interactions)(
-                                shm_name=shm_name,
+                                shm_name=shm_name
+                                if interaction_callback is not None
+                                else None,
                                 bag_idx=idx,
+                                interaction_callback=interaction_callback,
                                 dataset=(
                                     shared.name
                                     if shared.name is not None
@@ -1398,7 +1405,10 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
                     results = parallel(
                         delayed(booster)(
-                            shm_name=shm_name,
+                            shm_name=shm_name
+                            if examine_callback is not None
+                            or boost_callback is not None
+                            else None,
                             bag_idx=idx,
                             stage=1,
                             examine_callback=examine_callback,
@@ -3442,22 +3452,26 @@ class EBMModel(BaseEBM):
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during boosting.
+        A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        An interaction callback is invoked after each interaction strength
+        is computed during interaction detection, and must use
+        keyword-only arguments:
+        ``def interaction_cb(*, bag, term, strength)``.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
-        current boosting step for this outer bag (training proceeds to the
-        next big step, e.g. interactions, normally), or
-        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        current boosting step (or interaction detection for that bag) for
+        this outer bag (training proceeds to the next big step normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop training on all outer bags
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
         :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
-        at most one examine callback and one boost callback. Callbacks may
+        at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
         via ``functools.partial`` or default arguments).
@@ -3718,22 +3732,26 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during boosting.
+        A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        An interaction callback is invoked after each interaction strength
+        is computed during interaction detection, and must use
+        keyword-only arguments:
+        ``def interaction_cb(*, bag, term, strength)``.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
-        current boosting step for this outer bag (training proceeds to the
-        next big step, e.g. interactions, normally), or
-        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        current boosting step (or interaction detection for that bag) for
+        this outer bag (training proceeds to the next big step normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop training on all outer bags
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
         :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
-        at most one examine callback and one boost callback. Callbacks may
+        at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
         via ``functools.partial`` or default arguments).
@@ -4055,22 +4073,26 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
     callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during boosting.
+        A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
         A boost callback is invoked after each progressing boosting step and must use
         keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
+        An interaction callback is invoked after each interaction strength
+        is computed during interaction detection, and must use
+        keyword-only arguments:
+        ``def interaction_cb(*, bag, term, strength)``.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
-        current boosting step for this outer bag (training proceeds to the
-        next big step, e.g. interactions, normally), or
-        :attr:`CallbackAction.STOP_ALL` to stop boosting on all outer bags
+        current boosting step (or interaction detection for that bag) for
+        this outer bag (training proceeds to the next big step normally), or
+        :attr:`CallbackAction.STOP_ALL` to stop training on all outer bags
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
         :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
-        at most one examine callback and one boost callback. Callbacks may
+        at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
         via ``functools.partial`` or default arguments).

@@ -285,6 +285,7 @@ def measure_interactions(
         ranked_interactions = rank_interactions(
             None,
             0,
+            None,
             dataset=shared.name if shared.name is not None else shared.dataset,
             intercept=None,
             bag=None,

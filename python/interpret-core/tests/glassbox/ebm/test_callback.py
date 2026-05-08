@@ -53,6 +53,17 @@ class ExamRecordingCallback:
         # falling off the end == None == CallbackAction.CONTINUE
 
 
+class InteractionRecordingCallback:
+    """Picklable callback that records all interaction-detection invocations."""
+
+    def __init__(self):
+        self.records = []
+
+    def __call__(self, *, bag, term, strength):
+        self.records.append((bag, term, strength))
+        # falling off the end == None == CallbackAction.CONTINUE
+
+
 class StopAfterExamCallback:
     """Picklable callback that stops all training after N exam calls."""
 
@@ -359,6 +370,10 @@ def test_exam_callback_early_termination():
         (
             (ExamRecordingCallback(), ExamRecordingCallback()),
             "more than one examine callback",
+        ),
+        (
+            (InteractionRecordingCallback(), InteractionRecordingCallback()),
+            "more than one interaction callback",
         ),
     ],
 )
@@ -738,3 +753,154 @@ def test_callback_invalid_string_return_value_raises_typeerror():
 
     with pytest.raises(TypeError, match="'halt'"):
         ebm.fit(X, y)
+
+
+# ---------------------------------------------------------------------------
+# Interaction-detection callback
+# ---------------------------------------------------------------------------
+
+
+def test_interaction_callback_receives_valid_strengths():
+    """Verify the interaction callback receives the expected kwargs for each pair."""
+    cb = InteractionRecordingCallback()
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    assert len(cb.records) > 0, "interaction callback should have been invoked"
+
+    for bag, term, strength in cb.records:
+        assert bag == 0
+        assert isinstance(term, tuple), f"term should be a tuple, got {type(term)}"
+        assert len(term) == 2, f"interaction detection examines pairs, got term={term}"
+        assert all(isinstance(i, (int, np.integer)) for i in term)
+        assert np.isfinite(strength), f"strength {strength} is not finite"
+
+
+def test_interaction_callback_can_combine_with_others():
+    """All three callback types can be supplied together."""
+    boost_cb = RecordingCallback()
+    exam_cb = ExamRecordingCallback()
+    interaction_cb = InteractionRecordingCallback()
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=(boost_cb, exam_cb, interaction_cb),
+    )
+    ebm.fit(X, y)
+
+    assert len(boost_cb.records) > 0
+    assert len(exam_cb.records) > 0
+    assert len(interaction_cb.records) > 0
+
+
+def test_interaction_callback_stop_current_only_ends_current_bag():
+    """``STOP_CURRENT`` from interaction callback ends detection for that bag only.
+
+    Other bags continue ranking pairs normally; interaction boosting
+    afterwards still runs on whatever each bag accumulated.
+    """
+
+    class StopCurrentInteractionCallback:
+        def __init__(self, bag_to_stop):
+            self.bag_to_stop = bag_to_stop
+            self.records = []
+
+        def __call__(self, *, bag, term, strength):
+            self.records.append(bag)
+            if bag == self.bag_to_stop:
+                return CallbackAction.STOP_CURRENT
+            return None
+
+    cb = StopCurrentInteractionCallback(bag_to_stop=0)
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=2,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=cb,
+    )
+    ebm.fit(X, y)
+
+    bag0_calls = [b for b in cb.records if b == 0]
+    bag1_calls = [b for b in cb.records if b == 1]
+
+    # Bag 0 stops on the very first pair; bag 1 evaluates all pairs.
+    assert len(bag0_calls) == 1, (
+        f"bag 0 should stop on the first interaction call, got {len(bag0_calls)}"
+    )
+    assert len(bag1_calls) > 1, (
+        f"bag 1 should evaluate all pairs, got {len(bag1_calls)}"
+    )
+
+    predictions = ebm.predict(X)
+    assert len(predictions) == len(y)
+
+
+def test_interaction_callback_stop_all_skips_interaction_boosting():
+    """``STOP_ALL`` from interaction callback aborts all detection and skips boosting.
+
+    With ``STOP_ALL`` from the interaction callback, the second-stage boost
+    callback (which would otherwise be invoked during interaction boosting)
+    must not be invoked.
+    """
+
+    class StopAllOnFirstInteraction:
+        def __init__(self):
+            self.calls = 0
+
+        def __call__(self, *, bag, term, strength):
+            self.calls += 1
+            return CallbackAction.STOP_ALL
+
+    interaction_cb = StopAllOnFirstInteraction()
+    boost_cb = RecordingCallback()
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=300
+    )
+
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=2,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks=(interaction_cb, boost_cb),
+    )
+    ebm.fit(X, y)
+
+    # Boost callback should only have been invoked during stage 0 (mains).
+    # Interaction stage (stage 1) must be skipped entirely after STOP_ALL.
+    stages_seen = {stage for _, stage, _, _, _ in boost_cb.records}
+    assert 1 not in stages_seen, (
+        f"interaction stage should be skipped after STOP_ALL, got stages {stages_seen}"
+    )
+
+    predictions = ebm.predict(X)
+    assert len(predictions) == len(y)
