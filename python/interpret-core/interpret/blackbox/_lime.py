@@ -1,6 +1,8 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import warnings
+
 import numpy as np
 
 from ..core.base import LocalExplainer
@@ -46,8 +48,26 @@ class LimeTabular(LocalExplainer):
         # so convert to np.float64 until we implement some automatic categorical handling
         data = data.astype(np.float64, order="C", copy=False)
 
-        # rewrite these even if the user specified them
+        # `LimeTabular` always runs the underlying LIME explainer in
+        # "regression" mode regardless of whether the wrapped model is a
+        # regressor or a binary classifier — `unify_predict_fn` below
+        # turns classifier outputs into a scalar probability in [0, 1] so
+        # LIME treats both cases uniformly. The overrides for `mode` and
+        # `feature_names` are therefore intentional, but issue #477 showed
+        # they are surprising when a user sets `mode="classification"`
+        # explicitly. Warn if their value is being discarded so they know
+        # to read the docstring rather than wonder why nothing happened.
         kwargs = kwargs.copy()
+        user_mode = kwargs.get("mode", "regression")
+        if user_mode != "regression":
+            warnings.warn(
+                "LimeTabular wraps LIME in 'regression' mode internally for "
+                "both regression and binary classification (the predict "
+                "function is unified to return a scalar). The "
+                f"`mode={user_mode!r}` argument was ignored.",
+                UserWarning,
+                stacklevel=2,
+            )
         kwargs["mode"] = "regression"
         kwargs["feature_names"] = self.feature_names_in_
 
