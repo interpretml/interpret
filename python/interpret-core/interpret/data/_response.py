@@ -10,6 +10,21 @@ from ..utils._explanation import gen_global_selector, gen_name_from_class
 from ..utils._unify_data import unify_data
 
 
+def _is_numeric_bin_edges(names):
+    """Return True iff `names` looks like a numeric bin-edge sequence.
+
+    For continuous features the density payload stores numeric bin edges
+    (e.g. ``[0.0, 1.5, 3.0, ...]``); for categorical features it stores the
+    string category labels themselves (e.g. ``["a", "b", "c"]``). The
+    histogram path computes ``names[1] - names[0]`` to derive the plotly
+    bin size, which raises ``TypeError`` on the categorical case (Issue #119).
+    Use this guard before doing the subtraction.
+    """
+    return len(names) >= 2 and all(
+        isinstance(n, (int, float, np.integer, np.floating)) for n in names[:2]
+    )
+
+
 class Marginal(DataExplainer):
     """Provides a marginal plot for provided data."""
 
@@ -200,15 +215,18 @@ class MarginalExplanation(BaseExplanation):
 
         # Show feature graph
         density_dict = data_dict["feature_density"]
-
-        bin_size = density_dict["names"][1] - density_dict["names"][0]
         is_categorical = (
             self.feature_types[key] == "nominal" or self.feature_types[key] == "ordinal"
         )
 
+        # Bin sizing only makes sense for numeric histograms. For categorical
+        # features density_dict["names"] holds string category labels (Issue #119),
+        # so subtracting them raises TypeError. Compute bin_size lazily only on
+        # the numeric branch.
         if is_categorical:
             trace1 = go.Histogram(x=data_dict["x"], name="x density", yaxis="y2")
         else:
+            bin_size = density_dict["names"][1] - density_dict["names"][0]
             trace1 = go.Histogram(
                 x=data_dict["x"],
                 name="x density",
@@ -222,19 +240,28 @@ class MarginalExplanation(BaseExplanation):
             )
         data = []
         resp_density_dict = data_dict["response_density"]
-        resp_bin_size = density_dict["names"][1] - density_dict["names"][0]
-
-        trace2 = go.Histogram(
-            y=data_dict["y"],
-            name="y density",
-            xaxis="x2",
-            autobiny=False,
-            ybins={
-                "start": resp_density_dict["names"][0],
-                "end": resp_density_dict["names"][-1],
-                "size": resp_bin_size,
-            },
-        )
+        # The response side: only build a fixed-bin histogram when the response
+        # is numeric. response_density["names"] are bin edges; for a continuous
+        # response we can compute resp_bin_size from those. For a categorical
+        # response we let plotly auto-bin.
+        is_categorical_response = not _is_numeric_bin_edges(resp_density_dict["names"])
+        if is_categorical_response:
+            trace2 = go.Histogram(y=data_dict["y"], name="y density", xaxis="x2")
+        else:
+            resp_bin_size = (
+                resp_density_dict["names"][1] - resp_density_dict["names"][0]
+            )
+            trace2 = go.Histogram(
+                y=data_dict["y"],
+                name="y density",
+                xaxis="x2",
+                autobiny=False,
+                ybins={
+                    "start": resp_density_dict["names"][0],
+                    "end": resp_density_dict["names"][-1],
+                    "size": resp_bin_size,
+                },
+            )
         data.append(trace1)
         data.append(trace2)
         x = data_dict["feature_samples"]
