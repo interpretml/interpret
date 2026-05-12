@@ -2,6 +2,7 @@
 # Distributed under the MIT software license
 
 import os
+import sys
 
 """ Environment detection related utilities.
 A good portion of this code has largely been sourced from open-source licensed code available
@@ -88,7 +89,13 @@ def _detect_vscode():
 
 
 def _detect_databricks():
-    return "DATABRICKS_RUNTIME_VERSION" in os.environ
+    if "DATABRICKS_RUNTIME_VERSION" in os.environ:
+        return True
+    # Some Databricks environments (e.g. E2 architecture) don't set the env var.
+    # Fall back to checking for the dbruntime package or pyspark.dbutils in sys.modules.
+    if any(key == "dbruntime" or key.startswith("dbruntime.") for key in sys.modules):
+        return True
+    return "pyspark.dbutils" in sys.modules
 
 
 def _is_docker_development_mode():
