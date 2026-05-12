@@ -270,7 +270,7 @@ typing-extensions==4.15.0
     #   sqlalchemy
 uc-micro-py==2.0.0
     # via linkify-it-py
-urllib3==2.6.3
+urllib3==2.7.0
     # via requests
 wcwidth==0.6.0
     # via prompt-toolkit
