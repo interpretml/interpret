@@ -449,14 +449,13 @@ class ClassHistogramExplanation(BaseExplanation):
         if key is None:
             y = data_dict["y"]
             values, counts = np.unique(y, return_counts=True)
-            trace1 = go.Bar(x=[values[0]], y=[counts[0]])
-            trace2 = go.Bar(x=[values[1]], y=[counts[1]])
+            traces = [go.Bar(x=[values[i]], y=[counts[i]]) for i in range(len(values))]
             layout = go.Layout(
                 title="Response Distribution",
                 showlegend=False,
                 xaxis={"type": "category"},
             )
-            return go.Figure(data=[trace1, trace2], layout=layout)
+            return go.Figure(data=traces, layout=layout)
 
         # Show feature graph
         x = data_dict["x"]
@@ -481,7 +480,7 @@ class ClassHistogramExplanation(BaseExplanation):
             data_dict = {"data_type": "univariate", "names": values, "scores": counts}
             fig = plot_density(
                 data_dict,
-                color=COLORS[idx],
+                color=COLORS[idx % len(COLORS)],
                 name=str(current_class),
                 is_categorical=is_categorical,
             )

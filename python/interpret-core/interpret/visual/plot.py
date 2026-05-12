@@ -13,7 +13,19 @@ from plotly import subplots
 
 _log = logging.getLogger(__name__)
 
-COLORS = ["#1f77b4", "#ff7f0e", "#808080"]
+COLORS = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#808080",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+]
 
 
 def is_multiclass_global_data_dict(data_dict):
