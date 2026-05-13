@@ -155,7 +155,7 @@ pybtex-docutils==1.0.3
     # via sphinxcontrib-bibtex
 pydata-sphinx-theme==0.15.4
     # via sphinx-book-theme
-pygments==2.19.2
+pygments==2.20.0
     # via
     #   accessible-pygments
     #   ipython
