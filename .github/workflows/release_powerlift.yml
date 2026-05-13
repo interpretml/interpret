@@ -7,6 +7,8 @@ on:
         description: 'Commit ID (required for manual trigger)'
         required: true
 
+permissions: {}
+
 jobs:
   publish_powerlift:
     runs-on: ubuntu-latest

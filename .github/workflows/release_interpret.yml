@@ -10,6 +10,8 @@ on:
         description: 'Commit ID (required for manual trigger)'
         required: true
 
+permissions: {}
+
 jobs:
   publish_packages:
     runs-on: ubuntu-latest
