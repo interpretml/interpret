@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 import numpy.typing as npt
 
-from ..glassbox._ebm import BaseEBM, EBMClassifierMixin, EBMRegressorMixin
+from ..glassbox._ebm import BaseEBM, EBMClassifierMixin, EBMRegressorMixin, FeatureType
 
 
 class DPEBMModel(BaseEBM):
@@ -81,26 +81,7 @@ class DPEBMModel(BaseEBM):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
@@ -270,26 +251,7 @@ class DPEBMClassifier(EBMClassifierMixin, DPEBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages
@@ -466,26 +428,7 @@ class DPEBMRegressor(EBMRegressorMixin, DPEBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 32,
         # Stages

@@ -7,6 +7,7 @@ from ._ebm import (
     EBMRegressor,  # noqa: F401
     ExplainableBoostingClassifier,  # noqa: F401
     ExplainableBoostingRegressor,  # noqa: F401
+    FeatureType,  # noqa: F401
 )
 from ._ebm_core._callbacks import CallbackAction  # noqa: F401
 from ._ebm_core._preprocessor import EBMPreprocessor  # noqa: F401

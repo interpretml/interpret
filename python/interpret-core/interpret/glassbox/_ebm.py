@@ -79,6 +79,26 @@ from ._ebm_core._utils import (
 
 _log = logging.getLogger(__name__)
 
+FeatureType = (
+    None
+    | Literal[
+        "auto",
+        "continuous",
+        "quantile",
+        "rounded_quantile",
+        "uniform",
+        "winsorized",
+        "nominal",
+        "ordinal",
+        "ignore",
+        "nominal_prevalence",
+        "nominal_alphabetical",
+    ]
+    | int
+    | Sequence[str]
+    | Sequence[float]
+)
+
 
 _CALLBACK_TYPES = {
     "examine": {"bag", "stage", "step", "term", "gain"},
@@ -87,14 +107,14 @@ _CALLBACK_TYPES = {
 }
 _CallbackSpec = (
     Callable[..., CallbackAction | str | None]
-    | Iterable[Callable[..., CallbackAction | str | None]]
+    | Sequence[Callable[..., CallbackAction | str | None]]
 )
 
 
 def _classify_callback(callback):
     if not callable(callback):
         msg = (
-            "callback must be a callable or an iterable of callables; "
+            "callback must be a callable or an sequence of callables; "
             f"got object of type {type(callback).__name__!r}."
         )
         _log.error(msg)
@@ -3372,9 +3392,9 @@ class EBMModel(BaseEBM):
 
     Parameters
     ----------
-    feature_names : list of str, default=None
+    feature_names : Sequence[str | None] | None, default=None
         List of feature names.
-    feature_types : list of FeatureType, default=None
+    feature_types : Sequence[FeatureType] | None, default=None
 
         List of feature types. FeatureType can be:
 
@@ -3405,7 +3425,7 @@ class EBMModel(BaseEBM):
               max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
-    validation_size : int or float, default=0.15
+    validation_size : float, default=0.15
 
         Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
 
@@ -3424,8 +3444,7 @@ class EBMModel(BaseEBM):
     cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
-        as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
-        the cycles are expected to make forward progress. If forward progress is
+        as a bool or float between 0 and 1. If forward progress is
         not achieved during a cycle, that cycle will not be wasted; instead,
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
@@ -3455,8 +3474,8 @@ class EBMModel(BaseEBM):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during training.
+    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
+        A user-defined callback or sequence of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
@@ -3474,7 +3493,7 @@ class EBMModel(BaseEBM):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
         at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
@@ -3498,7 +3517,7 @@ class EBMModel(BaseEBM):
     cat_smooth : float, default=10.0
         Used for the categorical features. This can reduce the effect of noises in categorical features,
         especially for categories with limited data.
-    missing: str, default="separate"
+    missing : Literal["low", "high", "separate", "gain"], default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
         the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
@@ -3533,7 +3552,7 @@ class EBMModel(BaseEBM):
             - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
             - +1: The partial response of the corresponding feature should be monotonically increasing with respect to the target.
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
-    objective : str, default=None
+    objective : str | None, default=None
         The objective to optimize. For detailed options see the EBMClassifier and EBMRegressor classes.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
@@ -3551,26 +3570,7 @@ class EBMModel(BaseEBM):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
@@ -3652,9 +3652,9 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
 
     Parameters
     ----------
-    feature_names : list of str, default=None
+    feature_names : Sequence[str | None] | None, default=None
         List of feature names.
-    feature_types : list of FeatureType, default=None
+    feature_types : Sequence[FeatureType] | None, default=None
 
         List of feature types. FeatureType can be:
 
@@ -3685,7 +3685,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
               max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
-    validation_size : int or float, default=0.15
+    validation_size : float, default=0.15
 
         Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
 
@@ -3704,8 +3704,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
     cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
-        as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
-        the cycles are expected to make forward progress. If forward progress is
+        as a bool or float between 0 and 1. If forward progress is
         not achieved during a cycle, that cycle will not be wasted; instead,
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
@@ -3735,8 +3734,8 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during training.
+    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
+        A user-defined callback or sequence of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
@@ -3754,7 +3753,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
         at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
@@ -3778,7 +3777,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
     cat_smooth : float, default=10.0
         Used for the categorical features. This can reduce the effect of noises in categorical features,
         especially for categories with limited data.
-    missing: str, default="separate"
+    missing : Literal["low", "high", "separate", "gain"], default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
         the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
@@ -3813,7 +3812,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
             - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
             - +1: The partial response of the corresponding feature should be monotonically increasing with respect to the target.
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
-    objective : str, default="log_loss"
+    objective : str | None, default="log_loss"
         The objective to optimize.
     n_jobs : int, default=-2
         Number of jobs to run in parallel. Negative integers are interpreted as following joblib's formula
@@ -3890,26 +3889,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
@@ -3993,9 +3973,9 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
 
     Parameters
     ----------
-    feature_names : list of str, default=None
+    feature_names : Sequence[str | None] | None, default=None
         List of feature names.
-    feature_types : list of FeatureType, default=None
+    feature_types : Sequence[FeatureType] | None, default=None
 
         List of feature types. FeatureType can be:
 
@@ -4026,7 +4006,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
               max_interaction_bins.
     exclude : 'mains' or list of tuples of feature indices|names, default=None
         Features or terms to be excluded.
-    validation_size : int or float, default=0.15
+    validation_size : float, default=0.15
 
         Validation set size. Used for early stopping during boosting, and is needed to create outer bags.
 
@@ -4045,8 +4025,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
     cyclic_progress : bool or float, default=False
         This parameter specifies the proportion of the boosting cycles that will
         actively contribute to improving the model's performance. It is expressed
-        as a bool or float between 0 and 1, with the default set to True(1.0), meaning 100% of
-        the cycles are expected to make forward progress. If forward progress is
+        as a bool or float between 0 and 1. If forward progress is
         not achieved during a cycle, that cycle will not be wasted; instead,
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
@@ -4076,8 +4055,8 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or iterable of callbacks invoked during training.
+    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
+        A user-defined callback or sequence of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
         ``def exam_cb(*, bag, stage, step, term, gain)``.
@@ -4095,7 +4074,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The iterable can contain
+        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
         at most one of each callback type. Callbacks may
         declare additional keyword-only parameters beyond the canonical set,
         provided they have default values (e.g., for closing over user state
@@ -4119,7 +4098,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
     cat_smooth : float, default=10.0
         Used for the categorical features. This can reduce the effect of noises in categorical features,
         especially for categories with limited data.
-    missing: str, default="separate"
+    missing : Literal["low", "high", "separate", "gain"], default="separate"
 
         Method for handling missing values during boosting. The placement of the missing value bin can influence
         the resulting model graphs. For example, placing the bin on the "low" side may cause missing values to
@@ -4154,7 +4133,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
             - 0: No monotonic constraint is imposed on the corresponding feature's partial response.
             - +1: The partial response of the corresponding feature should be monotonically increasing with respect to the target.
             - -1: The partial response of the corresponding feature should be monotonically decreasing with respect to the target.
-    objective : str, default="rmse"
+    objective : str | None, default="rmse"
         The objective to optimize. Options include: "rmse",
         "poisson", "tweedie:variance_power=1.5", "gamma",
         "pseudo_huber:delta=1.0",
@@ -4235,26 +4214,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         self,
         # Explainer
         feature_names: Sequence[None | str] | None = None,
-        feature_types: Sequence[
-            None
-            | Literal[
-                "auto",
-                "continuous",
-                "quantile",
-                "rounded_quantile",
-                "uniform",
-                "winsorized",
-                "nominal",
-                "ordinal",
-                "ignore",
-                "nominal_prevalence",
-                "nominal_alphabetical",
-            ]
-            | int
-            | Sequence[str]
-            | Sequence[float]
-        ]
-        | None = None,
+        feature_types: Sequence[FeatureType] | None = None,
         # Preprocessor
         max_bins: int = 1024,
         max_interaction_bins: int = 64,
