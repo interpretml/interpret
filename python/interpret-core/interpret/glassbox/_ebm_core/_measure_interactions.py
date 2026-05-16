@@ -14,7 +14,7 @@ from itertools import combinations, count
 
 from ... import develop
 import numpy as np
-from ...core.sklearn import _is_classifier, _is_regressor
+from ...core._sklearn import _is_classifier, _is_regressor
 
 from ...utils._clean_simple import (
     clean_dimensions,

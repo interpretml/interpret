@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 from numpy import ma
-from ..core.sklearn import _is_classifier, _is_regressor
+from ..core._sklearn import _is_classifier, _is_regressor
 
 from ._clean_x import preclean_X
 from ._link import link_func

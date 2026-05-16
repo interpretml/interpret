@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import deepcopy
 
 import numpy as np
-from ..core.sklearn import (
+from ..core._sklearn import (
     SKClassifierMixin,
     SKRegressorMixin,
     SKBaseEstimator,

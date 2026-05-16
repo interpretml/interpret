@@ -33,7 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="interpret\core\base.py" />
-    <Compile Include="interpret\core\sklearn.py" />
+    <Compile Include="interpret\core\_sklearn.py" />
     <Compile Include="interpret\core\templates.py" />
     <Compile Include="interpret\core\__init__.py" />
     <Compile Include="interpret\blackbox\_lime.py" />

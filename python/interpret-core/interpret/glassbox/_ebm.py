@@ -19,7 +19,7 @@ from warnings import warn
 import numpy as np
 import numpy.typing as npt
 from joblib import Parallel, delayed
-from ..core.sklearn import (
+from ..core._sklearn import (
     SKBaseEstimator,
     SKClassifierMixin,
     SKRegressorMixin,

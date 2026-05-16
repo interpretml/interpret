@@ -7,7 +7,7 @@ from itertools import count, groupby, repeat
 from warnings import warn
 
 import numpy as np
-from ...core.sklearn import SKBaseEstimator, SKTransformerMixin, SKNotFittedError
+from ...core._sklearn import SKBaseEstimator, SKTransformerMixin, SKNotFittedError
 
 from ...utils._clean_simple import clean_dimensions
 from ...utils._clean_x import (

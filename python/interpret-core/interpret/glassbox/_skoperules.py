@@ -8,7 +8,7 @@ from itertools import count
 
 import numpy as np
 
-from ..core.sklearn import SKBaseEstimator, SKClassifierMixin, SKNotFittedError
+from ..core._sklearn import SKBaseEstimator, SKClassifierMixin, SKNotFittedError
 
 from ..core.base import LocalExplainer, GlobalExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
