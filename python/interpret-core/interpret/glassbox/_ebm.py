@@ -65,6 +65,7 @@ from ._ebm_core._bin import (
     make_bin_weights,
 )
 from ._ebm_core._boost import boost
+from ._ebm_core._callbacks import CallbackAction
 from ._ebm_core._json import UNTESTED_from_jsonable, to_jsonable
 from ._ebm_core._tensor import remove_last, trim_tensor
 from ._ebm_core._utils import (
@@ -84,7 +85,10 @@ _CALLBACK_TYPES = {
     "boost": {"bag", "stage", "step", "term", "metric"},
     "interaction": {"bag", "term", "strength"},
 }
-_CallbackSpec = Callable[..., bool] | Iterable[Callable[..., bool]]
+_CallbackSpec = (
+    Callable[..., CallbackAction | str | None]
+    | Iterable[Callable[..., CallbackAction | str | None]]
+)
 
 
 def _classify_callback(callback):
@@ -3451,7 +3455,7 @@ class EBMModel(BaseEBM):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
         A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
@@ -3731,7 +3735,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
         A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
@@ -4072,7 +4076,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., bool] | Iterable[Callable[..., bool]] | None, default=None
+    callbacks : Callable[..., CallbackAction | str | None] | Iterable[Callable[..., CallbackAction | str | None]] | None, default=None
         A user-defined callback or iterable of callbacks invoked during training.
         An examine callback is invoked whenever a term is examined and its gain is
         calculated, and must use keyword-only arguments:
