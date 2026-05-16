@@ -8,7 +8,7 @@ from itertools import count
 
 import numpy as np
 
-from ..core._sklearn import SKBaseEstimator, SKClassifierMixin, SKNotFittedError
+from ..core._sklearn import _SKBaseEstimator, _SKClassifierMixin, _SKNotFittedError
 
 from ..core.base import LocalExplainer, GlobalExplainer, BaseExplanation
 from ..utils._clean_simple import clean_dimensions, typify_classification
@@ -109,7 +109,7 @@ class RulesExplanation(BaseExplanation):
 
 
 class DecisionListClassifier(
-    SKClassifierMixin, LocalExplainer, GlobalExplainer, SKBaseEstimator
+    _SKClassifierMixin, LocalExplainer, GlobalExplainer, _SKBaseEstimator
 ):
     """Decision List Classifier
 
@@ -261,7 +261,7 @@ class DecisionListClassifier(
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -340,7 +340,7 @@ class DecisionListClassifier(
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -415,7 +415,7 @@ class DecisionListClassifier(
         """
 
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 

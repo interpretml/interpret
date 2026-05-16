@@ -19,10 +19,10 @@ except ImportError:
 
 
 from ..core._sklearn import (
-    SKBaseEstimator,
-    SKClassifierMixin,
-    SKNotFittedError,
-    SKRegressorMixin,
+    _SKBaseEstimator,
+    _SKClassifierMixin,
+    _SKNotFittedError,
+    _SKRegressorMixin,
 )
 from ..core.base import LocalExplainer, GlobalExplainer
 from ..core.templates import FeatureValueExplanation
@@ -52,10 +52,10 @@ except ImportError:
 
 
 class APLRRegressor(
-    SKRegressorMixin,
+    _SKRegressorMixin,
     LocalExplainer,
     GlobalExplainer,
-    SKBaseEstimator,
+    _SKBaseEstimator,
     APLRRegressorNative,
 ):
     """APLR Regressor."""
@@ -86,7 +86,7 @@ class APLRRegressor(
     def predict(self, X):
         """Predicts target values."""
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
         return super().predict(X)
@@ -389,10 +389,10 @@ except ImportError:
 
 
 class APLRClassifier(
-    SKClassifierMixin,
+    _SKClassifierMixin,
     LocalExplainer,
     GlobalExplainer,
-    SKBaseEstimator,
+    _SKBaseEstimator,
     APLRClassifierNative,
 ):
     """APLR Classifier."""
@@ -423,7 +423,7 @@ class APLRClassifier(
     def predict(self, X):
         """Predicts class labels."""
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
         str_preds = super().predict(X)
@@ -434,7 +434,7 @@ class APLRClassifier(
     def predict_proba(self, X):
         """Predicts class probabilities."""
         if not hasattr(self, "n_features_in_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
         return self.predict_class_probabilities(X)

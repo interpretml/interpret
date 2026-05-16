@@ -8,7 +8,7 @@ A term denotes both single features and interactions (pairs).
 
 import numpy as np
 import plotly.express as px
-from ....core._sklearn import SKNotFittedError
+from ....core._sklearn import _SKNotFittedError
 
 
 def compute_group_importance(term_list, ebm, X, contributions=None):
@@ -24,7 +24,7 @@ def compute_group_importance(term_list, ebm, X, contributions=None):
         float: term_list's group importance
     """
     if not hasattr(ebm, "bins_"):
-        raise SKNotFittedError("This model has not been fitted yet. Call 'fit' first.")
+        raise _SKNotFittedError("This model has not been fitted yet. Call 'fit' first.")
 
     if contributions is None:
         contributions = ebm.eval_terms(X)
@@ -116,7 +116,7 @@ def append_group_importance(
         EBMExplanation: A global explanation with the group importance appended to it
     """
     if not hasattr(ebm, "bins_"):
-        raise SKNotFittedError("This model has not been fitted yet. Call 'fit' first.")
+        raise _SKNotFittedError("This model has not been fitted yet. Call 'fit' first.")
 
     if global_exp is not None:
         if global_exp.explanation_type != "global":

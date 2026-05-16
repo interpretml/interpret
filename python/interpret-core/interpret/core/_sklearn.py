@@ -4,75 +4,75 @@
 
 try:
     from sklearn.base import (
-        BaseEstimator as SKBaseEstimator,
-        ClassifierMixin as SKClassifierMixin,
-        RegressorMixin as SKRegressorMixin,
-        TransformerMixin as SKTransformerMixin,
+        BaseEstimator as _SKBaseEstimator,
+        ClassifierMixin as _SKClassifierMixin,
+        RegressorMixin as _SKRegressorMixin,
+        TransformerMixin as _SKTransformerMixin,
     )
-    from sklearn.exceptions import NotFittedError as SKNotFittedError
+    from sklearn.exceptions import NotFittedError as _SKNotFittedError
 
 except ImportError:
 
-    class SKNotFittedError(ValueError, AttributeError):  # type: ignore[no-redef]
+    class _SKNotFittedError(ValueError, AttributeError):  # type: ignore[no-redef]
         """Stub for sklearn.exceptions.NotFittedError when sklearn is not installed."""
 
         pass
 
-    class SKTargetTags:
+    class _SKTargetTags:
         """Stub for sklearn TargetTags when sklearn is not installed."""
 
         pass
 
-    class SKClassifierTags:
+    class _SKClassifierTags:
         """Stub for sklearn ClassifierTags when sklearn is not installed."""
 
         pass
 
-    class SKRegressorTags:
+    class _SKRegressorTags:
         """Stub for sklearn RegressorTags when sklearn is not installed."""
 
         pass
 
-    class SKInputTags:
+    class _SKInputTags:
         """Stub for sklearn InputTags when sklearn is not installed."""
 
         pass
 
-    class SKTags:
+    class _SKTags:
         """Stub for sklearn Tags when sklearn is not installed."""
 
         def __init__(self):
             self.estimator_type = None
-            self.target_tags = SKTargetTags()
+            self.target_tags = _SKTargetTags()
             self.classifier_tags = None
             self.regressor_tags = None
-            self.input_tags = SKInputTags()
+            self.input_tags = _SKInputTags()
 
-    class SKBaseEstimator:  # type: ignore[no-redef]
+    class _SKBaseEstimator:  # type: ignore[no-redef]
         """Stub for sklearn.base.BaseEstimator when sklearn is not installed."""
 
         def __sklearn_tags__(self):
-            return SKTags()
+            return _SKTags()
 
-    class SKClassifierMixin:  # type: ignore[no-redef]
+    class _SKClassifierMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.ClassifierMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
             tags = super().__sklearn_tags__()
             tags.estimator_type = "classifier"
-            tags.classifier_tags = SKClassifierTags()
+            tags.classifier_tags = _SKClassifierTags()
             return tags
 
-    class SKRegressorMixin:  # type: ignore[no-redef]
+    class _SKRegressorMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.RegressorMixin when sklearn is not installed."""
 
         def __sklearn_tags__(self):
             tags = super().__sklearn_tags__()
             tags.estimator_type = "regressor"
-            tags.regressor_tags = SKRegressorTags()
+            tags.regressor_tags = _SKRegressorTags()
             return tags
 
-    class SKTransformerMixin:  # type: ignore[no-redef]
+    class _SKTransformerMixin:  # type: ignore[no-redef]
         """Stub for sklearn.base.TransformerMixin when sklearn is not installed."""
 
         def fit_transform(self, X, y=None, **fit_params):

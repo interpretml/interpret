@@ -20,10 +20,10 @@ import numpy as np
 import numpy.typing as npt
 from joblib import Parallel, delayed
 from ..core._sklearn import (
-    SKBaseEstimator,
-    SKClassifierMixin,
-    SKRegressorMixin,
-    SKNotFittedError,
+    _SKBaseEstimator,
+    _SKClassifierMixin,
+    _SKRegressorMixin,
+    _SKNotFittedError,
     _is_classifier,
     _is_regressor,
 )
@@ -436,7 +436,7 @@ def clean_interactions(
         return interactions
 
 
-class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
+class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
     """Base class for all EBMs.  Do not instantiate directly."""
 
     n_features_in_: int
@@ -1916,7 +1916,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -1943,7 +1943,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2004,7 +2004,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2025,7 +2025,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2045,7 +2045,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2080,7 +2080,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2109,7 +2109,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
             name = gen_name_from_class(self)
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2406,7 +2406,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         # Values are the model graph score per respective term.
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2550,7 +2550,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2611,7 +2611,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2715,7 +2715,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2770,7 +2770,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2829,7 +2829,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2884,7 +2884,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2928,7 +2928,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -2967,7 +2967,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
     def _multinomialize(self, passthrough: float = 0.0) -> "BaseEBM":
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3020,7 +3020,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
     def _ovrize(self, passthrough: float = 0.0) -> "BaseEBM":
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3073,7 +3073,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
 
     def _binarize(self, passthrough: float = 0.0) -> "list[BaseEBM]":
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3122,7 +3122,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         return tags
 
 
-class EBMClassifierMixin(SKClassifierMixin):
+class EBMClassifierMixin(_SKClassifierMixin):
     """Mixin class for EBM classifiers.
 
     Provides predict, predict_proba, decision_function, and reorder_classes methods.
@@ -3156,7 +3156,7 @@ class EBMClassifierMixin(SKClassifierMixin):
         """
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3196,7 +3196,7 @@ class EBMClassifierMixin(SKClassifierMixin):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3232,7 +3232,7 @@ class EBMClassifierMixin(SKClassifierMixin):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3273,7 +3273,7 @@ class EBMClassifierMixin(SKClassifierMixin):
 
         """
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
@@ -3331,7 +3331,7 @@ class EBMClassifierMixin(SKClassifierMixin):
         return self
 
 
-class EBMRegressorMixin(SKRegressorMixin):
+class EBMRegressorMixin(_SKRegressorMixin):
     """Mixin class for EBM regressors.
 
     Provides the regression predict method.
@@ -3357,7 +3357,7 @@ class EBMRegressorMixin(SKRegressorMixin):
         """
 
         if not hasattr(self, "bins_"):
-            raise SKNotFittedError(
+            raise _SKNotFittedError(
                 "This model has not been fitted yet. Call 'fit' first."
             )
 
