@@ -30,7 +30,7 @@ def link_func(predictions, link, link_param=np.nan):
     """Applies the link function to predictions to generate scores.
 
     Args:
-        predictions: Numpy array of predictions for samples.
+        predictions: NumPy array of predictions for samples.
         link: string containing the type of link function to use
         link_param: Optional. numeric parameter that is specified by the link function.
 
@@ -138,7 +138,7 @@ def inv_link(scores, link, link_param=np.nan):
     """Applies the inverse link function to scores to generate predictions.
 
     Args:
-        scores: Numpy array of scores for samples.
+        scores: NumPy array of scores for samples.
         link: string containing the type of link function to use
         link_param: Optional. numeric parameter that is specified by the link function.
 

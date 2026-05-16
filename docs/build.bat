@@ -7,6 +7,6 @@ SET RETURNCODE=%ERRORLEVEL%
 
 copy .\extras\* .\interpret\_build\html\ /Y
 
-echo This file stops Github Pages from deleting directories that start with _> .\interpret\_build\html\.nojekyll
+echo This file stops GitHub Pages from deleting directories that start with _> .\interpret\_build\html\.nojekyll
 
 endlocal & exit /b %RETURNCODE%

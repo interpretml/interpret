@@ -139,7 +139,7 @@ except ImportError:
 #     https://github.com/dvidelabs/flatcc/tree/master/external/grisu3
 #     https://www.ryanjuckett.com/printing-floating-point-numbers/
 #     https://github.com/catboost/catboost/blob/ff34a3aadeb2e31e573519b4371a252ff5e5f209/contrib/python/numpy/py3/numpy/core/src/multiarray/dragon4.h
-#     Apparently Numpy has a copy of Ryan Juckett's code liceded in MIT instead of Zlib license
+#     Apparently NumPy has a copy of Ryan Juckett's code liceded in MIT instead of Zlib license
 #     YES!  ->   float to string in MIT license:
 #     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.h
 #     https://github.com/numpy/numpy/blob/3de252be1215c0f9bc0a2f5c3aebdd7ffc86e410/numpy/core/src/multiarray/dragon4.c

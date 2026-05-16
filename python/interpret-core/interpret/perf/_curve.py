@@ -33,8 +33,8 @@ class PR(PerfExplainer):
         """Produce precision-recall curves.
 
         Args:
-            X: Numpy array for X to compare predict function against.
-            y: Numpy vector for y to compare predict function against.
+            X: NumPy array for X to compare predict function against.
+            y: NumPy vector for y to compare predict function against.
             name: User-defined explanation name.
 
         Returns:
@@ -124,8 +124,8 @@ class ROC(PerfExplainer):
         """Produce ROC curves.
 
         Args:
-            X: Numpy array for X to compare predict function against.
-            y: Numpy vector for y to compare predict function against.
+            X: NumPy array for X to compare predict function against.
+            y: NumPy vector for y to compare predict function against.
             name: User-defined explanation name.
 
         Returns:

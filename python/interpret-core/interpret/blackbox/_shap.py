@@ -53,8 +53,8 @@ class ShapKernel(LocalExplainer):
         """Provides local explanations for provided instances.
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
             **kwargs: Kwargs that will be sent to SHAP
 

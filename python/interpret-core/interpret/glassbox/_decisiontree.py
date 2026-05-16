@@ -255,8 +255,8 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """Fits model to provided instances.
 
         Args:
-            X: Numpy array for training instances.
-            y: Numpy array as training labels.
+            X: NumPy array for training instances.
+            y: NumPy array as training labels.
             sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
             check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
@@ -311,7 +311,7 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """Predicts on provided instances.
 
         Args:
-            X: Numpy array for instances.
+            X: NumPy array for instances.
 
         Returns:
             Predicted class label per instance.
@@ -389,8 +389,8 @@ class BaseShallowDecisionTree(LocalExplainer, GlobalExplainer, SKBaseEstimator):
         """Provides local explanations for provided instances.
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
 
         Returns:
@@ -596,8 +596,8 @@ class RegressionTree(SKRegressorMixin, BaseShallowDecisionTree):
         """Fits model to provided instances.
 
         Args:
-            X: Numpy array for training instances.
-            y: Numpy array as training labels.
+            X: NumPy array for training instances.
+            y: NumPy array as training labels.
             sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
             check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
@@ -645,8 +645,8 @@ class ClassificationTree(SKClassifierMixin, BaseShallowDecisionTree):
         """Fits model to provided instances.
 
         Args:
-            X: Numpy array for training instances.
-            y: Numpy array as training labels.
+            X: NumPy array for training instances.
+            y: NumPy array as training labels.
             sample_weight (optional[np.ndarray]): (n_samples,) Sample weights. If None (default), then samples are equally weighted. Splits that would create child nodes with net zero or negative weight are ignored while searching for a split in each node.
             check_input (bool): default=True. Allow to bypass several input checking. Don't use this parameter unless you know what you're doing.
 
@@ -671,7 +671,7 @@ class ClassificationTree(SKClassifierMixin, BaseShallowDecisionTree):
         """Probability estimates on provided instances.
 
         Args:
-            X: Numpy array for instances.
+            X: NumPy array for instances.
 
         Returns:
             Probability estimate of instance for each class.

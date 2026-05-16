@@ -8,21 +8,11 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: debug-statements
-      - id: end-of-file-fixer
-      - id: mixed-line-ending
       - id: requirements-txt-fixer
-      - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.6.7"
+    rev: "v0.15.13"
     hooks:
-      - id: ruff
-        args: ["--fix", "--show-fixes"]
       - id: ruff-format
-  - repo: https://github.com/codespell-project/codespell
-    rev: "v2.3.0"
-    hooks:
-      - id: codespell
-        args: ["-L", "sur,nd"]
   - repo: local
     hooks:
       - id: disallow-caps

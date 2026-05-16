@@ -134,8 +134,8 @@ class DecisionListClassifier(
         """Fits model to provided instances.
 
         Args:
-            X: Numpy array for training instances.
-            y: Numpy array as training labels.
+            X: NumPy array for training instances.
+            y: NumPy array as training labels.
 
         Returns:
             Itself.
@@ -221,7 +221,7 @@ class DecisionListClassifier(
         """Predicts on provided instances.
 
         Args:
-            X: Numpy array for instances.
+            X: NumPy array for instances.
 
         Returns:
             Predicted class label per instance.
@@ -254,7 +254,7 @@ class DecisionListClassifier(
         """Provides probability estimates on provided instances.
 
         Args:
-            X: Numpy array for instances.
+            X: NumPy array for instances.
 
         Returns:
             Probability estimate of instance for each class.
@@ -331,8 +331,8 @@ class DecisionListClassifier(
         """Provides local explanations for provided instances.
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
 
         Returns:

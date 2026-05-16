@@ -118,7 +118,7 @@ class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
         """Fits transformer to provided samples.
 
         Args:
-            X: Numpy array for training samples.
+            X: NumPy array for training samples.
             y: Unused. Only included for scikit-learn compatibility
             sample_weight: Per-sample weights
 
@@ -454,7 +454,7 @@ class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
         """Transform on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
 
         Returns:
             Transformed numpy array.
@@ -511,7 +511,7 @@ class EBMPreprocessor(SKTransformerMixin, SKBaseEstimator):
         """Fits and Transform on provided samples.
 
         Args:
-            X: Numpy array for samples.
+            X: NumPy array for samples.
             y: Unused. Only included for scikit-learn compatibility
             sample_weight: Per-sample weights
 

@@ -49,8 +49,8 @@ class Marginal(DataExplainer):
         """Explains data as visualizations.
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
 
         Returns:
@@ -323,8 +323,8 @@ class ClassHistogram(DataExplainer):
         """Generates data explanations (exploratory data analysis)
 
         Args:
-            X: Numpy array for X to explain.
-            y: Numpy vector for y to explain.
+            X: NumPy array for X to explain.
+            y: NumPy vector for y to explain.
             name: User-defined explanation name.
 
         Returns:

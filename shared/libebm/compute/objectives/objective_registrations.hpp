@@ -21,7 +21,7 @@
 //      instructions and false means compile it for SIMD and GPU. The ExampleRegressionObjective is set by default
 //      to only operate in CPU mode, but it is generally faster to set this to false if possible.
 //   10) Recompile the C++ with either build.sh or build.bat depending on the operating system.
-//   11) Enjoy your new Objective, and send us a PR on Github if you think others would benefit.
+//   11) Enjoy your new Objective, and send us a PR on GitHub if you think others would benefit.
 
 // Add new "*Objective.h" include files here:
 #include "ExampleRegressionObjective.hpp"

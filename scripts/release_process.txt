@@ -248,7 +248,7 @@ set_visualize_provider(InlineProvider())
   - Add the following at the bottom (put an empty line between them). It will make the version a link to the code:
     [v0.x.x]: https://github.com/interpretml/interpret/tree/v0.x.x
   - preview it just to be sure
-  - click "publish release".  Github will automatically attach the source code .zip and .tar.gz files
+  - click "publish release".  GitHub will automatically attach the source code .zip and .tar.gz files
 - in your local git
   - pull/fetch to get the "v0.x.x" tag that github added to the repo
 
