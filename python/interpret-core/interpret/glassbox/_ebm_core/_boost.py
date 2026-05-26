@@ -154,6 +154,19 @@ def boost(
                         len(term_features), dtype=np.int64
                     )
 
+                    # Per-term smoothing counter. A scalar input is broadcast
+                    # so the loop is uniform. A term receives random-split
+                    # (smoothing) updates while its own counter is positive;
+                    # the smoothing phase as a whole stays active while any
+                    # counter is positive.
+                    smoothing_counts = np.asarray(
+                        smoothing_rounds, dtype=np.int64
+                    ).reshape(-1)
+                    if smoothing_counts.size == 1:
+                        smoothing_counts = np.full(
+                            len(term_features), smoothing_counts[0], dtype=np.int64
+                        )
+
                     while step_idx < max_steps:
                         if state_idx >= 0:
                             # cyclic
@@ -181,7 +194,7 @@ def boost(
                             term_idx = random_cyclic_ordering[state_idx]
 
                             make_progress = False
-                            if cyclic_state >= 1.0 or smoothing_rounds > 0:
+                            if cyclic_state >= 1.0 or smoothing_counts.any():
                                 # if cyclic_state is above 1.0 we make progress
                                 make_progress = True
                         else:
@@ -219,7 +232,7 @@ def boost(
                             msg = f"Unrecognized missing option '{missing}'. Expected 'low', 'high', 'separate', or 'gain'."
                             raise ValueError(msg)
 
-                        if smoothing_rounds > 0 and (
+                        if smoothing_counts[term_idx] > 0 and (
                             nominal_smoothing or not contains_nominals
                         ):
                             # modify some of our parameters temporarily
@@ -388,7 +401,7 @@ def boost(
                                 if action is CallbackAction.STOP_CURRENT:
                                     break
 
-                            if len(circular) > 0 and smoothing_rounds <= 0:
+                            if len(circular) > 0 and not smoothing_counts.any():
                                 # during smoothing, do not use early stopping because smoothing
                                 # is using random cuts, which means gain is highly variable
                                 toss = circular[circular_idx]
@@ -407,9 +420,18 @@ def boost(
 
                         state_idx = state_idx + 1
                         if len(term_features) <= state_idx:
-                            if smoothing_rounds > 0:
+                            if smoothing_counts.any():
                                 state_idx = 0  # all smoothing rounds are cyclic rounds
-                                smoothing_rounds -= 1
+                                # Decrement every term that still has rounds left.
+                                # Terms already at 0 stay at 0 (np.maximum clamp),
+                                # so they receive normal gain-based updates while
+                                # other terms finish their smoothing budget.
+                                np.subtract(
+                                    smoothing_counts,
+                                    1,
+                                    out=smoothing_counts,
+                                    where=smoothing_counts > 0,
+                                )
                             else:
                                 state_idx = -greedy_steps
                                 if cyclic_state >= 1.0:
