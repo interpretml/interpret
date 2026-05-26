@@ -249,3 +249,161 @@ def test_classifier_accepts_smoothing_list():
     proba = ebm.predict_proba(X)
     assert proba.shape == (n_samples, 2)
     np.testing.assert_allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+
+
+# --- Validation-helper coverage tests ---------------------------------------
+# These exercise the remaining branches of _normalize_smoothing_rounds and
+# the call-site edge cases (no mains, all-interactions-deduped) so the
+# helper does not need separate unit tests.
+
+
+def test_smoothing_rounds_none_treated_as_zero():
+    """``smoothing_rounds=None`` must be accepted and behave like 0."""
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds=None,
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm.fit(X, y)
+    assert ebm.term_features_ == [(0,), (1,), (2,)]
+
+
+def test_smoothing_rounds_float_scalar_accepted():
+    """A whole-numbered float should behave the same as the equivalent int."""
+    X, y = _small_dataset()
+    ebm_int = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=200,
+        smoothing_rounds=10,
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm_int.fit(X, y)
+
+    ebm_float = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=200,
+        smoothing_rounds=10.0,
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm_float.fit(X, y)
+    np.testing.assert_allclose(ebm_int.predict(X), ebm_float.predict(X), atol=1e-10)
+
+
+def test_smoothing_rounds_float_non_integer_raises():
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds=10.5,
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match="must be an integer or a sequence"):
+        ebm.fit(X, y)
+
+
+def test_smoothing_rounds_float_negative_raises():
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds=-3.0,
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match="cannot be negative"):
+        ebm.fit(X, y)
+
+
+def test_smoothing_rounds_2d_array_raises():
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds=np.array([[10, 5, 0]]),
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match="1-dimensional"):
+        ebm.fit(X, y)
+
+
+def test_smoothing_rounds_object_dtype_array_raises():
+    """Arrays with non-int / non-float dtype (e.g. object/string) must be rejected."""
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds=np.array(["10", "5", "0"]),
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match="entries must all be integers"):
+        ebm.fit(X, y)
+
+
+def test_smoothing_rounds_unsupported_type_raises():
+    """Types that aren't int/float/list/tuple/ndarray must be rejected."""
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=50,
+        smoothing_rounds={10, 5, 0},  # a set
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match="must be an integer or a sequence"):
+        ebm.fit(X, y)
+
+
+def test_smoothing_rounds_list_with_exclude_mains():
+    """Passing a per-feature list together with ``exclude='mains'`` should
+    not crash; the gather hits the empty-term_features branch."""
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=[(0, 1)],
+        outer_bags=1,
+        max_rounds=100,
+        smoothing_rounds=[10, 5, 0],
+        exclude="mains",
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm.fit(X, y)
+    # No mains kept, but the interaction pair must still appear.
+    main_terms = [t for t in ebm.term_features_ if len(t) == 1]
+    assert main_terms == []
+
+
+def test_interaction_smoothing_rounds_list_with_all_interactions_excluded():
+    """When every explicit interaction is excluded, boost_groups is empty.
+    The list-form interaction_smoothing_rounds must still validate against
+    the user's interactions length without crashing the empty boost call."""
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=[(0, 1)],
+        outer_bags=1,
+        max_rounds=100,
+        smoothing_rounds=0,
+        interaction_smoothing_rounds=[10],
+        exclude=[(0, 1)],
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm.fit(X, y)
+    # The interaction was excluded; only mains remain.
+    interaction_terms = [t for t in ebm.term_features_ if len(t) > 1]
+    assert interaction_terms == []
