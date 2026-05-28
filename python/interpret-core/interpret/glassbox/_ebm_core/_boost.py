@@ -194,7 +194,7 @@ def boost(
                             term_idx = random_cyclic_ordering[state_idx]
 
                             make_progress = False
-                            if cyclic_state >= 1.0 or smoothing_counts.any():
+                            if cyclic_state >= 1.0 or smoothing_counts[term_idx] > 0:
                                 # if cyclic_state is above 1.0 we make progress
                                 make_progress = True
                         else:
