@@ -53,7 +53,7 @@ fastjsonschema==2.21.2
     # via nbformat
 greenlet==3.3.2
     # via sqlalchemy
-idna==3.11
+idna==3.15
     # via requests
 imagesize==2.0.0
     # via sphinx
