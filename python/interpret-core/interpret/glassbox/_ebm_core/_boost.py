@@ -193,6 +193,27 @@ def boost(
 
                             term_idx = random_cyclic_ordering[state_idx]
 
+                            # While the smoothing phase is active, terms that
+                            # have already exhausted their per-term budget sit
+                            # idle: do not compute or apply an update for them.
+                            # Advance state_idx and decrement the per-term
+                            # counters at the end of a cycle, just as if the
+                            # term had been visited normally.
+                            if (
+                                smoothing_counts.any()
+                                and smoothing_counts[term_idx] == 0
+                            ):
+                                state_idx = state_idx + 1
+                                if len(term_features) <= state_idx:
+                                    state_idx = 0
+                                    np.subtract(
+                                        smoothing_counts,
+                                        1,
+                                        out=smoothing_counts,
+                                        where=smoothing_counts > 0,
+                                    )
+                                continue
+
                             make_progress = False
                             if cyclic_state >= 1.0 or smoothing_counts[term_idx] > 0:
                                 # if cyclic_state is above 1.0 we make progress

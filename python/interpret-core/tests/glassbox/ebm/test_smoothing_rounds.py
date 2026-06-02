@@ -388,6 +388,70 @@ def test_smoothing_rounds_list_with_exclude_mains():
     assert main_terms == []
 
 
+class _StepTermRecorder:
+    """Picklable boost callback that records (step, term) pairs."""
+
+    def __init__(self):
+        self.records: list[tuple[int, int]] = []
+
+    def __call__(self, *, bag, stage, step, term, metric):  # noqa: ARG002
+        self.records.append((step, int(term)))
+
+
+def test_done_smoothing_term_skipped_during_remaining_smoothing():
+    """A term whose per-feature counter is 0 must not receive updates while
+    other terms are still smoothing. This validates Paul's review feedback on
+    #626: instead of computing a wasted gain-based update for finished
+    terms, the boost loop advances ``state_idx`` and skips them entirely.
+    """
+    X, y = _small_dataset()
+    recorder = _StepTermRecorder()
+    smoothing_budget = [10, 3, 0]
+    ebm = ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=20,  # comfortably > the largest smoothing budget
+        smoothing_rounds=smoothing_budget,
+        callbacks=recorder,
+        random_state=42,
+        n_jobs=1,
+    )
+    ebm.fit(X, y)
+
+    # step_idx only increments when make_progress is True. With the skip
+    # behavior, terms whose counter is 0 are silently advanced past, so the
+    # smoothing phase produces exactly ``sum(smoothing_budget)`` steps:
+    # one per (term, cycle) where that term still had rounds remaining.
+    total_smoothing_steps = sum(smoothing_budget)
+
+    smoothing_steps = [
+        (step, term) for step, term in recorder.records if step <= total_smoothing_steps
+    ]
+    # Feature 2's budget is 0 so it must never appear in the smoothing window.
+    feature_2_in_smoothing = [s for s, t in smoothing_steps if t == 2]
+    assert feature_2_in_smoothing == [], (
+        f"feature 2 received {len(feature_2_in_smoothing)} updates during "
+        f"the smoothing phase, but its budget was 0"
+    )
+
+    # Feature 1's budget is 3 so it can appear in the first 3 cycles but
+    # must sit idle for cycles 4..10. Count per-feature visits in the
+    # smoothing window and check they match the requested budget.
+    counts_in_smoothing = {0: 0, 1: 0, 2: 0}
+    for _, term in smoothing_steps:
+        counts_in_smoothing[term] += 1
+    assert counts_in_smoothing[0] == smoothing_budget[0]
+    assert counts_in_smoothing[1] == smoothing_budget[1]
+    assert counts_in_smoothing[2] == smoothing_budget[2]
+
+    # Sanity: after the smoothing phase, all features become eligible
+    # again in the normal greedy/cyclic loop.
+    post_smoothing_terms = {
+        term for step, term in recorder.records if step > total_smoothing_steps
+    }
+    assert 2 in post_smoothing_terms
+
+
 def test_interaction_smoothing_rounds_list_with_all_interactions_excluded():
     """When every explicit interaction is excluded, boost_groups is empty.
     The list-form interaction_smoothing_rounds must still validate against

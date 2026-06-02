@@ -4173,14 +4173,16 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=500
+    smoothing_rounds : int or sequence of int, default=500
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-        Differentially private EBMs force the smoothing schedule internally, so any sequence value is
-        validated for type and non-negativity and then ignored at fit time.
-    interaction_smoothing_rounds : int, default=100
+        A sequence (one entry per feature) is accepted for API consistency with the non-private classes,
+        but differentially private EBMs force the smoothing schedule internally and the value is ignored
+        at fit time.
+    interaction_smoothing_rounds : int or sequence of int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
-        Differentially private EBMs force the smoothing schedule internally, so any sequence value is
-        validated for type and non-negativity and then ignored at fit time.
+        A sequence (one entry per interaction) is accepted for API consistency with the non-private classes,
+        but differentially private EBMs force the smoothing schedule internally and the value is ignored
+        at fit time.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -4381,8 +4383,8 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         learning_rate: float = 0.04,
         greedy_ratio: float | None = 10.0,
         cyclic_progress: bool | float = False,
-        smoothing_rounds: int | None = 500,
-        interaction_smoothing_rounds: int | None = 100,
+        smoothing_rounds: int | Sequence[int] | None = 500,
+        interaction_smoothing_rounds: int | Sequence[int] | None = 100,
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
