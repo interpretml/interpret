@@ -245,7 +245,7 @@ stack-data==0.6.3
     # via ipython
 tabulate==0.10.0
     # via jupyter-cache
-tornado==6.5.5
+tornado==6.5.6
     # via
     #   ipykernel
     #   jupyter-client
