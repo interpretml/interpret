@@ -56,6 +56,15 @@ for (file in list.files(file.path(root_path, "R"))) {
    file.copy(from = file.path(root_path, "R", file), to = file.path(dest_path, "R", file))
 }
 
+# tests directory
+tests_path <- file.path(root_path, "tests")
+if(dir.exists(tests_path)) {
+   dir.create(file.path(dest_path, "tests"))
+   for (file in list.files(tests_path)) {
+      file.copy(from = file.path(tests_path, file), to = file.path(dest_path, "tests", file))
+   }
+}
+
 # src directory (R C++ files)
 dir.create(file.path(dest_path, "src"))
 file.copy(from = file.path(root_path, "src", "interpret_R.cpp"), to = file.path(dest_path, "src", "interpret_R.cpp"))
