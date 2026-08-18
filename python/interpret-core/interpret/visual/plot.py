@@ -98,6 +98,56 @@ def plot_performance_curve(
     return figure
 
 
+def plot_calibration_curve(data_dict, title=""):
+    x_values = data_dict["x_values"]
+    y_values = data_dict["y_values"]
+
+    width = 2
+
+    calibration_trace = go.Scatter(
+        x=x_values,
+        y=y_values,
+        mode="lines+markers",
+        hovertemplate=(
+            "Mean predicted probability: %{x:.3f}<br>"
+            "Fraction of positives: %{y:.3f}<extra></extra>"
+        ),
+        line={"color": "darkorange", "width": width},
+        marker={"color": "darkorange"},
+        name="Calibration",
+        showlegend=False,
+    )
+    baseline_trace = go.Scatter(
+        x=[0, 1],
+        y=[0, 1],
+        mode="lines",
+        line={"color": "navy", "width": width, "dash": "dash"},
+        hoverinfo="skip",
+        name="Perfect calibration",
+        showlegend=False,
+    )
+
+    layout = go.Layout(
+        xaxis={"title": "Mean Predicted Probability", "range": [0.0, 1.0]},
+        yaxis={"title": "Fraction of Positives", "range": [0.0, 1.0]},
+        showlegend=False,
+    )
+    main_fig = go.Figure(
+        data=[calibration_trace, baseline_trace],
+        layout=layout,
+    )
+
+    density_fig = plot_density(data_dict["density"])
+    figure = _two_plot(main_fig, density_fig, title=title, share_xaxis=False)
+    figure["layout"]["xaxis1"].update(
+        title="Mean Predicted Probability", range=[0.0, 1.0]
+    )
+    figure["layout"]["yaxis1"].update(title="Fraction of Positives", range=[0.0, 1.0])
+    figure["layout"]["xaxis2"].update(title="Predicted Probability")
+    figure["layout"]["yaxis2"].update(title="Density")
+    return figure
+
+
 def plot_continuous_bar(
     data_dict, multiclass=False, show_error=True, title=None, xtitle="", ytitle=""
 ):
