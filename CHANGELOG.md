@@ -474,7 +474,9 @@ Expect similar or slightly slower training times due to interactions.
     from interpret.version import __version__
 
     # Change this to your custom CDN.
-    JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(__version__)
+    JS_URL = "https://unpkg.com/@interpretml/interpret-inline@{}/dist/interpret-inline.js".format(
+        __version__
+    )
     set_visualize_provider(InlineProvider(js_url=JS_URL))
     ```
 - EBM has changed initialization parameters:
