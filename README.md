@@ -107,12 +107,17 @@ show([logistic_regression_global, decision_tree_global])
 If you need to keep your data private, use Differentially Private EBMs (see [DP-EBMs](https://proceedings.mlr.press/v139/nori21a/nori21a.pdf))
 
 ```python
-from interpret.privacy import DPExplainableBoostingClassifier, DPExplainableBoostingRegressor
+from interpret.privacy import (
+    DPExplainableBoostingClassifier,
+    DPExplainableBoostingRegressor,
+)
 
-dp_ebm = DPExplainableBoostingClassifier(epsilon=1, delta=1e-5) # Specify privacy parameters
+dp_ebm = DPExplainableBoostingClassifier(
+    epsilon=1, delta=1e-5
+)  # Specify privacy parameters
 dp_ebm.fit(X_train, y_train)
 
-show(dp_ebm.explain_global()) # Identical function calls to standard EBMs
+show(dp_ebm.explain_global())  # Identical function calls to standard EBMs
 ```
 
 <br/>
