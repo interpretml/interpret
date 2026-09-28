@@ -81,7 +81,7 @@ def determine_classes(model, data, n_samples):
             model = mono_classification_model
             # keep original class and add any different value as synthetic class
             synthetic_class = "other" if original_class != "other" else "synthetic"
-            classes = np.array([original_class, synthetic_class])
+            classes = np.array([original_class, synthetic_class], dtype=object)
 
         if n_classes != len(classes):
             msg = f"Class count mismatch: predict_proba returned {n_classes} classes but model.classes_ has {len(classes)} entries"
