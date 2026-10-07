@@ -52,11 +52,11 @@ except ImportError:
 
 
 class APLRRegressor(
+    APLRRegressorNative,
     _SKRegressorMixin,
     LocalExplainer,
     GlobalExplainer,
     _SKBaseEstimator,
-    APLRRegressorNative,
 ):
     """APLR Regressor."""
 
@@ -389,11 +389,11 @@ except ImportError:
 
 
 class APLRClassifier(
+    APLRClassifierNative,
     _SKClassifierMixin,
     LocalExplainer,
     GlobalExplainer,
     _SKBaseEstimator,
-    APLRClassifierNative,
 ):
     """APLR Classifier."""
 
