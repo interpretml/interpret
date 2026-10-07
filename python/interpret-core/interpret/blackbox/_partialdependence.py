@@ -35,13 +35,17 @@ def _gen_pdp(
     std_coef=1.0,
     num_ice_samples=10,
 ):
-    num_uniq_vals = len(np.unique(X[:, col_idx]))
+    X_col = X[:, col_idx]
+    if feature_type not in ("nominal", "ordinal"):
+        # X can be an object array if other features are categorical strings
+        X_col = X_col.astype(np.float64)
+    num_uniq_vals = len(np.unique(X_col))
     if feature_type in ("nominal", "ordinal") or num_uniq_vals <= num_points:
-        grid_points = _unique_grid_points(X[:, col_idx])
-        values, counts = np.unique(X[:, col_idx], return_counts=True)
+        grid_points = _unique_grid_points(X_col)
+        values, counts = np.unique(X_col, return_counts=True)
     else:
-        grid_points = _percentile_grid_points(X[:, col_idx], num_points=num_points)
-        counts, values = np.histogram(X[:, col_idx], bins="doane")
+        grid_points = _percentile_grid_points(X_col, num_points=num_points)
+        counts, values = np.histogram(X_col, bins="doane")
 
     X_mut = X.copy()
     ice_lines = np.zeros((X.shape[0], grid_points.shape[0]))
@@ -60,7 +64,7 @@ def _gen_pdp(
         "names": grid_points,
         "scores": mean,
         # TODO: can we get rid of this column of X?
-        "values": X[:, col_idx],
+        "values": X_col,
         "density": {"names": values, "scores": counts},
         # NOTE: We can take either bounds or background values, picked one.
         "upper_bounds": mean + std * std_coef,
@@ -110,7 +114,11 @@ class PartialDependence(GlobalExplainer):
         )
 
         # Fortran ordered float data is faster since we go by columns, so use that
-        data = data.astype(np.float64, order="F", copy=False)
+        try:
+            data = data.astype(np.float64, order="F", copy=False)
+        except ValueError:
+            # nominal features can hold strings, which cannot be converted to floats
+            data = np.asfortranarray(data)
 
         pdps = []
         unique_val_counts = np.zeros(len(self.feature_names_in_), dtype=np.int64)
