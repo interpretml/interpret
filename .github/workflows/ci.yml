@@ -486,6 +486,9 @@ jobs:
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
       - name: win test_native (Schedule)
         if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
+        env:
+          # VS 2026 no longer ships the x86-hosted clang-tidy used by default with v143.
+          PreferredToolArchitecture: x64
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin;C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}

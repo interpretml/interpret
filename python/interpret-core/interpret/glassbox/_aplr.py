@@ -52,11 +52,11 @@ except ImportError:
 
 
 class APLRRegressor(
+    APLRRegressorNative,
     _SKRegressorMixin,
     LocalExplainer,
     GlobalExplainer,
     _SKBaseEstimator,
-    APLRRegressorNative,
 ):
     """APLR Regressor."""
 
@@ -79,6 +79,8 @@ class APLRRegressor(
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        if tags is None:
+            tags = _SKRegressorMixin.__sklearn_tags__(self)
         tags.non_deterministic = True
         tags.target_tags.required = True
         return tags
@@ -389,11 +391,11 @@ except ImportError:
 
 
 class APLRClassifier(
+    APLRClassifierNative,
     _SKClassifierMixin,
     LocalExplainer,
     GlobalExplainer,
     _SKBaseEstimator,
-    APLRClassifierNative,
 ):
     """APLR Classifier."""
 
@@ -416,6 +418,8 @@ class APLRClassifier(
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        if tags is None:
+            tags = _SKClassifierMixin.__sklearn_tags__(self)
         tags.non_deterministic = True
         tags.target_tags.required = True
         return tags
