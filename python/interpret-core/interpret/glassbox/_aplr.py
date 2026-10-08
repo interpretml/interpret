@@ -79,6 +79,8 @@ class APLRRegressor(
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        if tags is None:
+            tags = _SKRegressorMixin.__sklearn_tags__(self)
         tags.non_deterministic = True
         tags.target_tags.required = True
         return tags
@@ -416,6 +418,8 @@ class APLRClassifier(
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
+        if tags is None:
+            tags = _SKClassifierMixin.__sklearn_tags__(self)
         tags.non_deterministic = True
         tags.target_tags.required = True
         return tags
