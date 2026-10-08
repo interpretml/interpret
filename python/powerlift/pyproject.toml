@@ -16,7 +16,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "SQLAlchemy>=1.4",
+    # sqlalchemy-utils relies on ORM internals removed in SQLAlchemy 2.1.
+    "SQLAlchemy>=1.4,<2.1",
     "sqlalchemy-utils>=0.38",
     "tqdm",
     "fastparquet",
