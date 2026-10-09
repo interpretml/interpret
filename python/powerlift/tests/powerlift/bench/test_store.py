@@ -9,6 +9,19 @@ from powerlift.bench.store import (
     retrieve_openml,
     retrieve_pmlb,
 )
+from powerlift.db.actions import create_tables, drop_tables
+
+
+def test_sqlite_database_lifecycle(tmp_path):
+    uri = f"sqlite:///{tmp_path / 'powerlift.db'}"
+    engine = db.create_db(uri)
+    try:
+        create_tables(engine)
+        drop_tables(engine)
+    finally:
+        engine.dispose()
+        db.delete_db(uri).dispose()
+    assert not (tmp_path / "powerlift.db").exists()
 
 
 @pytest.mark.skip("high bandwidth test")
