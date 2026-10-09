@@ -2,7 +2,45 @@
 # Distributed under the MIT software license
 
 import pytest
-from interpret.core.base import BaseExplanation
+from interpret.core._sklearn import (
+    _SKBaseEstimator,
+    _SKClassifierMixin,
+    _SKRegressorMixin,
+)
+from interpret.core.base import BaseExplanation, GlobalExplainer, LocalExplainer
+from interpret.glassbox import (
+    ClassificationTree,
+    DecisionListClassifier,
+    EBMClassifier,
+    EBMRegressor,
+    LinearRegression,
+    LogisticRegression,
+    RegressionTree,
+)
+from interpret.privacy import DPEBMClassifier, DPEBMRegressor
+
+
+@pytest.mark.parametrize(
+    ("estimator_class", "mixin", "estimator_type"),
+    [
+        (ClassificationTree, _SKClassifierMixin, "classifier"),
+        (DecisionListClassifier, _SKClassifierMixin, "classifier"),
+        (EBMClassifier, _SKClassifierMixin, "classifier"),
+        (LogisticRegression, _SKClassifierMixin, "classifier"),
+        (DPEBMClassifier, _SKClassifierMixin, "classifier"),
+        (RegressionTree, _SKRegressorMixin, "regressor"),
+        (EBMRegressor, _SKRegressorMixin, "regressor"),
+        (LinearRegression, _SKRegressorMixin, "regressor"),
+        (DPEBMRegressor, _SKRegressorMixin, "regressor"),
+    ],
+)
+def test_estimator_inheritance(estimator_class, mixin, estimator_type):
+    mro = estimator_class.__mro__
+    assert mro.index(mixin) < mro.index(LocalExplainer)
+    assert mro.index(LocalExplainer) < mro.index(GlobalExplainer)
+    assert mro.index(GlobalExplainer) < mro.index(_SKBaseEstimator)
+    tags = estimator_class().__sklearn_tags__()
+    assert tags.estimator_type == estimator_type
 
 
 def test_that_explanation_throws_exceptions_for_incomplete():
