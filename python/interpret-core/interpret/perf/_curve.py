@@ -2,10 +2,11 @@
 # Distributed under the MIT software license
 
 from itertools import count
+from numbers import Integral
 
 import numpy as np
 
-from ..core.base import PerfExplainer, BaseExplanation
+from ..core.base import BaseExplanation, PerfExplainer
 from ..utils._clean_simple import clean_dimensions, typify_classification
 from ..utils._clean_x import preclean_X
 from ..utils._explanation import gen_name_from_class
@@ -74,7 +75,7 @@ class PR(PerfExplainer):
         scores = predict_fn(X)
 
         try:
-            from sklearn.metrics import precision_recall_curve, average_precision_score
+            from sklearn.metrics import average_precision_score, precision_recall_curve
         except ImportError:
             raise ImportError(
                 "scikit-learn is required for PR curves. Install it with: pip install scikit-learn"
@@ -165,7 +166,7 @@ class ROC(PerfExplainer):
         scores = predict_fn(X)
 
         try:
-            from sklearn.metrics import roc_curve, auc
+            from sklearn.metrics import auc, roc_curve
         except ImportError:
             raise ImportError(
                 "scikit-learn is required for ROC curves. Install it with: pip install scikit-learn"
@@ -188,6 +189,131 @@ class ROC(PerfExplainer):
         internal_obj = {"overall": overall_dict, "specific": None}
 
         return ROCExplanation(
+            "perf",
+            internal_obj,
+            feature_names=feature_names,
+            feature_types=feature_types,
+            name=name,
+        )
+
+
+class CalibrationCurve(PerfExplainer):
+    """Produces probability calibration curves."""
+
+    def __init__(
+        self,
+        model,
+        feature_names=None,
+        feature_types=None,
+        n_bins=5,
+        strategy="uniform",
+    ):
+        """Initializes class.
+
+        Args:
+            model: Model or prediction function of model.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            n_bins: Number of bins used to calculate the calibration curve.
+            strategy: Strategy used to define bin widths. Either "uniform" or
+                "quantile".
+        """
+        if not isinstance(n_bins, Integral) or isinstance(n_bins, bool) or n_bins < 1:
+            raise ValueError("n_bins must be a positive integer.")
+        if strategy not in ("uniform", "quantile"):
+            raise ValueError('strategy must be either "uniform" or "quantile".')
+
+        self.model = model
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.n_bins = int(n_bins)
+        self.strategy = strategy
+
+    def explain_perf(self, X, y, name=None):
+        """Produce a probability calibration curve.
+
+        Args:
+            X: NumPy array for X to compare predict function against.
+            y: NumPy vector for y to compare predict function against.
+            name: User-defined explanation name.
+
+        Returns:
+            An explanation object.
+        """
+        if name is None:
+            name = gen_name_from_class(self)
+
+        y = clean_dimensions(y, "y")
+        if y.ndim != 1:
+            msg = (
+                f"y must be 1 dimensional, but got {y.ndim} dimensions "
+                f"with shape {y.shape}"
+            )
+            raise ValueError(msg)
+
+        X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
+
+        predict_fn, n_classes, classes = determine_classes(self.model, X, n_samples)
+        if n_classes != 2:
+            msg = (
+                "Only binary classification is supported by the CalibrationCurve "
+                "class. The model must have exactly 2 classes."
+            )
+            raise ValueError(msg)
+        predict_fn = unify_predict_fn(predict_fn, X, 1)
+
+        X, feature_names, feature_types = unify_data(
+            X, n_samples, self.feature_names, self.feature_types, True, 0
+        )
+
+        y = typify_classification(y)
+        if classes is None:
+            # scikit-learn requires that classes are sorted with np.unique
+            classes, y = np.unique(y, return_inverse=True)
+            if len(classes) != n_classes:
+                msg = (
+                    f"Class count mismatch: model predicted {n_classes} classes "
+                    f"but y contains {len(classes)} unique values"
+                )
+                raise ValueError(msg)
+        else:
+            invert_classes = dict(zip(classes, count()))
+            y = np.array([invert_classes[el] for el in y], dtype=np.int64)
+
+        scores = np.asarray(predict_fn(X), dtype=np.float64)
+
+        try:
+            from sklearn.calibration import calibration_curve
+        except ImportError:
+            raise ImportError(
+                "scikit-learn is required for calibration curves. "
+                "Install it with: pip install scikit-learn"
+            )
+
+        prob_true, prob_pred = calibration_curve(
+            y,
+            scores,
+            n_bins=self.n_bins,
+            strategy=self.strategy,
+        )
+        counts, values = np.histogram(
+            scores,
+            bins=self.n_bins,
+            range=(0.0, 1.0),
+        )
+
+        overall_dict = {
+            "type": "perf_curve",
+            "density": {"names": values, "scores": counts},
+            "scores": scores,
+            "x_values": prob_pred,
+            "y_values": prob_true,
+            "n_bins": self.n_bins,
+            "strategy": self.strategy,
+        }
+        internal_obj = {"overall": overall_dict, "specific": None}
+
+        return CalibrationCurveExplanation(
             "perf",
             internal_obj,
             feature_names=feature_names,
@@ -337,4 +463,72 @@ class PRExplanation(BaseExplanation):
             baseline=False,
             title="PR Curve: " + self.name,
             auc_prefix="Average Precision",
+        )
+
+
+class CalibrationCurveExplanation(BaseExplanation):
+    """Explanation object specific to probability calibration curves."""
+
+    explanation_type = None
+
+    def __init__(
+        self,
+        explanation_type,
+        internal_obj,
+        feature_names=None,
+        feature_types=None,
+        name=None,
+        selector=None,
+    ):
+        """Initializes class.
+
+        Args:
+            explanation_type: Type of explanation.
+            internal_obj: A jsonable object that backs the explanation.
+            feature_names: List of feature names.
+            feature_types: List of feature types.
+            name: User-defined name of explanation.
+            selector: A dict with "columns" and "data" keys whose entries
+                correspond to explanation entries.
+        """
+        self.explanation_type = explanation_type
+        self._internal_obj = internal_obj
+        self.feature_names = feature_names
+        self.feature_types = feature_types
+        self.name = name
+        self.selector = selector
+
+    def data(self, key=None):
+        """Provides specific explanation data.
+
+        Args:
+            key: A number/string that references a specific data item.
+
+        Returns:
+            A serializable dictionary.
+        """
+        if key is None:
+            return self._internal_obj["overall"]
+        return None
+
+    def visualize(self, key=None):
+        """Provides interactive visualizations.
+
+        Args:
+            key: Either a scalar or list that indexes the internal object for
+                sub-plotting. If an overall visualization is requested, pass
+                None.
+
+        Returns:
+            A Plotly figure.
+        """
+        from ..visual.plot import plot_calibration_curve
+
+        data_dict = self.data(key)
+        if data_dict is None:
+            return None
+
+        return plot_calibration_curve(
+            data_dict,
+            title="Calibration Curve: " + self.name,
         )

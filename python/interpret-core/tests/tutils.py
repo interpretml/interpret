@@ -5,6 +5,7 @@
 import dash.development.base_component as dash_base
 import numpy as np
 import pandas as pd
+import sklearn.datasets
 from interpret.blackbox import (
     PartialDependence,
 )
@@ -19,18 +20,22 @@ from interpret.glassbox import (
 )
 
 # from ..blackbox import PermutationImportance
-from interpret.perf import PR, ROC, RegressionPerf
+from interpret.perf import PR, ROC, CalibrationCurve, RegressionPerf
 from pandas.core.generic import NDFrame
 from plotly import graph_objs as go
 from sklearn.base import is_classifier
 from sklearn.model_selection import train_test_split
-import sklearn.datasets
 
 
 def get_all_explainers():
     # True means run on classification.  False means run on regression
     data_explainer_classes = [(ClassHistogram, None), (Marginal, None)]
-    perf_explainer_classes = [(ROC, True), (PR, True), (RegressionPerf, False)]
+    perf_explainer_classes = [
+        (ROC, True),
+        (PR, True),
+        (CalibrationCurve, True),
+        (RegressionPerf, False),
+    ]
     model_explainer_classes = [
         (ClassificationTree, True),
         (RegressionTree, False),
