@@ -189,7 +189,7 @@ six==1.17.0
     # via python-dateutil
 snowballstemmer==3.0.1
     # via sphinx
-soupsieve==2.8.3
+soupsieve==2.9
     # via beautifulsoup4
 sphinx==5.0.2
     # via
@@ -245,7 +245,7 @@ stack-data==0.6.3
     # via ipython
 tabulate==0.10.0
     # via jupyter-cache
-tornado==6.5.6
+tornado==6.5.9
     # via
     #   ipykernel
     #   jupyter-client
@@ -270,7 +270,7 @@ typing-extensions==4.15.0
     #   sqlalchemy
 uc-micro-py==2.0.0
     # via linkify-it-py
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests
 wcwidth==0.6.0
     # via prompt-toolkit
