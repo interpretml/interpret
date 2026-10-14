@@ -36,7 +36,7 @@ for %%x in (%*) do (
    )
 
    IF "%%x"=="-analysis" (
-      SET extra_analysis=/p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True
+      SET extra_analysis=/p:EnableClangTidyCodeAnalysis=True /p:ClangTidyChecks=clang-analyzer-* /p:RunCodeAnalysis=True
    )
 )
 
