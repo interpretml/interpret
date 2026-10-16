@@ -11,6 +11,11 @@ on:
         description: 'Branch or Commit ID (optional)'
         required: false
         type: string
+      run_as_scheduled:
+        description: 'Run with scheduled settings (Valgrind on Linux, analysis on Windows)'
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 12 * * *"
 
@@ -472,20 +477,20 @@ jobs:
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (CI)
-        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && !(github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
       - name: win test_native (CI)
-        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && !(github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin;C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
       - name: win test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         env:
           # VS 2026 no longer ships the x86-hosted clang-tidy used by default with v143.
           PreferredToolArchitecture: x64
