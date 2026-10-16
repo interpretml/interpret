@@ -2,59 +2,79 @@
 
 This file provides guidance to coding agents when working with code in this repository.
 
+## Working safely
+
+- Preserve unrelated edits, including work from other agents. Before editing or committing, inspect the worktree and index; stage only your own paths or hunks. Never reset, overwrite, or commit another agent's changes.
+- Start with the smallest tests covering the change. Format only touched files; use whole-tree checks and platform builds when the scope warrants them.
+- Run applicable format, lint, and type checks locally. CI tolerates failures in the formatting, mypy, docs-build, and R-check steps, so a green workflow does not prove those checks passed.
+
+## Generated / vendored files (do not hand-edit)
+
+| Generated output | Source of truth / regeneration |
+| --- | --- |
+| `python/interpret-core/interpret/root/` | Packaging tree, including native sources copied from `shared/libebm/` by `setup.py._copy_native_code_to_setup` and bundled build artifacts. Created by local `sdist` / `pip install .` builds (editable installs skip the custom build command). It is gitignored, so a stale copy never shows in `git status`; delete it to make Python use the repository `bld/lib/` and `shared/vis/dist/` again. |
+| `R/src/libebm/` | Native sources copied from `shared/libebm/` by `R/build.R` (`copy_code`). |
+| `shared/vis/dist/interpret-inline.js` | Webpack output; edit `shared/vis/src/` and run `npm run build-prod`. |
+| `docs/requirements.txt` | Compiled from `docs/requirements.in`; regenerate from `docs/` with `pip-compile --strip-extras requirements.in`, using the Python version recorded in the lockfile header. |
+
 ## Repository layout
 
-InterpretML is a multi-language project. The repo holds several artifacts that build/ship together:
-
-- `shared/libebm/` — C++11 native library `libebm` (the EBM training/scoring engine). Built into platform-specific `.dll` / `.so` / `.dylib` shared libraries placed in `bld/lib/`.
-- `shared/vis/` — JavaScript/TypeScript visualization (`interpret-inline.js`) built with `npm` from `shared/vis/`.
-- `python/interpret-core/` — main Python package (`interpret-core`). Contains the Python implementation of EBM, all explainers, the visual dashboard, and the ctypes bridge to `libebm`.
-- `python/interpret/` — thin meta-package (`interpret`) that just depends on `interpret-core` plus extras.
-- `python/powerlift/` — separate `powerlift` package for benchmarking (has its own pyproject and tests).
-- `R/` — R package `interpret`, vendoring the same libebm sources.
-- `docs/`, `scripts/`, `bld/` — documentation source, top-level Makefile/Docker orchestration, and build outputs.
-
-Wheels do **not** build `libebm` from source — CI builds the shared library on each OS/arch and bundles the artifacts into the wheel. The C++ build is only triggered by an `sdist` install (see `python/interpret-core/setup.py` `BuildCommand` / `SDistCommand`) or by running `build.sh` / `build.bat` directly.
+- `shared/libebm/` — C++11 EBM training/scoring engine; shared libraries are built into `bld/lib/`.
+- `shared/vis/` — JavaScript/TypeScript visualization, bundled for Python users.
+- `python/interpret-core/` — models, explainers, dashboard, and ctypes bridge to `libebm`.
+- `python/interpret/` — thin meta-package depending on `interpret-core` plus extras.
+- `python/powerlift/` — separate benchmarking package with its own configuration and tests.
+- `R/` — R package, vendoring the native library.
+- `docs/` — jupyter-book documentation; notebooks live under `docs/interpret/`.
+- `scripts/` — Docker/release orchestration. `scripts/Makefile` is legacy and out of date (for example it passes `--runslow`); prefer the commands below.
+- `bld/` — build outputs.
 
 ## Common commands
 
-Working-directory cheat sheet (commands assume these cwds unless stated otherwise):
-- Repo root — `./build.sh` / `./build.bat` and `clang-format-16` whole-tree (both reference `shared/libebm/` as a path argument; no `cd` into it).
-- `python/` — `ruff check` and `ruff format` whole-tree (matches CI; keeps docs/JS/etc. out of scope; ruff still walks up to the repo-root `ruff.toml` for config).
-- `python/interpret-core/` — Python install, `pytest`, `python -m mypy`.
-- `shared/vis/` — npm commands for the visualization bundle.
+Paths in the table are relative to the indicated working directory.
 
-### Native library (`libebm`)
-- Linux/macOS: `./build.sh` (debug + release, default arch). Flags: `-release_64`, `-debug_64`, `-release_arm`, `-debug_arm`, `-release_32`, `-debug_32`, `-asm` (emit assembly), `-asan`, `-extra_debugging` (`-g`), `-conda` (use environment `CXX`/`CXXFLAGS`/`LDFLAGS`).
-- Windows: `./build.bat` with the same `-release_64` / `-debug_64` / `-release_32` / `-debug_32` flags, plus `-analysis` for clang-tidy. Requires Visual Studio 2022 (`vcvars64.bat`).
-- Output goes to `bld/lib/` (named `libebm[_<os>_<arch>][_debug].{dll,so,dylib}`).
+| Task | Working directory | Command |
+| --- | --- | --- |
+| Build native library, Linux/macOS x64 | Repo root | `sh ./build.sh -release_64` |
+| Build native library, Windows x64 | Repo root | `.\build.bat -release_64` |
+| Build and run native tests, Linux/macOS x64 | Repo root | `sh ./shared/libebm/tests/libebm_test.sh -release_64` |
+| Build and run native tests, Windows x64 | Repo root | `.\shared\libebm\tests\libebm_test.bat -release_64` |
+| Editable install with test dependencies | `python/interpret-core/` | `python -m pip install -e ".[testing]"` |
+| Test EBM | `python/interpret-core/` | `python -m pytest -vv tests/glassbox/ebm/test_ebm.py` |
+| Test one case | `python/interpret-core/` | `python -m pytest -vv tests/glassbox/ebm/test_ebm.py::test_name` (replace `test_name`) |
+| Parallel tests, excluding slow/browser tests | `python/interpret-core/` | `python -m pytest -vv -n auto -m "not slow and not selenium"` |
+| Full tests with coverage (CI invocation) | `python/interpret-core/` | `python -m pytest -vv -n auto --cov=interpret --cov-report=xml` |
+| Check / format touched Python files | Any | `ruff check <files>` / `ruff format <files>` |
+| Whole-tree Python lint / format check | `python/` | `ruff check` / `ruff format --check` |
+| Python type check | `python/interpret-core/` | `python -m mypy` |
+| Test powerlift (CI invocation) | `python/powerlift/` | `python -m pytest -vv -n auto --cov=powerlift --cov-report=xml` |
+| Format touched C++ files | Repo root, bash (also on Windows) | `clang-format-16 -i -style=file <files>` |
+| Whole-tree C++ format (CI invocation) | Repo root, bash (also on Windows) | `find shared/libebm \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" \) \| xargs clang-format-16 -i -style=file` |
+| Install JS dependencies / build production bundle | `shared/vis/` | `npm install` / `npm run build-prod` |
+| JS development build / server | `shared/vis/` | `npm run build-dev` / `npm start` |
+| Build and check R package (Linux; tarball in `bld/R/`, check log in `bld/tmp/R/interpret.Rcheck/`) | `R/` | `Rscript build.R` |
+| Check R package (CI invocation) | `bld/R/` | `R CMD check --as-cran interpret_<version>.tar.gz` |
+| Build docs | `docs/` | `sh ./build.sh` (`.\build.bat` on Windows) after `python -m pip install -r requirements.txt` and installing the package/extras described below |
 
-### Python (run from `python/interpret-core/`)
-- Install dev: `pip install -e ".[debug,notebook,plotly,lime,sensitivity,shap,linear,treeinterpreter,aplr,dash,skoperules,excel,testing]"`.
-- Run all tests in parallel: `python -m pytest -vv -n auto`.
-- Run a single test file: `python -m pytest -vv tests/glassbox/test_ebm.py`.
-- Run a single test: `python -m pytest -vv tests/glassbox/test_ebm.py::test_name`.
-- Pytest markers (defined in `pytest.ini`): `slow` and `selenium`. CI normally skips selenium; the Makefile passes `--runslow` (note: only honored if a corresponding conftest fixture is present). Filter with `-m "not slow"` or `-m "not selenium"` to skip.
-- Coverage (matches CI): `python -m pytest -vv -n auto --cov=interpret --cov-report=xml`.
+- Libraries are written to `bld/lib/`. With no flags, `build.sh` builds only a release `libebm.{so,dylib}` for the host, while `build.bat` builds debug and release for x64 and x86. Explicit configuration flags produce `libebm_<os>_<arch>[_debug].{dll,so,dylib}`.
+- Native test runners build the selected library and test executable, then run the tests. To reuse an already-built library, add the matching `-existing_*` flag (e.g. `-release_64 -existing_release_64`); the Windows runner still rebuilds the library after testing. The shell runner supports macOS ARM (`-release_arm` / `-debug_arm`), `-asan`, and `-valgrind`; see the scripts for other targets.
+- On Windows, use a Visual Studio developer shell with `MSBuild.exe` available. Keep any `vcvars` setup and build/test invocation in the same process. `.\build.bat -release_64 -analysis` runs clang-tidy through MSBuild for the release x64 configuration. With Visual Studio 2026, set `PreferredToolArchitecture=x64` in the environment before running analysis (`$env:PreferredToolArchitecture = "x64"` in PowerShell), as CI does; the default x86-hosted clang-tidy is no longer shipped.
+- Python's `testing` extra is a starting point, not the complete optional-explainer/UI environment. Add extras for the code under test; `setup.py` defines them and `.github/workflows/ci.yml` records the full CI install.
+- `pytest.ini` registers `slow` and `selenium`; markers do not skip tests automatically. CI's invocation above has no marker exclusion. `interpret-core` has no `--runslow` hook.
+- `python/powerlift/` has its own extras; `.github/workflows/ci.yml` records the set CI installs before testing it.
+- Ruff configuration is in `ruff.toml`; mypy configuration is in `python/interpret-core/pyproject.toml`. The mypy baseline is deliberately permissive; strict checking is opted into per module through `[[tool.mypy.overrides]]`, so add modules there rather than loosening the baseline. Keep Ruff's target and mypy's Python version aligned with the supported Python floor. CI runs `ruff format --check` only, never `ruff check`, so lint findings surface only locally.
+- `.pre-commit-config.yaml` runs ruff format plus a `disallow-caps` pygrep hook that rejects miscapitalized tool names in any file, including docs and comments. Write `NumPy`, `GitHub`, `pytest`, `CMake`, `ccache`, and `pybind` as their projects spell them.
+- The docs build sets `INTERPRET_DOCS_MODE=docs` and runs jupyter-book with warnings as errors. `docs/requirements.txt` installs documentation tooling, not `interpret-core` or its optional explainer dependencies; install those separately using the docs CI step as a reference. Notebooks without saved outputs execute during the build, so the explainer extras they import must be installed. Inspect the underlying Sphinx / myst-nb log for warnings, errors, and tracebacks rather than relying on CI's summary warning.
 
-### JS visualization bundle (`shared/vis/`)
-- Build (matches CI, Node 22): `cd shared/vis && npm install && npm run build-prod`. Output: `shared/vis/dist/interpret-inline.js`. The Python package re-bundles this file as package data, so Python users don't need npm unless they're editing the visualization.
-- Dev variants: `npm run build-dev` (unminified), `npm start` (webpack-dev-server).
+## Native binaries, JS bundle, and Python testing
 
-### Lint
-- Whole tree: `cd python && ruff check` — scoped to `python/` (matches the same cwd convention as `ruff format`; ruff walks up to the repo-root `ruff.toml`). Single file: `ruff check path/to/file.py` from any cwd.
-- Configuration is in `ruff.toml` (target `py310`, broad rule set including `B`, `I`, `PL`, `RUF`, `PERF`, `NPY`, `PD`, `UP`, etc.). `tests/**` waives `T20` (print). Project-wide Python floor is 3.10 — keep `ruff.toml`'s `target-version` and `pyproject.toml`'s `[tool.mypy] python_version` aligned if the floor is bumped.
+Wheels bundle prebuilt `libebm` binaries; they do not normally compile the library. Source-distribution installs build the copied native sources through `setup.py`'s `BuildCommand` / `SDistCommand`. For checkout development, build the library explicitly.
 
-### Type check (mypy)
-- Config: `[tool.mypy]` in `python/interpret-core/pyproject.toml`.
-- Run (matches CI): `cd python/interpret-core && python -m mypy`. CI runs with `continue-on-error: true`, so a failing mypy job won't break the build — but new strict modules should land clean.
+Before testing C++ changes through Python, verify the binary selected by `interpret/utils/_native.py`. If `interpret/root/` exists, the loader only searches `interpret/root/bld/lib/` and never consults the repository `bld/lib/`, even when `root/` contains no library. In each location it tries `libebm.<ext>` before the platform-specific name. Rebuilding the repository library does not guarantee Python will load it.
 
-### Format
-After editing, format only the touched files. The whole-tree commands below are what CI runs.
-- Python single file: `ruff format path/to/file.py` (works from any cwd; ruff walks up to `ruff.toml`/`pyproject.toml`). Check without rewriting: `ruff format --check path/to/file.py`. Whole tree (CI): `cd python && ruff format` — scoped to `python/` so docs and other non-package text aren't touched.
-- C++ (always run in bash, even on Windows, so the versioned `clang-format-16` binary resolves and matches CI; `-style=file` picks up the repo's `.clang-format`):
-  - Single file: `clang-format-16 -i -style=file path/to/file.cpp`.
-  - Whole tree (CI): `find shared/libebm \( -iname "*.cpp" -o -iname "*.h" -o -iname "*.hpp" \) | xargs clang-format-16 -i -style=file`.
+From `python/interpret-core/`, inspect the selected release library with `python -c "from interpret.utils._native import Native; print(Native._get_ebm_lib_path())"` (pass `debug=True` for the debug library). Ensure it is the artifact you rebuilt; do not hand-edit generated source copies to work around a stale binary. Use a fresh Python process after rebuilding: the native singleton retains the library already loaded in that process.
+
+The default local visualization bundle follows the same rule in `interpret/visual/_inline.py`: with `interpret/root/` present it loads `root/bld/lib/interpret-inline.js`, otherwise it falls back to `shared/vis/dist/interpret-inline.js`. After editing `shared/vis/src/`, run `npm run build-prod`. If Python uses the packaged location, refresh `interpret-inline.js` and its `.LICENSE.txt` companion there from `shared/vis/dist/` (`setup.py`'s `build_vis_if_needed` leaves an existing bundle untouched), or remove `interpret/root/` as described above. Restart the notebook kernel and rerun the visualization so its initialization JavaScript is injected again.
 
 ## C++ architecture (read before editing `shared/libebm/`)
 
@@ -67,13 +87,13 @@ Key consequences for editing:
 1. **Zone model.** Source is partitioned into zones with strict rules about what may be shared between translation units that are compiled with **different** flags (notably the per-SIMD compute units):
    - `zone_main` — root C++ files in `shared/libebm/`. Free to use full C++ but must not leak class definitions out of the library; everything wrapped in the `EbmMain` namespace.
    - `zone_separate` — high-performance compute kernels under `shared/libebm/compute/` compiled multiple times with different flags (`cpu_ebm/`, `avx2_ebm/`, `avx512f_ebm/`, `cuda_ebm/`). These translation units **must** live inside their own namespace; do not share C++ class definitions across SIMD variants.
-   - `zone_c_interface` — `shared/libebm/inc/` (the public C ABI; `extern "C"` only, POD types). This is also the boundary the Python/R bridges call into via ctypes (`python/interpret-core/interpret/utils/_native.py`).
+   - `zone_c_interface` — `shared/libebm/inc/` (the public C ABI; `extern "C"` only, POD types). Python calls this boundary via ctypes (`python/interpret-core/interpret/utils/_native.py`); R calls it through `R/src/interpret_R.cpp`.
    - `zone_cpp_interface` — POD/templated headers shared between zones. No nested includes; namespace wrapping must happen at include site.
    - `zone_shared` — utilities shared across zones; must live in a unique namespace.
    - `zone_safe` — pure-C files/headers (`unzoned/`) safely shareable everywhere.
    ODR violations across these boundaries are silent and dangerous; preserve the existing zone walls when adding code.
 
-2. **SIMD/CUDA variants are added by registering objectives**, not by per-call dispatch. New objectives go in `shared/libebm/compute/objectives/` as a header (e.g. `ExampleRegressionObjective.hpp`) and are registered in `objective_registrations.hpp`; metric counterparts live in `compute/metrics/`. Each compute backend (`cpu_ebm`, `avx2_ebm`, `avx512f_ebm`, `cuda_ebm`) is a thin wrapper that compiles the same kernels with different flags. The `BRIDGE_AVX2_32` / `BRIDGE_AVX512F_32` defines (set by `build.sh` / `build.bat`) gate which SIMD bridges are linked.
+2. **Objectives and backends are separate extension points.** New objectives go in `shared/libebm/compute/objectives/` and are registered in `objective_registrations.hpp`; metric counterparts live in `compute/metrics/`. Compute backends (`cpu_ebm`, `avx2_ebm`, `avx512f_ebm`, `cuda_ebm`) compile shared kernels with backend-specific flags and namespaces. Adding a backend requires its build/bridge integration, not just an objective registration. Preserve the zone boundaries and existing dispatch mechanism; `BRIDGE_AVX2_32` / `BRIDGE_AVX512F_32` gate the corresponding SIMD bridges.
 
 3. **No exceptions, mostly no RAII** in the core library. The library uses `malloc`/`free` consistently (mixing `new`/`free` was the bug that motivated this), POD-with-struct-hack data layouts (e.g. `Bin`, `Tensor`, `TreeNode`), and explicit error codes across the C boundary. Exceptions are tolerated only when interfacing with STL or in user-extensible code (custom `Objective` classes). Keep this discipline when editing.
 
@@ -81,31 +101,21 @@ Key consequences for editing:
 
 5. **Symbol visibility**: shared library is built `-fvisibility=hidden` and the public surface is gated by `shared/libebm/libebm_exports.txt` (Linux/macOS) and `libebm_exports.def` (Windows). New public C entry points must be added to those export lists.
 
+6. **Source-file lists**: when adding C++ files, update the relevant Windows `.vcxproj` source lists and R `OBJECTS` lists as applicable; `build.sh` discovers `.cpp` files within its selected source directories, so a successful shell build does not prove the other builds include them. Keep `R/src/Makevars` and `R/src/Makevars.interpret` identical except for `NATIVEDIR`, which points to checkout sources in the former and vendored sources in the latter.
+
 ## Python architecture (`python/interpret-core/interpret/`)
 
-- `glassbox/` — interpretable models. `_ebm.py` is the sklearn-facing `EBM{Classifier,Regressor}` and `_ebm/` holds the implementation pieces; `_ebm_core/` houses `_boost.py`, `_bin.py`, `_tensor.py`, `_multiclass.py`, `_merge_ebms.py`, `_excel.py`, `_json.py` — the plumbing called from `_ebm.py`. Other glassbox models: `_decisiontree.py`, `_linear.py`, `_aplr.py`, `_skoperules.py`.
-- `privacy/_dpebm.py` — Differentially Private EBM (`DPEBM{Classifier,Regressor}`).
-- `blackbox/`, `greybox/`, `perf/`, `data/` — wrappers around third-party explainers (SHAP, LIME, Morris, PDP, etc.) using the `core/base.py` and `core/sklearn.py` mixins.
-- `utils/_native.py` — ctypes bindings to `libebm`. `utils/_preprocessor.py`, `_clean_x.py`, `_unify_data.py`, `_unify_predict.py` handle pandas/numpy normalization. `_purify.py`, `_measure_interactions.py`, `_rank_interactions.py`, `_compressed_dataset.py`, `_shared_dataset.py` are the higher-level pieces called by EBM training.
+- `glassbox/_ebm.py` — sklearn-facing `ExplainableBoostingClassifier` / `ExplainableBoostingRegressor`; `glassbox/_ebm_core/` contains training, binning, tensor operations, preprocessing (`_preprocessor.py`), interaction measurement/ranking, native dataset preparation, merging, callbacks, and export helpers. Other glassbox models (`_decisiontree.py`, `_linear.py`, `_aplr.py`, `_skoperules.py`) sit beside `_ebm.py`.
+- `privacy/_dpebm.py` — differentially private EBM estimators.
+- `blackbox/`, `greybox/`, `perf/`, `data/` — explainers and evaluation/data utilities; shared interfaces live in `core/base.py` and `core/_sklearn.py`.
+- `utils/_native.py` — ctypes bindings to `libebm`; neighboring utilities handle input normalization (`_clean_x.py`, `_unify_data.py`, `_unify_predict.py`), purification, link functions, privacy helpers, and seeding.
 - `visual/` and `provider/` — the explanation visualization stack; `from interpret import show` is wired through `visual/_interactive.py`. The browser bundle `interpret-inline.js` is shipped as package data.
 - `ext/` and the `entry_points` in `setup.py` define the extension/plugin system (`interpret_ext_blackbox`, `interpret_ext_glassbox`, etc.).
-- The `interpret/root/` directory is populated by `setup.py._copy_native_code_to_setup` for sdist builds — it is a snapshot, not source of truth. Edit `shared/libebm/` and `build.{sh,bat}` at the repo root.
-
-## Generated / vendored files (do not hand-edit)
-
-These trees are populated from `shared/libebm/` by build scripts. Hand-edits will be silently overwritten:
-- `python/interpret-core/interpret/root/` — copied by `python/interpret-core/setup.py._copy_native_code_to_setup` during sdist builds.
-- `R/src/libebm/` — copied by `R/build.R` (see `copy_code`) when packaging the R library; the R package vendors the same C++ sources rather than re-using the shared one.
-- `shared/vis/dist/interpret-inline.js` — webpack output from `npm run build-prod`; edit sources under `shared/vis/src/` instead.
-
-Source of truth for C++ is always `shared/libebm/`; for the visualization, `shared/vis/src/`.
 
 ## CI and platforms
 
-`.github/workflows/ci.yml` is the source of truth for supported build matrices. CI:
-1. Builds `libebm` on Linux x64 (manylinux2010 docker), Linux ARM (`ubuntu-22.04-arm`), macOS x64 + ARM (`macos-14`), Windows x64 (`windows-2022`). CUDA toolkit is installed only on Windows.
-2. Builds the JS bundle with Node 22 and the R package on Ubuntu 22.04.
-3. Builds `sdist` from `python/interpret-core` and `python/interpret`, then runs pytest against the sdist install across multiple Python versions on each OS.
-4. Pytest invocation in CI is `python -m pytest -vv -n auto --cov=interpret --cov-report=xml` (no `--runslow`); slow tests are skipped in CI but available locally via the marker.
+`.github/workflows/ci.yml` is the source of truth for supported platforms, Python/Node versions, tool setup, and full validation commands. It builds native libraries and the JS/R artifacts, then tests Python distributions across its matrix. Consult it rather than assuming local editable-install tests cover packaging.
 
-When adding a new platform/SIMD target, update both `build.sh` and `build.bat`, the `package_data` list in `python/interpret-core/setup.py`, and the matrix in `.github/workflows/ci.yml`.
+The workflow also runs nightly on a `schedule`. Nightly runs pass extra flags to the native tests: `-valgrind` on Linux and `-analysis` (clang-tidy) on the Windows release configurations. To reproduce a nightly failure, trigger the workflow manually with the `run_as_scheduled` input, or run the native test script locally with the same configuration and existing-library flags as CI, plus the scheduled flag. On Windows, the test runner forwards `-analysis` only to the rebuild selected by an `-existing_*` flag; for analysis without testing an existing library, use `.\build.bat -release_64 -analysis` directly.
+
+When adding a platform or SIMD target, update the relevant build/bridge integration in `build.sh` and `build.bat`, the package-data list in `python/interpret-core/setup.py` when new artifacts are shipped, and CI coverage.

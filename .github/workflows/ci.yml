@@ -12,7 +12,7 @@ on:
         required: false
         type: string
       run_as_scheduled:
-        description: 'Run with scheduled settings (Valgrind on Linux, analysis on Windows)'
+        description: 'Run as nightly'
         required: false
         type: boolean
         default: false
@@ -454,7 +454,7 @@ jobs:
             image: windows-latest
             options: "-release_32"
             existing: ""
-            scheduled: "-analysis"
+            scheduled: ""
           - name: win_debug_32
             image: windows-latest
             options: "-debug_32"
