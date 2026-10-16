@@ -28,6 +28,7 @@ chapters:
     - file: python/api/RegressionPerf
     - file: python/api/ROC
     - file: python/api/PR
+    - file: python/api/CalibrationCurve
   - file: python/api/interpret-data
     sections:
     - file: python/api/ClassHistogram

@@ -19,6 +19,7 @@
 <url><loc>https://interpret.ml/docs/python/api/RegressionPerf.html</loc></url>
 <url><loc>https://interpret.ml/docs/python/api/ROC.html</loc></url>
 <url><loc>https://interpret.ml/docs/python/api/PR.html</loc></url>
+<url><loc>https://interpret.ml/docs/python/api/CalibrationCurve.html</loc></url>
 <url><loc>https://interpret.ml/docs/python/api/ClassHistogram.html</loc></url>
 <url><loc>https://interpret.ml/docs/python/api/Marginal.html</loc></url>
 <url><loc>https://interpret.ml/docs/python/api/DPExplainableBoostingClassifier.html</loc></url>
