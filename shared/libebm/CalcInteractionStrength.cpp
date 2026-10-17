@@ -568,6 +568,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
          cBytes = cBytes + cBytes - 1;
 
          const size_t cBytesTreeNodeMulti = GetTreeNodeMultiSize(bHessian, cScores);
+         ANALYSIS_ASSERT(0 != cBytesTreeNodeMulti);
 
          if(IsMultiplyError(cBytesTreeNodeMulti, cBytes)) {
             return Error_OutOfMemory;

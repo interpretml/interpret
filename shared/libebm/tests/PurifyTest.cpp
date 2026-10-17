@@ -15,6 +15,43 @@ static constexpr double k_tolerancePurityDefault = 1e-6;
 static constexpr BoolEbm k_isRandomizedDefault = EBM_TRUE;
 static constexpr BoolEbm k_isMulticlassNormalization = EBM_TRUE;
 
+TEST_CASE("Purify single bin with and without randomization") {
+   const IntEbm dimensionLengths[]{1};
+   const double weights[]{2.0};
+   for(const BoolEbm isRandomized : {EBM_FALSE, EBM_TRUE}) {
+      double scores[]{3.0, -2.0};
+      double intercept[2];
+      double impurity = 123.0;
+      const ErrorEbm error = Purify(k_tolerancePurityDefault,
+            isRandomized,
+            EBM_FALSE,
+            2,
+            1,
+            dimensionLengths,
+            weights,
+            scores,
+            &impurity,
+            intercept);
+      CHECK(Error_None == error);
+      CHECK(0.0 == scores[0]);
+      CHECK(0.0 == scores[1]);
+      CHECK(3.0 == intercept[0]);
+      CHECK(-2.0 == intercept[1]);
+      CHECK(123.0 == impurity);
+   }
+}
+
+TEST_CASE("Purify rejects overflowing surface bin count") {
+   const IntEbm cBins = static_cast<IntEbm>(size_t{1} << (std::numeric_limits<size_t>::digits - 2));
+   const IntEbm dimensionLengths[]{cBins, 1, 1, 1, 1};
+   const double weight = 1.0;
+   double score = 1.0;
+   const ErrorEbm error = Purify(
+         k_tolerancePurityDefault, EBM_TRUE, EBM_FALSE, 1, 5, dimensionLengths, &weight, &score, nullptr, nullptr);
+   CHECK(Error_IllegalParamVal == error);
+   CHECK(1.0 == score);
+}
+
 TEST_CASE("Purify pure single dimensional 3, unweighted") {
    const IntEbm dimensionLengths[]{3};
    const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);

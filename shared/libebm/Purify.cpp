@@ -2075,6 +2075,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          const size_t cBins = aDimensionLengths[iExclude];
          EBM_ASSERT(0 == cTensorBins % cBins);
          const size_t cSurfaceBinsExclude = cTensorBins / cBins;
+         if(IsAddError(cSurfaceBins, cSurfaceBinsExclude)) {
+            LOG_0(Trace_Error, "ERROR Purify IsAddError(cSurfaceBins, cSurfaceBinsExclude)");
+            return Error_IllegalParamVal;
+         }
          cSurfaceBins += cSurfaceBinsExclude;
          ++iExclude;
       } while(cDimensions != iExclude);
@@ -2087,7 +2091,7 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
 
    RandomDeterministic rng;
    size_t* aRandomize = nullptr;
-   if(EBM_FALSE != isRandomized) {
+   if(EBM_FALSE != isRandomized && 0 != cSurfaceBins) {
       if(IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)) {
          LOG_0(Trace_Warning, "WARNING Purify IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)");
          return Error_OutOfMemory;

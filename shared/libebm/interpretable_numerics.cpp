@@ -378,11 +378,6 @@ static double StringToFloatWithFixup(const char* const str, const size_t iIdenti
    return ret;
 }
 
-INLINE_ALWAYS static char* strcpy_NO_WARNINGS(char* const dest, const char* const src) EBM_NOEXCEPT {
-   StopClangAnalysis();
-   return strcpy(dest, src);
-}
-
 static bool StringToFloatChopped(const char* const pStr,
       size_t iTruncateMantissaTextDigitsAfterFirstDigit,
       double* const pLowChopOut,
@@ -406,7 +401,9 @@ static bool StringToFloatChopped(const char* const pStr,
          iTruncateMantissaTextDigitsAfterFirstDigit + size_t{3};
 
    memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
-   strcpy_NO_WARNINGS(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
+   const size_t cCharsExponent = strlen(&pStr[k_iExp]) + size_t{1};
+   EBM_ASSERT(iTruncateTextAfter + cCharsExponent <= k_cCharsFloatPrint);
+   memcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp], cCharsExponent * sizeof(*pStr));
 
    if(PREDICTABLE(nullptr != pLowChopOut)) {
       *pLowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
@@ -418,6 +415,8 @@ static bool StringToFloatChopped(const char* const pStr,
          goto start_at_top;
       }
       while(true) {
+         // The decimal point at index 2 terminates the carry scan.
+         ANALYSIS_ASSERT(strTruncated + size_t{2} <= pDigit);
          ch = *pDigit;
          if('.' == ch) {
             --pDigit;

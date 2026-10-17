@@ -373,12 +373,12 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    const size_t cRuntimeScores = pBoosterCore->GetCountScores();
    const size_t cRealDimensions = pTerm->GetCountRealDimensions();
    size_t acBins2[k_cDimensionsMax];
+   size_t* pcBins2 = acBins2;
+   error = Error_OutOfMemory;
    if(IsOverflowBinSize<FloatMain, UIntMain>(true, true, bHessian, cRuntimeScores)) {
       // TODO: move this to init
-      return Error_OutOfMemory;
+      goto exit_with_error;
    }
-
-   size_t* pcBins2 = acBins2;
 
    pTermFeature = pTerm->GetTermFeatures();
    do {
@@ -391,41 +391,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
    } while(pTermFeaturesEnd != pTermFeature);
 
    if(!(flags & TermBoostFlags_Corners)) {
-      double* aWeights = nullptr;
-      double* pGradient = nullptr;
-      double* pHessian = nullptr;
-      if(0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags)) {
-         // allocate the biggest tensor that is possible to split into
-
-         // TODO: cache this memory allocation so that we don't do it each time
-
-         if(IsAddError(size_t{1}, cScores)) {
-            return Error_OutOfMemory;
-         }
-         size_t cItems = 1 + cScores;
-         const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
-         if(bUseLogitBoost) {
-            if(IsAddError(cScores, cItems)) {
-               return Error_OutOfMemory;
-            }
-            cItems += cScores;
-         }
-         if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
-            return Error_OutOfMemory;
-         }
-         aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
-         if(nullptr == aWeights) {
-            return Error_OutOfMemory;
-         }
-         pGradient = aWeights + cTensorBins;
-         if(bUseLogitBoost) {
-            pHessian = pGradient + cTensorBins * cScores;
-         }
-      }
-
       if(IsOverflowTreeNodeMultiSize(bHessian, cRuntimeScores)) {
          // TODO: move this to init
-         return Error_OutOfMemory;
+         goto exit_with_error;
       }
 
       size_t cPossibleSplits = 0;
@@ -438,11 +406,11 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
          EBM_ASSERT(size_t{1} <= cBins); // we don't boost on empty training sets
          const size_t cSplits = cBins - 1;
          if(IsAddError(cPossibleSplits, cSplits)) {
-            return Error_OutOfMemory;
+            goto exit_with_error;
          }
          cPossibleSplits += cSplits;
          if(IsMultiplyError(cBins, cBytes)) {
-            return Error_OutOfMemory;
+            goto exit_with_error;
          }
          cBytes *= cBins;
          ++pTermFeature;
@@ -455,14 +423,14 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       // cBins - 1 potential splits.
 
       if(IsAddError(cBytes, cBytes - 1)) {
-         return Error_OutOfMemory;
+         goto exit_with_error;
       }
       cBytes = cBytes + cBytes - 1;
 
       const size_t cBytesTreeNodeMulti = GetTreeNodeMultiSize(bHessian, cRuntimeScores);
 
       if(IsMultiplyError(cBytesTreeNodeMulti, cBytes)) {
-         return Error_OutOfMemory;
+         goto exit_with_error;
       }
       cBytes *= cBytesTreeNodeMulti;
 
@@ -471,7 +439,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       // double it because we during the multi-dimensional sweep we need the best and we need the current
       if(IsAddError(cBytesBest, cBytesBest)) {
-         return Error_OutOfMemory;
+         goto exit_with_error;
       }
       const size_t cBytesSweep = cBytesBest + cBytesBest;
 
@@ -479,12 +447,44 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       error = pBoosterShell->ReserveTreeNodesTemp(cBytes);
       if(Error_None != error) {
-         return error;
+         goto exit_with_error;
       }
 
       error = pBoosterShell->ReserveTemp1(cPossibleSplits * sizeof(unsigned char));
       if(Error_None != error) {
-         return error;
+         goto exit_with_error;
+      }
+
+      double* aWeights = nullptr;
+      double* pGradient = nullptr;
+      double* pHessian = nullptr;
+      const bool bPurify = 0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags);
+      if(bPurify) {
+         // Allocate only after the other fallible setup, so every exit below frees aWeights.
+         // TODO: cache this memory allocation so that we don't do it each time
+         error = Error_OutOfMemory;
+         if(IsAddError(size_t{1}, cScores)) {
+            goto exit_with_error;
+         }
+         size_t cItems = 1 + cScores;
+         const bool bUseLogitBoost = bHessian && !(TermBoostFlags_DisableNewtonGain & flags);
+         if(bUseLogitBoost) {
+            if(IsAddError(cScores, cItems)) {
+               goto exit_with_error;
+            }
+            cItems += cScores;
+         }
+         if(IsMultiplyError(sizeof(double), cItems, cTensorBins)) {
+            goto exit_with_error;
+         }
+         aWeights = static_cast<double*>(malloc(sizeof(double) * cItems * cTensorBins));
+         if(nullptr == aWeights) {
+            goto exit_with_error;
+         }
+         pGradient = aWeights + cTensorBins;
+         if(bUseLogitBoost) {
+            pHessian = pGradient + cTensorBins * cScores;
+         }
       }
 
       error = PartitionMultiDimensionalTree(bHessian,
@@ -517,19 +517,13 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
       if(Error_None != error) {
          free(aWeights);
-#ifndef NDEBUG
-         free(aDebugCopyBins);
-#endif // NDEBUG
-
-         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
-
-         return error;
+         goto exit_with_error;
       }
 
       EBM_ASSERT(!std::isnan(*pTotalGain));
       EBM_ASSERT(0 <= *pTotalGain);
 
-      if(0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
+      if(bPurify && 0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
          Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
 
          size_t cDimensions = pTerm->GetCountDimensions();
@@ -642,13 +636,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       );
 
       if(Error_None != error) {
-#ifndef NDEBUG
-         free(aDebugCopyBins);
-#endif // NDEBUG
-
-         LOG_0(Trace_Verbose, "Exited BoostMultiDimensional with Error code");
-
-         return error;
+         goto exit_with_error;
       }
    }
 
@@ -661,6 +649,13 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
 
    LOG_0(Trace_Verbose, "Exited BoostMultiDimensional");
    return Error_None;
+
+exit_with_error:
+#ifndef NDEBUG
+   free(aDebugCopyBins);
+#endif // NDEBUG
+   LOG_0(Trace_Warning, "WARNING BoostMultiDimensional exited with error");
+   return error;
 }
 
 static ErrorEbm BoostRandom(RandomDeterministic* const pRng,
