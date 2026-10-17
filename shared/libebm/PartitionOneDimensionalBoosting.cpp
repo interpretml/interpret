@@ -123,7 +123,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
    EBM_ASSERT(nullptr != apBins);
-   ANALYSIS_ASSERT(nullptr != apBins);
    EBM_ASSERT(nullptr != apBinsEnd);
    EBM_ASSERT(apBins < apBinsEnd); // if zero bins then we should have handled elsewhere
    EBM_ASSERT(2 <= cSlices); // if there were no cuts then we wouldn't satisfy the minimum gain
@@ -158,7 +157,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
 
    FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pUpdateScore = aUpdateScore;
+   FloatScore* pUpdateScore;
 
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
@@ -166,6 +165,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pDregsBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur;
    if(!bNominal) {
+      pUpdateScore = aUpdateScore;
       ppBinCur = nullptr;
 
       if(bMissing) {

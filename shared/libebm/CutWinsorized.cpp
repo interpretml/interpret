@@ -170,9 +170,6 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
                   double lowCur;
                   double highCur;
                   do {
-                     // Sorted endpoints differ, so the search must stop before either end is passed.
-                     ANALYSIS_ASSERT(aFeatureVals < pLow);
-                     ANALYSIS_ASSERT(pHigh + 1 < aFeatureVals + cSamples);
                      --pLow;
                      ++pHigh;
 

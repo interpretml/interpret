@@ -904,8 +904,6 @@ ErrorEbm DataSetBoosting::InitBags(const bool bAllocateCachedTensors,
                double weight = double{1};
                if(nullptr != pOccurrencesFrom) {
                   EBM_ASSERT(size_t{0} != cInnerBags);
-                  // Subsets partition the cIncludedSamples entries in aOccurrencesFrom.
-                  ANALYSIS_ASSERT(pOccurrencesFrom < aOccurrencesFrom + cIncludedSamples);
                   const uint8_t cOccurrences = *pOccurrencesFrom;
                   ++pOccurrencesFrom;
                   weight = static_cast<double>(cOccurrences);
