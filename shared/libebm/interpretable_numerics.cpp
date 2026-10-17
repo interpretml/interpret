@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <string.h> // strcpy, strchr, memmove, memcpy
+#include <string.h> // strlen, strchr, memmove, memcpy
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
@@ -378,11 +378,6 @@ static double StringToFloatWithFixup(const char* const str, const size_t iIdenti
    return ret;
 }
 
-INLINE_ALWAYS static char* strcpy_NO_WARNINGS(char* const dest, const char* const src) EBM_NOEXCEPT {
-   StopClangAnalysis();
-   return strcpy(dest, src);
-}
-
 static bool StringToFloatChopped(const char* const pStr,
       size_t iTruncateMantissaTextDigitsAfterFirstDigit,
       double* const pLowChopOut,
@@ -406,7 +401,9 @@ static bool StringToFloatChopped(const char* const pStr,
          iTruncateMantissaTextDigitsAfterFirstDigit + size_t{3};
 
    memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
-   strcpy_NO_WARNINGS(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
+   const size_t cExponentChars = strlen(&pStr[k_iExp]) + size_t{1};
+   EBM_ASSERT(cExponentChars <= k_cCharsFloatPrint - k_iExp);
+   memcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp], cExponentChars * sizeof(*pStr));
 
    if(PREDICTABLE(nullptr != pLowChopOut)) {
       *pLowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);

@@ -123,6 +123,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    EBM_ASSERT(nullptr != pBoosterShell);
    EBM_ASSERT(iDimension <= k_cDimensionsMax);
    EBM_ASSERT(nullptr != apBins);
+   ANALYSIS_ASSERT(nullptr != apBins);
    EBM_ASSERT(nullptr != apBinsEnd);
    EBM_ASSERT(apBins < apBinsEnd); // if zero bins then we should have handled elsewhere
    EBM_ASSERT(2 <= cSlices); // if there were no cuts then we wouldn't satisfy the minimum gain
@@ -157,7 +158,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
 
    FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pUpdateScore;
+   FloatScore* pUpdateScore = aUpdateScore;
 
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
@@ -165,7 +166,6 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pDregsBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur;
    if(!bNominal) {
-      pUpdateScore = aUpdateScore;
       ppBinCur = nullptr;
 
       if(bMissing) {
@@ -265,7 +265,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          size_t iEdge;
          FloatScore hess;
          const GradientPair<FloatMain, bHessian>* pGradientPair;
-         if(nullptr != ppBinCur) {
+         if(bNominal) {
             goto determine_bin;
          }
          EBM_ASSERT(!bNominal);
@@ -313,7 +313,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                   ++pGradientPair;
                } while(pGradientPairEnd != pGradientPair);
 
-               if(nullptr == ppBinCur) {
+               if(!bNominal) {
                   break;
                }
                EBM_ASSERT(bNominal);
@@ -339,7 +339,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             }
             if(!pTreeNode->DECONSTRUCT_IsRightChildTraversal()) {
                // we checked earlier that countBins could be converted to a UIntSplit
-               if(nullptr == ppBinCur) {
+               if(!bNominal) {
                   EBM_ASSERT(!bNominal);
 
                   while(true) { // not a real loop
