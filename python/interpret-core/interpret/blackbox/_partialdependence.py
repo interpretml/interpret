@@ -51,6 +51,11 @@ def _gen_pdp(
     mean = np.mean(ice_lines, axis=0)
     std = np.std(ice_lines, axis=0)
 
+    # Sample without replacement, so we cannot draw more background lines than
+    # there are rows in the data. Datasets with fewer than num_ice_samples rows
+    # used to raise "Cannot take a larger sample than population when
+    # 'replace=False'", so clamp the count to the available population.
+    num_ice_samples = min(num_ice_samples, ice_lines.shape[0])
     ice_lines = ice_lines[
         np.random.choice(ice_lines.shape[0], num_ice_samples, replace=False), :
     ]
