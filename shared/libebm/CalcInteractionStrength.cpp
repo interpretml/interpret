@@ -620,6 +620,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CalcInteractionStrength(Interaction
             }
          }
 
+         // The checked tree-node size and the nonempty tensor make this allocation nonzero.
+         EBM_ASSERT(0 != cBytes);
+         ANALYSIS_ASSERT(0 != cBytes);
          pTreeNodesTemp = malloc(cBytes);
          if(nullptr == pTreeNodesTemp) {
             free(aWeights);
