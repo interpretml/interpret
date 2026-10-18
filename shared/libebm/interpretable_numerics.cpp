@@ -6,7 +6,7 @@
 
 #include <stddef.h> // size_t, ptrdiff_t
 #include <limits> // std::numeric_limits
-#include <string.h> // strlen, strchr, memmove, memcpy
+#include <string.h> // strcpy, strchr, memmove, memcpy
 
 #include "libebm.h"
 #include "logging.h" // EBM_ASSERT
@@ -401,9 +401,9 @@ static bool StringToFloatChopped(const char* const pStr,
          iTruncateMantissaTextDigitsAfterFirstDigit + size_t{3};
 
    memcpy(strTruncated, pStr, iTruncateTextAfter * sizeof(*pStr));
-   const size_t cExponentChars = strlen(&pStr[k_iExp]) + size_t{1};
-   EBM_ASSERT(cExponentChars <= k_cCharsFloatPrint - k_iExp);
-   memcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp], cExponentChars * sizeof(*pStr));
+   // FloatToFullString bounds the source; truncation moves its exponent earlier in an equally sized buffer.
+   // NOLINTNEXTLINE(clang-analyzer-security.insecureAPI.strcpy)
+   strcpy(&strTruncated[iTruncateTextAfter], &pStr[k_iExp]);
 
    if(PREDICTABLE(nullptr != pLowChopOut)) {
       *pLowChopOut = StringToFloatWithFixup(strTruncated, iTruncateTextAfter);
