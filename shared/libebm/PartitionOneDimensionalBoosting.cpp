@@ -158,7 +158,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    UIntSplit* pSplit = pInnerTermUpdate->GetSplitPointer(iDimension);
 
    FloatScore* const aUpdateScore = pInnerTermUpdate->GetTensorScoresPointer();
-   FloatScore* pUpdateScore = aUpdateScore;
+   FloatScore* pUpdateScore;
 
    auto* const aBins = pBoosterShell->GetBoostingMainBins()->Specialize<FloatMain, UIntMain, true, true, bHessian>();
 
@@ -166,6 +166,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
    const Bin<FloatMain, UIntMain, true, true, bHessian>* pDregsBin = nullptr;
    const Bin<FloatMain, UIntMain, true, true, bHessian>* const* ppBinCur;
    if(!bNominal) {
+      pUpdateScore = aUpdateScore;
       ppBinCur = nullptr;
 
       if(bMissing) {
@@ -265,10 +266,11 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
          size_t iEdge;
          FloatScore hess;
          const GradientPair<FloatMain, bHessian>* pGradientPair;
-         if(bNominal) {
+         if(nullptr != ppBinCur) {
             goto determine_bin;
          }
          EBM_ASSERT(!bNominal);
+         ANALYSIS_ASSERT(!bNominal);
 
          iEdge = reinterpret_cast<const void* const*>(ppBinLast) - reinterpret_cast<const void* const*>(apBins) + 1;
 
@@ -313,7 +315,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
                   ++pGradientPair;
                } while(pGradientPairEnd != pGradientPair);
 
-               if(!bNominal) {
+               if(nullptr == ppBinCur) {
                   break;
                }
                EBM_ASSERT(bNominal);
@@ -339,7 +341,7 @@ static ErrorEbm Flatten(BoosterShell* const pBoosterShell,
             }
             if(!pTreeNode->DECONSTRUCT_IsRightChildTraversal()) {
                // we checked earlier that countBins could be converted to a UIntSplit
-               if(!bNominal) {
+               if(nullptr == ppBinCur) {
                   EBM_ASSERT(!bNominal);
 
                   while(true) { // not a real loop

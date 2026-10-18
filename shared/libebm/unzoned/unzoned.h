@@ -177,11 +177,15 @@ extern "C" {
 
 INLINE_ALWAYS static void StopClangAnalysis(void) EBM_NOEXCEPT ANALYZER_NORETURN {}
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#define ANALYSIS_ASSERT(b) __analysis_assume(b)
+#else
 #define ANALYSIS_ASSERT(b)                                                                                             \
    do {                                                                                                                \
       if(!(b))                                                                                                         \
          StopClangAnalysis();                                                                                          \
    } while((void)0, 0)
+#endif
 
 // Disable this for now. Using fast reciprocals seems to change the results quite a bit
 // and make them worse. Also, the reciprocal algorithm is different between Intel and AMD
