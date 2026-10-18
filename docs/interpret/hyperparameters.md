@@ -172,3 +172,53 @@ guidance: Needs investigation before we offer guidance on tuning. Until then, ex
 default: 10.0
 
 guidance: Needs investigation before we offer guidance on tuning. Until then, experimentally try [5.0, 10.0, 20.0, 100.0, +inf, NaN]
+
+## callbacks
+default: None
+
+Use callbacks to observe training or stop it early. Supply a mapping from event
+names to callables, such as `callbacks={"boost": record_metric}`. Omitted events
+have no callback; `None` or an empty mapping disables all callbacks.
+
+| Event name | When it runs | Keyword arguments |
+| --- | --- | --- |
+| `"examine"` | Whenever a term is examined and its gain is calculated | `bag`, `stage`, `step`, `term`, `gain` |
+| `"boost"` | After each progressing boosting step | `bag`, `stage`, `step`, `term`, `metric` |
+| `"interaction"` | After each interaction strength is computed during interaction detection | `bag`, `term`, `strength` |
+
+The mapping key selects the event. Callback signatures are not inspected.
+A callback must accept all keyword arguments for its event, but it can declare
+only the arguments it needs and capture the rest with `**kwargs`:
+
+```python
+from interpret.glassbox import ExplainableBoostingRegressor
+
+history = []
+
+def record_metric(*, metric, **_kwargs):
+    history.append(metric)
+
+ebm = ExplainableBoostingRegressor(
+    callbacks={"boost": record_metric},
+    n_jobs=1,
+)
+ebm.fit(X_train, y_train)
+```
+
+This example uses `n_jobs=1` so changes to `history` remain in the calling process.
+With process-based parallel training, callbacks run in worker processes and
+ordinary Python state is not shared with the caller.
+
+Each callback runs synchronously and can return:
+
+- `None` or `"continue"` to continue training.
+- `"stop_current"` to end the current boosting stage, or interaction detection,
+  for the current outer bag. Training can continue with later stages.
+- `"stop_all"` to stop training across all outer bags.
+
+The corresponding `interpret.glassbox.CallbackAction` enum members
+(`CONTINUE`, `STOP_CURRENT`, and `STOP_ALL`) are also accepted.
+Register multiple events in the same mapping, for example
+`callbacks={"examine": examine_cb, "boost": boost_cb, "interaction": interaction_cb}`.
+The same callable can be registered for multiple events if it accepts each
+event's keyword arguments.
