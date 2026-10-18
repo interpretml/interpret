@@ -2089,6 +2089,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          ++iExclude;
       } while(cDimensions != iExclude);
 
+      // Nonempty tensors with at least two dimensions have nonempty surfaces.
+      EBM_ASSERT(0 != cSurfaceBins);
+      ANALYSIS_ASSERT(0 != cSurfaceBins);
       if(IsMultiplyError(cScoresArrayBytes, cSurfaceBins)) {
          LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(cScoresArrayBytes, cSurfaceBins)");
          return Error_IllegalParamVal;
