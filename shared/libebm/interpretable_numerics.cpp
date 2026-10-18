@@ -416,7 +416,8 @@ static bool StringToFloatChopped(const char* const pStr,
       }
       while(true) {
          ch = *pDigit;
-         if('.' == ch) {
+         if(strTruncated + size_t{2} == pDigit) {
+            EBM_ASSERT('.' == ch);
             --pDigit;
          start_at_top:;
             EBM_ASSERT(strTruncated + size_t{1} == pDigit);
