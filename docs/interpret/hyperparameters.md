@@ -195,8 +195,10 @@ from interpret.glassbox import ExplainableBoostingRegressor
 
 history = []
 
+
 def record_metric(*, metric, **_kwargs):
     history.append(metric)
+
 
 ebm = ExplainableBoostingRegressor(
     callbacks={"boost": record_metric},
