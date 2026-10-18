@@ -394,7 +394,9 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       double* aWeights = nullptr;
       double* pGradient = nullptr;
       double* pHessian = nullptr;
-      if(0 != ((TermBoostFlags_PurifyUpdate | TermBoostFlags_PurifyGain) & flags)) {
+      const bool bPurifyUpdate = 0 != (TermBoostFlags_PurifyUpdate & flags);
+      const bool bPurifyGain = 0 != (TermBoostFlags_PurifyGain & flags);
+      if(bPurifyUpdate || bPurifyGain) {
          // allocate the biggest tensor that is possible to split into
 
          // TODO: cache this memory allocation so that we don't do it each time
@@ -537,7 +539,7 @@ static ErrorEbm BoostMultiDimensional(BoosterShell* const pBoosterShell,
       EBM_ASSERT(!std::isnan(*pTotalGain));
       EBM_ASSERT(0 <= *pTotalGain);
 
-      if(0 != (TermBoostFlags_PurifyUpdate & flags) && 0 == (TermBoostFlags_PurifyGain & flags)) {
+      if(bPurifyUpdate && !bPurifyGain) {
          Tensor* const pTensor = pBoosterShell->GetInnerTermUpdate();
 
          size_t cDimensions = pTerm->GetCountDimensions();
