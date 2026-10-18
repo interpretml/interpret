@@ -2,11 +2,10 @@
 # Distributed under the MIT software license
 
 import heapq
-import inspect
 import json
 import logging
 import os
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import nullcontext
 from copy import deepcopy
 from functools import partial
@@ -100,125 +99,42 @@ FeatureType = (
 )
 
 
-_CALLBACK_TYPES = {
-    "examine": {"bag", "stage", "step", "term", "gain"},
-    "boost": {"bag", "stage", "step", "term", "metric"},
-    "interaction": {"bag", "term", "strength"},
-}
-_CallbackSpec = (
-    Callable[..., CallbackAction | str | None]
-    | Sequence[Callable[..., CallbackAction | str | None]]
-)
+_Callback = Callable[..., CallbackAction | str | None]
+_CallbackSpec = Mapping[Literal["examine", "boost", "interaction"], _Callback]
 
 
-def _classify_callback(callback):
-    if not callable(callback):
-        msg = (
-            "callback must be a callable or an sequence of callables; "
-            f"got object of type {type(callback).__name__!r}."
-        )
-        _log.error(msg)
-        raise ValueError(msg)
-
-    try:
-        parameters = inspect.signature(callback).parameters
-    except (TypeError, ValueError) as exc:
-        msg = (
-            f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
-            "has no inspectable signature; wrap it in a plain Python function "
-            "that declares the canonical callback parameters explicitly."
-        )
-        _log.error(msg)
-        raise ValueError(msg) from exc
-
-    param_names = set(parameters)
-    matched = [
-        name for name, required in _CALLBACK_TYPES.items() if required <= param_names
-    ]
-
-    if len(matched) == 1:
-        name = matched[0]
-        required = _CALLBACK_TYPES[name]
-        for p in parameters.values():
-            if p.name in required:
-                if p.kind not in (
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    inspect.Parameter.KEYWORD_ONLY,
-                ):
-                    msg = (
-                        f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
-                        f"matches the {name!r} callback type but canonical parameter "
-                        f"{p.name!r} is not keyword-callable (e.g. positional-only). All "
-                        "canonical parameters must be declared as POSITIONAL_OR_KEYWORD "
-                        "or KEYWORD_ONLY."
-                    )
-                    _log.error(msg)
-                    raise ValueError(msg)
-            elif (
-                p.kind
-                not in (
-                    inspect.Parameter.VAR_POSITIONAL,
-                    inspect.Parameter.VAR_KEYWORD,
-                )
-                and p.default is inspect.Parameter.empty
-            ):
-                msg = (
-                    f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
-                    f"has additional parameter {p.name!r} without a default value; "
-                    "extra callback parameters must have defaults so the training "
-                    f"engine can invoke the callback with only the canonical {name!r} "
-                    f"kwargs ({sorted(required)})."
-                )
-                _log.error(msg)
-                raise ValueError(msg)
-        return name
-
-    if len(matched) == 0:
-        msg = (
-            f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
-            f"with parameters {sorted(param_names)} does not match any known "
-            "callback type. The examine callback requires "
-            "(*, bag, stage, step, term, gain); the boost callback "
-            "requires (*, bag, stage, step, term, metric); the interaction "
-            "callback requires (*, bag, term, strength). All canonical "
-            "parameters must be declared by name - capturing them with a bare "
-            "'**kwargs' is not allowed. Additional parameters with default "
-            "values, or a trailing '**kwargs' after the canonical parameters, "
-            "are permitted."
-        )
-        _log.error(msg)
-        raise ValueError(msg)
-
-    msg = (
-        f"callback {getattr(callback, '__qualname__', repr(callback))!r} "
-        f"with parameters {sorted(param_names)} matches multiple callback "
-        f"types {matched}; a callback must include the parameters of "
-        "exactly one type. The examine callback requires 'gain'; the "
-        "boost callback requires 'metric'; the interaction callback "
-        "requires 'strength'. Remove the parameter(s) that do not belong "
-        "to the intended callback type."
-    )
-    _log.error(msg)
-    raise ValueError(msg)
-
-
-def _normalize_callbacks(callbacks):
+def _normalize_callbacks(
+    callbacks: _CallbackSpec | None,
+) -> tuple[_Callback | None, _Callback | None, _Callback | None]:
     if callbacks is None:
         return None, None, None
 
-    if callable(callbacks):
-        callbacks = (callbacks,)
+    if not isinstance(callbacks, Mapping):
+        msg = "callbacks must be a mapping from callback names to callables, or None."
+        _log.error(msg)
+        raise ValueError(msg)
 
-    found: dict[str, Any] = {}
-    for callback in callbacks:
-        callback_type = _classify_callback(callback)
-        if callback_type in found:
-            msg = f"callbacks cannot contain more than one {callback_type} callback"
+    for name, callback in callbacks.items():
+        if name not in ("examine", "boost", "interaction"):
+            msg = (
+                f"Unknown callback name {name!r}. "
+                "Expected 'examine', 'boost', or 'interaction'."
+            )
             _log.error(msg)
             raise ValueError(msg)
-        found[callback_type] = callback
+        if not callable(callback):
+            msg = (
+                f"callbacks[{name!r}] must be callable; "
+                f"got object of type {type(callback).__name__!r}."
+            )
+            _log.error(msg)
+            raise ValueError(msg)
 
-    return found.get("examine"), found.get("boost"), found.get("interaction")
+    return (
+        callbacks.get("examine"),
+        callbacks.get("boost"),
+        callbacks.get("interaction"),
+    )
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -3474,17 +3390,25 @@ class EBMModel(BaseEBM):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or sequence of callbacks invoked during training.
-        An examine callback is invoked whenever a term is examined and its gain is
-        calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``.
-        A boost callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        An interaction callback is invoked after each interaction strength
-        is computed during interaction detection, and must use
-        keyword-only arguments:
-        ``def interaction_cb(*, bag, term, strength)``.
+    callbacks : Mapping[str, Callable[..., CallbackAction | str | None]] | None, default=None
+        A mapping from training event names to callbacks, for example
+        ``{"boost": report}``. Supported keys are ``"examine"``, ``"boost"``,
+        and ``"interaction"``. Omit a key to disable its callback; ``None`` or
+        an empty mapping disables all callbacks.
+
+        Callbacks are invoked with keyword arguments:
+
+            - ``"examine"``: ``bag``, ``stage``, ``step``, ``term``, and ``gain``,
+              whenever a term is examined and its gain is calculated.
+            - ``"boost"``: ``bag``, ``stage``, ``step``, ``term``, and ``metric``,
+              after each progressing boosting step.
+            - ``"interaction"``: ``bag``, ``term``, and ``strength``,
+              after each interaction strength is computed during interaction detection.
+
+        The mapping key selects the event; callback signatures are not inspected.
+        Each callback must accept all supplied keyword arguments, either
+        explicitly or through ``**kwargs``. For example,
+        ``def report(*, metric, **kwargs)`` can handle ``"boost"`` events.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
         current boosting step (or interaction detection for that bag) for
@@ -3493,11 +3417,7 @@ class EBMModel(BaseEBM):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
-        at most one of each callback type. Callbacks may
-        declare additional keyword-only parameters beyond the canonical set,
-        provided they have default values (e.g., for closing over user state
-        via ``functools.partial`` or default arguments).
+        :class:`~interpret.glassbox.CallbackAction`.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
@@ -3734,17 +3654,25 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or sequence of callbacks invoked during training.
-        An examine callback is invoked whenever a term is examined and its gain is
-        calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``.
-        A boost callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        An interaction callback is invoked after each interaction strength
-        is computed during interaction detection, and must use
-        keyword-only arguments:
-        ``def interaction_cb(*, bag, term, strength)``.
+    callbacks : Mapping[str, Callable[..., CallbackAction | str | None]] | None, default=None
+        A mapping from training event names to callbacks, for example
+        ``{"boost": report}``. Supported keys are ``"examine"``, ``"boost"``,
+        and ``"interaction"``. Omit a key to disable its callback; ``None`` or
+        an empty mapping disables all callbacks.
+
+        Callbacks are invoked with keyword arguments:
+
+            - ``"examine"``: ``bag``, ``stage``, ``step``, ``term``, and ``gain``,
+              whenever a term is examined and its gain is calculated.
+            - ``"boost"``: ``bag``, ``stage``, ``step``, ``term``, and ``metric``,
+              after each progressing boosting step.
+            - ``"interaction"``: ``bag``, ``term``, and ``strength``,
+              after each interaction strength is computed during interaction detection.
+
+        The mapping key selects the event; callback signatures are not inspected.
+        Each callback must accept all supplied keyword arguments, either
+        explicitly or through ``**kwargs``. For example,
+        ``def report(*, metric, **kwargs)`` can handle ``"boost"`` events.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
         current boosting step (or interaction detection for that bag) for
@@ -3753,11 +3681,7 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
-        at most one of each callback type. Callbacks may
-        declare additional keyword-only parameters beyond the canonical set,
-        provided they have default values (e.g., for closing over user state
-        via ``functools.partial`` or default arguments).
+        :class:`~interpret.glassbox.CallbackAction`.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=1e-4
@@ -4055,17 +3979,25 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         tradeoff for the ensemble of models --- not the individual models --- a small
         amount of overfitting of the individual models can improve the accuracy of
         the ensemble as a whole.
-    callbacks : Callable[..., CallbackAction | str | None] | Sequence[Callable[..., CallbackAction | str | None]] | None, default=None
-        A user-defined callback or sequence of callbacks invoked during training.
-        An examine callback is invoked whenever a term is examined and its gain is
-        calculated, and must use keyword-only arguments:
-        ``def exam_cb(*, bag, stage, step, term, gain)``.
-        A boost callback is invoked after each progressing boosting step and must use
-        keyword-only arguments: ``def boost_cb(*, bag, stage, step, term, metric)``.
-        An interaction callback is invoked after each interaction strength
-        is computed during interaction detection, and must use
-        keyword-only arguments:
-        ``def interaction_cb(*, bag, term, strength)``.
+    callbacks : Mapping[str, Callable[..., CallbackAction | str | None]] | None, default=None
+        A mapping from training event names to callbacks, for example
+        ``{"boost": report}``. Supported keys are ``"examine"``, ``"boost"``,
+        and ``"interaction"``. Omit a key to disable its callback; ``None`` or
+        an empty mapping disables all callbacks.
+
+        Callbacks are invoked with keyword arguments:
+
+            - ``"examine"``: ``bag``, ``stage``, ``step``, ``term``, and ``gain``,
+              whenever a term is examined and its gain is calculated.
+            - ``"boost"``: ``bag``, ``stage``, ``step``, ``term``, and ``metric``,
+              after each progressing boosting step.
+            - ``"interaction"``: ``bag``, ``term``, and ``strength``,
+              after each interaction strength is computed during interaction detection.
+
+        The mapping key selects the event; callback signatures are not inspected.
+        Each callback must accept all supplied keyword arguments, either
+        explicitly or through ``**kwargs``. For example,
+        ``def report(*, metric, **kwargs)`` can handle ``"boost"`` events.
         Each callback may return ``None`` (or :attr:`CallbackAction.CONTINUE`)
         to keep training, :attr:`CallbackAction.STOP_CURRENT` to end the
         current boosting step (or interaction detection for that bag) for
@@ -4074,11 +4006,7 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         and end training. The corresponding string values (``"continue"``,
         ``"stop_current"``, ``"stop_all"``) are
         also accepted, so callbacks do not need to import
-        :class:`~interpret.glassbox.CallbackAction`. The sequence can contain
-        at most one of each callback type. Callbacks may
-        declare additional keyword-only parameters beyond the canonical set,
-        provided they have default values (e.g., for closing over user state
-        via ``functools.partial`` or default arguments).
+        :class:`~interpret.glassbox.CallbackAction`.
     min_samples_leaf : int, default=4
         Minimum number of samples allowed in the leaves.
     min_hessian : float, default=0.0
