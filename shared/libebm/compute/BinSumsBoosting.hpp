@@ -1326,10 +1326,10 @@ template<typename TFloat,
       bool bCollapsed,
       size_t cCompilerScores,
       typename std::enable_if<bCollapsed || 1 == TFloat::k_cSIMDPack ||
-                  0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
-                  0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
-                  0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||
-                  !bHessian && 1 != cCompilerScores,
+                  (0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores) ||
+                  (0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores) ||
+                  (0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores) ||
+                  (!bHessian && 1 != cCompilerScores),
             int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
    EBM_ASSERT(EBM_FALSE == pParams->m_bParallelBins);
@@ -1343,10 +1343,10 @@ template<typename TFloat,
       bool bCollapsed,
       size_t cCompilerScores,
       typename std::enable_if<!(bCollapsed || 1 == TFloat::k_cSIMDPack ||
-                                    0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores ||
-                                    0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores ||
-                                    0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores ||
-                                    !bHessian && 1 != cCompilerScores),
+                                    (0 == HESSIAN_PARALLEL_BIN_BYTES_MAX && bHessian && 1 == cCompilerScores) ||
+                                    (0 == GRADIENT_PARALLEL_BIN_BYTES_MAX && !bHessian && 1 == cCompilerScores) ||
+                                    (0 == MULTISCORE_PARALLEL_BIN_BYTES_MAX && bHessian && 1 != cCompilerScores) ||
+                                    (!bHessian && 1 != cCompilerScores)),
             int>::type = 0>
 INLINE_RELEASE_TEMPLATED static ErrorEbm DoneScores(BinSumsBoostingBridge* const pParams) {
    if(pParams->m_bParallelBins) {
