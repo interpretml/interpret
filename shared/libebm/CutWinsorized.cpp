@@ -174,8 +174,10 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION CutWinsorized(
                      ++pHigh;
 
                      EBM_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
+                     ANALYSIS_ASSERT(aFeatureVals <= pLow && pLow < aFeatureVals + cSamples);
                      lowCur = *pLow;
                      EBM_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
+                     ANALYSIS_ASSERT(aFeatureVals <= pHigh && pHigh < aFeatureVals + cSamples);
                      highCur = *pHigh;
                      // since valMin != valMax per above, we know there is a transition SOMEWHERE, which will exit us
                   } while(LIKELY(lowCur == highCur));

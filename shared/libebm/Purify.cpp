@@ -1976,13 +1976,15 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
    }
    const size_t cScores = static_cast<size_t>(countMultiScores);
 
-   if(IsMultiplyError(sizeof(*interceptOut), cScores)) {
-      LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(sizeof(*interceptOut), cScores)");
+   if(IsMultiplyError(sizeof(double), cScores)) {
+      LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(sizeof(double), cScores)");
       return Error_IllegalParamVal;
    }
 
+   const size_t cScoresArrayBytes = sizeof(double) * cScores;
+
    if(nullptr != interceptOut) {
-      memset(interceptOut, 0, sizeof(*interceptOut) * cScores);
+      memset(interceptOut, 0, cScoresArrayBytes);
    }
 
    if(countDimensions <= IntEbm{0}) {
@@ -2067,6 +2069,9 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
       tolerance = 0.0;
    }
 
+   RandomDeterministic rng;
+   size_t* aRandomize = nullptr;
+
    size_t cSurfaceBins = 0;
    if(1 < cDimensions) {
       // if there is only 1 dimension, then push all weight to the intercept and have no surface bins
@@ -2075,30 +2080,36 @@ EBM_API_BODY ErrorEbm EBM_CALLING_CONVENTION Purify(double tolerance,
          const size_t cBins = aDimensionLengths[iExclude];
          EBM_ASSERT(0 == cTensorBins % cBins);
          const size_t cSurfaceBinsExclude = cTensorBins / cBins;
+         if(IsAddError(cSurfaceBins, cSurfaceBinsExclude)) {
+            // [4611686018427387904, 1, 1, 1, 1] overflows otherwise
+            LOG_0(Trace_Error, "ERROR Purify IsAddError(cSurfaceBins, cSurfaceBinsExclude)");
+            return Error_IllegalParamVal;
+         }
          cSurfaceBins += cSurfaceBinsExclude;
          ++iExclude;
       } while(cDimensions != iExclude);
-   }
 
-   if(IsMultiplyError(sizeof(double), cScores, cSurfaceBins)) {
-      LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(sizeof(double), cScores, cSurfaceBins)");
-      return Error_IllegalParamVal;
-   }
+      // Nonempty tensors with at least two dimensions have nonempty surfaces.
+      EBM_ASSERT(0 != cSurfaceBins);
+      ANALYSIS_ASSERT(0 != cSurfaceBins);
+      if(IsMultiplyError(cScoresArrayBytes, cSurfaceBins)) {
+         LOG_0(Trace_Error, "ERROR Purify IsMultiplyError(cScoresArrayBytes, cSurfaceBins)");
+         return Error_IllegalParamVal;
+      }
 
-   RandomDeterministic rng;
-   size_t* aRandomize = nullptr;
-   if(EBM_FALSE != isRandomized) {
-      if(IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)) {
-         LOG_0(Trace_Warning, "WARNING Purify IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)");
-         return Error_OutOfMemory;
+      if(EBM_FALSE != isRandomized) {
+         if(IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)) {
+            LOG_0(Trace_Warning, "WARNING Purify IsMultiplyError(sizeof(*aRandomize), cSurfaceBins)");
+            return Error_OutOfMemory;
+         }
+         aRandomize = static_cast<size_t*>(malloc(sizeof(*aRandomize) * cSurfaceBins));
+         if(nullptr == aRandomize) {
+            LOG_0(Trace_Warning, "WARNING Purify nullptr != aRandomize");
+            return Error_OutOfMemory;
+         }
+         static constexpr uint64_t seed = 9271049328402875910u;
+         rng.Initialize(seed);
       }
-      aRandomize = static_cast<size_t*>(malloc(sizeof(*aRandomize) * cSurfaceBins));
-      if(nullptr == aRandomize) {
-         LOG_0(Trace_Warning, "WARNING Purify nullptr != aRandomize");
-         return Error_OutOfMemory;
-      }
-      static constexpr uint64_t seed = 9271049328402875910u;
-      rng.Initialize(seed);
    }
 
    // NOTES about generating new infinities during purification:
