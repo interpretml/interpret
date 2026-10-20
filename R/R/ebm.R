@@ -112,7 +112,11 @@ ebm_classify <- function(
          rng
       )
       for(i_feature in 1:n_features) {
-         term_scores[[col_names[i_feature]]] <- result_list$model_update[[i_feature]]
+         if(1 == i_outer_bag) {
+            term_scores[[col_names[i_feature]]] <- result_list$model_update[[i_feature]]
+         } else {
+            term_scores[[col_names[i_feature]]] <- term_scores[[col_names[i_feature]]] + result_list$model_update[[i_feature]]
+         }
       }
    }
    for(col_name in col_names) {

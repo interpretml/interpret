@@ -15,6 +15,7 @@ def trial_filter(task):
         return ["rf", "svm"]
     return []
 
+
 def trial_runner(trial):
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.svm import LinearSVC
@@ -36,7 +37,10 @@ def trial_runner(trial):
         is_cat = meta["categorical_mask"]
         cat_cols = [idx for idx in range(X.shape[1]) if is_cat[idx]]
         num_cols = [idx for idx in range(X.shape[1]) if not is_cat[idx]]
-        cat_ohe_step = ("ohe", OneHotEncoder(sparse_output=True, handle_unknown="ignore"))
+        cat_ohe_step = (
+            "ohe",
+            OneHotEncoder(sparse_output=True, handle_unknown="ignore"),
+        )
         cat_pipe = Pipeline([cat_ohe_step])
         num_pipe = Pipeline([("identity", FunctionTransformer())])
         transformers = [("cat", cat_pipe, cat_cols), ("num", num_pipe, num_cols)]
@@ -87,6 +91,7 @@ This can also be run on Azure Container Instances where needed.
 ```python
 # Run experiment (but in ACI).
 from powerlift.executors import AzureContainerInstance
+
 store = Store(os.getenv("AZURE_DB_URL"))
 azure_tenant_id = os.getenv("AZURE_TENANT_ID")
 subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
@@ -101,7 +106,7 @@ executor = AzureContainerInstance(
     azure_client_id,
     azure_client_secret=azure_client_secret,
     resource_group=resource_group,
-    n_running_containers=5
+    n_running_containers=5,
 )
 benchmark = Benchmark(store, name="SVM vs RF")
 benchmark.run(trial_runner, trial_filter, timeout=10, executor=executor)

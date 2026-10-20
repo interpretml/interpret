@@ -89,7 +89,7 @@ template<typename TFloat> struct SurvivalCoxObjective : RegressionObjective {
       static_assert(!bValidation || !bHessian, "bHessian can only be true if bValidation is false");
       static_assert(bValidation || !bWeight, "bWeight can only be true if bValidation is true");
       static_assert(!bUseApprox, "Cox partial likelihood has no approximation");
-      static_assert(k_cItemsPerBitPackUndefined == cCompilerPack);
+      static_assert(k_cItemsPerBitPackUndefined == cCompilerPack, "Cox regression does not use bit packing");
 
       EBM_ASSERT(nullptr != pData);
       EBM_ASSERT(nullptr != pData->m_aUpdateTensorScores);
