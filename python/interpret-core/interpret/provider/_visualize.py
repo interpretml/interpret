@@ -80,6 +80,7 @@ class AutoVisualizeProvider(VisualizeProvider):
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         file_name = kwargs.pop("file_name", None)
+        plot_type = kwargs.pop("plot_type", "bar")
 
         # NOTE: Preserve didn't support returning everything. If key is -1 default to key is None.
         # This is for backward-compatibility. All of this will be deprecated shortly anyway.
@@ -87,7 +88,7 @@ class PreserveProvider(VisualizeProvider):
             key = None
 
         # Get visual object
-        visual = explanation.visualize(key=key)
+        visual = explanation.visualize(key=key, plot_type=plot_type)
 
         # Output to front-end/file
 
@@ -234,4 +235,5 @@ class InlineProvider(VisualizeProvider):
             default_key=key,
             detected_envs=self.detected_envs,
             js_url=self.js_url,
+            **kwargs,
         )

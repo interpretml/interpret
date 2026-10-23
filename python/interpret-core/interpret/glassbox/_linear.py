@@ -367,7 +367,7 @@ class LinearExplanation(FeatureValueExplanation):
 
     explanation_type = None
 
-    def visualize(self, key=None):
+    def visualize(self, key=None, title=None, plot_type="bar", **kwargs):
         """Provides interactive visualizations.
 
         Args:
@@ -428,7 +428,7 @@ class LinearExplanation(FeatureValueExplanation):
                 data_dict, title="Overall Importance:<br>Coefficients"
             )
 
-        return super().visualize(key)
+        return super().visualize(key, title=title, plot_type=plot_type, **kwargs)
 
 
 class LinearRegression(_SKRegressorMixin, BaseLinear):
