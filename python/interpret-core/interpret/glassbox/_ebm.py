@@ -332,11 +332,15 @@ class EBMExplanation(FeatureValueExplanation):
             orig_title = figure.layout.title.text if figure.layout.title else ""
             if plot_type == "waterfall":
                 figure.update_layout(
-                    title="Local Explanation (" + orig_title + ")" if orig_title else "Local Explanation",
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
                 )
             else:
                 figure.update_layout(
-                    title="Local Explanation (" + orig_title + ")" if orig_title else "Local Explanation",
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
                     xaxis_title="Contribution to Prediction",
                 )
             figure._interpret_help_text = (
