@@ -226,7 +226,13 @@ class EBMExplanation(FeatureValueExplanation):
 
     explanation_type = None
 
-    def visualize(self, key: int | None = None, title: str | None = None) -> Any:
+    def visualize(
+        self,
+        key: int | None = None,
+        title: str | None = None,
+        plot_type: str = "bar",
+        **kwargs: Any,
+    ) -> Any:
         """Provide interactive visualizations.
 
         Args:
@@ -320,11 +326,23 @@ class EBMExplanation(FeatureValueExplanation):
 
         # Local explanation graph
         if self.explanation_type == "local":
-            figure = super().visualize(key)
-            figure.update_layout(
-                title="Local Explanation (" + figure.layout.title.text + ")",
-                xaxis_title="Contribution to Prediction",
-            )
+            figure = super().visualize(key, title=title, plot_type=plot_type, **kwargs)
+            if figure is None:
+                return None
+            orig_title = figure.layout.title.text if figure.layout.title else ""
+            if plot_type == "waterfall":
+                figure.update_layout(
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
+                )
+            else:
+                figure.update_layout(
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
+                    xaxis_title="Contribution to Prediction",
+                )
             figure._interpret_help_text = (
                 "A local explanation shows the breakdown of how much "
                 "each term contributed to the prediction for a single sample. The intercept "
