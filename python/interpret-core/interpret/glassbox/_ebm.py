@@ -227,65 +227,65 @@ def _normalize_smoothing_rounds(
 ) -> int | npt.NDArray[np.int64]:
     """Normalize a smoothing_rounds parameter.
 
-    Returns an ``int`` when the caller passed a scalar (or ``None``, which
-    is treated as zero); returns a 1-D int64 ``ndarray`` when the caller
-    passed a sequence. Keeping these distinct lets call sites enforce that
-    a sequence's length match the term count (a length-1 sequence is NOT
-    silently broadcast). Raises ``ValueError`` on negatives, non-integers,
-    or wrong dimensionality.
+    Returns an ``int`` for a scalar (``None`` is treated as zero) and a 1-D
+    int64 ``ndarray`` for any 1-D array-like. Keeping these distinct lets call
+    sites require that a sequence's length match the term count (a length-1
+    sequence is not broadcast). Raises ``ValueError`` on negatives, values
+    beyond the int64 range, non-integers, or wrong dimensionality.
     """
     if value is None:
         return 0
 
-    if isinstance(value, (int, np.integer)) and not isinstance(value, bool):
-        scalar = int(value)
-        if scalar < 0:
-            msg = f"{name} cannot be negative"
-            _log.error(msg)
-            raise ValueError(msg)
-        return scalar
+    arr = np.asarray(value)
+    # check for whole numbers in the input's own dtype; converting to a Python
+    # float first could round away a fractional part (e.g. for longdouble)
+    is_integral = np.issubdtype(arr.dtype, np.integer)
+    if np.issubdtype(arr.dtype, np.floating):
+        # inf and nan give a nan remainder, so they fail; silence the warning
+        with np.errstate(invalid="ignore"):
+            is_integral = bool(np.all(np.mod(arr, 1) == 0))
 
-    if isinstance(value, float):
-        if not value.is_integer():
+    if arr.ndim == 0:
+        if not is_integral:
             msg = f"{name} must be an integer or a sequence of integers"
             _log.error(msg)
             raise ValueError(msg)
-        scalar = int(value)
+        scalar = int(arr)
         if scalar < 0:
             msg = f"{name} cannot be negative"
             _log.error(msg)
             raise ValueError(msg)
+        if scalar > np.iinfo(np.int64).max:
+            msg = f"{name} cannot exceed {np.iinfo(np.int64).max}"
+            _log.error(msg)
+            raise ValueError(msg)
         return scalar
 
-    if isinstance(value, (list, tuple, np.ndarray)):
-        arr = np.asarray(value)
-        if arr.ndim != 1:
-            msg = f"{name} must be 1-dimensional when passed as a sequence"
-            _log.error(msg)
-            raise ValueError(msg)
-        if arr.size == 0:
-            msg = f"{name} cannot be an empty sequence"
-            _log.error(msg)
-            raise ValueError(msg)
-        if np.issubdtype(arr.dtype, np.floating):
-            if not np.all(np.equal(np.mod(arr, 1), 0)):
-                msg = f"{name} entries must all be integers"
-                _log.error(msg)
-                raise ValueError(msg)
-        elif not np.issubdtype(arr.dtype, np.integer):
-            msg = f"{name} entries must all be integers"
-            _log.error(msg)
-            raise ValueError(msg)
-        arr = arr.astype(np.int64, copy=False)
-        if np.any(arr < 0):
-            msg = f"{name} entries cannot be negative"
-            _log.error(msg)
-            raise ValueError(msg)
-        return arr
-
-    msg = f"{name} must be an integer or a sequence of integers"
-    _log.error(msg)
-    raise ValueError(msg)
+    if arr.ndim != 1:
+        msg = f"{name} must be 1-dimensional when passed as a sequence"
+        _log.error(msg)
+        raise ValueError(msg)
+    if arr.size == 0:
+        msg = f"{name} cannot be an empty sequence"
+        _log.error(msg)
+        raise ValueError(msg)
+    if not is_integral:
+        msg = f"{name} entries must all be integers"
+        _log.error(msg)
+        raise ValueError(msg)
+    if np.any(arr < 0):
+        msg = f"{name} entries cannot be negative"
+        _log.error(msg)
+        raise ValueError(msg)
+    # compare as exact Python ints: NumPy can round when a comparison mixes
+    # integer and floating-point types, and tolist() leaves longdouble values
+    # as NumPy scalars
+    values = [int(v) for v in arr.tolist()]
+    if max(values) > np.iinfo(np.int64).max:
+        msg = f"{name} entries cannot exceed {np.iinfo(np.int64).max}"
+        _log.error(msg)
+        raise ValueError(msg)
+    return np.array(values, dtype=np.int64)
 
 
 class EBMExplanation(FeatureValueExplanation):
@@ -1058,7 +1058,6 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
             inner_bags = 0
             greedy_ratio = 0.0
             cyclic_progress = 1.0
-            # DP-EBM forces no smoothing; ignore any list the user supplied.
             smoothing_rounds_arr = 0
             interaction_smoothing_rounds_arr = 0
             early_stopping_rounds = 0
@@ -1090,8 +1089,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
             # smoothing_rounds_arr / interaction_smoothing_rounds_arr were
-            # already parsed and validated above. They are length-1 (scalar
-            # input) or length-N sequences here.
+            # validated above: an int for scalar input, or a 1-D array.
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
             examine_callback, boost_callback, interaction_callback = (
@@ -1138,6 +1136,30 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                 )
         else:
             smoothing_rounds_main = smoothing_rounds_arr
+
+        # Check a sequence interaction_smoothing_rounds now so that a bad value
+        # fails before any boosting. It must line up with an explicit
+        # interactions list; FAST-selected pairs have no user-defined order.
+        if isinstance(interaction_smoothing_rounds_arr, np.ndarray):
+            interactions = clean_interactions(interactions, n_features_in)  # type: ignore[assignment]
+            if isinstance(interactions, int):
+                if interactions != 0:
+                    msg = (
+                        "interaction_smoothing_rounds can only be a "
+                        "sequence when interactions is an explicit list "
+                        "of feature combinations"
+                    )
+                    _log.error(msg)
+                    raise ValueError(msg)
+            elif interaction_smoothing_rounds_arr.size != len(interactions):
+                msg = (
+                    "interaction_smoothing_rounds list length "
+                    f"({interaction_smoothing_rounds_arr.size}) must "
+                    "equal the number of interactions "
+                    f"({len(interactions)})"
+                )
+                _log.error(msg)
+                raise ValueError(msg)
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -1536,41 +1558,17 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                     if stop_flag is not None and stop_flag[0]:
                         break
 
-                    # Build per-interaction-term smoothing parameter, mirroring
-                    # what we did for the mains boost call. A scalar is passed
-                    # through (broadcast inside boost); a sequence must match
-                    # the number of explicit user interactions.
+                    # A scalar is broadcast inside boost(). A sequence was checked
+                    # against the explicit interactions list before boosting, so
+                    # gather the entries of the pairs that survived dedup/exclude.
                     interaction_smoothing_main: int | npt.NDArray[np.int64]
                     if isinstance(interaction_smoothing_rounds_arr, np.ndarray):
-                        if boost_groups_user_idx is None:
-                            msg = (
-                                "interaction_smoothing_rounds can only be a "
-                                "sequence when interactions is an explicit list "
-                                "of feature combinations"
-                            )
-                            _log.error(msg)
-                            raise ValueError(msg)
-                        if interaction_smoothing_rounds_arr.size != len(
-                            self.interactions
-                        ):
-                            msg = (
-                                "interaction_smoothing_rounds list length "
-                                f"({interaction_smoothing_rounds_arr.size}) must "
-                                "equal the number of interactions "
-                                f"({len(self.interactions)})"
-                            )
-                            _log.error(msg)
-                            raise ValueError(msg)
-                        if len(boost_groups) == 0:
-                            interaction_smoothing_main = 0
-                        else:
-                            interaction_smoothing_main = np.array(
-                                [
-                                    interaction_smoothing_rounds_arr[i]
-                                    for i in boost_groups_user_idx
-                                ],
-                                dtype=np.int64,
-                            )
+                        assert boost_groups_user_idx is not None
+                        interaction_smoothing_main = (
+                            interaction_smoothing_rounds_arr[boost_groups_user_idx]
+                            if len(boost_groups_user_idx) != 0
+                            else 0
+                        )
                     else:
                         interaction_smoothing_main = interaction_smoothing_rounds_arr
 
@@ -3598,15 +3596,14 @@ class EBMModel(BaseEBM):
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int or sequence of int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-        Pass a sequence of length ``n_features_in_`` to set the number of smoothing rounds per
-        feature; the smoothing phase as a whole runs until every feature has exhausted its budget,
-        and features that have already hit zero receive normal gain-based updates during the
-        remaining smoothing iterations.
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
     interaction_smoothing_rounds : int or sequence of int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
         Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
-        is an explicit list of feature combinations, and the sequence length must match
-        ``len(interactions)``.
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -3865,15 +3862,14 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int or sequence of int, default=75
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-        Pass a sequence of length ``n_features_in_`` to set the number of smoothing rounds per
-        feature; the smoothing phase as a whole runs until every feature has exhausted its budget,
-        and features that have already hit zero receive normal gain-based updates during the
-        remaining smoothing iterations.
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
     interaction_smoothing_rounds : int or sequence of int, default=75
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
         Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
-        is an explicit list of feature combinations, and the sequence length must match
-        ``len(interactions)``.
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -4193,14 +4189,14 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         to a value less than 1.0 can be useful for preventing overfitting.
     smoothing_rounds : int or sequence of int, default=500
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-        A sequence (one entry per feature) is accepted for API consistency with the non-private classes,
-        but differentially private EBMs force the smoothing schedule internally and the value is ignored
-        at fit time.
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
     interaction_smoothing_rounds : int or sequence of int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
-        A sequence (one entry per interaction) is accepted for API consistency with the non-private classes,
-        but differentially private EBMs force the smoothing schedule internally and the value is ignored
-        at fit time.
+        Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
