@@ -77,6 +77,7 @@ def test_gen_pdp_enough_rows_still_caps_at_num_ice_samples():
 
     assert pdp["background_scores"].shape[0] == 10
 
+
 def test_partial_dependence_with_string_categories():
     rng = np.random.default_rng(0)
     n = 200
