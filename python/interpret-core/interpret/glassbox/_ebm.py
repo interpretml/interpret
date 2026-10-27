@@ -230,8 +230,8 @@ def _normalize_smoothing_rounds(
     Returns an ``int`` for a scalar (``None`` is treated as zero) and a 1-D
     int64 ``ndarray`` for any 1-D array-like. Keeping these distinct lets call
     sites require that a sequence's length match the term count (a length-1
-    sequence is not broadcast). Raises ``ValueError`` on negatives,
-    non-integers, or wrong dimensionality.
+    sequence is not broadcast). Raises ``ValueError`` on negatives, values
+    beyond the int64 range, non-integers, or wrong dimensionality.
     """
     if value is None:
         return 0
@@ -249,6 +249,10 @@ def _normalize_smoothing_rounds(
         scalar = int(arr)
         if scalar < 0:
             msg = f"{name} cannot be negative"
+            _log.error(msg)
+            raise ValueError(msg)
+        if scalar > np.iinfo(np.int64).max:
+            msg = f"{name} cannot exceed {np.iinfo(np.int64).max}"
             _log.error(msg)
             raise ValueError(msg)
         return scalar
@@ -269,7 +273,14 @@ def _normalize_smoothing_rounds(
         msg = f"{name} entries cannot be negative"
         _log.error(msg)
         raise ValueError(msg)
-    return arr.astype(np.int64)
+    # compare as Python numbers; NumPy can round when a comparison mixes
+    # int64, uint64, and float
+    values = arr.tolist()
+    if max(values) > np.iinfo(np.int64).max:
+        msg = f"{name} entries cannot exceed {np.iinfo(np.int64).max}"
+        _log.error(msg)
+        raise ValueError(msg)
+    return np.array(values, dtype=np.int64)
 
 
 class EBMExplanation(FeatureValueExplanation):

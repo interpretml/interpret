@@ -619,3 +619,33 @@ def test_to_json_with_array_smoothing_rounds():
     params = json.loads(buf.getvalue())["ebm"]["implementation_params"]
     assert params["smoothing_rounds"] == [5, 6, 7]
     assert params["interaction_smoothing_rounds"] == [4]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        2**63,
+        1e19,
+        [2**63, 0, 0],
+        np.array([2**63, 0, 0], dtype=np.uint64),
+        [1e19, 0, 0],
+    ],
+)
+def test_smoothing_rounds_above_int64_raises(value):
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(smoothing_rounds=value, n_jobs=1)
+    with pytest.raises(ValueError, match="cannot exceed"):
+        ebm.fit(X, y)
+
+
+@pytest.mark.parametrize("value", [2**63 - 1, [2**63 - 1, 0, 0]])
+def test_smoothing_rounds_int64_max_accepted(value):
+    X, y = _small_dataset()
+    ExplainableBoostingRegressor(
+        interactions=0,
+        outer_bags=1,
+        max_rounds=10,
+        smoothing_rounds=value,
+        random_state=42,
+        n_jobs=1,
+    ).fit(X, y)
