@@ -412,7 +412,7 @@ def test_done_smoothing_term_skipped_during_remaining_smoothing():
         outer_bags=1,
         max_rounds=20,  # comfortably > the largest smoothing budget
         smoothing_rounds=smoothing_budget,
-        callbacks=recorder,
+        callbacks={"boost": recorder},
         random_state=42,
         n_jobs=1,
     )
