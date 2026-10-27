@@ -1,16 +1,22 @@
 # Copyright (c) 2023 The InterpretML Contributors
 # Distributed under the MIT software license
 
-"""Regression tests for issue #635: callback API uses keyword-only args."""
+"""Tests for explicit callback registration and keyword-based invocation."""
+
+from functools import partial, update_wrapper
+from types import MappingProxyType
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
 
 from interpret.glassbox import (
     CallbackAction,
+    EBMModel,
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
 )
+from interpret.glassbox._ebm import _normalize_callbacks
 from interpret.utils import make_synthetic
 
 
@@ -97,7 +103,7 @@ def test_callback_no_repeated_steps_classifier():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -129,7 +135,7 @@ def test_callback_no_repeated_steps_regressor():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -161,7 +167,7 @@ def test_callback_receives_term_index():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -188,7 +194,7 @@ def test_callback_early_termination():
         outer_bags=1,
         max_rounds=5000,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -216,7 +222,7 @@ def test_callback_receives_valid_metrics():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -227,11 +233,7 @@ def test_callback_receives_valid_metrics():
 
 
 def test_callback_keyword_only_signature():
-    """Verify the callback is invoked with keyword-only arguments.
-
-    This test ensures that the callback cannot be invoked with positional
-    arguments, which is the core API change in this PR.
-    """
+    """Verify callbacks are invoked with keywords rather than positional arguments."""
 
     class KeywordOnlyCallback:
         def __init__(self):
@@ -258,15 +260,15 @@ def test_callback_keyword_only_signature():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
     assert cb.called, "Keyword-only callback should have been invoked"
 
 
-@pytest.mark.parametrize("callback", [None, tuple()])
-def test_fit_without_callback_still_trains(callback):
+@pytest.mark.parametrize("callbacks", [None, {}])
+def test_fit_without_callback_still_trains(callbacks):
     """Verify the no-callback training path still works."""
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=200
@@ -278,7 +280,7 @@ def test_fit_without_callback_still_trains(callback):
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=callback,
+        callbacks=callbacks,
     )
     ebm.fit(X, y)
 
@@ -300,7 +302,7 @@ def test_exam_callback_receives_valid_gains():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"examine": cb},
     )
     ebm.fit(X, y)
 
@@ -313,8 +315,8 @@ def test_exam_callback_receives_valid_gains():
         assert np.isfinite(gain), f"Gain at step {i} is not finite: {gain}"
 
 
-def test_callback_tuple_support_calls_both_callbacks():
-    """Verify tuple callbacks dispatch both progress and examination hooks."""
+def test_callback_mapping_calls_both_callbacks():
+    """Verify mapping keys select both boost and examination hooks."""
     progress_cb = RecordingCallback()
     exam_cb = ExamRecordingCallback()
 
@@ -328,7 +330,7 @@ def test_callback_tuple_support_calls_both_callbacks():
         outer_bags=1,
         max_rounds=50,
         n_jobs=1,
-        callbacks=(exam_cb, progress_cb),
+        callbacks={"examine": exam_cb, "boost": progress_cb},
     )
     ebm.fit(X, y)
 
@@ -350,7 +352,7 @@ def test_exam_callback_early_termination():
         outer_bags=1,
         max_rounds=5000,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"examine": cb},
     )
     ebm.fit(X, y)
 
@@ -363,41 +365,55 @@ def test_exam_callback_early_termination():
     assert len(predictions) == len(y)
 
 
+@pytest.mark.parametrize("mapping_type", [dict, MappingProxyType])
+def test_callback_mapping_preserves_callables(mapping_type):
+    exam_cb = ExamRecordingCallback()
+    boost_cb = RecordingCallback()
+    interaction_cb = InteractionRecordingCallback()
+    callbacks = mapping_type(
+        {"interaction": interaction_cb, "boost": boost_cb, "examine": exam_cb}
+    )
+
+    assert _normalize_callbacks(callbacks) == (exam_cb, boost_cb, interaction_cb)
+    assert dict(callbacks) == {
+        "interaction": interaction_cb,
+        "boost": boost_cb,
+        "examine": exam_cb,
+    }
+
+
 @pytest.mark.parametrize(
-    "callbacks, message",
+    "callbacks",
     [
-        ((RecordingCallback(), RecordingCallback()), "more than one boost callback"),
-        (
-            (ExamRecordingCallback(), ExamRecordingCallback()),
-            "more than one examine callback",
-        ),
-        (
-            (InteractionRecordingCallback(), InteractionRecordingCallback()),
-            "more than one interaction callback",
-        ),
+        RecordingCallback(),
+        [RecordingCallback()],
+        (RecordingCallback(),),
+        [],
+        (),
+        1,
+        "boost",
     ],
 )
-def test_callback_tuple_validation_errors(callbacks, message):
-    """Verify tuple callback validation errors are raised clearly."""
-    X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
-    )
-
-    ebm = ExplainableBoostingClassifier(
-        names,
-        types,
-        outer_bags=1,
-        max_rounds=10,
-        n_jobs=1,
-        callbacks=callbacks,
-    )
-
-    with pytest.raises(ValueError, match=message):
-        ebm.fit(X, y)
+def test_callbacks_must_be_a_mapping(callbacks):
+    with pytest.raises(ValueError, match="callbacks must be a mapping"):
+        _normalize_callbacks(callbacks)
 
 
-def test_callback_signature_requires_metric_or_gain():
-    """Verify callbacks are classified by metric/gain keyword names."""
+@pytest.mark.parametrize("name", ["progress", "Boost", "", 1])
+def test_callback_names_are_validated(name):
+    with pytest.raises(ValueError, match="Unknown callback name"):
+        _normalize_callbacks({name: RecordingCallback()})
+
+
+@pytest.mark.parametrize("name", ["examine", "boost", "interaction"])
+@pytest.mark.parametrize("callback", [None, 1, [RecordingCallback()]])
+def test_callback_values_must_be_callable(name, callback):
+    with pytest.raises(ValueError, match="must be callable"):
+        _normalize_callbacks({name: callback})
+
+
+def test_callback_missing_keyword_argument_raises_typeerror():
+    """Callback signatures must still accept the supplied keyword arguments."""
 
     class InvalidCallback:
         def __call__(self, *, bag, stage, step, term):
@@ -413,69 +429,52 @@ def test_callback_signature_requires_metric_or_gain():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=InvalidCallback(),
+        callbacks={"boost": InvalidCallback()},
     )
 
-    with pytest.raises(ValueError, match="does not match any known"):
+    with pytest.raises(TypeError, match="unexpected keyword argument 'metric'"):
         ebm.fit(X, y)
 
 
-def test_callback_must_be_callable():
-    """Verify non-callable callback values are rejected."""
-    X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
-    )
-
-    ebm = ExplainableBoostingClassifier(
-        names,
-        types,
-        outer_bags=1,
-        max_rounds=10,
-        n_jobs=1,
-        callbacks=1,
-    )
-
-    with pytest.raises((TypeError, ValueError)):
-        ebm.fit(X, y)
-
-
-def test_callback_allows_trailing_kwargs_progress():
-    """A progress callback with trailing ``**kwargs`` is accepted.
-
-    This lets users opt in to forward-compatible signatures: the library
-    can add new canonical kwargs in the future without breaking callbacks
-    that capture them via ``**kwargs``.
-    """
+@pytest.mark.parametrize(
+    ("model_type", "classes", "objective"),
+    [
+        (EBMModel, None, "rmse"),
+        (ExplainableBoostingClassifier, 2, "log_loss"),
+        (ExplainableBoostingRegressor, None, "rmse"),
+    ],
+)
+def test_callback_allows_selected_kwargs_boost(model_type, classes, objective):
+    """A callback can declare only the arguments it needs and capture the rest."""
     invocations = []
 
-    def cb(*, bag, stage, step, term, metric, **kwargs):
+    def cb(*, metric, **_kwargs):
         invocations.append(metric)
-        return None
 
     X, y, names, types = make_synthetic(
-        seed=42, classes=2, output_type="float", n_samples=100
+        seed=42, classes=classes, output_type="float", n_samples=100
     )
 
-    ebm = ExplainableBoostingClassifier(
+    ebm = model_type(
         names,
         types,
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
+        objective=objective,
     )
     ebm.fit(X, y)
 
     assert len(invocations) > 0
 
 
-def test_callback_allows_trailing_kwargs_exam():
-    """An exam callback with trailing ``**kwargs`` is accepted."""
+def test_callback_allows_selected_kwargs_exam():
+    """An examine callback can capture unused keyword arguments."""
     invocations = []
 
-    def cb(*, bag, stage, step, term, gain, **kwargs):
+    def cb(*, gain, **_kwargs):
         invocations.append(gain)
-        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -487,20 +486,21 @@ def test_callback_allows_trailing_kwargs_exam():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"examine": cb},
     )
     ebm.fit(X, y)
 
     assert len(invocations) > 0
 
 
-def test_callback_allows_defaulted_extra_parameters():
-    """Extra parameters are accepted as long as they have default values."""
+def test_callback_registration_ignores_other_event_parameter_names():
+    """Parameters from other events do not affect explicit event selection."""
     invocations = []
 
-    def cb(*, bag, stage, step, term, metric, foo=None, bar=42):
+    def cb(*, metric, gain=None, strength=None, **_kwargs):
+        assert gain is None
+        assert strength is None
         invocations.append(metric)
-        return None
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -512,7 +512,7 @@ def test_callback_allows_defaulted_extra_parameters():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -537,22 +537,27 @@ def test_callback_allows_defaulted_extras_and_trailing_kwargs():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"examine": cb},
     )
     ebm.fit(X, y)
 
     assert len(invocations) > 0
 
 
-def test_callback_bare_kwargs_shortcut_rejected():
-    """A bare ``**kwargs`` callback (no canonical params) is rejected.
-
-    The canonical parameters must be declared by name so the user has an
-    explicit, stable contract for what the callback receives.
-    """
+@pytest.mark.parametrize(
+    ("name", "expected_keywords"),
+    [
+        ("examine", {"bag", "stage", "step", "term", "gain"}),
+        ("boost", {"bag", "stage", "step", "term", "metric"}),
+        ("interaction", {"bag", "term", "strength"}),
+    ],
+)
+def test_callback_accepts_bare_kwargs(name, expected_keywords):
+    """The mapping key alone selects the event and its keyword arguments."""
+    invocations = []
 
     def cb(**kwargs):
-        return None
+        invocations.append(kwargs)
 
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
@@ -564,15 +569,16 @@ def test_callback_bare_kwargs_shortcut_rejected():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={name: cb},
     )
+    ebm.fit(X, y)
 
-    with pytest.raises(ValueError, match="does not match any known"):
-        ebm.fit(X, y)
+    assert invocations
+    assert all(set(kwargs) == expected_keywords for kwargs in invocations)
 
 
-def test_callback_extra_param_without_default_rejected():
-    """Extra parameters without defaults remain rejected."""
+def test_callback_missing_extra_argument_raises_typeerror():
+    """Unbound required arguments fail when the callback is invoked."""
 
     def cb(*, bag, stage, step, term, metric, extra):
         return None
@@ -587,24 +593,22 @@ def test_callback_extra_param_without_default_rejected():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
 
-    with pytest.raises(ValueError, match="without a default value"):
+    with pytest.raises(TypeError, match="required keyword-only argument: 'extra'"):
         ebm.fit(X, y)
 
 
-def test_callback_signature_must_be_inspectable():
-    """Verify callbacks with uninspectable signatures are rejected."""
+def test_callback_signature_is_not_inspected():
+    """Callbacks do not need to expose an inspectable signature."""
 
-    class UninspectableCallback:
+    class UninspectableCallback(RecordingCallback):
         @property
         def __signature__(self):
-            raise TypeError("uninspectable")
+            pytest.fail("Callback signatures must not be inspected.")
 
-        def __call__(self, *, bag, stage, step, term, metric):
-            return None
-
+    cb = UninspectableCallback()
     X, y, names, types = make_synthetic(
         seed=42, classes=2, output_type="float", n_samples=100
     )
@@ -615,11 +619,108 @@ def test_callback_signature_must_be_inspectable():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=UninspectableCallback(),
+        callbacks={"boost": cb},
     )
+    ebm.fit(X, y)
 
-    with pytest.raises(ValueError, match="inspectable signature"):
-        ebm.fit(X, y)
+    assert cb.records
+
+
+@pytest.mark.parametrize("preserve_metadata", [False, True])
+def test_callback_partial_binds_state(preserve_metadata):
+    invocations = []
+
+    def record(records, *, metric, **_kwargs):
+        records.append(metric)
+
+    cb = partial(record, invocations)
+    if preserve_metadata:
+        update_wrapper(cb, record)
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks={"boost": cb},
+    )
+    ebm.fit(X, y)
+
+    assert invocations
+
+
+def test_callback_accepts_forwarding_wrapper():
+    invocations = []
+
+    def record(*, metric, **_kwargs):
+        invocations.append(metric)
+
+    def cb(*args, **kwargs):
+        return record(*args, **kwargs)
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks={"boost": cb},
+    )
+    ebm.fit(X, y)
+
+    assert invocations
+
+
+@pytest.mark.parametrize("use_mock", [False, True])
+def test_callback_accepts_builtin_and_mock(use_mock):
+    last_event = {}
+    cb = Mock(wraps=last_event.update) if use_mock else last_event.update
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks={"boost": cb},
+    )
+    ebm.fit(X, y)
+
+    assert set(last_event) == {"bag", "stage", "step", "term", "metric"}
+
+
+def test_callback_can_handle_multiple_events():
+    invocations = []
+
+    def cb(**kwargs):
+        invocations.append(kwargs)
+
+    X, y, names, types = make_synthetic(
+        seed=42, classes=2, output_type="float", n_samples=100
+    )
+    ebm = ExplainableBoostingClassifier(
+        names,
+        types,
+        outer_bags=1,
+        max_rounds=10,
+        n_jobs=1,
+        callbacks={"examine": cb, "boost": cb, "interaction": cb},
+    )
+    ebm.fit(X, y)
+
+    assert any("gain" in kwargs for kwargs in invocations)
+    assert any("metric" in kwargs for kwargs in invocations)
+    assert any("strength" in kwargs for kwargs in invocations)
 
 
 # ---------------------------------------------------------------------------
@@ -661,7 +762,7 @@ def test_callback_stop_current_only_ends_current_step():
         outer_bags=2,
         max_rounds=50,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -702,7 +803,7 @@ def test_callback_string_return_values_accepted():
         outer_bags=1,
         max_rounds=5000,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
     ebm.fit(X, y)
 
@@ -725,7 +826,7 @@ def test_callback_invalid_return_value_raises_typeerror():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
 
     with pytest.raises(TypeError, match="callback returned"):
@@ -748,7 +849,7 @@ def test_callback_invalid_string_return_value_raises_typeerror():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"boost": cb},
     )
 
     with pytest.raises(TypeError, match="'halt'"):
@@ -774,7 +875,7 @@ def test_interaction_callback_receives_valid_strengths():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"interaction": cb},
     )
     ebm.fit(X, y)
 
@@ -804,7 +905,11 @@ def test_interaction_callback_can_combine_with_others():
         outer_bags=1,
         max_rounds=10,
         n_jobs=1,
-        callbacks=(boost_cb, exam_cb, interaction_cb),
+        callbacks={
+            "boost": boost_cb,
+            "examine": exam_cb,
+            "interaction": interaction_cb,
+        },
     )
     ebm.fit(X, y)
 
@@ -843,7 +948,7 @@ def test_interaction_callback_stop_current_only_ends_current_bag():
         outer_bags=2,
         max_rounds=10,
         n_jobs=1,
-        callbacks=cb,
+        callbacks={"interaction": cb},
     )
     ebm.fit(X, y)
 
@@ -891,7 +996,7 @@ def test_interaction_callback_stop_all_skips_interaction_boosting():
         outer_bags=2,
         max_rounds=10,
         n_jobs=1,
-        callbacks=(interaction_cb, boost_cb),
+        callbacks={"interaction": interaction_cb, "boost": boost_cb},
     )
     ebm.fit(X, y)
 
