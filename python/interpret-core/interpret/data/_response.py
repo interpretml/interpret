@@ -463,6 +463,11 @@ class ClassHistogramExplanation(BaseExplanation):
         if key is None:
             y = data_dict["y"]
             values, counts = np.unique(y, return_counts=True)
+            # Stringify integers after sorting to preserve exact labels in JavaScript.
+            values = [
+                str(value) if isinstance(value, (int, np.integer)) else value
+                for value in values
+            ]
             traces = [go.Bar(x=[values[i]], y=[counts[i]]) for i in range(len(values))]
             layout = go.Layout(
                 title="Response Distribution",

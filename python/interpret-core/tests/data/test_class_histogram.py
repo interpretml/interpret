@@ -1,6 +1,8 @@
 # Copyright (c) 2026 The InterpretML Contributors
 # Distributed under the MIT software license
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -50,6 +52,46 @@ def test_class_histogram_keeps_class_counts(labels):
     assert len(feature.data) == 2
     assert [trace.name for trace in feature.data] == sorted({str(y) for y in labels})
     assert all(sum(trace.y) == 2 for trace in feature.data)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        pytest.param([2**53 + 1, 2**53, 2**53 + 1], id="signed-positive"),
+        pytest.param([-(2**53), -(2**53 + 1), -(2**53)], id="signed-negative"),
+        pytest.param([2**63 - 1, 2**63 - 2, 2**63 - 1], id="signed-maximum"),
+        pytest.param([10, 2, 10], id="numeric-order"),
+    ],
+)
+@pytest.mark.parametrize(
+    "container",
+    [np.array, list, pd.Series, lambda y: np.array(y, dtype=object)],
+)
+def test_overall_integer_labels_serialize_as_exact_strings(labels, container):
+    X = np.array([["a"], ["b"], ["a"]])
+    exp = ClassHistogram(feature_types=["nominal"]).explain_data(X, container(labels))
+    classes = sorted(set(labels))
+    counts = [labels.count(value) for value in classes]
+
+    fig = exp.visualize()
+    serialized = json.loads(fig.to_json())
+    assert serialized["layout"]["xaxis"]["type"] == "category"
+    assert [trace["x"][0] for trace in serialized["data"]] == [
+        str(value) for value in classes
+    ]
+    assert [trace["y"][0] for trace in serialized["data"]] == counts
+    assert exp.data()["y"].tolist() == labels
+    assert exp.data(0)["y"].tolist() == labels
+
+
+@pytest.mark.parametrize("labels", [["01", "1", "01"], ["1", "1.0", "1"]])
+def test_overall_string_labels_serialize_unchanged(labels):
+    X = np.array([["a"], ["b"], ["a"]])
+    exp = ClassHistogram(feature_types=["nominal"]).explain_data(X, labels)
+    serialized = json.loads(exp.visualize().to_json())
+    assert [trace["x"][0] for trace in serialized["data"]] == sorted(set(labels))
+    assert [trace["y"][0] for trace in serialized["data"]] == [2, 1]
+    assert exp.data()["y"].tolist() == labels
 
 
 @pytest.mark.parametrize(
@@ -125,6 +167,10 @@ def test_unsigned_class_counts_and_feature_labels(labels, container):
         assert [int(v) for v in exp.data(key)["y"]] == labels
     assert [int(t.x[0]) for t in exp.visualize().data] == sorted(set(labels))
     assert [int(t.y[0]) for t in exp.visualize().data] == [3, 2]
+    serialized = json.loads(exp.visualize().to_json())
+    assert [trace["x"][0] for trace in serialized["data"]] == [
+        str(value) for value in sorted(set(labels))
+    ]
     for key in (0, 1):
         fig = exp.visualize(key)
         assert [float(t.name) for t in fig.data] == [
@@ -159,6 +205,9 @@ def test_numeric_float_feature_semantics(labels, classes, counts, container):
         assert [sum(t.y) for t in fig.data] == counts
         if key is None:
             assert [t.x[0] for t in fig.data] == classes
+            serialized = json.loads(fig.to_json())
+            assert [trace["x"][0] for trace in serialized["data"]] == classes
+            assert all(isinstance(trace["x"][0], float) for trace in serialized["data"])
         else:
             assert [t.name for t in fig.data] == [str(v) for v in classes]
         assert isinstance(fig.to_json(), str)
