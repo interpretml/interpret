@@ -500,10 +500,6 @@ ErrorEbm BoosterCore::Create(void* const rng,
                EBM_ASSERT(1 <= cFeatures); // since our iFeature is valid and index 0 would mean cFeatures == 1
                EBM_ASSERT(nullptr != pBoosterCore->m_aFeatures);
 
-               // Clang does not seems to understand that iFeature is bound to the legal
-               // range of m_aFeatures through the check "cFeatures <= iFeature" above
-               StopClangAnalysis();
-
                const FeatureBoosting* const pInputFeature = &pBoosterCore->m_aFeatures[iFeature];
                pTermFeature->m_pFeature = pInputFeature;
                pTermFeature->m_cStride = cTensorBins;

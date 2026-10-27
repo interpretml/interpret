@@ -6,9 +6,72 @@ import pytest
 import warnings
 from aplr import APLRClassifier as APLRClassifierNative
 from aplr import APLRRegressor as APLRRegressorNative
+from interpret.core._sklearn import (
+    _SKBaseEstimator,
+    _SKClassifierMixin,
+    _SKRegressorMixin,
+)
+from interpret.core.base import GlobalExplainer, LocalExplainer
 from interpret.glassbox import APLRClassifier, APLRRegressor
+from sklearn.base import clone, is_classifier, is_regressor
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.utils import estimator_checks
+
+
+@pytest.mark.parametrize(
+    ("estimator_type", "native_type", "mixin", "check_type"),
+    [
+        (APLRRegressor, APLRRegressorNative, _SKRegressorMixin, is_regressor),
+        (APLRClassifier, APLRClassifierNative, _SKClassifierMixin, is_classifier),
+    ],
+)
+def test_sklearn_inheritance(estimator_type, native_type, mixin, check_type):
+    mro = estimator_type.__mro__
+    assert mro.index(native_type) < mro.index(mixin)
+    assert mro.index(mixin) < mro.index(LocalExplainer)
+    assert mro.index(LocalExplainer) < mro.index(GlobalExplainer)
+    assert mro.index(GlobalExplainer) < mro.index(_SKBaseEstimator)
+    estimator = estimator_type(m=20, cv_folds=2)
+    assert isinstance(estimator, native_type)
+    assert check_type(estimator)
+    tags = estimator.__sklearn_tags__()
+    assert tags.non_deterministic
+    assert tags.target_tags.required
+    assert clone(estimator).get_params() == estimator.get_params()
+    assert estimator.set_params(m=30) is estimator
+    assert estimator.m == 30
+
+
+@pytest.mark.parametrize(
+    ("estimator_class", "native_class", "estimator_type"),
+    [
+        (APLRRegressor, APLRRegressorNative, "regressor"),
+        (APLRClassifier, APLRClassifierNative, "classifier"),
+    ],
+)
+@pytest.mark.parametrize("native_returns_none", [False, True])
+def test_native_sklearn_tags(
+    monkeypatch, estimator_class, native_class, estimator_type, native_returns_none
+):
+    estimator = estimator_class(m=20, cv_folds=2)
+    native_tags = estimator.__sklearn_tags__()
+    native_tags.input_tags.allow_nan = True
+    native_tags.non_deterministic = False
+    native_tags.target_tags.required = False
+    monkeypatch.setattr(
+        native_class,
+        "__sklearn_tags__",
+        lambda _: None if native_returns_none else native_tags,
+        raising=False,
+    )
+
+    tags = estimator.__sklearn_tags__()
+    assert tags.estimator_type == estimator_type
+    assert tags.non_deterministic
+    assert tags.target_tags.required
+    if not native_returns_none:
+        assert tags is native_tags
+        assert tags.input_tags.allow_nan
 
 
 def test_regression():

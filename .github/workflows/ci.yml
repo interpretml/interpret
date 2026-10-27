@@ -11,6 +11,11 @@ on:
         description: 'Branch or Commit ID (optional)'
         required: false
         type: string
+      run_as_scheduled:
+        description: 'Run as nightly'
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 12 * * *"
 
@@ -212,6 +217,7 @@ jobs:
           path: bld/sdist
 
   docs:
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled) }}
     permissions:
       checks: write
       contents: read
@@ -449,7 +455,7 @@ jobs:
             image: windows-latest
             options: "-release_32"
             existing: ""
-            scheduled: "-analysis"
+            scheduled: ""
           - name: win_debug_32
             image: windows-latest
             options: "-debug_32"
@@ -472,25 +478,29 @@ jobs:
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (CI)
-        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && !(github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }}
       - name: linux test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'ubuntu-') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'ubuntu-') && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           /bin/sh ./shared/libebm/tests/libebm_test.sh ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
       - name: win test_native (CI)
-        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name != 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && !(github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin;C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }}
       - name: win test_native (Schedule)
-        if: ${{ startsWith(matrix.image, 'windows-') && github.event_name == 'schedule' }}
+        if: ${{ startsWith(matrix.image, 'windows-') && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) }}
+        env:
+          # VS 2026 no longer ships the x86-hosted clang-tidy used by default with v143.
+          PreferredToolArchitecture: x64
         run: |
           $env:PATH += ';C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin;C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin'
           ./shared/libebm/tests/libebm_test.bat ${{ matrix.options }} ${{ matrix.existing }} ${{ matrix.scheduled }}
 
   testS:
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled) }}
     permissions:
       contents: read
     needs: [sdist]
@@ -595,59 +605,23 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   testB:
+    name: testB (${{ matrix.platform }}_${{ matrix.python.name }}_python)
     permissions:
       contents: read
     needs: [bdist]
     strategy:
       matrix:
+        # Keep all Python versions nightly; regular CI covers only the endpoints.
+        python: ${{ fromJSON((github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_as_scheduled)) && '[{"version":"3.11","name":"311"},{"version":"3.12","name":"312"},{"version":"3.13","name":"313"},{"version":"3.14","name":"314"}]' || '[{"version":"3.11","name":"311"},{"version":"3.14","name":"314"}]') }}
+        platform: [linux, linuxarm, mac, win]
         include:
-          - name: linux_311_python
-            python_ver: "3.11"
+          - platform: linux
             image: ubuntu-latest
-          - name: linux_312_python
-            python_ver: "3.12"
-            image: ubuntu-latest
-          - name: linux_313_python
-            python_ver: "3.13"
-            image: ubuntu-latest
-          - name: linux_314_python
-            python_ver: "3.14"
-            image: ubuntu-latest
-          - name: linuxarm_311_python
-            python_ver: "3.11"
+          - platform: linuxarm
             image: ubuntu-24.04-arm
-          - name: linuxarm_312_python
-            python_ver: "3.12"
-            image: ubuntu-24.04-arm
-          - name: linuxarm_313_python
-            python_ver: "3.13"
-            image: ubuntu-24.04-arm
-          - name: linuxarm_314_python
-            python_ver: "3.14"
-            image: ubuntu-24.04-arm
-          - name: mac_311_python
-            python_ver: "3.11"
+          - platform: mac
             image: macos-latest
-          - name: mac_312_python
-            python_ver: "3.12"
-            image: macos-latest
-          - name: mac_313_python
-            python_ver: "3.13"
-            image: macos-latest
-          - name: mac_314_python
-            python_ver: "3.14"
-            image: macos-latest
-          - name: win_311_python
-            python_ver: "3.11"
-            image: windows-latest
-          - name: win_312_python
-            python_ver: "3.12"
-            image: windows-latest
-          - name: win_313_python
-            python_ver: "3.13"
-            image: windows-latest
-          - name: win_314_python
-            python_ver: "3.14"
+          - platform: win
             image: windows-latest
     runs-on: ${{ matrix.image }}
     steps:
@@ -658,7 +632,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python_ver }}
+          python-version: ${{ matrix.python.version }}
           cache: 'pip'
       - name: Download bdist artifact
         uses: actions/download-artifact@v8
@@ -694,8 +668,8 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           files: tmp/zqmr/t/coverage.xml
-          flags: bdist_${{ matrix.name }}
-          name: codecov_bdist_${{ matrix.name }}
+          flags: bdist_${{ matrix.platform }}_${{ matrix.python.name }}_python
+          name: codecov_bdist_${{ matrix.platform }}_${{ matrix.python.name }}_python
           token: ${{ secrets.CODECOV_TOKEN }}
 
   testR:

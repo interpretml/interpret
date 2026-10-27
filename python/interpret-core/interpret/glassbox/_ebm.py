@@ -221,6 +221,73 @@ def _normalize_callbacks(callbacks):
     return found.get("examine"), found.get("boost"), found.get("interaction")
 
 
+def _normalize_smoothing_rounds(
+    value: float | Sequence[int] | npt.NDArray[Any] | None,
+    name: str,
+) -> int | npt.NDArray[np.int64]:
+    """Normalize a smoothing_rounds parameter.
+
+    Returns an ``int`` for a scalar (``None`` is treated as zero) and a 1-D
+    int64 ``ndarray`` for any 1-D array-like. Keeping these distinct lets call
+    sites require that a sequence's length match the term count (a length-1
+    sequence is not broadcast). Raises ``ValueError`` on negatives, values
+    beyond the int64 range, non-integers, or wrong dimensionality.
+    """
+    if value is None:
+        return 0
+
+    arr = np.asarray(value)
+    # check for whole numbers in the input's own dtype; converting to a Python
+    # float first could round away a fractional part (e.g. for longdouble)
+    is_integral = np.issubdtype(arr.dtype, np.integer)
+    if np.issubdtype(arr.dtype, np.floating):
+        # inf and nan give a nan remainder, so they fail; silence the warning
+        with np.errstate(invalid="ignore"):
+            is_integral = bool(np.all(np.mod(arr, 1) == 0))
+
+    if arr.ndim == 0:
+        if not is_integral:
+            msg = f"{name} must be an integer or a sequence of integers"
+            _log.error(msg)
+            raise ValueError(msg)
+        scalar = int(arr)
+        if scalar < 0:
+            msg = f"{name} cannot be negative"
+            _log.error(msg)
+            raise ValueError(msg)
+        if scalar > np.iinfo(np.int64).max:
+            msg = f"{name} cannot exceed {np.iinfo(np.int64).max}"
+            _log.error(msg)
+            raise ValueError(msg)
+        return scalar
+
+    if arr.ndim != 1:
+        msg = f"{name} must be 1-dimensional when passed as a sequence"
+        _log.error(msg)
+        raise ValueError(msg)
+    if arr.size == 0:
+        msg = f"{name} cannot be an empty sequence"
+        _log.error(msg)
+        raise ValueError(msg)
+    if not is_integral:
+        msg = f"{name} entries must all be integers"
+        _log.error(msg)
+        raise ValueError(msg)
+    if np.any(arr < 0):
+        msg = f"{name} entries cannot be negative"
+        _log.error(msg)
+        raise ValueError(msg)
+    # compare as exact Python ints: NumPy can round when a comparison mixes
+    # integer and floating-point types, and tolist() leaves longdouble values
+    # as NumPy scalars
+    values = [int(v) for v in arr.tolist()]
+    if max(values) > np.iinfo(np.int64).max:
+        msg = f"{name} entries cannot exceed {np.iinfo(np.int64).max}"
+        _log.error(msg)
+        raise ValueError(msg)
+    return np.array(values, dtype=np.int64)
+
+
 class EBMExplanation(FeatureValueExplanation):
     """Visualizes specifically for EBM."""
 
@@ -585,29 +652,12 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
             else:
                 cyclic_progress = float(self.cyclic_progress)
 
-            if (
-                not isinstance(self.smoothing_rounds, int)
-                and not self.smoothing_rounds.is_integer()
-            ):
-                msg = "smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            if self.smoothing_rounds < 0:
-                msg = "smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
-
-            if (
-                not isinstance(self.interaction_smoothing_rounds, int)
-                and not self.interaction_smoothing_rounds.is_integer()
-            ):
-                msg = "interaction_smoothing_rounds must be an integer"
-                _log.error(msg)
-                raise ValueError(msg)
-            if self.interaction_smoothing_rounds < 0:
-                msg = "interaction_smoothing_rounds cannot be negative"
-                _log.error(msg)
-                raise ValueError(msg)
+            smoothing_rounds_arr = _normalize_smoothing_rounds(
+                self.smoothing_rounds, "smoothing_rounds"
+            )
+            interaction_smoothing_rounds_arr = _normalize_smoothing_rounds(
+                self.interaction_smoothing_rounds, "interaction_smoothing_rounds"
+            )
 
             if (
                 not isinstance(self.inner_bags, int)
@@ -990,8 +1040,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
             inner_bags = 0
             greedy_ratio = 0.0
             cyclic_progress = 1.0
-            smoothing_rounds = 0
-            interaction_smoothing_rounds = 0
+            smoothing_rounds_arr = 0
+            interaction_smoothing_rounds_arr = 0
             early_stopping_rounds = 0
             early_stopping_tolerance = 0.0
             examine_callback = None
@@ -1020,8 +1070,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                 term_boost_flags |= Native.TermBoostFlags_Corners
             inner_bags = self.inner_bags
             greedy_ratio = self.greedy_ratio
-            smoothing_rounds = self.smoothing_rounds
-            interaction_smoothing_rounds = self.interaction_smoothing_rounds
+            # smoothing_rounds_arr / interaction_smoothing_rounds_arr were
+            # validated above: an int for scalar input, or a 1-D array.
             early_stopping_rounds = self.early_stopping_rounds
             early_stopping_tolerance = self.early_stopping_tolerance
             examine_callback, boost_callback, interaction_callback = (
@@ -1042,6 +1092,56 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
             interaction_flags = Native.CalcInteractionFlags_Default
             if develop.get_option("full_interaction"):
                 interaction_flags |= Native.CalcInteractionFlags_Full
+
+        # Build the smoothing parameter for the mains boost call.
+        # Scalars (int) are passed through and broadcast inside boost().
+        # A user-supplied sequence is validated against n_features_in and
+        # then gathered down to the post-exclude term_features order.
+        smoothing_rounds_main: int | npt.NDArray[np.int64]
+        if isinstance(smoothing_rounds_arr, np.ndarray):
+            if smoothing_rounds_arr.size != n_features_in:
+                msg = (
+                    "smoothing_rounds list length "
+                    f"({smoothing_rounds_arr.size}) must equal the number of "
+                    f"input features ({n_features_in})"
+                )
+                _log.error(msg)
+                raise ValueError(msg)
+            if len(term_features) == 0:
+                # No mains will be boosted (exclude=='mains'); pass 0 as a
+                # no-op for the boost loop.
+                smoothing_rounds_main = 0
+            else:
+                smoothing_rounds_main = np.array(
+                    [smoothing_rounds_arr[t[0]] for t in term_features],
+                    dtype=np.int64,
+                )
+        else:
+            smoothing_rounds_main = smoothing_rounds_arr
+
+        # Check a sequence interaction_smoothing_rounds now so that a bad value
+        # fails before any boosting. It must line up with an explicit
+        # interactions list; FAST-selected pairs have no user-defined order.
+        if isinstance(interaction_smoothing_rounds_arr, np.ndarray):
+            interactions = clean_interactions(interactions, n_features_in)  # type: ignore[assignment]
+            if isinstance(interactions, int):
+                if interactions != 0:
+                    msg = (
+                        "interaction_smoothing_rounds can only be a "
+                        "sequence when interactions is an explicit list "
+                        "of feature combinations"
+                    )
+                    _log.error(msg)
+                    raise ValueError(msg)
+            elif interaction_smoothing_rounds_arr.size != len(interactions):
+                msg = (
+                    "interaction_smoothing_rounds list length "
+                    f"({interaction_smoothing_rounds_arr.size}) must "
+                    "equal the number of interactions "
+                    f"({len(interactions)})"
+                )
+                _log.error(msg)
+                raise ValueError(msg)
 
         exclude_features = set()
         if monotone_constraints is not None:
@@ -1212,7 +1312,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                             else init_score[internal_bags[idx] != 0]
                         ),
                         term_features=term_features,
-                        smoothing_rounds=smoothing_rounds,
+                        smoothing_rounds=smoothing_rounds_main,
                         # if there are no validation samples, turn off early stopping
                         # because the validation metric cannot improve each round
                         early_stopping_rounds=(
@@ -1295,6 +1395,12 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                         shared,
                     )
 
+                    # boost_groups_user_idx is only meaningful when the user
+                    # supplied an explicit list of interactions; FAST-discovered
+                    # interactions cannot be aligned to a user-supplied per-
+                    # interaction parameter list.
+                    boost_groups_user_idx: list[int] | None = None
+
                     if isinstance(interactions, int):
                         _log.info("Estimating with FAST")
 
@@ -1369,9 +1475,15 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                         # Check and remove duplicate interaction terms
                         uniquifier = set()
                         boost_groups = []
+                        # Parallel list mapping each kept group back to its
+                        # index in the user's original interactions list, so
+                        # per-interaction parameters (e.g. a list-form
+                        # interaction_smoothing_rounds) can be gathered after
+                        # dedup/exclude.
+                        boost_groups_user_idx = []
                         max_dimensions = 0
 
-                        for features in interactions:
+                        for user_idx, features in enumerate(interactions):
                             feature_idxs = []
                             for feature in features:
                                 if isinstance(feature, float):
@@ -1415,6 +1527,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                             ):
                                 uniquifier.add(sorted_tuple)
                                 boost_groups.append(feature_idxs)
+                                boost_groups_user_idx.append(user_idx)
 
                         if max_dimensions > 2:
                             warn(
@@ -1426,6 +1539,20 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
 
                     if stop_flag is not None and stop_flag[0]:
                         break
+
+                    # A scalar is broadcast inside boost(). A sequence was checked
+                    # against the explicit interactions list before boosting, so
+                    # gather the entries of the pairs that survived dedup/exclude.
+                    interaction_smoothing_main: int | npt.NDArray[np.int64]
+                    if isinstance(interaction_smoothing_rounds_arr, np.ndarray):
+                        assert boost_groups_user_idx is not None
+                        interaction_smoothing_main = (
+                            interaction_smoothing_rounds_arr[boost_groups_user_idx]
+                            if len(boost_groups_user_idx) != 0
+                            else 0
+                        )
+                    else:
+                        interaction_smoothing_main = interaction_smoothing_rounds_arr
 
                     results = parallel(
                         delayed(booster)(
@@ -1448,7 +1575,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                             bag=internal_bags[idx],
                             init_scores=scores_bags[idx],
                             term_features=boost_groups,
-                            smoothing_rounds=interaction_smoothing_rounds,
+                            smoothing_rounds=interaction_smoothing_main,
                             # if there are no validation samples, turn off early stopping
                             # because the validation metric cannot improve each round
                             early_stopping_rounds=(
@@ -3449,10 +3576,16 @@ class EBMModel(BaseEBM):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=100
+    smoothing_rounds : int or sequence of int, default=100
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=50
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
+    interaction_smoothing_rounds : int or sequence of int, default=50
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
+        Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -3590,8 +3723,8 @@ class EBMModel(BaseEBM):
         learning_rate: float = 0.02,
         greedy_ratio: float | None = 10.0,
         cyclic_progress: bool | float = False,
-        smoothing_rounds: int | None = 100,
-        interaction_smoothing_rounds: int | None = 50,
+        smoothing_rounds: int | Sequence[int] | None = 100,
+        interaction_smoothing_rounds: int | Sequence[int] | None = 50,
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
@@ -3709,10 +3842,16 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=75
+    smoothing_rounds : int or sequence of int, default=75
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=75
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
+    interaction_smoothing_rounds : int or sequence of int, default=75
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
+        Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -3909,8 +4048,8 @@ class EBMClassifier(EBMClassifierMixin, EBMModel):
         learning_rate: float = 0.015,
         greedy_ratio: float | None = 10.0,
         cyclic_progress: bool | float = False,
-        smoothing_rounds: int | None = 75,
-        interaction_smoothing_rounds: int | None = 75,
+        smoothing_rounds: int | Sequence[int] | None = 75,
+        interaction_smoothing_rounds: int | Sequence[int] | None = 75,
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
@@ -4030,10 +4169,16 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         it will be used to update internal gain calculations related to how effective
         each feature is in predicting the target variable. Setting this parameter
         to a value less than 1.0 can be useful for preventing overfitting.
-    smoothing_rounds : int, default=500
+    smoothing_rounds : int or sequence of int, default=500
         Number of initial highly regularized rounds to set the basic shape of the main effect feature graphs.
-    interaction_smoothing_rounds : int, default=100
+        Pass a sequence with one entry per input feature (length ``n_features_in_``) to set the rounds per
+        feature; entries for excluded features are ignored. Smoothing continues until every feature has used
+        its rounds, and features that finish early are not boosted until smoothing ends.
+    interaction_smoothing_rounds : int or sequence of int, default=100
         Number of initial highly regularized rounds to set the basic shape of the interaction effect feature graphs during fitting.
+        Pass a sequence to set the rounds per interaction; this is only allowed when ``interactions``
+        is an explicit list of feature combinations, and the sequence must have one entry per item in
+        ``interactions``. Entries for duplicate or excluded interactions are ignored.
     max_rounds : int, default=50000
         Total number of boosting rounds with n_terms boosting steps per round.
     early_stopping_rounds : int, default=100
@@ -4234,8 +4379,8 @@ class EBMRegressor(EBMRegressorMixin, EBMModel):
         learning_rate: float = 0.04,
         greedy_ratio: float | None = 10.0,
         cyclic_progress: bool | float = False,
-        smoothing_rounds: int | None = 500,
-        interaction_smoothing_rounds: int | None = 100,
+        smoothing_rounds: int | Sequence[int] | None = 500,
+        interaction_smoothing_rounds: int | Sequence[int] | None = 100,
         max_rounds: int | None = 50000,
         early_stopping_rounds: int | None = 100,
         early_stopping_tolerance: float | None = 1e-5,
