@@ -338,10 +338,24 @@ class ClassHistogram(DataExplainer):
             msg = f"y must be 1 dimensional, but got {y.ndim} dimensions with shape {y.shape}"
             raise ValueError(msg)
 
-        try:
-            y = y.astype(np.float64, copy=False)
-        except Exception:  # object can throw anything in their __float__ function
+        if issubclass(y.dtype.type, np.integer) or (
+            y.dtype.type is np.object_
+            and all(isinstance(value, (int, np.integer)) for value in y)
+        ):
+            # Preserve integer precision and unsigned range, including list/object inputs.
+            y = np.asarray(y)
+        elif issubclass(y.dtype.type, (str, bytes)) or (
+            y.dtype.type is np.object_
+            and any(isinstance(value, (str, bytes)) for value in y)
+        ):
+            # Numeric-looking strings are class names, not numeric values.
             y = typify_classification(y)
+        else:
+            # Retain numeric float equality (including signed zero) and ordering.
+            try:
+                y = y.astype(np.float64, copy=False)
+            except Exception:  # object can throw anything in their __float__ function
+                y = typify_classification(y)
 
         X, n_samples = preclean_X(X, self.feature_names, self.feature_types, len(y))
 
@@ -449,6 +463,11 @@ class ClassHistogramExplanation(BaseExplanation):
         if key is None:
             y = data_dict["y"]
             values, counts = np.unique(y, return_counts=True)
+            # Stringify integers after sorting to preserve exact labels in JavaScript.
+            values = [
+                str(value) if isinstance(value, (int, np.integer)) else value
+                for value in values
+            ]
             traces = [go.Bar(x=[values[i]], y=[counts[i]]) for i in range(len(values))]
             layout = go.Layout(
                 title="Response Distribution",
