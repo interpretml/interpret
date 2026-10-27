@@ -45,6 +45,13 @@ def jsonify_item(val):
     return val
 
 
+def _jsonify_int_param(val):
+    # integer parameters like smoothing_rounds also accept NumPy scalars and
+    # 1-D array-likes. tolist() leaves longdouble values as NumPy scalars, so
+    # cast to int64 first; fit has already checked that the values fit.
+    return None if val is None else np.asarray(val).astype(np.int64).tolist()
+
+
 def _to_json_inner(ebm, detail="all"):
     """Converts the inner model to a JSONable representation.
 
@@ -167,14 +174,13 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "greedy_ratio"):
             params["greedy_ratio"] = ebm.greedy_ratio
 
-        # these also accept 1-D array-likes, so convert to built-in types
         if hasattr(ebm, "smoothing_rounds"):
-            params["smoothing_rounds"] = np.asarray(ebm.smoothing_rounds).tolist()
+            params["smoothing_rounds"] = _jsonify_int_param(ebm.smoothing_rounds)
 
         if hasattr(ebm, "interaction_smoothing_rounds"):
-            params["interaction_smoothing_rounds"] = np.asarray(
+            params["interaction_smoothing_rounds"] = _jsonify_int_param(
                 ebm.interaction_smoothing_rounds
-            ).tolist()
+            )
 
         if hasattr(ebm, "max_rounds"):
             params["max_rounds"] = ebm.max_rounds

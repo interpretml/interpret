@@ -237,12 +237,16 @@ def _normalize_smoothing_rounds(
         return 0
 
     arr = np.asarray(value)
-    is_numeric = np.issubdtype(arr.dtype, np.integer) or np.issubdtype(
-        arr.dtype, np.floating
-    )
+    # check for whole numbers in the input's own dtype; converting to a Python
+    # float first could round away a fractional part (e.g. for longdouble)
+    is_integral = np.issubdtype(arr.dtype, np.integer)
+    if np.issubdtype(arr.dtype, np.floating):
+        # inf and nan give a nan remainder, so they fail; silence the warning
+        with np.errstate(invalid="ignore"):
+            is_integral = bool(np.all(np.mod(arr, 1) == 0))
 
     if arr.ndim == 0:
-        if not is_numeric or not float(arr).is_integer():
+        if not is_integral:
             msg = f"{name} must be an integer or a sequence of integers"
             _log.error(msg)
             raise ValueError(msg)
@@ -265,7 +269,7 @@ def _normalize_smoothing_rounds(
         msg = f"{name} cannot be an empty sequence"
         _log.error(msg)
         raise ValueError(msg)
-    if not is_numeric or not np.all(np.mod(arr, 1) == 0):
+    if not is_integral:
         msg = f"{name} entries must all be integers"
         _log.error(msg)
         raise ValueError(msg)
@@ -273,9 +277,10 @@ def _normalize_smoothing_rounds(
         msg = f"{name} entries cannot be negative"
         _log.error(msg)
         raise ValueError(msg)
-    # compare as Python numbers; NumPy can round when a comparison mixes
-    # int64, uint64, and float
-    values = arr.tolist()
+    # compare as exact Python ints: NumPy can round when a comparison mixes
+    # integer and floating-point types, and tolist() leaves longdouble values
+    # as NumPy scalars
+    values = [int(v) for v in arr.tolist()]
     if max(values) > np.iinfo(np.int64).max:
         msg = f"{name} entries cannot exceed {np.iinfo(np.int64).max}"
         _log.error(msg)
