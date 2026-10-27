@@ -36,7 +36,8 @@ for %%x in (%*) do (
    )
 
    IF "%%x"=="-analysis" (
-      SET extra_analysis=/p:EnableClangTidyCodeAnalysis=True /p:RunCodeAnalysis=True
+      REM MSBuild passes /c to clang-tidy, which does not compile. Ignore only unused driver arguments.
+      SET extra_analysis=/p:EnableClangTidyCodeAnalysis=True /p:ClangTidyChecks=clang-analyzer-* /p:ClangTidyAdditionalOptions=-Wno-unused-command-line-argument /p:RunCodeAnalysis=True
    )
 )
 
