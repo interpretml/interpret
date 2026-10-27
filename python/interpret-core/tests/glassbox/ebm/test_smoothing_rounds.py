@@ -5,7 +5,12 @@
 
 from __future__ import annotations
 
+import io
+import json
+import warnings
+
 import numpy as np
+import pandas as pd
 import pytest
 from interpret.glassbox import (
     ExplainableBoostingClassifier,
@@ -471,3 +476,146 @@ def test_interaction_smoothing_rounds_list_with_all_interactions_excluded():
     # The interaction was excluded; only mains remain.
     interaction_terms = [t for t in ebm.term_features_ if len(t) > 1]
     assert interaction_terms == []
+
+
+def test_list_matches_scalar_with_multiple_bags():
+    """Each outer bag needs its own smoothing budget, including when the bags
+    run sequentially in-process (n_jobs=1)."""
+    X, y = _small_dataset()
+    kw = {
+        "interactions": [(0, 1), (1, 2)],
+        "outer_bags": 3,
+        "max_rounds": 100,
+        "random_state": 42,
+        "n_jobs": 1,
+    }
+    scalar = ExplainableBoostingRegressor(
+        smoothing_rounds=10, interaction_smoothing_rounds=10, **kw
+    ).fit(X, y)
+    seq = ExplainableBoostingRegressor(
+        smoothing_rounds=[10, 10, 10], interaction_smoothing_rounds=[10, 10], **kw
+    ).fit(X, y)
+    np.testing.assert_allclose(scalar.predict(X), seq.predict(X), atol=1e-10)
+
+
+def test_exclude_matches_dropping_the_column():
+    """Entries follow the original feature index, so excluding a feature must
+    give the same model as removing its column."""
+    X, y = _small_dataset()
+    kw = {
+        "interactions": 0,
+        "outer_bags": 1,
+        "max_rounds": 100,
+        "random_state": 42,
+        "n_jobs": 1,
+    }
+    excluded = ExplainableBoostingRegressor(
+        smoothing_rounds=[6, 0, 9], exclude=[(1,)], **kw
+    ).fit(X, y)
+    dropped = ExplainableBoostingRegressor(smoothing_rounds=[6, 9], **kw).fit(
+        X[:, [0, 2]], y
+    )
+    np.testing.assert_allclose(
+        excluded.predict(X), dropped.predict(X[:, [0, 2]]), atol=1e-10
+    )
+
+
+def test_interaction_list_skips_duplicate_and_excluded_pairs():
+    X, y = _small_dataset()
+    kw = {
+        "smoothing_rounds": 0,
+        "outer_bags": 1,
+        "max_rounds": 100,
+        "random_state": 42,
+        "n_jobs": 1,
+    }
+    full = ExplainableBoostingRegressor(
+        interactions=[(0, 1), (1, 0), (0, 2), (1, 2)],
+        interaction_smoothing_rounds=[5, 99, 7, 2],
+        exclude=[(0, 2)],
+        **kw,
+    ).fit(X, y)
+    kept = ExplainableBoostingRegressor(
+        interactions=[(0, 1), (1, 2)], interaction_smoothing_rounds=[5, 2], **kw
+    ).fit(X, y)
+    np.testing.assert_allclose(full.predict(X), kept.predict(X), atol=1e-10)
+
+
+@pytest.mark.parametrize(
+    ("interactions", "match"),
+    [([(0, 1), (1, 2)], "list length"), (2, "explicit list")],
+)
+def test_bad_interaction_smoothing_rounds_fails_before_boosting(interactions, match):
+    X, y = _small_dataset()
+    recorder = _StepTermRecorder()
+    ebm = ExplainableBoostingRegressor(
+        interactions=interactions,
+        interaction_smoothing_rounds=[10, 10, 10],
+        callbacks=recorder,
+        outer_bags=1,
+        random_state=42,
+        n_jobs=1,
+    )
+    with pytest.raises(ValueError, match=match):
+        ebm.fit(X, y)
+    assert recorder.records == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    [[5, 6, 7], range(5, 8), pd.Series([5, 6, 7]), np.array([5.0, 6.0, 7.0])],
+)
+def test_smoothing_rounds_array_likes(value):
+    X, y = _small_dataset()
+    kw = {
+        "interactions": 0,
+        "outer_bags": 1,
+        "max_rounds": 50,
+        "random_state": 42,
+        "n_jobs": 1,
+    }
+    expected = ExplainableBoostingRegressor(smoothing_rounds=(5, 6, 7), **kw).fit(X, y)
+    actual = ExplainableBoostingRegressor(smoothing_rounds=value, **kw).fit(X, y)
+    np.testing.assert_allclose(actual.predict(X), expected.predict(X), atol=1e-10)
+
+
+@pytest.mark.parametrize("value", [np.float32(10), np.int32(10), np.float64(10)])
+def test_smoothing_rounds_numpy_scalars(value):
+    X, y = _small_dataset()
+    kw = {
+        "interactions": 0,
+        "outer_bags": 1,
+        "max_rounds": 50,
+        "random_state": 42,
+        "n_jobs": 1,
+    }
+    expected = ExplainableBoostingRegressor(smoothing_rounds=10, **kw).fit(X, y)
+    actual = ExplainableBoostingRegressor(smoothing_rounds=value, **kw).fit(X, y)
+    np.testing.assert_allclose(actual.predict(X), expected.predict(X), atol=1e-10)
+
+
+def test_smoothing_rounds_bool_raises():
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(smoothing_rounds=True, n_jobs=1)
+    with pytest.raises(ValueError, match="must be an integer or a sequence"):
+        ebm.fit(X, y)
+
+
+def test_to_json_with_array_smoothing_rounds():
+    X, y = _small_dataset()
+    ebm = ExplainableBoostingRegressor(
+        interactions=[(0, 1)],
+        outer_bags=1,
+        max_rounds=20,
+        smoothing_rounds=np.array([5, 6, 7]),
+        interaction_smoothing_rounds=np.array([4]),
+        random_state=42,
+        n_jobs=1,
+    ).fit(X, y)
+    buf = io.StringIO()
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "JSON formats are in beta.*")
+        ebm.to_json(buf)
+    params = json.loads(buf.getvalue())["ebm"]["implementation_params"]
+    assert params["smoothing_rounds"] == [5, 6, 7]
+    assert params["interaction_smoothing_rounds"] == [4]

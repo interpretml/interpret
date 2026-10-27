@@ -167,11 +167,14 @@ def _to_json_inner(ebm, detail="all"):
         if hasattr(ebm, "greedy_ratio"):
             params["greedy_ratio"] = ebm.greedy_ratio
 
+        # these also accept 1-D array-likes, so convert to built-in types
         if hasattr(ebm, "smoothing_rounds"):
-            params["smoothing_rounds"] = ebm.smoothing_rounds
+            params["smoothing_rounds"] = np.asarray(ebm.smoothing_rounds).tolist()
 
         if hasattr(ebm, "interaction_smoothing_rounds"):
-            params["interaction_smoothing_rounds"] = ebm.interaction_smoothing_rounds
+            params["interaction_smoothing_rounds"] = np.asarray(
+                ebm.interaction_smoothing_rounds
+            ).tolist()
 
         if hasattr(ebm, "max_rounds"):
             params["max_rounds"] = ebm.max_rounds
