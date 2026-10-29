@@ -559,14 +559,14 @@ def merge_ebms(models):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
 
+            # nanmin/nanmax give NaN for features that are categorical in every model.
+            # Keep those rows like a fitted EBM does, so the attribute exists even when
+            # all features are categorical.
             min_feature_vals = np.nanmin(min_feature_vals, axis=0)
             max_feature_vals = np.nanmax(max_feature_vals, axis=0)
-            if any(not isnan(val) for val in min_feature_vals) or any(
-                not isnan(val) for val in max_feature_vals
-            ):
-                ebm.feature_bounds_ = np.array(
-                    list(zip(min_feature_vals, max_feature_vals)), np.float64
-                )
+            ebm.feature_bounds_ = np.array(
+                list(zip(min_feature_vals, max_feature_vals)), np.float64
+            )
 
     if not is_dp:
         if all(
