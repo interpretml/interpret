@@ -293,7 +293,13 @@ class EBMExplanation(FeatureValueExplanation):
 
     explanation_type = None
 
-    def visualize(self, key: int | None = None, title: str | None = None) -> Any:
+    def visualize(
+        self,
+        key: int | None = None,
+        title: str | None = None,
+        plot_type: str = "bar",
+        **kwargs: Any,
+    ) -> Any:
         """Provide interactive visualizations.
 
         Args:
@@ -387,11 +393,23 @@ class EBMExplanation(FeatureValueExplanation):
 
         # Local explanation graph
         if self.explanation_type == "local":
-            figure = super().visualize(key)
-            figure.update_layout(
-                title="Local Explanation (" + figure.layout.title.text + ")",
-                xaxis_title="Contribution to Prediction",
-            )
+            figure = super().visualize(key, title=title, plot_type=plot_type, **kwargs)
+            if figure is None:  # pragma: no cover
+                return None
+            orig_title = figure.layout.title.text if figure.layout.title else ""
+            if plot_type == "waterfall":
+                figure.update_layout(
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
+                )
+            else:
+                figure.update_layout(
+                    title="Local Explanation (" + orig_title + ")"
+                    if orig_title
+                    else "Local Explanation",
+                    xaxis_title="Contribution to Prediction",
+                )
             figure._interpret_help_text = (
                 "A local explanation shows the breakdown of how much "
                 "each term contributed to the prediction for a single sample. The intercept "
@@ -2604,19 +2622,34 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                 perf = None if perf_dicts is None else perf_dicts[row_idx]
                 perf_list.append(perf)
 
-            for data, sample_scores, perf in zip(X_unified, explanations, perf_list):
+            for row_idx, (data, sample_scores, perf) in enumerate(
+                zip(X_unified, explanations, perf_list, strict=False)
+            ):
                 values = [
                     data[tfs[0]] if len(tfs) == 1 else "" for tfs in self.term_features_
                 ]
+                extra_names = ["Intercept"]
+                extra_scores = [intercept]
+                extra_values = [1]
+                if init_score is not None:
+                    sample_init = init_score[row_idx]
+                    if (classes is None or len(classes) <= 2) and isinstance(
+                        sample_init, (list, np.ndarray)
+                    ):
+                        sample_init = sample_init[0]
+                    extra_names.append("Init score")
+                    extra_scores.append(sample_init)
+                    extra_values.append(1)
+
                 data_dict = {
                     "type": "univariate",
                     "names": list(self.term_names_),
                     "scores": list(sample_scores),
                     "values": values,
                     "extra": {
-                        "names": ["Intercept"],
-                        "scores": [intercept],
-                        "values": [1],
+                        "names": extra_names,
+                        "scores": extra_scores,
+                        "values": extra_values,
                     },
                     "perf": perf,
                 }

@@ -61,7 +61,7 @@ class FeatureValueExplanation(BaseExplanation):
             return None
         return self._internal_obj["specific"][key]
 
-    def visualize(self, key=None, title=None):
+    def visualize(self, key=None, title=None, plot_type="bar", **kwargs):
         """Provides interactive visualizations.
 
         Args:
@@ -82,6 +82,7 @@ class FeatureValueExplanation(BaseExplanation):
             plot_horizontal_bar,
             plot_line,
             plot_pairwise_heatmap,
+            plot_waterfall,
             sort_take,
         )
 
@@ -98,6 +99,10 @@ class FeatureValueExplanation(BaseExplanation):
 
         # Handle local instance graphs
         if self.explanation_type == "local":
+            if plot_type == "waterfall":
+                title_str = "" if title is None else title
+                return plot_waterfall(data_dict, title=title_str, **kwargs)
+
             if isinstance(key, tuple) and len(key) == 2:
                 provider, key = key
                 # TODO: MLI should handle multiclass at a future date.

@@ -209,9 +209,9 @@ class DispatcherApp:
     def obj_id(self, obj):
         return str(id(obj))
 
-    def register(self, ctx, share_tables=None):
+    def register(self, ctx, share_tables=None, **kwargs):
         ctx_id = self.obj_id(ctx)
-        if ctx_id not in self.pool:
+        if ctx_id not in self.pool or kwargs:
             _log.info(f"Creating App Entry: {ctx_id}")
             ctx_path = (
                 f"/{ctx_id}/"
@@ -220,7 +220,7 @@ class DispatcherApp:
             )
             app = _udash.generate_app(
                 ctx,
-                {"share_tables": share_tables},
+                {"share_tables": share_tables, **kwargs},
                 # url_base_pathname=ctx_path,
                 requests_pathname_prefix=ctx_path,
                 routes_pathname_prefix=ctx_path,
