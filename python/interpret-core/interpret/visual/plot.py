@@ -674,7 +674,7 @@ def plot_waterfall(
 
     Args:
         data_dict: Dictionary containing explanation data for a single instance.
-        title: Title of the graph. If empty, generates a summary title from perf metrics.
+        title: Title of the graph. If empty or None, generates a summary title from perf metrics.
         xtitle: Label for the x-axis.
         ytitle: Label for the y-axis.
         orientation: "h" for horizontal waterfall (default), "v" for vertical waterfall.
@@ -691,6 +691,9 @@ def plot_waterfall(
     """
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
+
+    if title is None:
+        title = ""
 
     is_multiclass = is_multiclass_local_data_dict(data_dict)
     if is_multiclass:
@@ -711,15 +714,40 @@ def plot_waterfall(
         names = _names_with_values(names, values)
 
     extra = data_dict.get("extra", None)
+    extra_steps = []
     if extra is not None and "scores" in extra and len(extra["scores"]) > 0:
-        if is_multiclass:
-            intercept = float(extra["scores"][0][class_idx])
-        else:
-            intercept = float(extra["scores"][0])
-        intercept_name = extra.get("names", ["Intercept"])[0]
+        extra_names = extra.get("names", ["Intercept"])
+        for idx, sc in enumerate(extra["scores"]):
+            name = extra_names[idx] if idx < len(extra_names) else f"Extra {idx}"
+            if is_multiclass:
+                score_val = (
+                    float(sc[class_idx]) if hasattr(sc, "__getitem__") else float(sc)
+                )
+            else:
+                score_val = (
+                    float(sc[0]) if isinstance(sc, (list, np.ndarray)) else float(sc)
+                )
+            extra_steps.append((name, score_val))
     else:
-        intercept = 0.0
-        intercept_name = "Intercept"
+        extra_steps.append(("Intercept", 0.0))
+
+    if "init_score" in data_dict and not any(
+        s[0].lower() == "init score" for s in extra_steps
+    ):
+        raw_init = data_dict["init_score"]
+        if is_multiclass:
+            init_val = (
+                float(raw_init[class_idx])
+                if hasattr(raw_init, "__getitem__")
+                else float(raw_init)
+            )
+        else:
+            init_val = (
+                float(raw_init[0])
+                if isinstance(raw_init, (list, np.ndarray))
+                else float(raw_init)
+            )
+        extra_steps.append(("Init score", init_val))
 
     if title == "":
         title_items = []
@@ -762,12 +790,12 @@ def plot_waterfall(
     if top_n is not None and len(pairs) > top_n:
         top_pairs = pairs[:top_n]
         remaining_sum = sum(s for _, s in pairs[top_n:])
-        if abs(remaining_sum) > 1e-9:
+        if remaining_sum != 0.0:
             top_pairs.append(("Other features", remaining_sum))
         pairs = top_pairs
 
-    step_names = [intercept_name] + [p[0] for p in pairs] + ["Prediction"]
-    step_scores = [intercept] + [p[1] for p in pairs] + [0.0]
+    step_names = [s[0] for s in extra_steps] + [p[0] for p in pairs] + ["Prediction"]
+    step_scores = [s[1] for s in extra_steps] + [p[1] for p in pairs] + [0.0]
     measures = ["relative"] * (len(step_names) - 1) + ["total"]
 
     inc_color = increasing_color or COLORS[1]

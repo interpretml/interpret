@@ -81,6 +81,7 @@ DATA_TABLE_DEFAULTS = {
 # Dash app for a single explanation only
 def generate_app_mini(
     ctx_item,
+    options=None,
     url_base_pathname=None,
     requests_pathname_prefix=None,
     routes_pathname_prefix=None,
@@ -99,12 +100,14 @@ def generate_app_mini(
         requests_pathname_prefix=requests_pathname_prefix,
         routes_pathname_prefix=routes_pathname_prefix,
     )
+    app.options = options or {}
     app.scripts.config.serve_locally = True
     app.css.config.serve_locally = True
     app.config["suppress_callback_exceptions"] = True
     app.ctx_item = ctx_item
     app.logger.handlers = []
     app.title = "InterpretML"
+    app.options = options or {}
     server = app.server
 
     # Items in drop-down.
@@ -145,7 +148,12 @@ def generate_app_mini(
                                 id="component-drop",
                                 options=data_options,
                                 multi=False,
-                                value=-1,
+                                value=(
+                                    (options or {}).get("key", -1)
+                                    if (options or {}).get("key", -1) is not None
+                                    and (options or {}).get("key", -1) != -1
+                                    else -1
+                                ),
                             )
                         ],
                         className="card-body",
@@ -179,10 +187,15 @@ def generate_app_mini(
             return None
 
         explanation, selector = app.ctx_item
+        viz_kwargs = {
+            k: v
+            for k, v in (app.options or {}).items()
+            if k not in ("share_tables", "key")
+        }
         if value == -1:
-            output_div = gen_overall_plot(explanation, int(value))
+            output_div = gen_overall_plot(explanation, int(value), **viz_kwargs)
         else:
-            output_div = gen_plot(explanation, int(value), 0, 0)
+            output_div = gen_plot(explanation, int(value), 0, 0, **viz_kwargs)
 
         return output_div
 
@@ -195,8 +208,14 @@ def generate_app_mini(
     return app
 
 
-def gen_overall_plot(exp, model_idx):
-    figure = exp.visualize(key=None)
+def gen_overall_plot(exp, model_idx, **kwargs):
+    if kwargs:
+        try:
+            figure = exp.visualize(key=None, **kwargs)
+        except TypeError:
+            figure = exp.visualize(key=None)
+    else:
+        figure = exp.visualize(key=None)
     if figure is None:
         _log.info(f"No overall plot to display: {model_idx}|{exp.name}")
         # Provide default 'no overall' graph
@@ -272,8 +291,14 @@ def gen_overall_plot(exp, model_idx):
     )
 
 
-def gen_plot(exp, picker, model_idx, counter):
-    figure = exp.visualize(key=picker)
+def gen_plot(exp, picker, model_idx, counter, **kwargs):
+    if kwargs:
+        try:
+            figure = exp.visualize(key=picker, **kwargs)
+        except TypeError:
+            figure = exp.visualize(key=picker)
+    else:
+        figure = exp.visualize(key=picker)
     if isinstance(figure, _NDFrame):
         records = figure.to_dict("records")
         columns = [
@@ -330,7 +355,10 @@ def gen_plot(exp, picker, model_idx, counter):
 # Dash app code
 # TODO: Consider reducing complexity of this function.
 def generate_app_full(
-    url_base_pathname=None, requests_pathname_prefix=None, routes_pathname_prefix=None
+    options=None,
+    url_base_pathname=None,
+    requests_pathname_prefix=None,
+    routes_pathname_prefix=None,
 ):
     """Generates the Dash application including callbacks.
 
@@ -786,8 +814,13 @@ The explanations available are split into tabs, each covering an aspect of the p
 
         output = []
         counter = 0
+        viz_kwargs = {
+            k: v
+            for k, v in (app.options or {}).items()
+            if k not in ("share_tables", "key")
+        }
         for picker in reversed(picker_idx):
-            output_div = gen_plot(exp, picker, model_idx, counter)
+            output_div = gen_plot(exp, picker, model_idx, counter, **viz_kwargs)
             counter += 1
             output.append(output_div)
         return html.Div(output)
@@ -798,7 +831,12 @@ The explanations available are split into tabs, each covering an aspect of the p
         ctx = app.ctx
         exp = ctx[model_idx][0]
 
-        output_div = gen_overall_plot(exp, model_idx)
+        viz_kwargs = {
+            k: v
+            for k, v in (app.options or {}).items()
+            if k not in ("share_tables", "key")
+        }
+        output_div = gen_overall_plot(exp, model_idx, **viz_kwargs)
 
         return html.Div(output_div)
 
@@ -888,12 +926,14 @@ def generate_app(
         new_item = _expand_ctx_item(ctx)
         return generate_app_mini(
             new_item,
+            options=options,
             url_base_pathname=url_base_pathname,
             requests_pathname_prefix=requests_pathname_prefix,
             routes_pathname_prefix=routes_pathname_prefix,
         )
 
     app = generate_app_full(
+        options=options,
         requests_pathname_prefix=requests_pathname_prefix,
         routes_pathname_prefix=routes_pathname_prefix,
     )

@@ -80,7 +80,7 @@ class AutoVisualizeProvider(VisualizeProvider):
 class PreserveProvider(VisualizeProvider):
     def render(self, explanation, key=-1, **kwargs):
         file_name = kwargs.pop("file_name", None)
-        plot_type = kwargs.pop("plot_type", "bar")
+        plot_type = kwargs.pop("plot_type", None)
 
         # NOTE: Preserve didn't support returning everything. If key is -1 default to key is None.
         # This is for backward-compatibility. All of this will be deprecated shortly anyway.
@@ -88,7 +88,10 @@ class PreserveProvider(VisualizeProvider):
             key = None
 
         # Get visual object
-        visual = explanation.visualize(key=key, plot_type=plot_type)
+        if plot_type is not None and plot_type != "bar":
+            visual = explanation.visualize(key=key, plot_type=plot_type)
+        else:
+            visual = explanation.visualize(key=key)
 
         # Output to front-end/file
 
@@ -202,12 +205,14 @@ class DashProvider(VisualizeProvider):
 
         return self.app_runner.display_link(explanation)
 
-    def render(self, explanation, **kwargs):
+    def render(self, explanation, key=-1, **kwargs):
         self.idempotent_start()
 
         # Register
         share_tables = kwargs.pop("share_tables", None)
-        self.app_runner.register(explanation, share_tables=share_tables)
+        self.app_runner.register(
+            explanation, share_tables=share_tables, key=key, **kwargs
+        )
 
         # Display
         open_link = isinstance(explanation, list)

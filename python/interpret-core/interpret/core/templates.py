@@ -100,7 +100,8 @@ class FeatureValueExplanation(BaseExplanation):
         # Handle local instance graphs
         if self.explanation_type == "local":
             if plot_type == "waterfall":
-                return plot_waterfall(data_dict, title=title, **kwargs)
+                title_str = "" if title is None else title
+                return plot_waterfall(data_dict, title=title_str, **kwargs)
 
             if isinstance(key, tuple) and len(key) == 2:
                 provider, key = key
