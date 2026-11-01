@@ -33,9 +33,10 @@ def SPOT_GreedySubsetSelection(C, targetMarginal, m):
 
     # Intialization
     S = np.zeros((1, m), dtype=int)
-    setValues = np.zeros((1, m), dtype=int)
+    setValues = np.zeros((1, m), dtype=np.float64)
     sizeS = 0
-    currMinCostValues = np.ones((1, numX)) * 1000000
+    # Use a data-derived upper bound so distance units cannot clip gains.
+    currMinCostValues = np.full((1, numX), C.max(), dtype=np.float64)
     currMinSourceIndex = np.zeros((1, numX), dtype=int)
     remainingElements = allY
     chosenElements = []
