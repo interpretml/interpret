@@ -703,8 +703,30 @@ def mli_plot_horizontal_bar(
 
 
 def plot_pairwise_heatmap(
-    data_dict, title="", xtitle="", ytitle="", transform_vals=True
+    data_dict,
+    title="",
+    xtitle="",
+    ytitle="",
+    transform_vals=True,
+    scale: str = "interaction",
 ):
+    """Plot a pairwise interaction heatmap.
+
+    Args:
+        data_dict: Dictionary with 'left_names', 'right_names' and 'scores'.
+        title: Plot title.
+        xtitle: X-axis title.
+        ytitle: Y-axis title.
+        transform_vals: Transpose the scores before plotting.
+        scale: Color scale range. 'interaction' uses the shared range of all
+            interaction terms ('scores_range'), 'term' uses the minimum and
+            maximum of this term's scores, and 'global' uses the shared range
+            of all terms ('global_scores_range', falling back to
+            'scores_range' when unavailable).
+
+    Returns:
+        A Plotly figure of the heatmap, or None if there are no scores.
+    """
     if data_dict.get("scores", None) is None:  # pragma: no cover
         return None
 
@@ -716,7 +738,17 @@ def plot_pairwise_heatmap(
         bin_vals = np.ascontiguousarray(np.transpose(bin_vals, (1, 0)))
 
     heatmap = go.Heatmap(z=bin_vals, x=bin_labels_left, y=bin_labels_right)
-    if data_dict.get("scores_range", None) is not None:
+    if scale == "term":
+        heatmap["zmin"] = float(np.min(bin_vals))
+        heatmap["zmax"] = float(np.max(bin_vals))
+    elif scale == "global":
+        global_scores_range = data_dict.get("global_scores_range", None)
+        if global_scores_range is None:
+            global_scores_range = data_dict.get("scores_range", None)
+        if global_scores_range is not None:
+            heatmap["zmin"] = global_scores_range[0]
+            heatmap["zmax"] = global_scores_range[1]
+    elif data_dict.get("scores_range", None) is not None:
         heatmap["zmin"] = data_dict["scores_range"][0]
         heatmap["zmax"] = data_dict["scores_range"][1]
 
