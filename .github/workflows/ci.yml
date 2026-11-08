@@ -45,19 +45,19 @@ jobs:
             options: "-debug_arm"
             asm: ""
           - name: mac_release_64
-            image: macos-14
+            image: macos-15
             options: "-release_64"
             asm: "-asm"
           - name: mac_debug_64
-            image: macos-14
+            image: macos-15
             options: "-debug_64"
             asm: ""
           - name: mac_release_arm
-            image: macos-14
+            image: macos-15
             options: "-release_arm"
             asm: "-asm"
           - name: mac_debug_arm
-            image: macos-14
+            image: macos-15
             options: "-debug_arm"
             asm: ""
           - name: win_release_64
