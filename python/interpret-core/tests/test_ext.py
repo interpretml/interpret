@@ -2,7 +2,6 @@
 # Distributed under the MIT software license
 
 from interpret.glassbox import LogisticRegression
-from six import raise_from
 
 from .tutils import assert_valid_explanation, synthetic_classification
 
@@ -16,14 +15,11 @@ def test_import_demo_extension_classes():
         from interpret.ext.perf import ExamplePerfExplainer  # noqa
         from interpret.ext.provider import ExampleVisualizeProvider  # noqa
     except ImportError as import_error:
-        raise_from(
-            Exception(
-                "Failure in demo while trying "
-                "to load example explainers through extension_utils",
-                import_error,
-            ),
-            None,
+        msg = (
+            "Failure in demo while trying "
+            "to load example explainers through extension_utils"
         )
+        raise Exception(msg, import_error) from None
 
 
 def test_demo_blackbox_explainer():
