@@ -5,6 +5,7 @@ import inspect
 import warnings
 
 import numpy as np
+import pandas as pd
 from interpret.glassbox import (
     ExplainableBoostingClassifier,
     ExplainableBoostingRegressor,
@@ -467,3 +468,28 @@ def test_merge_ebms_predictions_unchanged():
     assert np.isfinite(probabilities).all()
     assert (probabilities >= 0.0).all()
     assert (probabilities <= 1.0).all()
+
+
+def test_merge_ebms_all_categorical():
+    """Merging EBMs whose features are all categorical keeps ``feature_bounds_``.
+
+    The merged bounds are NaN for categoricals, as in a fitted EBM, and the
+    merged model predicts the bag-weighted average of the input models.
+    """
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(
+        {"c1": rng.choice(list("abcd"), 400), "c2": rng.choice(list("xyz"), 400)}
+    )
+    y = (X["c1"] == "a") + (X["c2"] == "z") * (X["c1"] == "b") + rng.normal(0, 0.1, 400)
+
+    ebm1 = ExplainableBoostingRegressor(outer_bags=3, random_state=1)
+    ebm1.fit(X[:200], y[:200])
+    ebm2 = ExplainableBoostingRegressor(outer_bags=5, random_state=2)
+    ebm2.fit(X[200:], y[200:])
+
+    merged = merge_ebms([ebm1, ebm2])
+
+    assert np.isnan(merged.feature_bounds_).all()
+    np.testing.assert_allclose(
+        merged.predict(X), (3 * ebm1.predict(X) + 5 * ebm2.predict(X)) / 8
+    )
