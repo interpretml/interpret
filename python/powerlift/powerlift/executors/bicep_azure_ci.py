@@ -52,8 +52,8 @@ class BicepAzureContainerInstance(Executor):
             pip_install (str): pip install parameters.
             wheel_filepaths (List[str], optional): List of wheel filepaths to install on ACI trial run. Defaults to None.
             n_instances (int, optional): Max number of containers to run simultaneously. Defaults to 1.
-            num_cores (int, optional): Number of cores per container. Defaults to 1.
-            mem_size_gb (int, optional): RAM size in GB per container. Defaults to 2.
+            num_cores (int, optional): Number of cores per container. Defaults to 4.
+            mem_size_gb (int, optional): RAM size in GB per container. Defaults to 16.
             image (str, optional): Image to execute. Defaults to "mcr.microsoft.com/devcontainers/python:3.12".
             docker_db_uri (str, optional): Database URI for container. Defaults to None.
             resource_uris (List[str], optional): Azure resources to grant contributor access permissions to.
