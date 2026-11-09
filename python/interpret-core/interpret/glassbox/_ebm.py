@@ -2243,20 +2243,40 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
         # Obtain min/max for model scores
         lower_bound = np.inf
         upper_bound = -np.inf
+        main_lower_bound = np.inf
+        main_upper_bound = -np.inf
+        inter_lower_bound = np.inf
+        inter_upper_bound = -np.inf
         std_devs = (
             self.standard_deviations_
             if self.standard_deviations_ is not None
             else [None] * len(self.term_scores_)
         )
-        for scores, errors in zip(self.term_scores_, std_devs):
+        for scores, errors, feature_idxs in zip(
+            self.term_scores_, std_devs, self.term_features_
+        ):
             if errors is None:
-                lower_bound = min(lower_bound, float(np.min(scores)))
-                upper_bound = max(upper_bound, float(np.max(scores)))
+                term_lower_bound = float(np.min(scores))
+                term_upper_bound = float(np.max(scores))
             else:
-                lower_bound = min(lower_bound, float(np.min(scores - errors)))
-                upper_bound = max(upper_bound, float(np.max(scores + errors)))
+                term_lower_bound = float(np.min(scores - errors))
+                term_upper_bound = float(np.max(scores + errors))
+            lower_bound = min(lower_bound, term_lower_bound)
+            upper_bound = max(upper_bound, term_upper_bound)
+            if len(feature_idxs) == 1:
+                main_lower_bound = min(main_lower_bound, term_lower_bound)
+                main_upper_bound = max(main_upper_bound, term_upper_bound)
+            elif len(feature_idxs) == 2:
+                inter_lower_bound = min(inter_lower_bound, term_lower_bound)
+                inter_upper_bound = max(inter_upper_bound, term_upper_bound)
 
         bounds = (lower_bound, upper_bound)
+        main_bounds = (main_lower_bound, main_upper_bound)
+        if np.isinf(inter_lower_bound) or np.isinf(inter_upper_bound):
+            # No interaction terms, so fall back to the main effects bounds
+            inter_bounds = main_bounds
+        else:
+            inter_bounds = (inter_lower_bound, inter_upper_bound)
 
         mod_weights = remove_last(self.bin_weights_, self.bin_weights_)
         mod_term_scores = remove_last(self.term_scores_, self.bin_weights_)
@@ -2359,7 +2379,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                     "type": "univariate",
                     "names": bin_labels,
                     "scores": scores,
-                    "scores_range": bounds,
+                    "scores_range": main_bounds,
                     "upper_bounds": upper_bounds,
                     "lower_bounds": lower_bounds,
                 }
@@ -2370,7 +2390,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                     "type": "univariate",
                     "names": bin_labels,
                     "scores": model_graph,
-                    "scores_range": bounds,
+                    "scores_range": main_bounds,
                     "upper_bounds": None if errors is None else model_graph + errors,
                     "lower_bounds": None if errors is None else model_graph - errors,
                     "density": {
@@ -2454,7 +2474,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                         "left_names": bin_labels_left,
                         "right_names": bin_labels_right,
                         "scores": model_graph,
-                        "scores_range": bounds,
+                        "scores_range": inter_bounds,
+                        "global_scores_range": bounds,
                     }
                     feature_list.append(feature_dict)
                     density_list.append({})
@@ -2464,7 +2485,8 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
                         "left_names": bin_labels_left,
                         "right_names": bin_labels_right,
                         "scores": model_graph,
-                        "scores_range": bounds,
+                        "scores_range": inter_bounds,
+                        "global_scores_range": bounds,
                     }
                     data_dicts.append(data_dict)
             else:  # pragma: no cover
