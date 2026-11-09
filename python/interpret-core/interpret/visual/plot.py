@@ -655,6 +655,195 @@ def plot_horizontal_bar(
     return go.Figure(data=traces, layout=layout)
 
 
+def plot_waterfall(
+    data_dict,
+    title="",
+    xtitle="",
+    ytitle="",
+    orientation="h",
+    top_n=15,
+    class_idx=None,
+    increasing_color=None,
+    decreasing_color=None,
+    total_color=None,
+):
+    """Produces a waterfall plot for local explanations.
+
+    Visualizes how the model prediction is obtained by accumulating the intercept
+    and individual feature contributions towards the final total prediction.
+
+    Args:
+        data_dict: Dictionary containing explanation data for a single instance.
+        title: Title of the graph. If empty or None, generates a summary title from perf metrics.
+        xtitle: Label for the x-axis.
+        ytitle: Label for the y-axis.
+        orientation: "h" for horizontal waterfall (default), "v" for vertical waterfall.
+        top_n: Number of top contributing terms to show individually. Remaining terms
+            are aggregated into an "Other features" step.
+        class_idx: For multiclass explanations, which class index to plot. Defaults to
+            the predicted class.
+        increasing_color: Color for positive contributions (defaults to COLORS[1]).
+        decreasing_color: Color for negative contributions (defaults to COLORS[0]).
+        total_color: Color for the total / prediction bar (defaults to COLORS[2]).
+
+    Returns:
+        A Plotly Figure object.
+    """
+    if data_dict.get("scores", None) is None:  # pragma: no cover
+        return None
+
+    if title is None:
+        title = ""
+
+    is_multiclass = is_multiclass_local_data_dict(data_dict)
+    if is_multiclass:
+        if class_idx is None:
+            class_idx = (
+                data_dict["perf"]["predicted"]
+                if "perf" in data_dict and "predicted" in data_dict["perf"]
+                else 0
+            )
+        scores = [float(s[class_idx]) for s in data_dict["scores"]]
+    else:
+        scores = [float(s) for s in data_dict["scores"]]
+
+    names = list(data_dict["names"])
+    values = data_dict.get("values", None)
+    if values is not None:
+        values = list(values)
+        names = _names_with_values(names, values)
+
+    extra = data_dict.get("extra", None)
+    extra_steps = []
+    if extra is not None and "scores" in extra and len(extra["scores"]) > 0:
+        extra_names = extra.get("names", ["Intercept"])
+        for idx, sc in enumerate(extra["scores"]):
+            name = extra_names[idx] if idx < len(extra_names) else f"Extra {idx}"
+            if is_multiclass:
+                score_val = (
+                    float(sc[class_idx]) if hasattr(sc, "__getitem__") else float(sc)
+                )
+            else:
+                score_val = (
+                    float(sc[0]) if isinstance(sc, (list, np.ndarray)) else float(sc)
+                )
+            extra_steps.append((name, score_val))
+    else:
+        extra_steps.append(("Intercept", 0.0))
+
+    if "init_score" in data_dict and not any(
+        s[0].lower() == "init score" for s in extra_steps
+    ):
+        raw_init = data_dict["init_score"]
+        if is_multiclass:
+            init_val = (
+                float(raw_init[class_idx])
+                if hasattr(raw_init, "__getitem__")
+                else float(raw_init)
+            )
+        else:
+            init_val = (
+                float(raw_init[0])
+                if isinstance(raw_init, (list, np.ndarray))
+                else float(raw_init)
+            )
+        extra_steps.append(("Init score", init_val))
+
+    if title == "":
+        title_items = []
+        if data_dict.get("perf", None) is not None:
+            predicted = data_dict["perf"]["predicted"]
+            actual = data_dict["perf"]["actual"]
+            predicted_score = data_dict["perf"]["predicted_score"]
+            actual_score = data_dict["perf"]["actual_score"]
+
+            if "meta" in data_dict and "label_names" in data_dict["meta"]:
+                label_names = data_dict["meta"]["label_names"]
+                pred_label = label_names[predicted]
+
+                title_str = ""
+                if not np.isnan(actual):
+                    actual_class = label_names[actual]
+                    title_str += f"Actual Class: {actual_class} | "
+
+                title_str += f"Predicted Class: {pred_label}"
+                title_str += f"<br />Pr(y = {pred_label}): {predicted_score:.3f}"
+
+                if not np.isnan(actual) and len({predicted, actual}) == 2:
+                    title_str += f" | Pr(y = {actual}): {actual_score:.3f}"
+                title_items.append(title_str)
+            else:
+                if not np.isnan(actual):
+                    actual_score_str = _pretty_number(actual_score)
+                    title_items.append(f"Actual: {actual_score_str}")
+
+                pred_score_str = _pretty_number(predicted_score)
+                title_items.append(f"Predicted: {pred_score_str}")
+
+        if is_multiclass and "meta" in data_dict and "label_names" in data_dict["meta"]:
+            cls_name = data_dict["meta"]["label_names"][class_idx]
+            title_items.append(f"Class: {cls_name}")
+
+        title = " | ".join(title_items)
+
+    pairs = sorted(zip(names, scores, strict=False), key=lambda x: -abs(x[1]))
+    if top_n is not None and len(pairs) > top_n:
+        top_pairs = pairs[:top_n]
+        remaining_sum = sum(s for _, s in pairs[top_n:])
+        if remaining_sum != 0.0:
+            top_pairs.append(("Other features", remaining_sum))
+        pairs = top_pairs
+
+    step_names = [s[0] for s in extra_steps] + [p[0] for p in pairs] + ["Prediction"]
+    step_scores = [s[1] for s in extra_steps] + [p[1] for p in pairs] + [0.0]
+    measures = ["relative"] * (len(step_names) - 1) + ["total"]
+
+    inc_color = increasing_color or COLORS[1]
+    dec_color = decreasing_color or COLORS[0]
+    tot_color = total_color or COLORS[2]
+
+    is_horizontal = orientation.lower().startswith("h")
+    if is_horizontal:
+        waterfall_trace = go.Waterfall(
+            orientation="h",
+            measure=measures,
+            x=step_scores,
+            y=step_names,
+            connector={"line": {"color": "rgb(63, 63, 63)", "width": 1}},
+            increasing={"marker": {"color": inc_color}},
+            decreasing={"marker": {"color": dec_color}},
+            totals={"marker": {"color": tot_color}},
+        )
+        layout = {
+            "title": title,
+            "yaxis": {
+                "automargin": True,
+                "title": ytitle,
+                "dtick": 1,
+                "autorange": "reversed",
+            },
+            "xaxis": {"title": xtitle or "Score Contribution"},
+        }
+    else:
+        waterfall_trace = go.Waterfall(
+            orientation="v",
+            measure=measures,
+            x=step_names,
+            y=step_scores,
+            connector={"line": {"color": "rgb(63, 63, 63)", "width": 1}},
+            increasing={"marker": {"color": inc_color}},
+            decreasing={"marker": {"color": dec_color}},
+            totals={"marker": {"color": tot_color}},
+        )
+        layout = {
+            "title": title,
+            "xaxis": {"automargin": True, "title": xtitle, "dtick": 1},
+            "yaxis": {"title": ytitle or "Score Contribution"},
+        }
+
+    return go.Figure(data=[waterfall_trace], layout=layout)
+
+
 def mli_plot_horizontal_bar(
     scores,
     names,

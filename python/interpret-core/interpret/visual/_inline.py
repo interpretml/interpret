@@ -106,15 +106,15 @@ def _build_viz_err_obj(err_msg):
     }
 
 
-def _build_viz_obj(explanation, detected_envs):
-    overall = _build_viz_figure(explanation.visualize(), detected_envs)
+def _build_viz_obj(explanation, detected_envs, **kwargs):
+    overall = _build_viz_figure(explanation.visualize(**kwargs), detected_envs)
     if explanation.selector is None:
         # NOTE: Unsure if this should be a list or None in the long term.
         specific = []
         selector_obj = {"columns": [], "data": []}
     else:
         specific = [
-            _build_viz_figure(explanation.visualize(i), detected_envs)
+            _build_viz_figure(explanation.visualize(i, **kwargs), detected_envs)
             for i in range(len(explanation.selector["data"]))
         ]
         selector_obj = explanation.selector
@@ -218,7 +218,14 @@ def _render_databricks(js):  # pragma: no cover
     _databricks_displayHTML(js)
 
 
-def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=None):
+def render(
+    explanation,
+    id_str=None,
+    default_key=-1,
+    detected_envs=None,
+    js_url=None,
+    **kwargs,
+):
     from IPython.display import HTML, display
 
     global _jupyter_initialized
@@ -227,7 +234,7 @@ def render(explanation, id_str=None, default_key=-1, detected_envs=None, js_url=
         msg = "Dashboard not yet supported in cloud environments."
         viz_obj = _build_viz_err_obj(msg)
     else:
-        viz_obj = _build_viz_obj(explanation, detected_envs)
+        viz_obj = _build_viz_obj(explanation, detected_envs, **kwargs)
 
     init_js, body_js = _build_javascript(
         viz_obj, id_str, default_key=default_key, js_url=js_url
