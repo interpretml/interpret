@@ -603,6 +603,115 @@ TEST_CASE("Purify simple 3x4x5") {
    CHECK(-1e-20 < impurity && impurity < 1e-20);
 }
 
+// a repeatable pseudo random number in [0, 1)
+static double NextUniform(uint64_t& state) {
+   state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+   return static_cast<double>(state >> 11) / 9007199254740992.0;
+}
+
+// The largest absolute weighted sum over any row or column of a 2 dimensional tensor. It is zero when the tensor is
+// pure. MeasureImpurity cannot be used here since it divides by the weight of each row and column, which is NaN when
+// a row or column has no weight. The first dimension varies fastest in the tensor, so cell (iRow, iCol) is stored at
+// iRow + cRows * iCol.
+static double MaxWeightedFiberSum(const size_t cRows,
+      const size_t cCols,
+      const double* const aWeights,
+      const double* const aScores,
+      const size_t cClasses,
+      const size_t iClass) {
+   double maxSum = 0.0;
+   for(size_t iRow = 0; iRow < cRows; ++iRow) {
+      double sum = 0.0;
+      for(size_t iCol = 0; iCol < cCols; ++iCol) {
+         const size_t iBin = iRow + cRows * iCol;
+         sum += aWeights[iBin] * aScores[iBin * cClasses + iClass];
+      }
+      maxSum = std::max(maxSum, std::abs(sum));
+   }
+   for(size_t iCol = 0; iCol < cCols; ++iCol) {
+      double sum = 0.0;
+      for(size_t iRow = 0; iRow < cRows; ++iRow) {
+         const size_t iBin = iRow + cRows * iCol;
+         sum += aWeights[iBin] * aScores[iBin * cClasses + iClass];
+      }
+      maxSum = std::max(maxSum, std::abs(sum));
+   }
+   return maxSum;
+}
+
+TEST_CASE("Purify randomized 5x6 with empty cells, zero tolerance") {
+   // Visiting the surfaces in a new random order on each sweep used to end the purification at the first sweep that
+   // did not shrink the total impurity, which left tensors with empty cells impure.
+   constexpr size_t cBins = 5 * 6;
+   const IntEbm dimensionLengths[]{5, 6};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+
+   uint64_t state = 1;
+   for(size_t iTrial = 0; iTrial < 50; ++iTrial) {
+      double weights[cBins];
+      double scores[cBins];
+      for(size_t iBin = 0; iBin < cBins; ++iBin) {
+         const double isEmpty = NextUniform(state);
+         const double weight = 0.1 + 2.9 * NextUniform(state);
+         weights[iBin] = isEmpty < 0.6 ? 0.0 : weight;
+         scores[iBin] = 2.0 * NextUniform(state) - 1.0;
+      }
+      double impurities[5 + 6];
+      double residualIntercept;
+
+      ErrorEbm error = Purify(0.0,
+            k_isRandomizedDefault,
+            k_isMulticlassNormalization,
+            IntEbm{1},
+            cDimensions,
+            dimensionLengths,
+            weights,
+            scores,
+            impurities,
+            &residualIntercept);
+      CHECK(Error_None == error);
+      CHECK(MaxWeightedFiberSum(5, 6, weights, scores, 1, 0) < 1e-9);
+   }
+}
+
+TEST_CASE("Purify randomized multiclass 5x6 with empty cells, zero tolerance") {
+   constexpr IntEbm cClasses = 3;
+   constexpr size_t cBins = 5 * 6;
+   const IntEbm dimensionLengths[]{5, 6};
+   const size_t cDimensions = sizeof(dimensionLengths) / sizeof(dimensionLengths[0]);
+
+   uint64_t state = 1;
+   for(size_t iTrial = 0; iTrial < 50; ++iTrial) {
+      double weights[cBins];
+      double scores[cBins * cClasses];
+      for(size_t iBin = 0; iBin < cBins; ++iBin) {
+         const double isEmpty = NextUniform(state);
+         const double weight = 0.1 + 2.9 * NextUniform(state);
+         weights[iBin] = isEmpty < 0.6 ? 0.0 : weight;
+      }
+      for(size_t iScore = 0; iScore < cBins * cClasses; ++iScore) {
+         scores[iScore] = 2.0 * NextUniform(state) - 1.0;
+      }
+      double impurities[(5 + 6) * cClasses];
+      double residualIntercept[cClasses];
+
+      ErrorEbm error = Purify(0.0,
+            k_isRandomizedDefault,
+            k_isMulticlassNormalization,
+            cClasses,
+            cDimensions,
+            dimensionLengths,
+            weights,
+            scores,
+            impurities,
+            &residualIntercept[0]);
+      CHECK(Error_None == error);
+      for(size_t iClass = 0; iClass < static_cast<size_t>(cClasses); ++iClass) {
+         CHECK(MaxWeightedFiberSum(5, 6, weights, scores, static_cast<size_t>(cClasses), iClass) < 1e-9);
+      }
+   }
+}
+
 TEST_CASE("Purify simple multiclass 3x4") {
    constexpr IntEbm cClasses = 2;
    const IntEbm dimensionLengths[]{3, 4};
