@@ -401,7 +401,7 @@ def test_merge_ebms_callback_is_none():
         outer_bags=2,
         max_rounds=50,
         random_state=42,
-        callbacks=training_callback,
+        callbacks={"boost": training_callback},
     )
     iris_data = load_iris()
     classifier_one.fit(iris_data.data, iris_data.target)

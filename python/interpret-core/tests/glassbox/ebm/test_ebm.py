@@ -1350,7 +1350,9 @@ def test_callbacks_short():
     X, y, names, types = make_synthetic(seed=42, output_type="float", n_samples=10000)
 
     # run for half a second
-    ebm = ExplainableBoostingClassifier(names, types, callbacks=callback_generator(0.5))
+    ebm = ExplainableBoostingClassifier(
+        names, types, callbacks={"boost": callback_generator(0.5)}
+    )
     ebm.fit(X, y)
 
     # print(ebm.best_iteration_)
@@ -1380,7 +1382,7 @@ def test_callbacks_long():
 
     # run for half a second
     ebm = ExplainableBoostingClassifier(
-        names, types, callbacks=callback_generator(500000000.0)
+        names, types, callbacks={"boost": callback_generator(500000000.0)}
     )
     ebm.fit(X, y)
 

@@ -299,9 +299,9 @@ def _initialize_merged_model_params(merged_model, source_models):
     first_source_model = source_models[0]
     hyperparameters = first_source_model.get_params(deep=False)
 
-    # The callbacks parameter is a per-training-session callable that is
+    # The callbacks mapping holds per-training-session callables that are
     # not meaningful for a merged model. Explicitly set it to None to
-    # avoid retaining a stale reference to the original training callback.
+    # avoid retaining stale references to the original training callbacks.
     if "callbacks" in hyperparameters:
         hyperparameters["callbacks"] = None
 
