@@ -268,3 +268,46 @@ def test_purify_multiclass_5():
     scores -= np.average(scores, axis=-1, keepdims=True)
 
     assert np.allclose(refilled, scores)
+
+
+def _random_empty_cell_inputs(rng, shape, p_empty, n_classes=None):
+    weights = rng.uniform(0.1, 3.0, shape) * (rng.random(shape) > p_empty)
+    score_shape = shape if n_classes is None else (*shape, n_classes)
+    scores = rng.normal(size=score_shape)
+    return scores, weights
+
+
+def test_purify_randomized_with_empty_cells_regression():
+    # A fresh random visiting order on each sweep used to end the purification at the first
+    # sweep that did not shrink the total impurity, which left such tensors impure.
+    rng = np.random.default_rng(0)
+    for shape, p_empty in (((5, 6), 0.6), ((3, 3, 3), 0.3), ((4, 5, 6), 0.3)):
+        for _ in range(10):
+            scores, weights = _random_empty_cell_inputs(rng, shape, p_empty)
+            purified, impurities, intercept = purify(
+                scores, weights, tolerance=0.0, is_randomized=True
+            )
+
+            for axis in range(len(shape)):
+                assert np.allclose((purified * weights).sum(axis=axis), 0.0, atol=1e-8)
+
+            refilled = purified + intercept
+            for idxes, impurity in impurities:
+                new_shape = [1] * len(shape)
+                for i in idxes:
+                    new_shape[i] = shape[i]
+                refilled += impurity.reshape(new_shape)
+            assert np.allclose(refilled, scores)
+
+
+def test_purify_randomized_multiclass_with_empty_cells_regression():
+    rng = np.random.default_rng(1)
+    shape = (5, 6)
+    n_classes = 3
+    for _ in range(10):
+        scores, weights = _random_empty_cell_inputs(rng, shape, 0.6, n_classes)
+        purified, _, _ = purify(scores, weights, tolerance=0.0, is_randomized=True)
+
+        weighted = purified * weights[..., np.newaxis]
+        for axis in range(len(shape)):
+            assert np.allclose(weighted.sum(axis=axis), 0.0, atol=1e-8)

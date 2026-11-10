@@ -27,6 +27,53 @@ namespace DEFINED_ZONE_NAME {
 #error DEFINED_ZONE_NAME must be defined
 #endif // DEFINED_ZONE_NAME
 
+// When the surfaces are visited in a new random order on each sweep, the total impurity of a sweep does not shrink
+// monotonically. Empty cells make the convergence slow, so a sweep that fails to beat the previous one usually comes
+// long before the tensor is pure. Such a sweep only ends the purification once the total impurity has dropped to
+// floating point noise relative to the first sweep. Otherwise the purification continues until k_cSweepsPatience
+// sweeps in a row have failed to set a new minimum, which also guarantees that it terminates.
+static constexpr double k_impurityNoiseRatio = 1e-12;
+static constexpr size_t k_cSweepsPatience = 20;
+
+struct PurifyProgress {
+   double m_impurityNoise;
+   double m_impurityBest;
+   size_t m_cSweepsSinceBest;
+};
+
+static void ResetPurifyProgress(PurifyProgress* const pProgress) {
+   pProgress->m_impurityNoise = std::numeric_limits<double>::quiet_NaN();
+   pProgress->m_impurityBest = std::numeric_limits<double>::infinity();
+   pProgress->m_cSweepsSinceBest = 0;
+}
+
+// Returns true when no further sweep is needed. impurityPrev is +inf for the first sweep.
+static bool IsPurifySweepingDone(
+      const bool bRandomized, const double impurityPrev, const double impurityCur, PurifyProgress* const pProgress) {
+   if(!bRandomized) {
+      // the order is fixed, so the total impurity shrinks until it reaches floating point noise
+      return impurityPrev <= impurityCur;
+   }
+   if(std::isnan(impurityCur)) {
+      // a score became infinite, so the total is not comparable with earlier sweeps. Track progress anew.
+      ResetPurifyProgress(pProgress);
+      return false;
+   }
+   if(std::isnan(pProgress->m_impurityNoise)) {
+      pProgress->m_impurityNoise = impurityCur * k_impurityNoiseRatio;
+   }
+   if(impurityCur < pProgress->m_impurityBest) {
+      pProgress->m_impurityBest = impurityCur;
+      pProgress->m_cSweepsSinceBest = 0;
+   } else {
+      ++pProgress->m_cSweepsSinceBest;
+   }
+   if(impurityPrev <= impurityCur && impurityCur <= pProgress->m_impurityNoise) {
+      return true;
+   }
+   return k_cSweepsPatience <= pProgress->m_cSweepsSinceBest;
+}
+
 EBM_API_BODY double EBM_CALLING_CONVENTION MeasureImpurity(IntEbm countMultiScores,
       IntEbm indexMultiScore,
       IntEbm countDimensions,
@@ -507,6 +554,8 @@ extern ErrorEbm PurifyInternal(const double tolerance,
             EBM_ASSERT(std::numeric_limits<double>::min() <= impuritySumOverflowPreventer);
             double impurityPrev;
             double impurityCur = std::numeric_limits<double>::infinity();
+            PurifyProgress progress;
+            ResetPurifyProgress(&progress);
             bool bRetry;
             do {
                // if any non-infinite value was flipped to an infinite value, it could increase the impurity
@@ -842,7 +891,7 @@ extern ErrorEbm PurifyInternal(const double tolerance,
                   ++iRandom;
                } while(cSurfaceBins != iRandom);
                // this loops on std::isnan(impurityCur)
-            } while(bRetry && !(impurityPrev <= impurityCur));
+            } while(bRetry && !IsPurifySweepingDone(nullptr != aRandomize, impurityPrev, impurityCur, &progress));
             EBM_ASSERT(!std::isnan(impurityCur));
 
             if(nullptr != pIntercept) {
@@ -1514,6 +1563,8 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
       const double impuritySumOverflowPreventer = 0.5 / static_cast<double>(cScores * cSurfaceBins);
       double impurityPrev;
       double impurityCur = std::numeric_limits<double>::infinity();
+      PurifyProgress progress;
+      ResetPurifyProgress(&progress);
       do {
          // if any non-infinite value was flipped to an infinite value, it could increase the impurity
          // so we set impurityCur to NaN. We need to reset it to +inf to avoid stopping early
@@ -1765,7 +1816,7 @@ static ErrorEbm PurifyNormalizedMulticlass(const size_t cScores,
             ++iRandom;
          } while(cSurfaceBins != iRandom);
          // this loops on std::isnan(impurityCur)
-      } while(!(impurityPrev <= impurityCur));
+      } while(!IsPurifySweepingDone(nullptr != aRandomize, impurityPrev, impurityCur, &progress));
       EBM_ASSERT(!std::isnan(impurityCur));
 
       if(nullptr != aInterceptOut) {
