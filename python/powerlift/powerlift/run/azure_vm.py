@@ -105,6 +105,11 @@ def run_azure_process(
                 sleep 600
             fi
 
+            if [ "${DELETE_ON_COMPLETE}" != "1" ]; then
+                echo "delete_on_complete is disabled. Leaving this VM running."
+                exit $1
+            fi
+
             SUBSCRIPTION_ID=${SUBSCRIPTION_ID}
             RESOURCE_GROUP_NAME=${RESOURCE_GROUP_NAME}
             VM_NAME=${VM_NAME}
@@ -438,6 +443,7 @@ export TIMEOUT="{timeout}"
 export RESOURCE_GROUP_NAME="{resource_group_name}"
 export VM_NAME="{vm_name}"
 export SUBSCRIPTION_ID="{subscription_id}"
+export DELETE_ON_COMPLETE="{1 if delete_on_complete else 0}"
 {startup_script}  
 """
 
