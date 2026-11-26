@@ -3031,7 +3031,7 @@ class BaseEBM(LocalExplainer, GlobalExplainer, _SKBaseEstimator):
         if self.standard_deviations_ is not None:
             std_term = self.standard_deviations_[term]
             if std_term is not None:
-                std_term *= factor
+                std_term *= abs(factor)
 
         return self
 
