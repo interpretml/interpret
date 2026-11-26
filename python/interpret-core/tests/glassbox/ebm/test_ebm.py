@@ -1211,6 +1211,19 @@ def test_ebm_scale():
     assert len(clf.bin_weights_) == 2
 
 
+def test_ebm_scale_negative_factor():
+    data = synthetic_regression()
+    X = data["full"]["X"]
+    y = data["full"]["y"]
+
+    clf = ExplainableBoostingRegressor(n_jobs=-2, interactions=0)
+    clf.fit(X, y)
+    std_before = clf.standard_deviations_[0].copy()
+
+    clf.scale(0, factor=-2.0)
+    assert np.array_equal(clf.standard_deviations_[0], 2.0 * std_before)
+
+
 def test_ebm_uncertainty():
     data = synthetic_classification()
     X = data["full"]["X"]
